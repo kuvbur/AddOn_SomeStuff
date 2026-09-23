@@ -93,11 +93,12 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     case APINotify_New:
     case APINotify_NewAndReset:
     case APINotify_Open: {
+        ClearSyncThrottleCache ();
         Do_ElementMonitor (syncSettings.GetSyncMon ());
         PROPERTYCACHE ().Update ();
 #if defined(TESTING)
-        // C++-тесты — после открытия проекта: IsTestProjectOpen () в DBprnt
-        // отсекает записи до этого момента (Initialize выполняется без проекта).
+        // C++-тесты — после открытия проекта: ACAPI-вызовы требуют
+        // открытую базу данных (Initialize выполняется без проекта).
         static bool testRunDone = false;
         if (!testRunDone) {
             testRunDone = true;
@@ -114,6 +115,7 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
         break;
     case APINotify_Close:
     case APINotify_Quit:
+        ClearSyncThrottleCache ();
 #ifdef ServerMainVers_2700
         ACAPI_Element_CatchNewElement (nullptr, nullptr);
         ACAPI_Element_InstallElementObserver (nullptr);
@@ -143,10 +145,6 @@ GSErrCode ElementEventHandlerProc (const API_NotifyElementType *elemType) {
 #else
 GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *elemType) {
 #endif
-    // Элементы из hotlink не обрабатываются, потому что они приходят как внешние ссылки и не доступны для локального
-    // редактирования.
-    if (elemType->elemHead.hotlinkGuid != APINULLGuid)
-        return NoError;
     ACAPI_KeepInMemory (true);
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings);
@@ -157,25 +155,31 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
         PROPERTYCACHE ().compositeCache.Clear ();
         return NoError;
     } else if (elemType->notifID == APINotifyElement_EndEvents) {
-        // FIX (ревью 2026-09-12, PERF): EndEvents приходит пачками на каждое
-        // редактирование — полный скан всех размеров (DimRoundAll) выполняем
-        // только при наличии правил округления; адресная обработка отдельных
-        // размеров уже идёт через DimAutoRoundOne в обработчике элементов.
-        if (!IsElementThrottled (APINULLGuid) && PROPERTYCACHE ().hasDimAutotext) {
+        // EndEvents завершает каждое уведомление, а не весь каскад одного действия.
+        if (PROPERTYCACHE ().hasDimAutotext && !IsDimensionScanThrottled ())
             DimRoundAll (syncSettings, true);
-        }
         return NoError;
     }
+    // У граничных уведомлений нет обрабатываемого элемента.
+    if (elemType->elemHead.hotlinkGuid != APINULLGuid)
+        return NoError;
+    const bool isChangeEvent =
+        elemType->notifID == APINotifyElement_New || elemType->notifID == APINotifyElement_Change ||
+        elemType->notifID == APINotifyElement_Edit || elemType->notifID == APINotifyElement_PropertyValueChange ||
+        elemType->notifID == APINotifyElement_ClassificationChange;
     // Смотрим - что поменялось
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
     switch (elementType) {
-    case API_ZombieElemID:
-    case API_GroupID:
     case API_DimensionID:
-        if (PROPERTYCACHE ().hasDimAutotext) {
+        if (isChangeEvent && PROPERTYCACHE ().hasDimAutotext) {
             if (elemType->notifID == APINotifyElement_New)
                 AttachObserver (elemType->elemHead.guid, syncSettings);
-            DimAutoRoundOne (elemType->elemHead.guid, syncSettings, false);
+            if (ACAPI_Element_Filter (elemType->elemHead.guid,
+                                      APIFilt_InMyWorkspace | APIFilt_HasAccessRight | APIFilt_IsEditable |
+                                          APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay |
+                                          APIFilt_OnVisLayer) &&
+                !IsElementThrottled (elemType->elemHead.guid))
+                DimAutoRoundOne (elemType->elemHead.guid, syncSettings, false);
         }
         return NoError;
 #ifdef ServerMainVers_2800
@@ -189,15 +193,18 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
 #if defined(TESTING)
     DBprnt ("ElementEventHandlerProc start");
 #endif
-    ParamDictElement paramToWrite = {};
-    if (IsElementThrottled (elemType->elemHead.guid))
+    if (!isChangeEvent)
         return NoError;
     if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true, elementType))
         return NoError;
+    if (elemType->notifID == APINotifyElement_New)
+        AttachObserver (elemType->elemHead.guid, syncSettings);
+    if (IsElementThrottled (elemType->elemHead.guid))
+        return NoError;
+    ParamDictElement paramToWrite = {};
     bool needresync = false;
     switch (elemType->notifID) {
     case APINotifyElement_New:
-        AttachObserver (elemType->elemHead.guid, syncSettings);
     case APINotifyElement_Change:
     case APINotifyElement_PropertyValueChange:
     case APINotifyElement_Edit:
@@ -211,12 +218,8 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
             syncSettings.SetWidoS (true);
             syncSettings.SetObjS (true);
         }
-        // После изменения самой навесной стены панели не обрабатываются отдельно,
-        // потому что их синхронизация будет выполнена дальше через SyncElement.
-        // FIX (план 2026-09-12, Шаг 2.1): флаги logMon/cwall ниже переключаются
-        // только в локальной копии настроек для текущего события — записи
-        // настроек в observer-пути убраны (раньше каждое событие элемента писало
-        // блоб аддона в файл проекта; в TW это давало постоянные локальные изменения).
+        // Изменяем только локальную копию настроек: для текущего события панели
+        // должны синхронизироваться через SyncElement, но настройки проекта не меняются.
         if (syncSettings.GetLogMon () && elementType != API_CurtainWallPanelID &&
             elementType != API_CurtainWallSegmentID && elementType != API_CurtainWallFrameID &&
             elementType != API_CurtainWallJunctionID && elementType != API_CurtainWallAccessoryID) {
@@ -299,6 +302,7 @@ void Do_ElementMonitor (bool syncMon) {
 #endif
     }
     if (!syncMon) {
+        ClearSyncThrottleCache ();
 #if defined(TESTING)
         DBprnt ("Do_ElementMonitor off");
 #endif
@@ -472,9 +476,8 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
         break;
     }
     (void)err;
-    // FIX (ревью 2026-09-12, PERF): DimRoundAll делает полный скан всех размеров
-    // проекта — вызываем только для команд, меняющих элементы/свойства; для
-    // переключателей флагов и палитры пересчёт не нужен.
+    // DimRoundAll сканирует все размеры проекта, поэтому запускаем его только
+    // после команд, которые меняют элементы или их свойства.
     switch (menuParams->menuItemRef.itemIndex) {
     case SyncAll_CommandID:
     case SyncSelect_CommandID:
@@ -492,9 +495,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
         break;
     }
     WriteSyncSettingsToPreferences (syncSettings);
-    // FIX (ревью 2026-09-12): вызов восстановлен — он был случайно удалён при правке
-    // п.30 (DimRoundAll в switch); без него галочки меню не обновляются после
-    // переключения флагов/палитры до следующего project-события.
+    // Состояние меню зависит от настроек, поэтому обновляем его после любой команды.
     MenuSetState (syncSettings);
     ACAPI_KeepInMemory (true);
 #ifdef TESTING
@@ -546,10 +547,8 @@ GSErrCode __ACENV_CALL Initialize (void) {
 #endif
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings, true);
-    // FIX (план 2026-09-12, Шаг 2.2): безусловная запись настроек при старте
-    // убрана — запись из этого пути более не модифицирует файл проекта.
-    // Актуальная версия настроек фиксируется в локальном файле при первой же
-    // записи/миграции (см. dialogs/SyncSettings.cpp).
+    // При старте только загружаем настройки: запись выполняется в явном пути
+    // сохранения или миграции, чтобы открытие проекта не создавало локальных изменений.
     MenuSetState (syncSettings);
     Do_ElementMonitor (syncSettings.GetSyncMon ());
     MonAll (syncSettings);
