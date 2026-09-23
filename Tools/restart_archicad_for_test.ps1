@@ -7,11 +7,14 @@
 #   1. Проверить окружение и конфигурацию.
 #   2. Закрыть Archicad, оставшийся от предыдущего запуска.
 #   3. Очистить временные файлы.
-#   4. Собрать Add-On.
-#   5. Запустить ARCHICAD.exe с файлом PLN и сервисными флагами.
-#   6. Дождаться test_results.txt.
-#   7. Проанализировать результаты тестов.
+#   4. Проверить HTML.
+#   5. Собрать Add-On.
+#   6. Запустить ARCHICAD.exe с файлом PLN и сервисными флагами.
+#   7. Выполнить JSON-тесты команд (Tools/test_json_commands.py).
 #   8. Оставить Archicad открытым для работы/отладки.
+#
+#   Результаты C++-тестов читаются из Visual Studio (Output/Debug) через MCP.
+#   Файл test_results.txt этим скриптом не ждётся, не читается и не удаляется.
 # ==============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -27,7 +30,6 @@ $EXIT_PREVIOUS_AC_FAILED      = 20
 $EXIT_BUILD_FAILED            = 30
 $EXIT_AC_START_FAILED         = 40
 $EXIT_RUNTIME_ERROR            = 50
-$EXIT_TEST_TIMEOUT             = 60
 $EXIT_TESTS_FAILED             = 70
 $EXIT_AC_SHUTDOWN_FAILED       = 80
 $EXIT_CLEANUP_FAILED           = 90
@@ -50,9 +52,6 @@ $forceCloseTimeoutSec = 15
 # Время ожидания запуска Archicad.
 $archicadLaunchTimeoutSec = 60
 
-# Время ожидания test_results.txt.
-$testResultTimeoutSec = 120
-
 # Интервал polling.
 $pollIntervalSec = 2
 
@@ -74,7 +73,6 @@ $scriptDir       = $PSScriptRoot
 $projectRoot     = Split-Path -Parent $scriptDir
 $configPath      = Join-Path $projectRoot "config.json"
 $buildScriptPath = Join-Path $scriptDir "BuildAddOn.py"
-$testResultsPath = Join-Path $projectRoot "test_results.txt"
 
 
 # ==============================================================================
@@ -453,64 +451,7 @@ function Wait-ForNewArchicad {
 
 
 # ==============================================================================
-# 11. РАЗБОР test_results.txt
-# ==============================================================================
-
-function Get-TestResultStatus {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$Path
-    )
-
-    if (-not (Test-Path -LiteralPath $Path)) {
-        return "MISSING"
-    }
-
-    $lines = $null
-    for ($attempt = 1; $attempt -le 5; $attempt++) {
-        try {
-            $lines = @(Get-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop)
-            break
-        }
-        catch {
-            Start-Sleep -Milliseconds 200
-        }
-    }
-
-    if ($null -eq $lines) {
-        Write-Log "Unable to read test results after multiple retries." Red
-        return "ERROR"
-    }
-
-    $text = $lines -join "`n"
-
-    if ($text -match "(?im)===\s*ERROR IN TEST\s*===") {
-        return "FAILED"
-    }
-
-    if ($text -match "(?im)^\s*(FAIL|FAILED|ERROR)\s*$") {
-        return "FAILED"
-    }
-    if ($text -match "(?im)TESTS\s+FAILED\s*:\s*[1-9][0-9]*") {
-        return "FAILED"
-    }
-
-    if ($text -match "(?im)^\s*(PASS|PASSED|SUCCESS|SUCCESSFUL|ok)\s*$") {
-        return "PASSED"
-    }
-    if ($text -match "(?im)TESTS\s+FAILED\s*:\s*0") {
-        return "PASSED"
-    }
-    if ($text -match "(?im)TESTS\s+PASSED\s*:\s*[1-9][0-9]*") {
-        return "PASSED"
-    }
-
-    return "UNKNOWN"
-}
-
-
-# ==============================================================================
-# 12. HTML ВАЛИДАЦИЯ (запускается ДО билда)
+# 11. HTML ВАЛИДАЦИЯ (запускается ДО билда)
 # ==============================================================================
 
 function Test-HtmlValidation {
@@ -603,23 +544,22 @@ function Test-HtmlValidation {
 
 
 # ==============================================================================
-# 13. ПЕРЕМЕННЫЕ RUNNER
+# 12. ПЕРЕМЕННЫЕ RUNNER
 # ==============================================================================
 
 $runnerExitCode      = $EXIT_SUCCESS
 $archicadStarted     = $false
 $trackedArchicadPids = @()
-$testResultStatus    = "NOT_RUN"
 $buildSucceeded      = $false
 $runnerFailureReason = "none"
 
 
 # ==============================================================================
-# 14. MAIN
+# 13. MAIN
 # ==============================================================================
 
 try {
-    Write-AIStatus "START" "task=restart_archicad_for_test action=validate_environment_then_close_test_archicad_build_launch_and_wait_for_results" Cyan
+    Write-AIStatus "START" "task=restart_archicad_for_test action=validate_environment_then_close_test_archicad_build_launch_and_run_json_tests" Cyan
 
     # CONFIG
     if (-not (Test-Path -LiteralPath $configPath)) {
@@ -662,8 +602,7 @@ try {
         Set-RunnerFailureReason "test_pln_not_found"
         throw "Test PLN not found: $filePath"
     }
-    Write-Log "Results:       $testResultsPath" Gray
-    Write-AIStatus "CONFIG_OK" "ac_version=$acVersion archicad_exe='$archicadExePath' test_file='$filePath' results_file='$testResultsPath'" Green
+    Write-AIStatus "CONFIG_OK" "ac_version=$acVersion archicad_exe='$archicadExePath' test_file='$filePath'" Green
 
     # PREVIOUS ARCHICAD
     if (-not (Stop-ExistingArchicad)) {
@@ -677,18 +616,12 @@ try {
     Start-Sleep -Seconds $postCloseCleanupPauseSec
 
     # CLEANUP
-        Write-AIStatus "CLEANUP" "action=remove_lock_and_old_results lock_file='$lckFilePath' results_file='$testResultsPath'" Cyan
-        if (-not (Remove-FileWithRetry -Path $lckFilePath -Retries $fileDeleteRetries)) {
-            $runnerExitCode = $EXIT_CLEANUP_FAILED
-            Set-RunnerFailureReason "unable_to_remove_archicad_lock_file"
-            throw "Unable to remove Archicad lock file."
-        }
-
-        if (-not (Remove-FileWithRetry -Path $testResultsPath -Retries $fileDeleteRetries)) {
-            $runnerExitCode = $EXIT_CLEANUP_FAILED
-            Set-RunnerFailureReason "unable_to_remove_old_test_results"
-            throw "Unable to remove old test_results.txt."
-        }
+    Write-AIStatus "CLEANUP" "action=remove_lock_file lock_file='$lckFilePath'" Cyan
+    if (-not (Remove-FileWithRetry -Path $lckFilePath -Retries $fileDeleteRetries)) {
+        $runnerExitCode = $EXIT_CLEANUP_FAILED
+        Set-RunnerFailureReason "unable_to_remove_archicad_lock_file"
+        throw "Unable to remove Archicad lock file."
+    }
 
         # HTML VALIDATION (ДО БИЛДА)
         Write-AIStatus "HTML_VALIDATION" "action=run_htmlhint_and_custom_verify before_build=true" Cyan
@@ -766,104 +699,41 @@ try {
 
     $trackedArchicadPids = @($newProcesses | Select-Object -ExpandProperty Id)
     $archicadStarted     = $true
-    Write-AIStatus "ARCHICAD_STARTED" "tracked_pids=$($trackedArchicadPids -join ',') action=wait_for_test_results" Green
+    Write-AIStatus "ARCHICAD_STARTED" "tracked_pids=$($trackedArchicadPids -join ',') action=leave_open_for_json_tests" Green
 
-    # TEST WAITING
-    Write-Log "Waiting for test_results.txt (timeout ${testResultTimeoutSec}s)..." Cyan
-
-    $deadline = (Get-Date).AddSeconds($testResultTimeoutSec)
-
-    while ((Get-Date) -lt $deadline) {
-        if (Test-Path -LiteralPath $testResultsPath) {
-            Write-Log "test_results.txt detected." Green
-            break
-        }
-
-        $aliveTracked = @($trackedArchicadPids | Where-Object { Test-ProcessExists -ProcessId $_ })
-        if ($aliveTracked.Count -eq 0) {
-            $runnerExitCode = $EXIT_RUNTIME_ERROR
-            Set-RunnerFailureReason "archicad_terminated_before_test_results"
-            throw "Tracked Archicad process terminated unexpectedly before test_results.txt was created."
-        }
-
-        Start-Sleep -Seconds $pollIntervalSec
-    }
-
-    # TIMEOUT CHECK
-    if (-not (Test-Path -LiteralPath $testResultsPath)) {
-        $testResultStatus = "TIMEOUT"
-        $runnerExitCode   = $EXIT_TEST_TIMEOUT
-        Set-RunnerFailureReason "test_results_timeout"
-        throw "test_results.txt was not created within $testResultTimeoutSec seconds."
-    }
-
-    # READ TEST RESULTS
-    Write-Host ""
-    Write-Host "================ TEST RESULTS ================" -ForegroundColor Cyan
-    Get-Content -LiteralPath $testResultsPath -Encoding UTF8 | ForEach-Object { Write-Host $_ }
-    Write-Host "==============================================" -ForegroundColor Cyan
-    Write-Host ""
-
-    # PARSE RESULT
-    $testResultStatus = Get-TestResultStatus -Path $testResultsPath
-
-    switch ($testResultStatus) {
-        "PASSED" {
-            Write-Log "Automated tests: PASSED." Green
-            Write-AIStatus "TESTS_OK" "status=PASSED source='$testResultsPath'" Green
-        }
-        "FAILED" {
-            Write-Log "Automated tests: FAILED." Red
-            $runnerExitCode = $EXIT_TESTS_FAILED
-            Set-RunnerFailureReason "automated_tests_failed"
-            Write-AIStatus "TESTS_FAILED" "status=FAILED source='$testResultsPath'" Red
-        }
-        "UNKNOWN" {
-            Write-Log "Test result file exists, but its status is not recognized." Yellow
-            Write-AIStatus "TESTS_UNKNOWN" "status=UNKNOWN source='$testResultsPath' action=manual_log_review_recommended" Yellow
-        }
-        "ERROR" {
-            $runnerExitCode = $EXIT_RUNTIME_ERROR
-            Set-RunnerFailureReason "unable_to_parse_test_results"
-            throw "Unable to parse test_results.txt."
-        }
-    }
-    
     # =================================================================
-    # JSON COMMANDS TESTING (после C++ тестов, если они не провалены)
+    # JSON COMMANDS TESTING (Tools/test_json_commands.py)
     # =================================================================
-    if ($testResultStatus -eq "PASSED" -or $testResultStatus -eq "UNKNOWN") {
-        Write-Log "Starting JSON commands testing..." Cyan
-        Write-AIStatus "JSON_TESTS" "action=run_optional_json_command_tests if_script_exists=true" Cyan
-        
-        # Ждём инициализации PropertyCache
-        Write-Log "Waiting 15 seconds for PropertyCache initialization..." Yellow
-        Start-Sleep -Seconds 15
-        
-        $jsonTestScript = Join-Path $projectRoot "Tools\test_json_commands.py"
-        if (Test-Path -LiteralPath $jsonTestScript) {
-            $jsonTestOutput = @(& python $jsonTestScript 2>&1)
-            $jsonTestExitCode = $LASTEXITCODE
-            
-            Write-Host ""
-            Write-Host "================ JSON COMMANDS TESTS ================" -ForegroundColor Cyan
-            foreach ($line in $jsonTestOutput) { Write-Host $line }
-            Write-Host "====================================================" -ForegroundColor Cyan
-            Write-Host ""
-            
-            if ($jsonTestExitCode -eq 0) {
-                Write-Log "JSON commands tests: PASSED." Green
-                Write-AIStatus "JSON_TESTS_OK" "status=PASSED" Green
-            } else {
-                Write-Log "JSON commands tests: FAILED (exit code: $jsonTestExitCode)." Red
-                $runnerExitCode = $EXIT_TESTS_FAILED
-                Set-RunnerFailureReason "json_commands_tests_failed_exit_code_$jsonTestExitCode"
-                Write-AIStatus "JSON_TESTS_FAILED" "status=FAILED exit_code=$jsonTestExitCode" Red
-            }
+    Write-Log "Starting JSON commands testing..." Cyan
+    Write-AIStatus "JSON_TESTS" "action=run_optional_json_command_tests if_script_exists=true" Cyan
+
+    # Ждём инициализации PropertyCache
+    Write-Log "Waiting 15 seconds for PropertyCache initialization..." Yellow
+    Start-Sleep -Seconds 15
+
+    $jsonTestScript = Join-Path $projectRoot "Tools\test_json_commands.py"
+    if (Test-Path -LiteralPath $jsonTestScript) {
+        $jsonTestOutput = @(& python $jsonTestScript 2>&1)
+        $jsonTestExitCode = $LASTEXITCODE
+
+        Write-Host ""
+        Write-Host "================ JSON COMMANDS TESTS ================" -ForegroundColor Cyan
+        foreach ($line in $jsonTestOutput) { Write-Host $line }
+        Write-Host "====================================================" -ForegroundColor Cyan
+        Write-Host ""
+
+        if ($jsonTestExitCode -eq 0) {
+            Write-Log "JSON commands tests: PASSED." Green
+            Write-AIStatus "JSON_TESTS_OK" "status=PASSED" Green
         } else {
-            Write-Log "JSON test script not found: $jsonTestScript" Yellow
-            Write-AIStatus "JSON_TESTS_SKIPPED" "reason=script_not_found path='$jsonTestScript'" Yellow
+            Write-Log "JSON commands tests: FAILED (exit code: $jsonTestExitCode)." Red
+            $runnerExitCode = $EXIT_TESTS_FAILED
+            Set-RunnerFailureReason "json_commands_tests_failed_exit_code_$jsonTestExitCode"
+            Write-AIStatus "JSON_TESTS_FAILED" "status=FAILED exit_code=$jsonTestExitCode" Red
         }
+    } else {
+        Write-Log "JSON test script not found: $jsonTestScript" Yellow
+        Write-AIStatus "JSON_TESTS_SKIPPED" "reason=script_not_found path='$jsonTestScript'" Yellow
     }
 }
 catch {
@@ -879,7 +749,7 @@ catch {
 
 
 # ==============================================================================
-# 17. FINAL STATUS & EXIT
+# 14. FINAL STATUS & EXIT
 # ==============================================================================
 
 Write-Host ""
@@ -888,23 +758,21 @@ $archicadProcessCount = @(Get-ArchicadProcesses).Count
 $archicadFinalState = if ($archicadProcessCount -gt 0) { "running" } else { "not_running" }
 
 if ($runnerExitCode -eq $EXIT_SUCCESS) {
-    Write-AIStatus "DONE" "reason=completed build=$buildSucceeded tests=$testResultStatus archicad=$archicadFinalState" Green
-    Write-Log "AI_RESULT status=success exit_code=0 reason=completed build=$buildSucceeded tests=$testResultStatus archicad=$archicadFinalState" Green
+    Write-AIStatus "DONE" "reason=completed build=$buildSucceeded archicad=$archicadFinalState" Green
+    Write-Log "AI_RESULT status=success exit_code=0 reason=completed build=$buildSucceeded archicad=$archicadFinalState" Green
     Write-Log "==================================================" Green
     Write-Log "AUTOMATED TEST RUNNER: SUCCESS" Green
     Write-Log "Build:    $buildSucceeded" Green
-    Write-Log "Tests:    $testResultStatus" Green
     Write-Log "Archicad: $archicadFinalState" Green
     Write-Log "Exit:     0" Green
     Write-Log "==================================================" Green
 } else {
-    Write-AIStatus "FAILED" "reason=$runnerFailureReason build=$buildSucceeded tests=$testResultStatus archicad=$archicadFinalState exit_code=$runnerExitCode" Red
-    Write-Log "AI_RESULT status=failed exit_code=$runnerExitCode reason=$runnerFailureReason build=$buildSucceeded tests=$testResultStatus archicad=$archicadFinalState" Red
+    Write-AIStatus "FAILED" "reason=$runnerFailureReason build=$buildSucceeded archicad=$archicadFinalState exit_code=$runnerExitCode" Red
+    Write-Log "AI_RESULT status=failed exit_code=$runnerExitCode reason=$runnerFailureReason build=$buildSucceeded archicad=$archicadFinalState" Red
     Write-Log "==================================================" Red
     Write-Log "AUTOMATED TEST RUNNER: FAILED" Red
     Write-Log "Exit code: $runnerExitCode" Red
     Write-Log "Build:    $buildSucceeded" Red
-    Write-Log "Tests:    $testResultStatus" Red
     Write-Log "Archicad: $archicadFinalState" Yellow
     Write-Log "==================================================" Red
 }

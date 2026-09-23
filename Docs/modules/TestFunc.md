@@ -5,6 +5,8 @@
 ## Назначение
 Вспомогательные функции для локального тестирования и отладки. Активен только под `TESTING`. [из комментария, TestFunc.hpp:16]
 
+Вывод `DBprnt`/`DBtest` идёт в отладочный вывод ArchiCAD (`DBPrintf`/`DBPrint`); результаты читают в панели «Отладка» Visual Studio через VS MCP `output_read` (AGENTS.md §9). Файл `test_results.txt` больше не используется. Ошибки ищут как `ERROR IN TEST`, набор проверок ограничен строками `TEST : start` / `TEST : end`.
+
 ## Файлы
 - `Sources/AddOn/TestFunc.cpp/hpp` (hpp целиком под `#ifdef TESTING`)
 
@@ -36,4 +38,4 @@
 - `api_headers/APICommon25/26/27.h` [по include]
 
 ## Инварианты
-- Прод-код в тестовых задачах read-only; ошибки — grep "ERROR IN TEST" test_results.txt (AGENTS.md §10) [из AGENTS.md]
+- Прод-код в тестовых задачах read-only; ошибки — читать `ERROR IN TEST` в панели «Отладка» Visual Studio через VS MCP `output_read` (AGENTS.md §9) [из AGENTS.md]

@@ -58,107 +58,15 @@ query; a miss isn't evidence of absence — fall through to clangd/grep.
 Use Clangd MCP for definitions/references/locations, then targeted
 inspection inside `Sources/AddOn/` only — no recursive repo/disk search.
 
-For SDK/API context, **LightRAG is a Hermes skill/workflow, not a native
-Codex tool**. When Hermes skills are available, inspect them
-(`skills_list`/`skill_view`) and follow the relevant LightRAG skill. Don't
-expect a standalone `lightrag_*` tool unless the environment provides
-one. If the skill is unavailable, use installed SDK headers, official
-docs, and verified call sites; if still unresolved, mark `not verified` —
-don't guess.
+For SDK/API context, use skill `lightrag` (§6) — it covers the
+Hermes LightRAG procedure and the headers/docs/call-sites fallback.
 
-## 6. SDK Verification / Hermes LightRAG Skill
+## 6. SDK Verification / Known Landmines
 
-Verify every `ACAPI_*` call's relevant behavior before changing it.
-LightRAG here is a Hermes skill, not a native Codex tool. Under
-Hermes + Codex:
-
-1. `skills_list`.
-2. If a LightRAG/Archicad SDK skill exists, `skill_view` it.
-3. Follow its SDK/API lookup procedure.
-4. Confirm important findings against installed headers, official docs,
-   or verified call sites when appropriate.
-
-Local REST calls:
-
-- Endpoint: `http://127.0.0.1:9621/query`.
-- Health: `curl.exe --noproxy 127.0.0.1,localhost -s http://127.0.0.1:9621/health`.
-- Query (PowerShell, `--%` so JSON isn't mangled):
-
-```powershell
-curl.exe --% --noproxy 127.0.0.1,localhost -s --max-time 60 -X POST http://127.0.0.1:9621/query -H "Content-Type: application/json" -d "{""query"":""ACAPI_Element_GetElemList"",""mode"":""local"",""only_need_context"":true}"
-```
-
-`only_need_context: true` for API lookup. Exact name → `local` →
-`naive` → `hybrid` → `global`. "How to" without an exact name → start
-`hybrid`; broad concept → start `global`. `curl` failing through
-`http_proxy`/`https_proxy` → keep `--noproxy`, don't treat LightRAG as
-down. `No relevant context found` → retry with a more exact identifier
-or the next mode before falling back to headers/docs.
-
-Don't hunt for a nonexistent standalone LightRAG tool. If the Hermes
-skill is unavailable: installed headers → official docs → existing call
-sites/source → still unresolved → `not verified`.
-
-Never borrow behavior from another AC version, Revit, AutoCAD, or another
-IFC lib.
-
-Before touching an SDK API verify: signature, params, return, ownership,
-lifetime, pointer/iterator validity, transaction/undo,
-redraw/notification, version differences. Watch: `API_Element`,
-`API_ElementMemo`, `ACAPI_Element_GetMemo`, `GetPtr`, `GS::*`
-containers/iterators, SDK-managed memory.
-
-**Landmine — memo init:** always `BNZeroMemory(&memo, sizeof(memo));`
-before `ACAPI_Element_GetMemo(...)` — don't remove without verified
-evidence.
-
-**Landmine — preferences vs. Teamwork:** `ACAPI_SetPreferences`
-(DevKit-25: `Preferences_Save`) writes to every project file and breaks
-Teamwork. Settings go only in local
-`…/GRAPHISOFT/SomeStuff/SyncSettings.dat`. `ReadSyncSettingsFromFile`
-rejects a mismatched `PreferencesVersion` — bump it on any new settings
-array.
-
-**Landmine — undo regions:** one per user action, never per element
-(else hundreds of undo steps) — DevKit docs require this.
-
-**Landmine — Propertycache keys:** cache keys are always lowercase
-(`ToLowerCase` + `BRACEEND`) — an unnormalized name silently never
-matches.
-
-**Landmine — JS bridge:** bridge = inline functions via
-`RegisterACAPIJavaScriptObject` (JSON commands removed, b7a996b — don't
-reintroduce). Parse `JSFunction` args via `DynamicCast<JSValue>` —
-`DynamicCast<JSArray>` crashes ArchiCAD (latent R1–R2 crash).
-
-**Landmine — element highlight:** `APIIo_HighlightElementsID` +
-`APIDo_ZoomToElementsID` trigger `SelectionChangeHandler`, which can
-reset palette selection — guard with `static suppressSelectionRefresh`.
-`SetElementHighlight` is AC26+/27+ only; on AC25 use `ACAPI_Interface`
-directly (Clear before Set; a call with no `par1` clears).
-
-**Landmine — palette window resize:** a docked palette's width is owned
-by ArchiCAD's dock manager — `SetClientWidth` is ignored while docked
-(observed: 450→49px docked, 450→35px undocked). Recipe: `UnDock()` →
-`SetClientWidth()` → `Dock()` (`DG::Palette::IsDocked`/`UnDock`/`Dock`;
-`DGIsPaletteDocked(guid)` also exists). A growing DG dialog reports
-`GetMinClientWidth() == original width`, so relax `SetMinClientWidth`
-BEFORE shrinking or the resize is silently clamped.
-
-**Landmine — palette default width / HTML width alignment:**
-expanded-palette size comes from the RINT template `Tools/AddOn.grc.in`
-(`'GDLG' 32580 Palette … 0 0 <w> <h>` **and** `Browser 0 0 <w> <h>` —
-change both); same width is what a growing DG dialog reports as
-`GetMinClientWidth()` (the narrowest a user can drag to). HTML is
-embedded in the same grc (`'DATA' ID_ADDON_HTML` → `Interface_ru.html`)
-— an HTML edit needs a rebuild. HTML `min-width` on `<body>` must stay ≤
-that width (ТЗ §2 forbids clipping/overflow); a row that stops fitting
-must wrap, not lose ТЗ-mandated labels.
-
-**Landmine — "Монитор" data source:** property values come only from
-`PROPERTYCACHE()`, never `ACAPI_Property_GetPropertyValue` per element —
-the cache's `property` entry holds definitions only, values are looked
-up per element separately.
+Before touching any `ACAPI_*` call, use skill `lightrag` — it
+covers the Hermes LightRAG lookup procedure, the pre-edit verification
+checklist (signature, ownership, lifetime, transaction/undo, version
+differences, etc.), and the headers/docs/call-sites fallback chain.
 
 ## 7. C++ Editing
 
@@ -179,16 +87,31 @@ whole file just to format it.
 
 Never commit `compile_commands.json`, `Build/LspCompileCommands/`, `Build/DevKit/`.
 
-**Build** — claim `compiled` only after an actual successful build on the
+**Build** — only if not active debug session in Visual Studio MCP. claim `compiled` only after an actual successful build on the
 target platform:
 
 - Win: `python Tools\BuildAddOn.py -c config.json -v <version>`
 - Mac: `python3 Tools/BuildAddOn.py -c config.json -v <version>`
 
-**Runtime** — Win launcher:
-`"D:\SomeStuff_addon\Tools\restart_archicad_for_test.ps1"`. No mac
+**Runtime** — only if not active debug session in Visual Studio MCP. Win launcher:
+`"D:\SomeStuff_addon\Tools\restart_archicad_for_test.ps1"` (final-check
+build + Archicad launch; it no longer collects test results). No mac
 equivalent in repo → say so, ask, don't invent one. Claim `tested` only
-if behavior was actually executed and observed.
+if behavior was actually executed and observed. C++ test/debug output
+(`DBprnt`/`DBtest`) is read from the Visual Studio «Отладка» output pane
+via VS MCP `output_read`, not from a results file.
+
+**Debug (Visual Studio MCP)** — for live investigation (breakpoints,
+locals, call stack), use skill `visualstudio-cpp-debugger`. For this
+repo's loading path, the debugger/runner conflict, and how to confirm a
+build actually relinked, see that skill's `archicad-somestuff.md`
+reference rather than repeating them here. Debug-loop builds go through
+VS MCP `build_solution`, not `BuildAddOn.py` — a VS MCP build alone does
+**not** satisfy this section's `compiled` claim, only a real
+`BuildAddOn.py` build or `restart_archicad_for_test.ps1` does. If the
+observed runtime behavior confirms or contradicts something already in
+`Docs/modules/<module>.md`, note it there (or in `DISCREPANCIES.md`) —
+optional, not a blocker for the debug task itself.
 
 **HTML interface** — after every `Interface_ru.html` edit, run
 `powershell -File Tools/test_html.ps1` before claiming `tested`.
@@ -231,6 +154,13 @@ that closes it: `Refs: #N`.
 Documentation/instruction-only changes (incl. `AGENTS.md`/`IDEA.md`
 maintenance) don't need an issue unless they accompany a code change
 that does.
+
+Before closing an issue: run `Tools/restart_archicad_for_test.ps1` as
+the final check (§9), even after a thorough VS MCP debug session — a
+debug session confirms behavior at a breakpoint, not that the actual
+build+load path works end to end. The runner proves build+load only —
+not that tests passed; read the C++ test output (`DBprnt`/`DBtest`)
+from the Visual Studio «Отладка» output pane via VS MCP `output_read`.
 
 Native Windows Codex: `gh.exe` expected on `PATH` (known install:
 `C:\Program Files\GitHub CLI\gh.exe`). If `gh` works but the GitHub API
@@ -325,8 +255,10 @@ Only intended files changed · no user changes overwritten · AC
 version(s) known · every touched `ACAPI_*` verified (Hermes LightRAG
 skill when available, else installed headers/docs/verified call sites)
 or marked `not verified` with reason · clang-format run · LSP checked ·
-build done for version(s)+platform · runtime test done where applicable
-(HTML: `test_html.ps1` ran) · verified/compiled/tested reported
+build done for version(s)+platform (VS MCP debug-loop builds don't
+count — §9) · runtime test done where applicable (HTML: `test_html.ps1`
+ran; issue-closing changes: `restart_archicad_for_test.ps1` ran, not
+just a debug session — §11.1) · verified/compiled/tested reported
 accurately · no generated files staged · no unrelated refactor · memory
 updated · IDEA.md re-read before final write · code changes: GitHub
 issue exists and commit references it (`Refs: #N`, §11.1) · if the

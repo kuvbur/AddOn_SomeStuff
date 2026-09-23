@@ -4,7 +4,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <exception> // FIX (ревью 2026-09-12): п.87 — std::exception в try/catch
-#include <fstream>
 #include <limits>
 #include <string> // FIX (ревью 2026-09-12): п.87 — std::stoi
 
@@ -298,19 +297,6 @@ void DBprnt (double a, GS::UniString reportString) {
     DBPrint (var_str.c_str ());
     DBPrint ("\n");
     #endif
-
-    // Запись в файл test_results.txt
-    if (IsTestProjectOpen ()) {
-        std::ofstream testFile ("test_results.txt", std::ios::app);
-        if (testFile.is_open ()) {
-            testFile << "== SMSTF == ";
-            if (!reportString_str.empty ()) {
-                testFile << reportString_str << " : ";
-            }
-            testFile << var_str << std::endl;
-            testFile.close ();
-        }
-    }
 #else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (reportString);
@@ -352,20 +338,6 @@ void DBprnt (GS::UniString msg, GS::UniString reportString) {
     DBPrint (var_str.c_str ());
     DBPrint ("\n");
     #endif
-
-    // Запись в файл test_results.txt
-    if (IsTestProjectOpen ()) {
-        std::ofstream testFile ("test_results.txt", std::ios::app);
-        if (testFile.is_open ()) {
-            testFile << "== SMSTF == ";
-            testFile << var_str;
-            if (!reportString_str.empty ()) {
-                testFile << " : " << reportString_str;
-            }
-            testFile << std::endl;
-            testFile.close ();
-        }
-    }
 #else
     UNUSED_VARIABLE (msg);
     UNUSED_VARIABLE (reportString);

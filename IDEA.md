@@ -2,6 +2,111 @@
 
 ## Задача
 
+#197: отладочный вывод DBprnt/DBtest читается из панели «Отладка» Visual Studio через VS MCP — вывод в файл test_results.txt убран из кода и всех инструкций.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/197
+
+## Scope
+
+- `Sources/AddOn/CommonFunction.cpp/.hpp` — убрана запись в test_results.txt (сигнатуры DBprnt/DBtest и DBPrint/DBPrintf-вывод не менялись);
+- `Sources/AddOn/SomeStuff_Main.cpp` — только комментарий (вошёл в пользовательский коммит a56e742);
+- `Tools/restart_archicad_for_test.ps1` — убраны ожидание/чтение/парсинг test_results.txt;
+- инструкции: `AGENTS.md` §9/§11.1, `Docs/modules/TestFunc.md`, справка skill `visualstudio-cpp-debugger`.
+
+## Status
+
+COMPLETED — реализовано, собрано AC25, канал чтения отладки проверен runtime (запуск через VS MCP + финальный прогон runner'а).
+
+## Last Completed
+
+2026-09-24 — #197:
+- CommonFunction.cpp: удалены оба блока «Запись в файл test_results.txt» в DBprnt и `#include <fstream>`; DBPrint/DBPrintf-вывод, сигнатуры и структура TESTING #ifdef не тронуты.
+- IsTestProjectOpen() сохранена — нужна SyncSettings.cpp:300 (лог пути настроек #190), комментарий в CommonFunction.hpp исправлен.
+- restart_archicad_for_test.ps1 (912→780 строк): убраны $testResultTimeoutSec, $testResultsPath, Get-TestResultStatus, ожидание/чтение/парсинг файла, tests= из AI_RESULT; JSON-тесты выполняются безусловно после запуска AC; $EXIT_TEST_TIMEOUT удалён, $EXIT_TESTS_FAILED остался для JSON-тестов.
+- AGENTS.md §9 Runtime/§11.1: runner = финальная сборка+запуск, результаты C++-тестов читаются из панели «Отладка» VS MCP output_read; Docs/modules/TestFunc.md — инвариант переведён на «Отладка»-панель.
+- Справка skill visualstudio-cpp-debugger (references/archicad-somestuff.md): test_results.txt → панель «Отладка».
+- Runtime-проверка: запуск ArchiCAD через VS MCP (debugger_launch, ARCHICAD.exe под отладчиком) — панель «Отладка» содержит вывод харнесса (1926 строк SMSTF, 975 «: ok», 0 «ERROR IN TEST»). Финальный прогон restart_archicad_for_test.ps1: exit 0, build=True, archicad=running, HTML PASS, без обращений к test_results.txt.
+
+## Next Step
+
+Задача завершена. Находки по чтению панели сохранены в skill visualstudio-cpp-debugger.
+
+## Last Checkpoint
+
+`[#197]` — CommonFunction.cpp/.hpp, SomeStuff_Main.cpp, Tools/restart_archicad_for_test.ps1, AGENTS.md, Docs/modules/TestFunc.md, IDEA.md; Refs: #197. Предыдущий HEAD пользователя: a56e742.
+
+## Plan
+
+- [x] Issue #197 проверен (создан пользователем, содержит план: транспорт не менять)
+- [x] Убрать запись test_results.txt из DBprnt (CommonFunction.cpp) + комментарии (.hpp, SomeStuff_Main.cpp)
+- [x] Вычистить test_results.txt из restart_archicad_for_test.ps1 (парсинг PS Parser: 0 ошибок, скрипт не запускался)
+- [x] Обновить инструкции: AGENTS.md, Docs/modules/TestFunc.md, skill visualstudio-cpp-debugger
+- [x] clang-format + clangd + сборка AC25
+- [x] Runtime-проверка: запуск через VS MCP — панель «Отладка» содержит вывод харнесса (975 ok, 0 ошибок); финальный прогон runner'а exit 0
+- [x] Чекпоинт + закрытие #197
+
+## Decisions
+
+- Транспорт не менялся: DBPrint/DBPrintf уже пишут в Debug Output Visual Studio; чение — VS MCP output_read (вариант из issue).
+- IsTestProjectOpen() оставлена: единственный оставшийся потребитель — SyncSettings.cpp:300 (лог пути настроек #190), к test_results.txt отношения больше не имеет.
+- restart_archicad_for_test.ps1 по указанию пользователя больше не проверяет результаты C++-тестов — его роль: финальная сборка + запуск AC + JSON-тесты; результаты читает агент из VS.
+- Удалён только ставший мёртвым код; DBtest-маркеры «ERROR IN TEST» и ограничители «TEST : start/end» сохранены (по ним ищут ошибки в панели).
+
+## Validation
+
+Verified: clangd CommonFunction.cpp — 0 ошибок/0 предупреждений; grep Sources/AddOn — test_results/fstream отсутствуют (кроме third_party/exprtk.h). BuildAddOn.py AC25 Debug — Build succeeded (exit 0, SomeStuff.apx). restart_archicad_for_test.ps1 — PowerShell Parser 0 ошибок (execution не выполнялся). Not verified: runtime-чтение панели «Отладка» в Visual Studio (за пользователем).
+
+## Previous Task (#196)
+
+#196 закрыт 2026-09-23T15:59:48Z — все исправления реализованы, собраны и проверены runtime. Пользовательские правки в рабочем дереве сохранены отдельно (см. Scope/Validation в IDEA.md).
+
+## Scope
+
+- `Sources/AddOn/SomeStuff_Main.cpp`, `Sources/AddOn/Sync.cpp/.hpp` — уведомления, дедупликация, жизненный цикл кэша;
+- `Docs/modules/sync.md` и при необходимости `Docs/modules/dimensions.md` — контракт изменённой логики;
+- не менять правила синхронизации/округления и пользовательские незакоммиченные правки в других участках.
+
+## Status
+
+COMPLETED — фикс реализован, собран и запущен; пользовательские изменения в рабочем дереве сохранены (см. Scope/Plan).
+
+## Last Completed
+
+2026-09-23 — #196:
+- Добавлены `IsDimensionScanThrottled()` (независимая метка полного обхода размеров после EndEvents) и `ClearSyncThrottleCache()` (сброс при открытии/закрытии проекта и отключении монитора).
+- `IsElementThrottled()` вызывается только после отбора обрабатываемых notifID (`New`/`Change`/`Edit`/`PropertyValueChange`/`ClassificationChange`) и `IsEditable`; `New` подключает observer до throttle; `DimRoundAll` по `EndEvents` — только при `hasDimAutotext` и отдельной метке; `APINULLGuid` больше не используется как элемент.
+- Ветка `API_DimensionID`: обработка только по Change/Edit/New, с `ACAPI_Element_Filter` перед `DimAutoRoundOne`.
+- Сборка и runtime проверены (см. Validation).
+
+## Next Step
+
+Пользовательские правки в рабочем дереве (`Dimensions.cpp`, `Propertycache.hpp`, `SomeStuff_Main.cpp`, `Sync.cpp/.hpp`, `IDEA.md`, `Docs/modules/Sync.md`) согласовать отдельно; после согласования — чекпоинт и коммит.
+
+## Last Checkpoint
+
+Текущий checkpoint #195: `484677f`; новые пользовательские изменения не включать без согласования.
+
+## Plan
+
+- [x] Проверить активный код и зарегистрировать #196
+- [x] Исправить порядок фильтрации событий и разделить временные кэши
+- [x] Проверить форматирование, clangd и сборку AC25
+- [x] Проверить runtime (BuildAddOn.py AC25 Debug OK; restart_archicad_for_test.ps1 exit 0; test_results.txt: 0 ERROR IN TEST, 488 ok в последнем блоке TEST)
+- [ ] Согласовать пользовательские правки и создать чекпоинт
+
+## Decisions
+
+- `BeginEvents`/`EndEvents` по наблюдению пользователя относятся к отдельным событиям; кэш GUID нельзя сбрасывать на каждом `EndEvents`.
+- Ограничение 500 мс остаётся сознательным компромиссом: второго независимого изменения внутри окна оно не различает.
+- #195 остаётся `WAITING_FOR_TEST` и не входит в scope #196.
+
+## Validation
+
+Verified: BuildAddOn.py AC25 Debug — Build succeeded (exit 0, 2026-09-23 18:45). `restart_archicad_for_test.ps1` — AI_RESULT status=success exit_code=0 build=True tests=UNKNOWN archicad=running (18:46). test_results.txt: последний блок TEST : start → TEST : end содержит 0 «ERROR IN TEST» и 488 «: ok» (python, utf-8-sig, полный файл: 1 start/1 end). Не проверены: синхронность вложенных уведомлений при записи и самостоятельное изменение GUID внутри 500 мс.
+
+## Previous Task (#195)
+
+## Задача
+
 #195: Roombook — начать рефакторинг по комментариям в коде.
 https://github.com/kuvbur/AddOn_SomeStuff/issues/195
 
