@@ -2,6 +2,201 @@
 
 ## Задача
 
+#206: добавить JSON-команду `SomeStuffCommand.Spec` по образцу `SomeStuffCommand.RoomBook` для запуска спецификации агентом (AC25–29).
+https://github.com/kuvbur/AddOn_SomeStuff/issues/206
+
+## Scope
+
+- `Sources/AddOn/json_commands/SpecCommand.hpp/.cpp`, регистрация в `Sources/AddOn/json_commands/JsonCommandRegistrar.cpp`, `IDEA.md`, `Docs/modules/spec/Spec.md`.
+- Команда без входных параметров, загружает текущие `SyncSettings` и вызывает `Spec::SpecAll(syncSettings)` на главном потоке.
+- Не менять меню, алгоритм спецификации, правила выбора элементов или пересоздание элементов.
+
+## Status
+
+IN_PROGRESS — `SpecCommand` реализована и зарегистрирована; идёт проверка формата, LSP и сборки AC25.
+
+## Last Completed
+
+Создан #206. LightRAG подтвердил `ACAPI_Install_AddOnCommandHandler(GS::Owner<API_AddOnCommand>)`, `Execute(const GS::ObjectState&, GS::ProcessControl&) -> GS::ObjectState` и выполнение на главном потоке через базовую команду.
+
+## Next Step
+
+Реализовать `SpecCommand` по образцу `RoomBookCommand`, зарегистрировать её и проверить AC25.
+
+## Last Checkpoint
+
+Чекпоинта нет.
+
+## Plan
+
+- [x] Создать #206 и отделить команду Spec от #205/#195.
+- [ ] Реализовать `SpecCommand` и регистрацию без изменения алгоритма Spec.
+- [ ] Выполнить clang-format, clangd, LSP и BuildAddOn.py AC25.
+- [ ] Проверить HTTP endpoint и результат спецификации на тестовом проекте.
+- [ ] Обновить карточку Spec, проверить diff и создать checkpoint.
+
+## Decisions
+
+- Имя команды: `SomeStuffCommand.Spec`; входных параметров нет.
+- Ответ повторяет RoomBook: `status="returned"` и `elapsedSeconds`; `SpecAll` возвращает `GSErrCode`, но контракт не утверждает успех расчёта, undo или корректность модели.
+- Выбор экземпляра Archicad остаётся на вызывающей стороне: HTTP-порт соответствует конкретному запущенному процессу.
+
+## Параллельная задача — #193: Roombook должен пересоздавать отделку без дублей
+
+### Scope
+
+- AC25; `Sources/AddOn/Roombook.cpp/.hpp`, регрессионная проверка в `Sources/AddOn/TestFunc.cpp/.hpp`, карточка `Docs/modules/Roombook.md`, затронутые generated docs и `IDEA.md`.
+- Исправить только построение индекса существующей отделки по базовым элементам; не менять геометрию, правила выбора зон, избранное или алгоритм создания отделки.
+- Явный запрос пользователя разрешает изменение участка пересоздания отделки, отмеченного в AGENTS.md §16 как «не исправлять без явного запроса».
+
+### Status / Root Cause
+
+WAITING_FOR_CHECKPOINT — фикс и runtime-проверка AC25 завершены. `BuildOtdByParent` теперь трактует словарь `SyncGetSubelement` как `base parent GUID -> {finishing child GUID}`: внешний GUID остаётся ключом базы, внутренний GUID используется для поиска `TypeOtd` и GUID существующей отделки.
+
+Root cause подтверждён debugger: старый `Otd_GetOtd_Parent` вызывал `otd_elements.GetPtr` для GUID базы, получал `nullptr`, оставлял `exsistot_byparent` пустым и доводил `Floor_Draw_Object` до `is_new=true`, из-за чего создавался дубль. Сообщение `Obsolete finishing elements not found` относилось только к пустому списку удаления.
+
+Синтетический тест дал 3 RED до исправления и 5 GREEN после; полный TESTING-набор AC25 — 0 `ERROR IN TEST`. `BuildAddOn.py -v 25` и финальный `restart_archicad_for_test.ps1` успешны. На открытом `test_25.pln` первый JSON-прогон RoomBook вывел модель в расчётное состояние; второй прогон сохранил количества `Object=598`, `Wall=391`, `Slab=81`, `Beam=0`. У стен 334 GUID удалено и 334 создано при неизменном количестве 391 — пересоздание без накопления дублей; GUID Object/Slab/Beam не изменились.
+
+### Plan
+
+- [x] Воспроизвести #193 через JSON и подтвердить направление словаря в debugger.
+- [x] Добавить GREEN/RED регрессионную проверку построения индекса и зафиксировать RED на старой реализации.
+- [x] Исправить обход `parentdict`: внешний GUID — база, внутренний GUID — отделка.
+- [x] Выполнить clang-format, clangd, BuildAddOn.py AC25 и runtime RoomBook через JSON; подтвердить отсутствие дублей по GUID/количеству.
+- [/] Обновить карточки/generated docs, проверить diff и создать checkpoint с `Refs: #193`.
+
+### Next Step / Last Checkpoint
+
+Документация и `symbols.json` обновлены; `callgraph.json` сохранён байт-в-байт. Создать адресный checkpoint #193 после отделения пересекающихся незакоммиченных #195/#199/#203/#205 в тех же файлах; до этого issue #193 не закрывать. Last checkpoint: отсутствует — безопасный checkpoint текущего шага не создан из-за смешанного рабочего дерева.
+
+## Задача
+
+#205: добавить минимальную JSON-команду для запуска `RoomBook` агентом при профилировании (AC25–29; API команды доступен с AC25). Отдельная capability, не возобновление общей системы JSON-команд.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/205
+
+Параллельная незавершённая работа #198 — замер/оптимизация Roombook.cpp — сохранена без изменений; до пользовательской runtime-проверки #195 не менять алгоритм и его базу.
+
+## Scope
+
+- `Sources/AddOn/json_commands/`, подключение регистрации в `Sources/AddOn/SomeStuff_Main.cpp`, `IDEA.md` и `Docs/modules/Roombook.md`.
+- Не менять алгоритм, результат расчёта, порядок прогресса/отмены или пересоздание отделки (AGENTS.md §16). `Roombook.cpp` #195 и остальные незакоммиченные задачи не переписывать.
+
+## Status
+
+WAITING_FOR_TEST — #205: `SomeStuffCommand.RoomBook` зарегистрирована для AC25–29. После финального runner вызов на `test_25.pln` через HTTP `127.0.0.1:19723` вернул `{"status":"returned","elapsedSeconds":15.0850313}`. Исполнение endpoint и замер подтверждены; корректность созданной/обновлённой отделки и отмена — not verified.
+
+## Last Completed
+
+Создан #205; DevKit-25 подтверждает API_AddOnCommand и выполнение модифицирующей команды на главном потоке. LightRAG: запрос Tapir по порту нашёл `ACAPI_Command_GetHttpConnectionPort`, а пример `Code_Example/tapir-archicad-MCP/README.md` подтверждает выбор экземпляра вызывающим по порту. После исправления порядка включения `ACAPinc.h` (иначе `CommandBase.cpp` был пуст из-за undefined `ServerMainVers_2500`) `BuildAddOn.py -v 25` и финальный runner прошли.
+
+## Next Step
+
+Вручную сверить на `test_25.pln` результат созданной/обновлённой отделки после JSON-вызова и сценарий отмены. После подтверждения — адресно проверить diff, подготовить checkpoint #205; чужие незакоммиченные #195/#198/Sync и генерацию не включать.
+
+## Last Checkpoint
+
+484677f — GetTargetZones(), Refs: #195. #205 ещё без checkpoint.
+
+## Plan
+
+- [x] Создать #205 и отделить JSON-триггер от #198/#195.
+- [x] Проверить контракт DevKit-25 и пример Tapir: модификация БД — main thread; выбор экземпляра — HTTP-порт вызывающего.
+- [x] Ограничить восстановленную инфраструктуру JSON-команд AC25–29 и зарегистрировать только `RoomBookCommand`.
+- [x] clang-format, clangd, BuildAddOn.py AC25 и JSON runtime-вызов на HTTP-порту 19723 (`15.0850313` с до возврата после финального runner).
+- [ ] Проверить diff, обновить checkpoint и закрыть #205 только после runtime-подтверждения.
+
+## Decisions
+
+- Выбор проекта не реализуется параметром команды: каждый JSON API HTTP-порт соответствует конкретному запущенному экземпляру Archicad.
+- Ответ `status="returned"` означает только возврат из `RoomBook`, так как текущая функция `void` и не сообщает ошибку/отмену вызывающей стороне.
+
+## Pending verification — #195
+
+Шаги 2–7 `REFACTOR PLAN` внесены в `Sources/AddOn/Roombook.cpp`, AC25 BuildAddOn.py success, clangd 0, `git diff --check` чист. Документы `Docs/modules/Roombook.md`, `Docs/_generated/symbols.json`, `Docs/_progress.md` изменены. Не закоммичены; runtime и версии кроме AC25 — not verified. #195: https://github.com/kuvbur/AddOn_SomeStuff/issues/195; #164 (сравнение результата на PLN): https://github.com/kuvbur/AddOn_SomeStuff/issues/164. Перед новым изменением кода проверить фактический результат команды и сделать checkpoint только после валидации.
+
+## Параллельная задача — #204: закрепление групп свойств в «Мониторе»
+
+### Задача и Scope
+
+#204: добавить сессионное закрепление групп свойств во вкладке «Монитор» по аналогии с закреплением отдельных свойств. Scope: только `Sources/AddOnResources/RFIX/HTML/Interface_ru.html`, `Docs/modules/dialogs/BrowserPalette.md`, `IDEA.md`; C++/JS-мост и данные Archicad не менять.
+
+### Status / Next Step / Last Checkpoint
+
+WAITING_FOR_TEST — #204 реализован: `STATE.pinnedPropertyGroups` хранит имена групп только в сессии; кнопка-булавка в заголовке переносит прошедшие фильтры группы наверх. Закреплённые свойства остаются первой синтетической группой, а закреплённая группа сохраняет свои свойства без дублей. `Tools/test_html.ps1` прошёл; ручная проверка в палитре Archicad — not verified. Следующее действие: пользовательская runtime-проверка закрепления/открепления группы и сочетания с закреплённым свойством. Последний checkpoint: `fc29e77` (`[#204] Монитор: закрепление групп свойств`, Refs: #204).
+
+### Plan
+
+- [x] Проверить дубликаты и создать #204.
+- [x] Изучить существующее закрепление свойств, ТЗ и контракт BrowserPalette.
+- [x] Добавить сессионное закрепление групп: кнопка в заголовке и перенос закреплённых групп наверх без дублей.
+- [x] Выполнить HTML-проверку и обновить карточку BrowserPalette; ручная проверка палитры — not verified.
+- [x] Проверить diff и создать checkpoint `fc29e77` только из файлов #204.
+
+## Параллельная задача — #189: временно убрать инлайн-сброс свойств
+
+### Задача и Scope
+
+#189: по уточнению пользователя временно убрать из строк «Монитора» только инлайн-кнопку сброса свойства. Scope: `Sources/AddOnResources/RFIX/HTML/Interface_ru.html`, `Docs/modules/dialogs/BrowserPalette.md`, `IDEA.md`; не добавлять режим выбора, чекбоксы или кнопку выполнения сброса; C++/JS-мост не менять.
+
+### Status / Next Step / Last Checkpoint
+
+WAITING_FOR_TEST — #189: из строки свойства удалено создание инлайн-кнопки сброса; мост `resetPropertyToDefault` и `chainIconSvg` намеренно сохранены для будущего режима выборочного сброса. `Tools/test_html.ps1` прошёл; runtime в собранной палитре Archicad — not verified. Следующее действие: пересобрать аддон и вручную убедиться, что в строке осталась только кнопка закрепления; затем возвращаться к проектированию режима сброса только отдельным шагом. Последний checkpoint: `2213388` (`[#189] Монитор: временно убрать инлайн-сброс`, Refs: #189).
+
+### Plan
+
+- [x] Проверить существующий issue #189 и зафиксировать временную границу в комментарии.
+- [x] Изучить текущую строку свойства и зависимость от кнопки сброса.
+- [x] Убрать инлайн-кнопку без изменения моста и логики данных.
+- [x] Выполнить HTML-проверку и обновить карточку BrowserPalette; runtime в Archicad — not verified.
+- [x] Проверить diff и создать checkpoint `2213388` только из файлов #189.
+
+## Параллельная задача — #203: parameter script маркеров проёмов
+
+### Задача и Scope
+
+#203: после успешного parameter script выбранного окна или двери в `RunParam` запускать script связанного маркера из `openingBase.markGuid`. Scope: только `Sources/AddOn/Sync.cpp`, `Docs/modules/Sync.md`, затронутые записи `Docs/_generated/`, `IDEA.md`; AC22–29, проверочная версия AC25. Не менять обработку прочих типов элементов, `RunParamSelected` или порядок `SyncSelected`.
+
+### Status / Last Completed
+
+WAITING_FOR_TEST — #203 реализован: после успешного script основного `API_WindowID`/`API_DoorID` `RunParam` определяет тип через кросс-версионный `GetElemTypeID(element)`, извлекает непустой `openingBase.markGuid`, получает его `API_Elem_Head` и запускает тот же version-specific API для marker. `clang-format`, clangd (0 diagnostics) и `BuildAddOn.py -v 25` прошли. Runtime окна/двери с marker — not verified.
+
+### Next Step / Last Checkpoint
+
+На AC25 проверить окно и дверь с marker: основной script и script marker должны выполниться в этом порядке; проверить случай без marker. После runtime — diff и отдельный checkpoint #203. Последний checkpoint: `9ae0138` (`[sync-194-199]`, Refs: #194 #199).
+
+### Plan
+
+- [x] Проверить дубликаты и создать #203; уточнить API через LightRAG и fallback DevKit.
+- [x] Заменить проверку `tElemHead.typeID` на кросс-версионный `GetElemTypeID(element)`; clang-format, clangd и BuildAddOn.py AC25 повторены.
+- [/] Runtime-проверка на окне и двери с marker в AC25; затем diff и checkpoint.
+
+## Параллельная задача — ревизия Sync
+
+### Задача и Scope
+
+По запросу пользователя провести внимательный рефакторинг и поиск ошибок/оптимизаций `Sources/AddOn/Sync.cpp/.hpp`. Проверочная версия — AC25, совместимость веток AC22–29 сохранить. Первый исправленный дефект: #199 (внешний адресат Sync_to_GUID); scope также `Sources/AddOn/TestFunc.cpp` (регрессионный тест), `Sources/AddOn/Constants.hpp` и `Tools/AddOn.grc.in` (локализованные UI-строки #194), карточки `Docs/modules/Sync.md` и `Docs/modules/TestFunc.md`, затронутые записи `Docs/_generated/symbols.json`, `Docs/_progress.md` и `IDEA.md`. Остальные находки — отдельные шаги после проверки. Пользователь просит работать в одном дереве, отдельный worktree отклонён. Непроверенный `Roombook.cpp` #195 временно и адресно сохранялся в stash, затем восстановлен с совпадающим `git patch-id`; исходные правки не тронуты.
+
+### Status / Last Completed
+
+WAITING_FOR_TEST — #199 исправлен минимально: `SyncCalcRule` добавляет отсутствующие адресаты из ключей `WriteDict` после списка текущего элемента/подэлементов. `TestSyncAddSubelement`: RED до правки и GREEN после (панель «Отладка» VS, полный тестовый набор завершён без `ERROR IN TEST`); clang-format, clangd 0, AC25 `BuildAddOn.py` success. #194 UI-TODO выполнен: `OtherDbDialog` получает заголовок `SubElementHalfId` и подписи `Close`/`Show`/`Database`/`Elements` только через `RSGetIndString` из RU/EN `ID_ADDON_STRINGS` в `Tools/AddOn.grc.in`; переход в другую БД, отбор GUID и фильтры не менялись. Изменения #194/#199 зафиксированы в `9ae0138`; AC25 Debug `BuildAddOn.py` сформировал ресурсы и `SomeStuff.apx`. GUI-проверка окна не выполнена.
+
+### Next Step / Last Checkpoint
+
+Параллельно с ручной проверкой текущей общей сборки выполнен UI-TODO #194: заголовок `ShowOtherDbDialog` берётся из `SubElementHalfId`; подписи кнопок и столбцов также перенесены в RU/EN ресурсы. Нельзя менять отбор GUID, фильтры или навигацию. Последний checkpoint: `9ae0138` (`[sync-194-199]`, Refs: #194 #199). Следующее действие: runtime-проверка окна, затем реальный `Sync_to_GUID` и откат на PLN, независимая проверка #195. AC22–29 не проверены.
+
+### Plan
+
+- [x] Изучить состояние дерева, карточку модуля, известные ограничения и три участка Sync.
+- [x] Изолированно воспроизвести #199 RED/GREEN на внешнем GUID; уточнить другие находки до уровня issues #200–202 и комментария к #194.
+- [x] Устранить #199 без изменения #195; восстановить `Roombook.cpp` и сверить патч stash.
+- [x] clang-format, clangd 0, BuildAddOn.py AC25 и runner (build+load), обзор diff и карточки Sync/TestFunc с адресной регенерацией символов.
+- [x] #194 UI-TODO: локализованный заголовок `ShowOtherDbDialog` и подписи кнопок/столбцов из ресурсов; clang-format и clangd `Sync.cpp` без диагностик.
+- [/] После завершения пользовательского теста: AC25 build и runtime-проверка диалога; затем реальный `Sync_to_GUID` и откат на PLN, отдельная проверка #195. AC22–29 не проверены.
+
+## Previous Task (#197)
+
+## Задача
+
 #197: отладочный вывод DBprnt/DBtest читается из панели «Отладка» Visual Studio через VS MCP — вывод в файл test_results.txt убран из кода и всех инструкций.
 https://github.com/kuvbur/AddOn_SomeStuff/issues/197
 
