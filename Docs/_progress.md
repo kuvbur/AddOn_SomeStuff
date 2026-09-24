@@ -1,5 +1,14 @@
 # Состояние работы — документирование кодовой базы
 
+## Обновления по задачам
+- #193 (2026-09-24, рабочее дерево `llm_test`, без checkpoint): исправлено направление словаря в `BuildOtdByParent`: внешний GUID из `SyncGetSubelement` остаётся базовым элементом, внутренний GUID отделки используется для определения `TypeOtd`. Синтетический тест AC25 показал 3 RED до исправления и 5 GREEN после, полный TESTING-набор — 0 `ERROR IN TEST`; `BuildAddOn.py -v 25` и финальный runner успешны. Два последовательных JSON-запуска RoomBook после выхода модели в расчётное состояние сохранили количества Object/Wall/Slab/Beam; второй запуск стен: 334 удалено и 334 создано, итоговое число 391 без роста. Обновлены `Roombook.md`/`TestFunc.md`; `symbols.json` пересобран regex fallback (8514 символов), `callgraph.json` сохранён байт-в-байт.
+
+- #203 (2026-09-24, рабочее дерево `llm_test`, без checkpoint): `RunParam` после успешного parameter script окна/двери определяет тип через кросс-версионный `GetElemTypeID(element)` и запускает script marker из непустого `openingBase.markGuid`; GUID marker сначала разворачивается в `API_Elem_Head`. `Sync.md` обновлён; `symbols.json`/`callgraph.json` не менялись — сигнатуры и связи функций не изменены. LightRAG не дал контекст для `RunGDLParScript`/`markGuid` во всех режимах; fallback DevKit AC25/29 подтвердил поле и старый API contract. clangd 0, `BuildAddOn.py -v 25` success; runtime marker — не проверено.
+
+- #199 (2026-09-24, рабочее дерево `llm_test`, без коммита): `SyncCalcRule` обходит внешний целевой GUID из `WriteDict`; синтетический TESTING-кейс AC25 показал RED→GREEN, тесты прошли по маркерам панели «Отладка». `BuildAddOn.py -v 25` и `restart_archicad_for_test.ps1` завершились успешно; фактическая запись на PLN — не проверено. Обновлены `Sync.md`/`TestFunc.md`; `symbols.json` пересобран только для этих двух файлов из regex fallback (8488 записей), сохранены записи Roombook и весь callgraph.
+
+- #195 (рабочее дерево после 0cfe635): `RoomBook` разделён на контекст, сбор элементов, чтение параметров, обработку отделки, свод/запись материалов, сбор GUID на удаление и резервирование (см. `Docs/modules/Roombook.md`). `symbols.json`: regex fallback выполнен (8483 символа), в рабочую версию перенесены только записи Roombook (1092; остальные модули сохранены из текущей базы), собранный через clangd `callgraph.json` сохранён байт-в-байт и содержит прежние номера строк для Roombook. AC25 BuildAddOn.py success, clangd 0 диагностик, `git diff --check` чист; runtime команды Roombook — not verified.
+
 ## Текущая ветка
 `docs/codebase-map` (создана)
 

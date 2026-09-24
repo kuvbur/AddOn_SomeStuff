@@ -1,19 +1,28 @@
 # Roombook — Спецификация отделки
 
-> Хеш коммита: 1e67983 (2026-09-22). Полный перечень функций из clangd documentSymbols (namespace Roombook, 5686 строк, ~70 функций); строки — .cpp (1-based). Назначения — по именам функций (комментарии к большинству отсутствуют; при разборе модуля уточнять).
+> Основа: 1e67983 (2026-09-22); дополнение #195 — рабочее дерево после 0cfe635, сборка AC25. Номера строк остальных подсистем ниже относятся к основе и требуют обновления по живому коду. Назначения — по именам функций (при разборе модуля уточнять).
 
 ## Назначение
 Спецификация отделки: генерация ведомостей отделочных материалов и работ из модели. [по коду]
 
 ## Точка входа
-- `RoomBook` (:57, до :660 — оркестратор, ~600 строк) ← `MenuCommandHandler` (SomeStuff_Main.cpp:457) [из callgraph.json]
-- Комментарий в шапке: цель рефакторинга — «thin orchestrator with small single-purpose helpers» (Roombook.cpp:56-115) [из комментария]
-- Вызывает (полный список — Docs/_generated/body_scan.json, 96 вызовов): подсистемы `Param_*` (Get/Set для комнат/базы/окон/состава), `OtdData_*`, `OtdWall/OtdBeam/Opening/Floor_*_Draw` + `_GetDefult`, `Class_*`, `Favorite_*`, создание (`OtdWall_Create_FromColumn`, `Opening_Create_One`, `Floor_Create_All/One`, `Floor_FindAll/InOneRoom`, `ClearZoneGUID`, `Edges_GetFromRoom`, `Draw_Elements`, `SetMaterial*`, `SetSyncOtdWall`, `SetElemTypeID`, `UnhideUnlockElementLayer`), Sync (`SyncArray`, `SyncSetSubelementScope`, `LoadSyncSettingsFromPreferences`, `GetRelationsElement`), PROPERTYCACHE; SDK: Element_Create/Change/Delete/Group/Classification, Teamwork Reserve, Grouping, ProcessWindow (отмена). [по коду, grep тела]
+- `RoomBook` (Roombook.cpp:674; AC22–23 — заглушка :23) ← `MenuCommandHandler` (SomeStuff_Main.cpp; граф содержит старые номера строк) и `SomeStuffCommand.RoomBook` (JSON API AC25–29; вызывающий выбирает экземпляр Archicad по HTTP-порту). JSON-команда возвращает время до выхода из `RoomBook`; успех расчёта отдельно не подтверждается. [по коду / DevKit-25 API_AddOnCommand]
+- `GetTargetZones` (Roombook.cpp:34) — выбор выделенных редактируемых зон или fallback на все доступные; возвращает false при ошибке/пустом списке [по коду]
+- `PrepareRoomProcessingContext` (:92) — заполняет контекст: `Class_FindFinClass` → `GetStories` → `Floor_FindAll`; контейнеры живут до выхода из `RoomBook`. [по коду]
+- `BuildElementReadIndex` (:98), `ProcessElementsForRoomData` (:122) — индекс, прогресс/отмена, `ClearZoneGUID`, классификация и dispatch. [по коду]
+- `PrepareReadParams` (:184), `ReadElementParameters` (:186) — подготовка и чтение параметров; `ReadParamsForRoomBook` хранит параметры окон и комнат. [по коду]
+- `ProcessRoomFinishes` (:516) обходит комнаты; `ProcessSlabFinishes` (:209), `ProcessWallFinishes` (:289), `ApplyFavoriteAndMaterialData` (:272) сохраняют порядок создания/настройки отделки. [по коду]
+- `BuildMaterialSummaryForRooms` (:380), `WriteRoomMaterialData` (:485) используют общий `MaterialSummary`; `paramToWrite` затем передаётся `SetSyncOtdWall`. [по коду]
+- `RemoveUnusedFinishingElements` (:571), `PrepareElementsForUpdate` (:609) — сбор GUID на удаление и разблокировка/резервирование; отказ в резервировании завершает `RoomBook` до отрисовки. [по коду]
+- Комментарий `REFACTOR PLAN` в Roombook.cpp:654-673 описывает этот рефакторинг. [из комментария]
+- Исторический список вызовов из Docs/_generated/body_scan.json (96 до #195) устарел после извлечения helpers; актуальные вызовы сверять по `Sources/AddOn/Roombook.cpp`. Подсистемы: `Param_*`, `OtdData_*`, `OtdWall/OtdBeam/Opening/Floor_*`, `Class_*`, `Favorite_*`, Sync, PROPERTYCACHE и SDK ProcessWindow/Teamwork. [по коду; полный граф — не проверено]
 
 ## Функции по подсистемам [по коду / по имени]
 
 ### Зоны и сбор данных
-`Otd_GetOtd_ByZone` (:662), `Otd_GetOtd_Parent` (:742), `CollectRoomInfo` (:1211), `ClearZoneGUID` (:3399), `Edges_GetFromRoom` (:3330), `Edge_FindOnEdge` (:3949), `Edge_FindEdge` (:3980), `typeinzone`/`reducededges` — глобальные переменные namespace (:25/:28) [по коду]
+`Otd_GetOtd_ByZone` (:763), `BuildOtdByParent` (:881), `Otd_GetOtd_Parent` (:922), `CollectRoomInfo` (:1211), `ClearZoneGUID` (:3399), `Edges_GetFromRoom` (:3330), `Edge_FindOnEdge` (:3949), `Edge_FindEdge` (:3980), `typeinzone`/`reducededges` — глобальные переменные namespace (:25/:28) [по коду]
+
+`BuildOtdByParent` преобразует результат `SyncGetSubelement` из формы `GUID базового элемента -> GUID дочерней отделки` в индекс `база -> тип отделки -> GUID отделки`. Внешний ключ остаётся GUID базы, тип определяется по внутреннему GUID отделочного элемента; неизвестные дочерние GUID пропускаются. [по коду; #193]
 
 ### Данные отделки (OtdData)
 `OtdData_GetColumnfFormat` (:817), `OtdData_CalcForRoom` (:908), `OtdData_WriteToRoom` (:1001), `OtdData_AddValueToDict` (:1143), `OtdWall_GetArea` (:1172)

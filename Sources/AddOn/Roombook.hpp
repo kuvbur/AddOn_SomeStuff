@@ -29,6 +29,10 @@ namespace Roombook {
     typedef GS::HashTable<TypeOtd, UnicGuid> UnicGuidByTypeOtd;
     typedef GS::HashTable<API_Guid, UnicGuidByTypeOtd> UnicGuidByBase;
 
+    UnicGuidByBase BuildOtdByParent (GS::HashTable<API_Guid, TypeOtd> &otd_elements,
+                                     UnicGuidByGuid &parentdict,
+                                     bool &has_base_element);
+
     const double min_dim = 0.0001; // Минимальный размер элемента
     const double otd_thickness = 0.001;
 

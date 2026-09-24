@@ -72,109 +72,67 @@ namespace Roombook
         return true;
     }
 
-    // -----------------------------------------------------------------------------
-    // Запись в зону информации об отделке
-    // -----------------------------------------------------------------------------
-    // REFACTOR PLAN FOR NEXT AGENT:
-    // 1. Extract GetTargetZones() from the selection / fallback-to-all-zones block.
-    //    Keep the filter flags and error handling unchanged.
-    // 2. Extract PrepareRoomProcessingContext() for:
-    //    - finclass / finclassguids
-    //    - storyLevels
-    //    - roomsinfo / elementToRead / param containers
-    //    - slabsinzone
-    // 3. Extract BuildElementReadIndex() and ProcessElementsForRoomData() for the loop that
-    //    creates openings, walls and slabs from the collected elements.
-    // 4. Extract PrepareReadParams() and ReadElementParameters() for the parameter preparation loop.
-    // 5. Extract ProcessRoomFinishes() and split it into smaller helpers:
-    //    - ProcessSlabFinishes()
-    //    - ProcessWallFinishes()
-    //    - ApplyFavoriteAndMaterialData()
-    // 6. Extract BuildMaterialSummaryForRooms() and WriteRoomMaterialData() from the section that
-    //    calculates material areas and writes them back to the rooms.
-    // 7. Extract RemoveUnusedFinishingElements() and PrepareElementsForUpdate() from the cleanup block.
-    // 8. After each extraction, keep behavior identical and verify the build.
-    //    The goal is to make RoomBook() a thin orchestrator with small single-purpose helpers.
-    void RoomBook () {
-        clock_t start, finish;
-        double duration;
-        start = clock ();
-        GS::UniString funcname ("RoomBook");
-        nPhase = 1;
-        // Окно прогресса помогает видеть, на каком этапе выполняется расчёт отделки.
-        ProcessWindowGuard pwGuard (funcname, nPhase);
-        GS::Array<API_Guid> zones;
-        if (!GetTargetZones (zones))
-            return;
-
-        funcname = GS::UniString::Printf ("Collect info from %d room(s)", zones.GetSize ());
-        // REFACTOR TARGET:
-        // Extract a helper like PrepareRoomProcessingContext() for the setup below:
-        // - finclass / finclassguids
-        // - storyLevels
-        // - roomsinfo / elementToRead / param containers
-        // - slabsinzone
-        // This will make RoomBook() a thin orchestrator.
-        // Подготовка параметров.
-        // Финальный словарь классов нужен для последующего назначения классов созданным элементам.
-        ClassificationFunc::ClassificationDict finclass; // Словарь классов для отделочных стен
+    struct RoomProcessingContext {
+        ClassificationFunc::ClassificationDict finclass;
         UnicGuid finclassguids;
-        Class_FindFinClass (finclass, finclassguids);
-        Stories storyLevels = GetStories ();                     // Уровни этажей в проекте
-        GS::Array<API_Guid> deletelist;                          // Массив устаревших элементов
-        GS::HashTable<API_Guid, UnicGuidByBase> exsistot_byzone; // Словарь существующих элементов
-        // Сначала собирается информация по всем зонам, а затем по ней уже читаются свойства
-        // базовых элементов и строятся отделочные элементы. Такой порядок нужен, чтобы
-        // все зоны были готовы к последующей привязке стен, проёмов, полов и потолков.
-        OtdRooms roomsinfo;              // Информация о всех зонах
-        UnicElementByType elementToRead; // Список всех элементов в зоне
-        ParamDictElement paramToRead;    // Прочитанные из элементов свойства
-        ParamValue param_composite;      // Состав базовых конструкций
+        Stories storyLevels;
+        GS::Array<API_Guid> deletelist;
+        GS::HashTable<API_Guid, UnicGuidByBase> exsistot_byzone;
+        OtdRooms roomsinfo;
+        UnicElementByType elementToRead;
+        ParamDictElement paramToRead;
+        ParamValue param_composite;
         ParamDictValue paramDict;
         ParamDictValue paramDict_favorite;
-        UnicGUIDByType guidselementToRead;                            // Словарь элементов по типам для чтения свойств
-        GS::HashTable<API_Guid, GS::Array<OtdOpening>> openinginwall; // Все проёмы в зонах
-        // Поиск перекрытий в зонах
+        UnicGUIDByType guidselementToRead;
+        GS::HashTable<API_Guid, GS::Array<OtdOpening>> openinginwall;
         GS::HashTable<API_Guid, GS::Array<API_Guid>> slabsinzone;
-        Floor_FindAll (slabsinzone, finclassguids, zones);
+    };
+
+    static void PrepareRoomProcessingContext (RoomProcessingContext &context, const GS::Array<API_Guid> &zones) {
+        Class_FindFinClass (context.finclass, context.finclassguids);
+        context.storyLevels = GetStories ();
+        Floor_FindAll (context.slabsinzone, context.finclassguids, zones);
+    }
+
+    static bool BuildElementReadIndex (const GS::Array<API_Guid> &zones,
+                                       RoomProcessingContext &context,
+                                       GS::UniString &funcname) {
         for (const API_Guid &zoneGuid : zones) {
             nPhase += 1;
     #ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
             if (ACAPI_ProcessWindow_IsProcessCanceled ())
-                return;
+                return false;
     #else
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                return;
+                return false;
     #endif
             OtdRoom roominfo;
-            if (CollectRoomInfo (storyLevels, zoneGuid, roominfo, elementToRead, slabsinzone)) {
-                roomsinfo.Add (zoneGuid, std::move (roominfo));
+            if (CollectRoomInfo (context.storyLevels, zoneGuid, roominfo, context.elementToRead, context.slabsinzone)) {
+                context.roomsinfo.Add (zoneGuid, std::move (roominfo));
             }
         }
-        guidselementToRead.Add (API_ZoneID, zones);
-        // REFACTOR TARGET:
-        // Split this block into two helpers:
-        // 1) BuildElementReadIndex() - collect zone -> element relationships
-        // 2) ProcessElementsForRoomData() - create openings / walls / slabs from the collected elements
-        // The classification skip and the type-specific dispatch should stay here or move together.
-        // После сбора всех связей необходимо очистить временные GUID зон, чтобы не держать
-        // устаревшие ссылки на элементы, уже обработанные в предыдущем проходе.
-        ClearZoneGUID (elementToRead);
+        context.guidselementToRead.Add (API_ZoneID, zones);
+        ClearZoneGUID (context.elementToRead);
+        return true;
+    }
+
+    static bool ProcessElementsForRoomData (RoomProcessingContext &context, GS::UniString &funcname) {
         // FIX (ревью 2026-09-12): п.73 — const-ссылка вместо копии массива на каждой итерации (только чтение)
         for (const API_ElemTypeID &typeelem : typeinzone) {
-            if (auto *elems = elementToRead.GetPtr (typeelem)) {
+            if (auto *elems = context.elementToRead.GetPtr (typeelem)) {
                 for (UnicElement::PairIterator cIt = (*elems).EnumeratePairs (); cIt != NULL; ++cIt) {
                     nPhase += 1;
     #ifdef ServerMainVers_2700
                     ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
                     if (ACAPI_ProcessWindow_IsProcessCanceled ())
-                        return;
+                        return false;
     #else
                     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
                     if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                        return;
+                        return false;
     #endif
     #ifdef ServerMainVers_2800
                     API_Guid guid = cIt->key;
@@ -185,22 +143,29 @@ namespace Roombook
     #endif
                     // Проверяем классификацию, исключаем отделочные элементы
                     API_Guid classguid;
-                    if (Class_IsElementFinClass (guid, finclassguids, classguid))
+                    if (Class_IsElementFinClass (guid, context.finclassguids, classguid))
                         continue;
                     switch (typeelem) {
                     case API_WindowID:
                     case API_DoorID:
-                        Opening_Create_One (storyLevels, guid, openinginwall, guidselementToRead);
+                        Opening_Create_One (
+                            context.storyLevels, guid, context.openinginwall, context.guidselementToRead);
                         break;
                     case API_WallID:
-                        OtdWall_Create_FromWall (
-                            storyLevels, guid, zoneGuids, roomsinfo, openinginwall, guidselementToRead);
+                        OtdWall_Create_FromWall (context.storyLevels,
+                                                 guid,
+                                                 zoneGuids,
+                                                 context.roomsinfo,
+                                                 context.openinginwall,
+                                                 context.guidselementToRead);
                         break;
                     case API_ColumnID:
-                        OtdWall_Create_FromColumn (storyLevels, guid, zoneGuids, roomsinfo, guidselementToRead);
+                        OtdWall_Create_FromColumn (
+                            context.storyLevels, guid, zoneGuids, context.roomsinfo, context.guidselementToRead);
                         break;
                     case API_SlabID:
-                        Floor_FindInOneRoom (storyLevels, guid, zoneGuids, roomsinfo, guidselementToRead);
+                        Floor_FindInOneRoom (
+                            context.storyLevels, guid, zoneGuids, context.roomsinfo, context.guidselementToRead);
                         break;
                     default:
                         break;
@@ -208,251 +173,220 @@ namespace Roombook
                 }
             }
         }
-        // REFACTOR TARGET:
-        // Extract PrepareReadParams() + ReadElementParameters() from this block.
-        // The goal is to make RoomBook() only prepare the parameter sets and call one read routine
-        // for all element types instead of mixing setup and reading in the same loop.
-        // Необходимые для чтения параметры и свойства
+        return true;
+    }
+
+    struct ReadParamsForRoomBook {
         ReadParams windowParams = Param_GetForWindowParams ();
         ReadParams roomParams = Param_GetForRooms ();
+    };
+
+    static ReadParamsForRoomBook PrepareReadParams () { return {}; }
+
+    static void ReadElementParameters (RoomProcessingContext &context, ReadParamsForRoomBook &readParams) {
         for (const API_ElemTypeID &typeelem : typeinzone) {
-            if (!guidselementToRead.ContainsKey (typeelem))
+            if (!context.guidselementToRead.ContainsKey (typeelem))
                 continue;
-            paramDict.Clear ();
+            context.paramDict.Clear ();
             if (typeelem == API_ZoneID) {
-                Param_ToParamDict (paramDict, roomParams);
+                Param_ToParamDict (context.paramDict, readParams.roomParams);
             }
             if (typeelem == API_WindowID) {
-                Param_ToParamDict (paramDict, windowParams);
+                Param_ToParamDict (context.paramDict, readParams.windowParams);
             }
             if (typeelem == API_WallID || typeelem == API_ColumnID || typeelem == API_SlabID) {
-                Param_GetForBase (paramDict, param_composite);
-                paramDict_favorite = paramDict;
+                Param_GetForBase (context.paramDict, context.param_composite);
+                context.paramDict_favorite = context.paramDict;
             }
-            if (!paramDict.IsEmpty ()) {
-                for (const API_Guid &guid : guidselementToRead[typeelem]) {
-                    ParamHelpers::AddParamDictValue2ParamDictElement (guid, paramDict, paramToRead);
+            if (!context.paramDict.IsEmpty ()) {
+                for (const API_Guid &guid : context.guidselementToRead[typeelem]) {
+                    ParamHelpers::AddParamDictValue2ParamDictElement (guid, context.paramDict, context.paramToRead);
                 }
             }
         }
-        funcname = GS::UniString::Printf ("Read data from %d elements(s)", paramToRead.GetSize ());
-        nPhase += 1;
-    #ifdef ServerMainVers_2700
-        ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-        if (ACAPI_ProcessWindow_IsProcessCanceled ())
-            return;
-    #else
-        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-            return;
-    #endif
-        // Читаем свойства всех элементов
-        ParamDictCompositeElement paramCompositeToRead;
-        ListData::LibElements paramListDataToRead;
-        ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, false);
-        // Словарь избранного нужен для выбора подходящего шаблона отделки по материалу и типу поверхности.
-        MatarialToFavoriteDict favdict = Favorite_GetDict ();
-        // Ищём уже существующие элементы отделки и определяем, к каким базовым элементам они привязаны.
-        // Это нужно, чтобы не создавать дубли и правильно обновлять существующие элементы.
-        bool has_base_element = false;
-        UnicGuid reserv_elements; // Словарь незарезервированных или скрытых элементов
-        exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, has_base_element, reserv_elements);
-        // REFACTOR TARGET:
-        // Extract ProcessRoomFinishes() and then split it further into:
-        // - ProcessSlabFinishes()
-        // - ProcessWallFinishes()
-        // - ApplyFavoriteAndMaterialData()
-        // Each helper should work with one room and one finish type to keep the logic readable.
-        // На этом этапе уже рассчитываются фактические отделочные элементы для каждой комнаты.
-        funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", roomsinfo.GetSize ());
-        GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
-        for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #ifdef ServerMainVers_2800
-            OtdRoom &otd = cIt->value;
-            API_Guid zoneGuid = cIt->key;
-    #else
-            OtdRoom &otd = *cIt->value;
-            API_Guid zoneGuid = *cIt->key;
-    #endif
-            nPhase += 1;
-    #ifdef ServerMainVers_2700
-            ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-            if (ACAPI_ProcessWindow_IsProcessCanceled ())
-                return;
-    #else
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                return;
-    #endif
-            if (!paramToRead.ContainsKey (zoneGuid))
-                continue; // Если у зоны нет прочитанных параметров - дальше делать
-                          // нечего
-            // Заполняем данные для зон
-            // Копия на каждую зону: Param_Property_Read пропускает параметры с уже
-            // выставленным isValid и не перечитывает val — общая копия тянула бы
-            // значения первой зоны во все остальные.
-            ReadParams roomParamsWork = roomParams;
-            Param_SetToRooms (material_dict, otd, paramToRead, roomParamsWork);
-            if (!otd.isValid)
+    }
+
+    static void ProcessSlabFinishes (OtdRoom &otd,
+                                     const API_Guid &zoneGuid,
+                                     RoomProcessingContext &context,
+                                     ParamDictCompositeElement &paramCompositeToRead,
+                                     MatarialToFavoriteDict &favdict,
+                                     bool has_base_element) {
+        auto &paramToRead = context.paramToRead;
+        auto &param_composite = context.param_composite;
+        auto &paramDict_favorite = context.paramDict_favorite;
+        auto &exsistot_byzone = context.exsistot_byzone;
+        for (OtdSlab &otdslab : otd.otdslab) {
+            bool base_flipped = false;
+            GS::UniString fav_name = "";
+            if (!Param_SetToBase (otdslab.base_guid,
+                                  base_flipped,
+                                  otdslab.base_composite,
+                                  paramToRead,
+                                  paramCompositeToRead,
+                                  param_composite,
+                                  fav_name))
+                otdslab.isValid = false;
+            if (!otdslab.isValid)
                 continue;
-            // Расчёт пола и потолка
-            Floor_Create_All (storyLevels, otd);
-            if (otd.otdwall.IsEmpty () && otd.otdslab.IsEmpty ())
-                continue;
-            for (OtdSlab &otdslab : otd.otdslab) {
-                bool base_flipped = false;
-                GS::UniString fav_name = "";
-                if (!Param_SetToBase (otdslab.base_guid,
-                                      base_flipped,
-                                      otdslab.base_composite,
-                                      paramToRead,
-                                      paramCompositeToRead,
-                                      param_composite,
-                                      fav_name))
-                    otdslab.isValid = false;
-                if (!otdslab.isValid)
-                    continue;
-                otdslab.favorite.name = fav_name;
-                SetMaterialFinish (otdslab.material, otdslab.base_composite);
-                Favorite_FindName (otdslab.favorite,
-                                   otdslab.material,
-                                   otdslab.type,
-                                   otdslab.draw_type,
-                                   favdict,
-                                   paramDict_favorite,
-                                   param_composite);
-                if (otdslab.type == Ceil)
-                    otdslab.tip = otd.tip_pot;
-                if (otdslab.type == Floor)
-                    otdslab.tip = otd.tip_pol;
-                // Ищем существующие элементы по GUID базового элемента
-                if (exsistot_byzone.ContainsKey (zoneGuid) && has_base_element) {
-                    UnicGuidByBase &exsistot_byparent = exsistot_byzone.Get (zoneGuid);
-                    if (exsistot_byparent.ContainsKey (otdslab.base_guid)) {
-                        UnicGuidByTypeOtd &exsistype = exsistot_byparent.Get (otdslab.base_guid);
-                        if (exsistype.ContainsKey (otdslab.type)) {
-                            UnicGuid &exsistot = exsistype.Get (otdslab.type);
+            otdslab.favorite.name = fav_name;
+            SetMaterialFinish (otdslab.material, otdslab.base_composite);
+            Favorite_FindName (otdslab.favorite,
+                               otdslab.material,
+                               otdslab.type,
+                               otdslab.draw_type,
+                               favdict,
+                               paramDict_favorite,
+                               param_composite);
+            if (otdslab.type == Ceil)
+                otdslab.tip = otd.tip_pot;
+            if (otdslab.type == Floor)
+                otdslab.tip = otd.tip_pol;
+            // Ищем существующие элементы по GUID базового элемента
+            if (exsistot_byzone.ContainsKey (zoneGuid) && has_base_element) {
+                UnicGuidByBase &exsistot_byparent = exsistot_byzone.Get (zoneGuid);
+                if (exsistot_byparent.ContainsKey (otdslab.base_guid)) {
+                    UnicGuidByTypeOtd &exsistype = exsistot_byparent.Get (otdslab.base_guid);
+                    if (exsistype.ContainsKey (otdslab.type)) {
+                        UnicGuid &exsistot = exsistype.Get (otdslab.type);
+                        GS::Optional<API_Guid> v = exsistot.FindValue (true);
+                        if (v.HasValue ()) {
+                            otdslab.otd_guid = v.Get ();
+                            exsistot.Delete (otdslab.otd_guid);
+                        }
+                    } else {
+                        if (exsistype.ContainsKey (NoSet)) {
+                            UnicGuid &exsistot = exsistype.Get (NoSet);
                             GS::Optional<API_Guid> v = exsistot.FindValue (true);
                             if (v.HasValue ()) {
                                 otdslab.otd_guid = v.Get ();
                                 exsistot.Delete (otdslab.otd_guid);
                             }
-                        } else {
-                            if (exsistype.ContainsKey (NoSet)) {
-                                UnicGuid &exsistot = exsistype.Get (NoSet);
-                                GS::Optional<API_Guid> v = exsistot.FindValue (true);
-                                if (v.HasValue ()) {
-                                    otdslab.otd_guid = v.Get ();
-                                    exsistot.Delete (otdslab.otd_guid);
-                                }
-                            }
                         }
                     }
                 }
-            } // Обработка перекрытий
-            if (otd.otdwall.IsEmpty ())
+            }
+        } // Обработка перекрытий
+    }
+
+    static void ApplyFavoriteAndMaterialData (GS::Array<OtdWall> &opw,
+                                              RoomProcessingContext &context,
+                                              MatarialToFavoriteDict &favdict) {
+        auto &paramDict_favorite = context.paramDict_favorite;
+        auto &param_composite = context.param_composite;
+        for (OtdWall &otdw : opw) {
+            if (!otdw.isValid)
                 continue;
-            GS::Array<OtdWall> opw; // Массив созданных стен
-            for (OtdWall &otdw : otd.otdwall) {
-                // Заполняем данные для отделочных стен (состав)
-                GS::UniString fav_name = "";
-                if (!Param_SetToBase (otdw.base_guid,
-                                      otdw.base_flipped,
-                                      otdw.base_composite,
-                                      paramToRead,
-                                      paramCompositeToRead,
-                                      param_composite,
-                                      fav_name))
-                    otdw.isValid = false;
-                if (!otdw.isValid)
-                    continue;
-                otdw.favorite.name = fav_name;
-                if (otdw.openings.IsEmpty ())
-                    continue;
-                Point2D wbegC = {otdw.begC.x, otdw.begC.y};
-                Point2D wendC = {otdw.endC.x, otdw.endC.y};
-                Sector walledge = {wbegC, wendC};
-                GS::Optional<UnitVector_2D> walldir = walledge.GetDirection ();
-                Geometry::Vector2<double> walldir_perp;
-                if (!walldir.HasValue ())
-                    continue;
-                double angz = -DEGRAD * 90;
-                double co = cos (angz);
-                double si = sin (angz);
-                walldir_perp = walldir.Get ().ToVector2D ().Rotate (si, co);
-                for (OtdOpening &op : otdw.openings) {
-                    // Копия на каждый проём: см. комментарий к копии roomParamsWork выше —
-                    // общая копия тянула бы флаги первого проёма во все остальные.
-                    ReadParams windowParamsWork = windowParams;
-                    Param_SetToWindows (op, paramToRead, windowParamsWork, otdw);
-                    OpeningReveals_Create_One (otd.otdslab,
-                                               otdw,
-                                               op,
-                                               walldir_perp,
-                                               opw,
-                                               otd.zBottom,
-                                               otd.height_down,
-                                               otd.height_main,
-                                               otd.height_up,
-                                               otd.height,
-                                               otd.om_main,
-                                               otd.om_up,
-                                               otd.om_down,
-                                               otd.om_reveals,
-                                               otd.om_column,
-                                               otd.om_floor,
-                                               otd.om_ceil,
-                                               otd.om_zone);
-                }
-            } // Обработка стен
-            for (OtdWall &otdw : otd.otdwall) {
-                if (!otdw.isValid)
-                    continue;
-                OtdWall_Delim_All (opw,
-                                   otdw,
-                                   otd.zBottom,
-                                   otd.height_down,
-                                   otd.height_main,
-                                   otd.height_up,
-                                   otd.height,
-                                   otd.om_main,
-                                   otd.om_up,
-                                   otd.om_down,
-                                   otd.om_reveals,
-                                   otd.om_column,
-                                   otd.om_floor,
-                                   otd.om_ceil,
-                                   otd.om_zone);
-            } // Разбивка стен
-            for (OtdWall &otdw : opw) {
-                if (!otdw.isValid)
-                    continue;
-                Favorite_FindName (otdw.favorite,
-                                   otdw.material,
-                                   otdw.type,
-                                   otdw.draw_type,
-                                   favdict,
-                                   paramDict_favorite,
-                                   param_composite);
-                if (otdw.favorite.is_composite_read && !otdw.favorite.composite.IsEmpty ()) {
-                    SetMaterialFinish_ByComposite (otdw.material, otdw.favorite.composite);
-                    otdw.base_composite.Append (otdw.favorite.composite);
-                }
-            } // Назначение избранного
-            otd.otdwall = opw; // Заменяем на разбитые стены
-        } // Обработка зон
-        // REFACTOR TARGET:
-        // Extract BuildMaterialSummaryForRooms() and WriteRoomMaterialData() from this section.
-        // The current loop mixes room iteration, column-format preparation, area calculation and writeout.
-        // Получаем список уже существующих отделочных элементов для обработанных зон.
-        // Он понадобится для последующего удаления устаревших объектов.
-        zones.Clear ();
-        paramDict_favorite.Clear ();
-        favdict.Clear ();
-        ParamDictElement paramToWrite;           // Параметры для записи в зоны и элементы отделки
-        ColumnFormatDict columnFormat;           // Словарь с форматом текста для столбцов
-        OtdMaterialAreaDictByOtdType dct_bytype; // Словарь с отделкой по типу отделки
-        GS::Array<API_Guid> zones_bytype;        // Зоны для записи отделки по типам
+            Favorite_FindName (
+                otdw.favorite, otdw.material, otdw.type, otdw.draw_type, favdict, paramDict_favorite, param_composite);
+            if (otdw.favorite.is_composite_read && !otdw.favorite.composite.IsEmpty ()) {
+                SetMaterialFinish_ByComposite (otdw.material, otdw.favorite.composite);
+                otdw.base_composite.Append (otdw.favorite.composite);
+            }
+        } // Назначение избранного
+    }
+
+    static void ProcessWallFinishes (OtdRoom &otd,
+                                     RoomProcessingContext &context,
+                                     ReadParamsForRoomBook &readParams,
+                                     ParamDictCompositeElement &paramCompositeToRead,
+                                     MatarialToFavoriteDict &favdict) {
+        auto &paramToRead = context.paramToRead;
+        auto &param_composite = context.param_composite;
+        auto &windowParams = readParams.windowParams;
+        GS::Array<OtdWall> opw; // Массив созданных стен
+        for (OtdWall &otdw : otd.otdwall) {
+            // Заполняем данные для отделочных стен (состав)
+            GS::UniString fav_name = "";
+            if (!Param_SetToBase (otdw.base_guid,
+                                  otdw.base_flipped,
+                                  otdw.base_composite,
+                                  paramToRead,
+                                  paramCompositeToRead,
+                                  param_composite,
+                                  fav_name))
+                otdw.isValid = false;
+            if (!otdw.isValid)
+                continue;
+            otdw.favorite.name = fav_name;
+            if (otdw.openings.IsEmpty ())
+                continue;
+            Point2D wbegC = {otdw.begC.x, otdw.begC.y};
+            Point2D wendC = {otdw.endC.x, otdw.endC.y};
+            Sector walledge = {wbegC, wendC};
+            GS::Optional<UnitVector_2D> walldir = walledge.GetDirection ();
+            Geometry::Vector2<double> walldir_perp;
+            if (!walldir.HasValue ())
+                continue;
+            double angz = -DEGRAD * 90;
+            double co = cos (angz);
+            double si = sin (angz);
+            walldir_perp = walldir.Get ().ToVector2D ().Rotate (si, co);
+            for (OtdOpening &op : otdw.openings) {
+                // Копия на каждый проём: см. комментарий к копии roomParamsWork выше —
+                // общая копия тянула бы флаги первого проёма во все остальные.
+                ReadParams windowParamsWork = windowParams;
+                Param_SetToWindows (op, paramToRead, windowParamsWork, otdw);
+                OpeningReveals_Create_One (otd.otdslab,
+                                           otdw,
+                                           op,
+                                           walldir_perp,
+                                           opw,
+                                           otd.zBottom,
+                                           otd.height_down,
+                                           otd.height_main,
+                                           otd.height_up,
+                                           otd.height,
+                                           otd.om_main,
+                                           otd.om_up,
+                                           otd.om_down,
+                                           otd.om_reveals,
+                                           otd.om_column,
+                                           otd.om_floor,
+                                           otd.om_ceil,
+                                           otd.om_zone);
+            }
+        } // Обработка стен
+        for (OtdWall &otdw : otd.otdwall) {
+            if (!otdw.isValid)
+                continue;
+            OtdWall_Delim_All (opw,
+                               otdw,
+                               otd.zBottom,
+                               otd.height_down,
+                               otd.height_main,
+                               otd.height_up,
+                               otd.height,
+                               otd.om_main,
+                               otd.om_up,
+                               otd.om_down,
+                               otd.om_reveals,
+                               otd.om_column,
+                               otd.om_floor,
+                               otd.om_ceil,
+                               otd.om_zone);
+        } // Разбивка стен
+        ApplyFavoriteAndMaterialData (opw, context, favdict);
+        otd.otdwall = opw; // Заменяем на разбитые стены
+    }
+
+    struct MaterialSummary {
+        ParamDictElement paramToWrite;
+        ColumnFormatDict columnFormat;
+        OtdMaterialAreaDictByOtdType dct_bytype;
+        GS::Array<API_Guid> zones_bytype;
+    };
+
+    static bool BuildMaterialSummaryForRooms (RoomProcessingContext &context,
+                                              GS::Array<API_Guid> &zones,
+                                              MaterialSummary &summary,
+                                              GS::UniString &funcname) {
+        auto &roomsinfo = context.roomsinfo;
+        auto &paramToRead = context.paramToRead;
+        auto &paramToWrite = summary.paramToWrite;
+        auto &columnFormat = summary.columnFormat;
+        auto &dct_bytype = summary.dct_bytype;
+        auto &zones_bytype = summary.zones_bytype;
         funcname = GS::UniString::Printf ("Calculate material for %d room(s)", roomsinfo.GetSize ());
         for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
@@ -464,11 +398,11 @@ namespace Roombook
     #ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
             if (ACAPI_ProcessWindow_IsProcessCanceled ())
-                return;
+                return false;
     #else
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                return;
+                return false;
     #endif
             if (otd.isValid && (otd.create_all_elements || otd.create_ceil_elements || otd.create_floor_elements ||
                                 otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements)) {
@@ -545,6 +479,16 @@ namespace Roombook
                 }
             }
         }
+        return true;
+    }
+
+    static void WriteRoomMaterialData (RoomProcessingContext &context, MaterialSummary &summary) {
+        auto &roomsinfo = context.roomsinfo;
+        auto &paramToRead = context.paramToRead;
+        auto &paramToWrite = summary.paramToWrite;
+        auto &columnFormat = summary.columnFormat;
+        auto &dct_bytype = summary.dct_bytype;
+        auto &zones_bytype = summary.zones_bytype;
         // Запись отделки с разбивкой
         for (const API_Guid &subguid : zones_bytype) {
             OtdRoom &otd = roomsinfo.Get (subguid);
@@ -567,15 +511,66 @@ namespace Roombook
                                  otd.om_ceil.rawname_bytype); // Отделка потолка
             OtdData_WriteToRoom (columnFormat, otd.zone_guid, paramToWrite, paramToRead, dct, paramnamebytype);
         }
-        paramToRead.Clear ();
-        // REFACTOR TARGET:
-        // Extract RemoveUnusedFinishingElements() and PrepareElementsForUpdate() from this block.
-        // This part is about cleanup and update preparation, not room calculation.
-        // Проверка существования классов и свойств
-        if (!zones.IsEmpty ()) {
-            if (!Check (finclass, finclassguids))
-                return;
-        }
+    }
+
+    static bool ProcessRoomFinishes (RoomProcessingContext &context,
+                                     ReadParamsForRoomBook &readParams,
+                                     ParamDictCompositeElement &paramCompositeToRead,
+                                     MatarialToFavoriteDict &favdict,
+                                     bool has_base_element,
+                                     GS::UniString &funcname) {
+        auto &roomsinfo = context.roomsinfo;
+        auto &paramToRead = context.paramToRead;
+        auto &roomParams = readParams.roomParams;
+        auto &storyLevels = context.storyLevels;
+        // На этом этапе уже рассчитываются фактические отделочные элементы для каждой комнаты.
+        funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", roomsinfo.GetSize ());
+        GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
+        for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
+    #ifdef ServerMainVers_2800
+            OtdRoom &otd = cIt->value;
+            API_Guid zoneGuid = cIt->key;
+    #else
+            OtdRoom &otd = *cIt->value;
+            API_Guid zoneGuid = *cIt->key;
+    #endif
+            nPhase += 1;
+    #ifdef ServerMainVers_2700
+            ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
+            if (ACAPI_ProcessWindow_IsProcessCanceled ())
+                return false;
+    #else
+            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
+            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
+                return false;
+    #endif
+            if (!paramToRead.ContainsKey (zoneGuid))
+                continue; // Если у зоны нет прочитанных параметров - дальше делать
+                          // нечего
+            // Заполняем данные для зон
+            // Копия на каждую зону: Param_Property_Read пропускает параметры с уже
+            // выставленным isValid и не перечитывает val — общая копия тянула бы
+            // значения первой зоны во все остальные.
+            ReadParams roomParamsWork = roomParams;
+            Param_SetToRooms (material_dict, otd, paramToRead, roomParamsWork);
+            if (!otd.isValid)
+                continue;
+            // Расчёт пола и потолка
+            Floor_Create_All (storyLevels, otd);
+            if (otd.otdwall.IsEmpty () && otd.otdslab.IsEmpty ())
+                continue;
+            ProcessSlabFinishes (otd, zoneGuid, context, paramCompositeToRead, favdict, has_base_element);
+            if (otd.otdwall.IsEmpty ())
+                continue;
+            ProcessWallFinishes (otd, context, readParams, paramCompositeToRead, favdict);
+        } // Обработка зон
+        return true;
+    }
+
+    // -----------------------------------------------------------------------------
+    static void RemoveUnusedFinishingElements (RoomProcessingContext &context) {
+        auto &exsistot_byzone = context.exsistot_byzone;
+        auto &deletelist = context.deletelist;
         // Неиспользованные существующие элементы удаляем
         for (GS::HashTable<API_Guid, UnicGuidByBase>::PairIterator cIt_1 = exsistot_byzone.EnumeratePairs ();
              cIt_1 != NULL;
@@ -609,6 +604,9 @@ namespace Roombook
                 }
             }
         }
+    }
+
+    static bool PrepareElementsForUpdate (UnicGuid &reserv_elements) {
         // Перед обновлением элементов их слои временно разблокируются и резервируются.
         // Это нужно, чтобы ArchiCAD позволил изменить существующие элементы без конфликтов.
         GSErrCode err = NoError;
@@ -640,14 +638,114 @@ namespace Roombook
     #endif
                 if (err != NoError) {
                     msg_rep ("Roombook", "ACAPI_TeamworkControl_ReserveElements", err, APINULLGuid);
-                    return;
+                    return false;
                 }
                 if (!conflicts.IsEmpty ()) {
                     msg_rep ("Roombook", "Can't reserve elements", err, APINULLGuid, true);
-                    return;
+                    return false;
                 }
             }
         }
+        return true;
+    }
+
+    // Запись в зону информации об отделке
+    // -----------------------------------------------------------------------------
+    // REFACTOR PLAN FOR NEXT AGENT:
+    // 1. Extract GetTargetZones() from the selection / fallback-to-all-zones block.
+    //    Keep the filter flags and error handling unchanged.
+    // 2. Extract PrepareRoomProcessingContext() for:
+    //    - finclass / finclassguids
+    //    - storyLevels
+    //    - roomsinfo / elementToRead / param containers
+    //    - slabsinzone
+    // 3. Extract BuildElementReadIndex() and ProcessElementsForRoomData() for the loop that
+    //    creates openings, walls and slabs from the collected elements.
+    // 4. Extract PrepareReadParams() and ReadElementParameters() for the parameter preparation loop.
+    // 5. Extract ProcessRoomFinishes() and split it into smaller helpers:
+    //    - ProcessSlabFinishes()
+    //    - ProcessWallFinishes()
+    //    - ApplyFavoriteAndMaterialData()
+    // 6. Extract BuildMaterialSummaryForRooms() and WriteRoomMaterialData() from the section that
+    //    calculates material areas and writes them back to the rooms.
+    // 7. Extract RemoveUnusedFinishingElements() and PrepareElementsForUpdate() from the cleanup block.
+    // 8. After each extraction, keep behavior identical and verify the build.
+    //    The goal is to make RoomBook() a thin orchestrator with small single-purpose helpers.
+    void RoomBook () {
+        clock_t start, finish;
+        double duration;
+        start = clock ();
+        GS::UniString funcname ("RoomBook");
+        nPhase = 1;
+        // Окно прогресса помогает видеть, на каком этапе выполняется расчёт отделки.
+        ProcessWindowGuard pwGuard (funcname, nPhase);
+        GS::Array<API_Guid> zones;
+        if (!GetTargetZones (zones))
+            return;
+
+        funcname = GS::UniString::Printf ("Collect info from %d room(s)", zones.GetSize ());
+        // Контейнеры остаются общими для всех этапов; ссылки сохраняют текущие места их использования.
+        RoomProcessingContext context;
+        PrepareRoomProcessingContext (context, zones);
+        auto &finclass = context.finclass;
+        auto &finclassguids = context.finclassguids;
+        auto &storyLevels = context.storyLevels;
+        auto &deletelist = context.deletelist;
+        auto &exsistot_byzone = context.exsistot_byzone;
+        auto &roomsinfo = context.roomsinfo;
+        auto &paramToRead = context.paramToRead;
+        auto &paramDict_favorite = context.paramDict_favorite;
+        // После сбора связей временные GUID зон очищаются перед обработкой базовых элементов.
+        if (!BuildElementReadIndex (zones, context, funcname))
+            return;
+        if (!ProcessElementsForRoomData (context, funcname))
+            return;
+        // Необходимые для чтения параметры и свойства
+        ReadParamsForRoomBook readParams = PrepareReadParams ();
+        ReadElementParameters (context, readParams);
+        funcname = GS::UniString::Printf ("Read data from %d elements(s)", paramToRead.GetSize ());
+        nPhase += 1;
+    #ifdef ServerMainVers_2700
+        ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
+        if (ACAPI_ProcessWindow_IsProcessCanceled ())
+            return;
+    #else
+        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
+        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
+            return;
+    #endif
+        // Читаем свойства всех элементов
+        ParamDictCompositeElement paramCompositeToRead;
+        ListData::LibElements paramListDataToRead;
+        ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, false);
+        // Словарь избранного нужен для выбора подходящего шаблона отделки по материалу и типу поверхности.
+        MatarialToFavoriteDict favdict = Favorite_GetDict ();
+        // Ищём уже существующие элементы отделки и определяем, к каким базовым элементам они привязаны.
+        // Это нужно, чтобы не создавать дубли и правильно обновлять существующие элементы.
+        bool has_base_element = false;
+        UnicGuid reserv_elements; // Словарь незарезервированных или скрытых элементов
+        exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, has_base_element, reserv_elements);
+        if (!ProcessRoomFinishes (context, readParams, paramCompositeToRead, favdict, has_base_element, funcname))
+            return;
+        // Получаем список уже существующих отделочных элементов для обработанных зон.
+        // Он понадобится для последующего удаления устаревших объектов.
+        zones.Clear ();
+        paramDict_favorite.Clear ();
+        favdict.Clear ();
+        MaterialSummary summary;
+        if (!BuildMaterialSummaryForRooms (context, zones, summary, funcname))
+            return;
+        WriteRoomMaterialData (context, summary);
+        auto &paramToWrite = summary.paramToWrite;
+        paramToRead.Clear ();
+        // Проверка существования классов и свойств
+        if (!zones.IsEmpty ()) {
+            if (!Check (finclass, finclassguids))
+                return;
+        }
+        RemoveUnusedFinishingElements (context);
+        if (!PrepareElementsForUpdate (reserv_elements))
+            return;
 
         UnicElementByType subelementByparent; // Словарь с созданными родительскими
                                               // и дочерними элементами
@@ -677,6 +775,9 @@ namespace Roombook
         // Поиск существующих элементов отделки
         UnicGuidByGuid exsistotdelements; // Словарь существующих отделочных элементов с разбивкой по зонам
         int errcode = 0;
+        // У элементов отделки есть свойство "Sync_GUID zone", которое указывает на GUID зоны, к которой они привязаны.
+        // С помощью этого свойства мы ищем все существующие элементы отделки, чтобы не создавать дубли и правильно
+        // обновлять их.
         if (!SyncGetParentelement (zones, exsistotdelements, "zone", errcode)) {
     #if defined(TESTING)
             // Диагностика #193: существующие элементы отделки не найдены через Sync_GUID zone
@@ -777,6 +878,47 @@ namespace Roombook
         return exsistot_byzone;
     }
 
+    UnicGuidByBase BuildOtdByParent (GS::HashTable<API_Guid, TypeOtd> &otd_elements,
+                                     UnicGuidByGuid &parentdict,
+                                     bool &has_base_element) {
+        UnicGuidByBase exsistot_byparent;
+        for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = parentdict.EnumeratePairs (); cIt != NULL; ++cIt) {
+    #ifdef ServerMainVers_2800
+            const API_Guid &parentguid = cIt->key;
+            UnicGuid &subelements = cIt->value;
+    #else
+            const API_Guid &parentguid = *cIt->key;
+            UnicGuid &subelements = *cIt->value;
+    #endif
+            for (UnicGuid::PairIterator cItt = subelements.EnumeratePairs (); cItt != NULL; ++cItt) {
+    #ifdef ServerMainVers_2800
+                const API_Guid &subguid = cItt->key;
+    #else
+                const API_Guid &subguid = *cItt->key;
+    #endif
+                const TypeOtd *typePtr = otd_elements.GetPtr (subguid);
+                if (typePtr == nullptr)
+                    continue;
+                const TypeOtd type = *typePtr;
+                UnicGuidByTypeOtd *parentMapPtr = exsistot_byparent.GetPtr (parentguid);
+                if (parentMapPtr == nullptr) {
+                    exsistot_byparent.Add (parentguid, UnicGuidByTypeOtd{});
+                    parentMapPtr = exsistot_byparent.GetPtr (parentguid);
+                }
+                UnicGuid *subdictPtr = parentMapPtr->GetPtr (type);
+                if (subdictPtr == nullptr) {
+                    parentMapPtr->Add (type, UnicGuid{});
+                    subdictPtr = parentMapPtr->GetPtr (type);
+                }
+                if (!subdictPtr->ContainsKey (subguid)) {
+                    subdictPtr->Add (subguid, true);
+                    has_base_element = true;
+                }
+            }
+        }
+        return exsistot_byparent;
+    }
+
     UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd> &otd_elements, bool &has_base_element) {
         int errcode = 0;
         UnicGuidByBase exsistot_byparent;
@@ -790,6 +932,9 @@ namespace Roombook
     #endif
             otd_els.Push (elems);
         }
+        // У элементов отделки есть свойство "Sync_GUID base element", которое указывает на базовую конструкцию (стена,
+        // колонна, плита), к которой привязана отделка. По этому свойству привязываем существующую отделку к базовым
+        // элементам.
         if (!SyncGetSubelement (otd_els, parentdict, "base element", errcode)) {
             API_Guid parentguid = APINULLGuid;
             UnicGuidByTypeOtd *parentMapPtr = exsistot_byparent.GetPtr (parentguid);
@@ -814,41 +959,7 @@ namespace Roombook
             }
             return exsistot_byparent;
         }
-        for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = parentdict.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #ifdef ServerMainVers_2800
-            const API_Guid &subguid = cIt->key;
-            UnicGuid &parentels = cIt->value;
-    #else
-            const API_Guid &subguid = *cIt->key;
-            UnicGuid &parentels = *cIt->value;
-    #endif
-            const TypeOtd *tPtr = otd_elements.GetPtr (subguid);
-            if (tPtr == nullptr)
-                continue;
-            TypeOtd t = *tPtr;
-            for (UnicGuid::PairIterator cItt = parentels.EnumeratePairs (); cItt != NULL; ++cItt) {
-    #ifdef ServerMainVers_2800
-                API_Guid parentguid = cItt->key;
-    #else
-                API_Guid parentguid = *cItt->key;
-    #endif
-                UnicGuidByTypeOtd *parentMapPtr = exsistot_byparent.GetPtr (parentguid);
-                if (parentMapPtr == nullptr) {
-                    exsistot_byparent.Add (parentguid, UnicGuidByTypeOtd{});
-                    parentMapPtr = exsistot_byparent.GetPtr (parentguid);
-                }
-                UnicGuid *subdictPtr = parentMapPtr->GetPtr (t);
-                if (subdictPtr == nullptr) {
-                    parentMapPtr->Add (t, UnicGuid{});
-                    subdictPtr = parentMapPtr->GetPtr (t);
-                }
-                if (!subdictPtr->ContainsKey (subguid)) {
-                    subdictPtr->Add (subguid, true);
-                    has_base_element = true;
-                }
-            }
-        }
-        return exsistot_byparent;
+        return BuildOtdByParent (otd_elements, parentdict, has_base_element);
     }
 
     // Настройки для форматирования текста в таблицу

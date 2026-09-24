@@ -10,6 +10,7 @@
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "ReNum.hpp"
+    #include "Roombook.hpp"
     #include "Sync.hpp"
 
 namespace TestFunc {
@@ -41,6 +42,7 @@ namespace TestFunc {
         TestParseSyncStringIndependent ();
         TestParsePropertyDescriptionToRules ();
         TestSyncAddSubelement ();
+        TestBuildOtdByParent ();
         TestRenumPosLogic ();
         TestDescToRulesSubGuid ();
         TestGetPropertyRuleFlag ();
@@ -3126,6 +3128,48 @@ namespace TestFunc {
         }
         DBprnt ("TEST", "TestPropertyRuleFlagOnProjectElements : done");
         return;
+    }
+
+    void TestBuildOtdByParent () {
+        DBprnt ("TEST", "TestBuildOtdByParent");
+
+        const API_Guid baseGuid = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
+        const API_Guid floorGuid = APIGuidFromString ("{22222222-2222-2222-2222-222222222222}");
+        const API_Guid wallGuid = APIGuidFromString ("{33333333-3333-3333-3333-333333333333}");
+        const API_Guid unknownGuid = APIGuidFromString ("{44444444-4444-4444-4444-444444444444}");
+
+        GS::HashTable<API_Guid, Roombook::TypeOtd> otdElements;
+        otdElements.Add (floorGuid, Roombook::Floor);
+        otdElements.Add (wallGuid, Roombook::Wall_Main);
+
+        UnicGuid childElements;
+        childElements.Add (floorGuid, true);
+        childElements.Add (wallGuid, true);
+        UnicGuidByGuid parentDict;
+        parentDict.Add (baseGuid, childElements);
+
+        bool hasBaseElement = false;
+        Roombook::UnicGuidByBase result = Roombook::BuildOtdByParent (otdElements, parentDict, hasBaseElement);
+        const Roombook::UnicGuidByTypeOtd *types = result.GetPtr (baseGuid);
+        const UnicGuid *floorElements = types != nullptr ? types->GetPtr (Roombook::Floor) : nullptr;
+        const UnicGuid *wallElements = types != nullptr ? types->GetPtr (Roombook::Wall_Main) : nullptr;
+
+        DBtest (hasBaseElement, "BuildOtdByParent: known children set has_base_element");
+        DBtest (floorElements != nullptr && floorElements->ContainsKey (floorGuid),
+                "BuildOtdByParent: floor child indexed by base GUID");
+        DBtest (wallElements != nullptr && wallElements->ContainsKey (wallGuid),
+                "BuildOtdByParent: wall child indexed by base GUID");
+
+        UnicGuid unknownChildren;
+        unknownChildren.Add (unknownGuid, true);
+        UnicGuidByGuid unknownParentDict;
+        unknownParentDict.Add (baseGuid, unknownChildren);
+        hasBaseElement = false;
+        result = Roombook::BuildOtdByParent (otdElements, unknownParentDict, hasBaseElement);
+        DBtest (!hasBaseElement, "BuildOtdByParent: unknown child keeps has_base_element false");
+        DBtest (result.IsEmpty (), "BuildOtdByParent: unknown child is ignored");
+
+        DBprnt ("TEST", "TestBuildOtdByParent : done");
     }
 
 } // namespace TestFunc

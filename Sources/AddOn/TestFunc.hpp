@@ -92,6 +92,9 @@ namespace TestFunc {
     // существующего корректного поведения (from_sub, обычное правило, пустой список).
     void TestSyncAddSubelement ();
 
+    // Проверяет индексирование существующей отделки по GUID базового элемента.
+    void TestBuildOtdByParent ();
+
     // GREEN-регрессии логики нумерации: RenumPos (конструкторы, Add, FormatToMax,
     // SetToMax), GetMostFrequentPos, ReNumGetFlag. Фиксируют текущее поведение.
     void TestRenumPosLogic ();
