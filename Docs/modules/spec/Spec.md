@@ -7,6 +7,7 @@
 
 ## Файлы
 - `spec/Spec.cpp/hpp`
+- `json_commands/SpecCommand.cpp/hpp` — JSON-точка входа AC25–29 [по коду]
 
 ## Ключевые типы
 
@@ -42,7 +43,7 @@
 - Контракт: не проверено.
 - Побочные эффекты: **создаёт/обновляет/удаляет элементы спецификации** (PlaceElements-цепочка); читает выделение и свойства. [по коду]
 - Вызывает: `GetRuleFromDefaultElem` (:165), `SpecFilter` (:157/176), `SpecArray` (:185), `GetSelectedElements` (Helpers.cpp:695). [из callgraph.json]
-- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:441). [из callgraph.json]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:441) и `SomeStuffCommand.Spec` (`json_commands/SpecCommand.cpp`; JSON API AC25–29). JSON-команда предварительно загружает текущие `SyncSettings`, выполняется на главном потоке и возвращает `status="returned"` с длительностью вызова; значение `GSErrCode` из `SpecAll` в ответ не передаётся. [по коду / DevKit-25 API_AddOnCommand]
 
 ### `Spec::PlaceElements(GS::Array<ElementDict> &elementstocreate, ParamDictValue &paramToWrite, ParamDictElement &paramOut, Point2D &startpos) -> GSErrCode`
 - Расположение: `Sources/AddOn/spec/Spec.cpp:2427`
