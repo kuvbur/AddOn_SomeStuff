@@ -27,7 +27,7 @@
 | `SyncElement` | 383/391 | Синхронизация одного элемента и подэлементов [из комментария] |
 | `SyncSelected` | 435 | Синхронизация выбранных [из комментария]; вызывается из SomeStuff_Main.cpp:410 и внутри Sync.cpp:565/2246 [по коду, grep] |
 | `SyncArray` | 456 | Синхронизация массива, возвращает обработанные GUID [из комментария] |
-| `RunParamSelected` / `RunParam` | 536 / 584 | Параметрические правила [из комментария]; RunParamSelected — из SomeStuff_Main.cpp:437 [по коду, grep] |
+| `RunParamSelected` / `RunParam` | 777 / 825 | Запуск параметрических скриптов выбранных элементов; после успешного скрипта окна/двери `RunParam` определяет тип через кросс-версионный `GetElemTypeID(element)` и запускает скрипт marker из `openingBase.markGuid`, если GUID задан [по коду]; RunParamSelected — из SomeStuff_Main.cpp:441 [по коду, grep] |
 | `SyncRelationsElement` | 641 | Синхронизация связанных элементов [из комментария]; вызывается из `SyncElement` (:416) [из callgraph.json] |
 | `SyncData` | 669 | Синхронизация по описаниям свойств [из комментария] |
 | `ParseSyncString` | 1088 | Парсинг описания в WriteData [из комментария] |

@@ -875,6 +875,32 @@ void RunParam (const API_Guid &elemGuid, const SyncSettings &syncSettings) {
         msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
         return;
     }
+
+    API_Guid markGuid = APINULLGuid;
+    const API_ElemTypeID elemType = GetElemTypeID (element);
+    if (elemType == API_WindowID)
+        markGuid = element.window.openingBase.markGuid;
+    else if (elemType == API_DoorID)
+        markGuid = element.door.openingBase.markGuid;
+
+    if (markGuid == APINULLGuid)
+        return;
+
+    API_Elem_Head markHead = {};
+    markHead.guid = markGuid;
+    err = ACAPI_Element_GetHeader (&markHead);
+    if (err != NoError) {
+        msg_rep ("RunParam marker", "ACAPI_Element_GetHeader", err, markGuid);
+        return;
+    }
+
+#ifdef ServerMainVers_2700
+    err = ACAPI_LibraryManagement_RunGDLParScript (&markHead, 0);
+#else
+    err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &markHead, 0);
+#endif
+    if (err != NoError)
+        msg_rep ("RunParam marker", "APIAny_RunGDLParScriptID", err, markGuid);
 }
 
 // --------------------------------------------------------------------
