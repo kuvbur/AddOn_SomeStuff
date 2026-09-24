@@ -38,3 +38,4 @@
 - JS bridge: `DynamicCast<JSValue>` — `DynamicCast<JSArray>` крашит ArchiCAD (AGENTS.md §6) [из AGENTS.md]
 - Поля ширины: expandedClientWidth/expandedMinClientWidth/collapsedClientWidth (hpp:74-88) [из комментария]
 - «Монитор»: закрепления свойств (`pinnedProperties`) и групп (`pinnedPropertyGroups`) сессионные; после локальной фильтрации закреплённые свойства идут первой синтетической группой, затем закреплённые группы без дублирования свойств. [по коду, HTML #160/#204]
+- Инлайн-кнопка сброса в строке свойства временно отсутствует; мост `resetPropertyToDefault` и иконка цепочки сохранены для отдельного этапа режима выборочного сброса #189. [по коду, HTML #189]

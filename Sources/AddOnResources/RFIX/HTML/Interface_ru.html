@@ -1702,7 +1702,7 @@ function renderPropertyRow(prop) {
     }
   });
 
-  // Main row content: name + count + reset button
+  // Main row content: name + count + pin button
   const headerRow = h("div", {
     style: "display:flex;align-items:center;gap:0.4rem;flex:1 1 auto;"
   });
@@ -1735,20 +1735,6 @@ function renderPropertyRow(prop) {
     }
   });
   headerRow.appendChild(pinBtn);
-
-  const resetBtn = iconButton({
-    html: chainIconSvg(false),
-    title: "Сбросить значение по умолчанию",
-    hoverColor: "var(--ac-danger)",
-    onClick: function (e) {
-      e.stopPropagation();
-      resetBtn.innerHTML = chainIconSvg(true);
-      ACBridge.resetPropertyToDefault(prop.id).then(function () {
-        setTimeout(function () { resetBtn.innerHTML = chainIconSvg(false); }, 500);
-      });
-    }
-  });
-  headerRow.appendChild(resetBtn);
 
   row.appendChild(headerRow);
 
