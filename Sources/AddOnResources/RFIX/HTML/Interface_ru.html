@@ -127,6 +127,7 @@ const STATE = {
   monitorValueFilter: "",
   monitorRulesOnly: false,
   pinnedProperties: [],        // #160: id закреплённых свойств «Монитора» (наверху списка)
+  pinnedPropertyGroups: [],    // #204: имена закреплённых групп свойств «Монитора» (сессионно)
   monitorSelectedPropertyId: null,
   numberingOpenBlocks: { flag: false, ruleEditor: false }, // блок 1 всегда открыт, остальные — по клику
   numberingConfig: { flagProperty: null, ruleProperty: null, numberFormat: "NULL",
@@ -1566,35 +1567,45 @@ function renderLoadedPropertyList(listBlock, loadedGroups) {
             groups = groups.filter(function(g) { return g.properties && g.properties.length > 0; });
           }
 
-          // #160: закреплённые свойства всегда наверху списка — отдельная первая группа.
-          // Закреплённые, не прошедшие фильтры, наверх не выносятся.
+          // #160/#204: закреплённые свойства и группы выводятся наверху списка.
+          // Фильтры применены выше; ни свойства, ни группы при перестановке не дублируются.
+          const isPinnedPropertyGroup = function (g) {
+            return STATE.pinnedPropertyGroups.indexOf(g.group) !== -1;
+          };
+          const pinnedGroups = groups.filter(isPinnedPropertyGroup);
+          groups = groups.filter(function (g) { return !isPinnedPropertyGroup(g); });
+
+          let pinnedPropertiesGroup = null;
           if (STATE.pinnedProperties.length) {
-            const isPinned = function (p) { return STATE.pinnedProperties.indexOf(p.id) !== -1; };
+            const isPinnedProperty = function (p) { return STATE.pinnedProperties.indexOf(p.id) !== -1; };
             let pinnedProps = [];
             groups.forEach(function (g) {
-              const pinnedInGroup = g.properties.filter(isPinned);
+              const pinnedInGroup = g.properties.filter(isPinnedProperty);
               if (pinnedInGroup.length) {
                 pinnedProps = pinnedProps.concat(pinnedInGroup);
-                g.properties = g.properties.filter(function (p) { return !isPinned(p); });
+                g.properties = g.properties.filter(function (p) { return !isPinnedProperty(p); });
               }
             });
             groups = groups.filter(function (g) { return g.properties.length > 0; });
-            if (pinnedProps.length) groups.unshift({ group: "Закреплённые", properties: pinnedProps });
+            if (pinnedProps.length) pinnedPropertiesGroup = { group: "Закреплённые", properties: pinnedProps };
           }
+
+          groups = (pinnedPropertiesGroup ? [pinnedPropertiesGroup] : []).concat(pinnedGroups, groups);
 
           groups.forEach(function (g) {
       const groupName = g.group;
       const isCollapsed = !!STATE.monitorGroupCollapse[groupName];
       
-      // Group header (clickable); #160: «Закреплённые» выделяется акцентом.
-      const isPinnedGroup = groupName === "Закреплённые";
+      // Group header (clickable); закреплённые блоки выделяются акцентом.
+      const isPinnedPropertiesGroup = groupName === "Закреплённые";
+      const isPinnedGroup = STATE.pinnedPropertyGroups.indexOf(groupName) !== -1;
       const groupHeader = h("div", {
         text: groupName,
         attrs: { role: "button" },
         focusable: true,
         style: "position:sticky;top:0;background:var(--ac-bg-workspace);padding:0.4rem 0.75rem 0.2rem;" +
                "font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:" +
-               (isPinnedGroup ? "var(--ac-accent)" : "var(--ac-text-tertiary)") + ";font-weight:700;" +
+               ((isPinnedPropertiesGroup || isPinnedGroup) ? "var(--ac-accent)" : "var(--ac-text-tertiary)") + ";font-weight:700;" +
                "cursor:pointer;display:flex;align-items:center;gap:0.3rem;user-select:none;",
         on: {
           click: function() {
@@ -1611,6 +1622,20 @@ function renderLoadedPropertyList(listBlock, loadedGroups) {
         style: "display:flex;align-items:center;color:var(--ac-text-tertiary);"
       });
       groupHeader.insertBefore(chevron, groupHeader.firstChild);
+
+      if (!isPinnedPropertiesGroup) {
+        const pinGroupBtn = iconButton({
+          html: pinIconSvg(isPinnedGroup),
+          title: isPinnedGroup ? "Открепить группу" : "Закрепить группу наверху списка",
+          hoverColor: "var(--ac-accent)",
+          onClick: function (e) {
+            e.stopPropagation();
+            togglePinnedPropertyGroup(groupName);
+          }
+        });
+        pinGroupBtn.style.marginLeft = "auto";
+        groupHeader.appendChild(pinGroupBtn);
+      }
       
       listBlock.appendChild(groupHeader);
 
@@ -1622,7 +1647,7 @@ function renderLoadedPropertyList(listBlock, loadedGroups) {
       }
 
       // #160: горизонтальная линия-разделитель под всем блоком закреплённых.
-      if (isPinnedGroup) {
+      if (isPinnedPropertiesGroup) {
         listBlock.appendChild(h("div", {
           style: "flex:0 0 auto;height:2px;background:var(--ac-accent);opacity:0.55;"
         }));
@@ -1635,6 +1660,15 @@ function togglePinnedProperty(propId) {
   const idx = STATE.pinnedProperties.indexOf(propId);
   if (idx === -1) STATE.pinnedProperties.push(propId);
   else STATE.pinnedProperties.splice(idx, 1);
+  const listBlock = document.getElementById("monitor-list-block");
+  if (listBlock) renderPropertyList(listBlock, STATE.monitorFilter, true);
+}
+
+// #204: переключение закрепления группы и перерисовка списка «Монитора».
+function togglePinnedPropertyGroup(groupName) {
+  const idx = STATE.pinnedPropertyGroups.indexOf(groupName);
+  if (idx === -1) STATE.pinnedPropertyGroups.push(groupName);
+  else STATE.pinnedPropertyGroups.splice(idx, 1);
   const listBlock = document.getElementById("monitor-list-block");
   if (listBlock) renderPropertyList(listBlock, STATE.monitorFilter, true);
 }
