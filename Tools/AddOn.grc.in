@@ -140,6 +140,10 @@
 /* [  80] */ 	"ВНИМАНИЕ!\nБудут обработаны все элементы, для которых применимы правила обрабатываемых свойства"
 /* [  81] */	"SomeStuff Каталоги"
 /* [  82] */	"Новый каталог"
+/* [  83] */	"Закрыть"
+/* [  84] */	"Показать"
+/* [  85] */	"Имя БД"
+/* [  86] */	"Элементов"
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -274,6 +278,10 @@
 /* [  80] */ 	"ATTENTION!\nAll elements, for which the rules of the processed properties are applicable, will be processed"
 /* [  81] */	"SomeStuff Schedules"
 /* [  82] */	"New Schedule"
+/* [  83] */	"Close"
+/* [  84] */	"Show"
+/* [  85] */	"Database"
+/* [  86] */	"Elements"
 }
 
 'GDLG'  32590  Modal | grow         0    0  500  300  "RuleSelect Dialog" {

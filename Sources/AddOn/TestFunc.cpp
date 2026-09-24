@@ -2756,6 +2756,33 @@ namespace TestFunc {
                     "SyncAddSubelem to_sub empty subs -> flags untouched");
         }
 
+        // Внешний адресат Sync_to_GUID не входит в список текущего элемента и его подэлементов.
+        {
+            const API_Guid owner = APIGuidFromString ("{CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC}");
+            const API_Guid destination = APIGuidFromString ("{DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD}");
+            WriteData rule = makeRule ();
+            rule.guidFrom = owner;
+            rule.guidTo = destination;
+            rule.paramFrom.fromGuid = owner;
+            rule.paramTo.fromGuid = destination;
+            rule.paramFrom.val.type = API_PropertyStringValueType;
+            rule.paramTo.val.type = API_PropertyStringValueType;
+            rule.paramFrom.val.uniStringValue = "new";
+            rule.paramTo.val.uniStringValue = "old";
+            GS::Array<WriteData> rules = {rule};
+            GS::Array<API_Guid> processing = {owner};
+            WriteDict syncRules;
+            ParamDictElement paramToRead;
+            ParamDictElement paramToWrite;
+            UnicGuidString propertyWriteGuids;
+
+            SyncAddSubelement ({}, rules, syncRules, paramToRead);
+            SyncCalcRule (syncRules, processing, paramToRead, paramToWrite, propertyWriteGuids);
+            const ParamDictValue *written = paramToWrite.GetPtr (destination);
+            DBtest (written != nullptr && written->GetPtr (rule.paramTo.rawName) != nullptr,
+                    "Sync_to_GUID external destination -> write scheduled");
+        }
+
         DBprnt ("TEST", "TestSyncAddSubelement : done");
         return;
     }

@@ -146,6 +146,10 @@ static const Int32 SpecParamPlaceNotFoundId = 65;       // Не найдено �
 static const Int32 SpecFlagOff = 66;                    // Флаг спецификации выключен
 static const Int32 SomeStuffSchedulesNameID = 81;       // Имя раздела ведомостей SomeStuff в Navigator
 static const Int32 SomeStuffScheduleDefaultNameID = 82; // Имя нового каталога SomeStuff в Navigator
+static const Int32 OtherDbCloseId = 83;                 // Закрыть диалог перехода в другую базу данных
+static const Int32 OtherDbShowId = 84;                  // Показать элементы в другой базе данных
+static const Int32 OtherDbDatabaseId = 85;              // Заголовок столбца базы данных
+static const Int32 OtherDbElementsId = 86;              // Заголовок столбца количества элементов
 
 // --- Внутренние пути свойств материалов ---
 static const GS::UniString MAT_SOME_STUFF_TH =               // Путь к свойству толщины стройматериала

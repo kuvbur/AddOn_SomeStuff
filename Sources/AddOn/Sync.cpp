@@ -31,7 +31,6 @@ static std::chrono::steady_clock::time_point g_LastDimensionScan = {};
 const std::chrono::milliseconds SYNC_THROTTLE_THRESHOLD (500);
 
 namespace {
-
     struct OtherDbTarget {
         API_DatabaseInfo dbInfo = {};
         bool hasStory = false;
@@ -144,14 +143,13 @@ namespace {
             : DG::ModalDialog (ACAPI_GetOwnResModule (), ID_ADDON_OTHER_DB_DLG, ACAPI_GetOwnResModule ()),
               closeButton (GetReference (), CloseButtonId), showButton (GetReference (), ShowButtonId),
               listBox (GetReference (), ListBoxId), targets (targets) {
-            const bool english = (isEng () != 0);
+            const Int32 iseng = ID_ADDON_STRINGS + isEng ();
             DGSetDialogTitle (ID_ADDON_OTHER_DB_DLG,
-                              english ? GS::UniString ("Found elements in other views")
-                                      : GS::UniString ("Элементы в других видах"));
+                              RSGetIndString (iseng, SubElementHalfId, ACAPI_GetOwnResModule ()));
             DGSetItemText (
-                ID_ADDON_OTHER_DB_DLG, CloseButtonId, english ? GS::UniString ("Close") : GS::UniString ("Закрыть"));
+                ID_ADDON_OTHER_DB_DLG, CloseButtonId, RSGetIndString (iseng, OtherDbCloseId, ACAPI_GetOwnResModule ()));
             DGSetItemText (
-                ID_ADDON_OTHER_DB_DLG, ShowButtonId, english ? GS::UniString ("Show") : GS::UniString ("Показать"));
+                ID_ADDON_OTHER_DB_DLG, ShowButtonId, RSGetIndString (iseng, OtherDbShowId, ACAPI_GetOwnResModule ()));
 
             closeButton.Attach (*this);
             showButton.Attach (*this);
@@ -217,13 +215,13 @@ namespace {
         }
 
         void InitListBox () {
-            const bool english = (isEng () != 0);
+            const Int32 iseng = ID_ADDON_STRINGS + isEng ();
             listBox.SetTabFieldCount (2);
             listBox.SetHeaderItemCount (2);
             listBox.SetHeaderSynchronState (true);
             listBox.SetHeaderPushableButtons (false);
-            listBox.SetHeaderItemText (NameTab, english ? GS::UniString ("Database") : GS::UniString ("Имя БД"));
-            listBox.SetHeaderItemText (CountTab, english ? GS::UniString ("Elements") : GS::UniString ("Элементов"));
+            listBox.SetHeaderItemText (NameTab, RSGetIndString (iseng, OtherDbDatabaseId, ACAPI_GetOwnResModule ()));
+            listBox.SetHeaderItemText (CountTab, RSGetIndString (iseng, OtherDbElementsId, ACAPI_GetOwnResModule ()));
             listBox.SetHeaderItemSizeableFlag (NameTab, true);
             listBox.SetHeaderItemSizeableFlag (CountTab, false);
             SetListBoxColumns ();
@@ -1061,7 +1059,23 @@ void SyncCalcRule (const WriteDict &syncRules,
                    UnicGuidString &property_write_guid) {
     GS::HashSet<GS::UniString> resolvedProps; // Свойства, которые уже получили "полезное" значение
     GS::HashSet<GS::UniString> propsToReset;  // Свойства, которые кандидаты на сброс к дефолту
-    for (const API_Guid &elemGuid : subelemGuids) {
+    GS::Array<API_Guid> targetGuids = subelemGuids;
+    GS::HashSet<API_Guid> knownTargets;
+    for (const API_Guid &guid : subelemGuids)
+        knownTargets.Add (guid);
+    // Sync_to_GUID может назначить получателя вне списка подэлементов.
+    for (const auto &rule : syncRules) {
+#ifdef ServerMainVers_2800
+        const API_Guid &guid = rule.key;
+#else
+        const API_Guid &guid = *rule.key;
+#endif
+        if (guid != APINULLGuid && !knownTargets.Contains (guid)) {
+            targetGuids.Push (guid);
+            knownTargets.Add (guid);
+        }
+    }
+    for (const API_Guid &elemGuid : targetGuids) {
         const auto *writeSubs = syncRules.GetPtr (elemGuid);
         if (writeSubs == nullptr || writeSubs->IsEmpty ()) {
             continue;
@@ -2822,17 +2836,8 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
         ACAPI_Automate (APIDo_ZoomToSelectedID);
     #endif
 
-    if (!errmsg.IsEmpty ()) {
-        // TODO это окно не нужно - нужно только ShowOtherDbDialog. Нужно дополнить текстом о том, что часть элементов
-        // не выделена - SubElementHalfId.
-
-        // GS::UniString SubElementHalfString = RSGetIndString (iseng, SubElementHalfId, ACAPI_GetOwnResModule ());
-        // errmsg = SubElementHalfString + LINEBRAKE + errmsg;
-        // ACAPI_WriteReport (errmsg, true);
-
-        if (show_ui)
-            ShowOtherDbDialog (otherDbTargets);
-    }
+    if (!errmsg.IsEmpty () && show_ui)
+        ShowOtherDbDialog (otherDbTargets);
 #else
     fmane = fmane + " not work in AC22";
     ACAPI_WriteReport ("Function not work in AC22", true);
