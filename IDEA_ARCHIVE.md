@@ -5,6 +5,27 @@
 
 ---
 
+## Реорганизация задач (2026-09-25) — закрытие issues и перенос блоков из IDEA.md
+
+### Что сделано
+Закрыты issues с подтверждённым результатом (комментарий в каждом с коммитом и проверкой):
+[#193](https://github.com/kuvbur/AddOn_SomeStuff/issues/193) — фикс BuildOtdByParent в `b24973c`, runtime подтверждён (Wall 334↓/334↑ без роста количества, Object/Slab/Beam GUID не изменились); блокировка «смешанное рабочее дерево» снята — все пересекающиеся правки закоммичены.
+[#199](https://github.com/kuvbur/AddOn_SomeStuff/issues/199) — `9ae0138`, TestSyncAddSubelement RED→GREEN; закрыт по unit-покрытию (решение пользователя), runtime Sync_to_GUID — по потребности.
+[#205](https://github.com/kuvbur/AddOn_SomeStuff/issues/205) — `5b6914b`, RoomBookCommand; HTTP-вызов `returned` 15.085 с + два успешных прогона в проверке #193; отмена — not verified.
+[#206](https://github.com/kuvbur/AddOn_SomeStuff/issues/206) — `5b6914b` + `50cae05`, SpecCommand; вызов completed, 34/34 строк с наименованием.
+[#161](https://github.com/kuvbur/AddOn_SomeStuff/issues/161) — `17cb79d`, RED→GREEN 488 ok; остался открытым после checkpoint по недосмотру.
+
+Статусы по пользовательским проверкам: #194/#203 — WAITING_FOR_TEST (runtime за пользователем), #189/#204 — WAITING_FOR_TEST (проверка палитры за пользователем).
+
+### Перенесено из активной секции IDEA.md в архив (COMPLETED, ниже нет)
+#197 (2026-09-23), #196 (2026-09-23, пользовательские правки вошли в `de8433e` «Изменение механизма пропуска обработки»), #192 (2026-09-22, `89448ea`), #210 (2026-09-25, `aa4a672`), «Монитор, остаток работ» с бэклогом #158/#159/#176–#187 и методикой 1.7.x.
+
+### Грабли, удалённые по проверке
+- «Моки `ACBridge` getFilterPresets/resetPropertyToDefault» — getFilterPresets реализован реальным мостом (`#157`, HTML:280–289 `window.ACAPI.GetFilterPresets`); resetPropertyToDefault HTML:442 остаётся моком намеренно (режим выборочного сброса #189, мост сохранён).
+- «JSON-команды сняты (b7a996b)» — JSON-команды восстановлены AC25–29 в `5b6914b` (json_commands/); актуально только требование `DynamicCast<JSValue>`.
+
+---
+
 ## #207/#208/#209 — JSON Spec и наименование из материала (AC25, 2026-09-25)
 
 ### Status
