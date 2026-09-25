@@ -1309,8 +1309,18 @@ bool EvalExpression (GS::UniString &unistring_expression) {
     if (unistring_expression.IsEmpty ())
         return false;
 
-    if (!unistring_expression.Contains (CHARFORMULASTART) || !unistring_expression.Contains (CHARFORMULAEND))
+    if (!unistring_expression.Contains (CHARFORMULASTART) && !unistring_expression.Contains (CHARFORMULAEND)) // TODO - проверить, нужна ли эта проверка? 
         return false;
+    // TODO Оценить выигрыш от кэширования результатов вычислений выражений. Если выражения повторяются часто, кэш может
+    // ускорить работу.
+    GS::UniString fullkey = unistring_expression;
+    static GS::HashTable<GS::UniString, GS::UniString> exprResultFullCache; // Кэш для строковых результатов
+    if (exprResultFullCache.GetSize () > 4096)
+        exprResultFullCache.Clear ();
+    if (const GS::UniString *cachedPtr = exprResultFullCache.GetPtr (fullkey)) {
+        unistring_expression = *cachedPtr; // Используем кэшированный результат
+        return (!unistring_expression.IsEmpty ());
+    }
 
     // В зависимости от локали выбираем, какой десятичный разделитель использовать.
     GS::UniString delim = DOT;
@@ -1356,16 +1366,6 @@ bool EvalExpression (GS::UniString &unistring_expression) {
                         }
                     }
                 }
-
-                // FIX (ревью 2026-09-12, Sync.cpp-5): exprtk::parser + compile выполнялись на
-                // каждый вызов EvalExpression, т.е. на каждый элемент при синхронизации, хотя
-                // формула правила одинакова для всех элементов. К моменту этой строки значения
-                // уже подставлены в текст выражения (ReplaceParamInExpression), поэтому успешно
-                // скомпилированное выражение всегда чисто литеральное (без пользовательских
-                // переменных) и его результат детерминирован. Мемоизируем результат вычисления
-                // по тексту выражения: повторные вызовы с тем же текстом (та же формула на всех
-                // элементах выделения) переиспользуют результат без компиляции. Контракт вызовов
-                // не меняется: форматирование (fstring) по-прежнему применяется на каждом вызове.
                 typedef double T;
                 typedef exprtk::expression<T> expression_t;
                 typedef exprtk::parser<T> parser_t;
@@ -1410,7 +1410,7 @@ bool EvalExpression (GS::UniString &unistring_expression) {
 
         startPos += rezult_txt.GetLength ();
     }
-
+    exprResultFullCache.Put (fullkey, unistring_expression);
     return (!unistring_expression.IsEmpty ());
 }
 
