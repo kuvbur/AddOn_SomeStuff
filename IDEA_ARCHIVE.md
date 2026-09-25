@@ -5,6 +5,19 @@
 
 ---
 
+## #207/#208/#209 — JSON Spec и наименование из материала (AC25, 2026-09-25)
+
+### Status
+COMPLETED для проверенного AC25-сценария; checkpoint `50cae05`. Issues [#207](https://github.com/kuvbur/AddOn_SomeStuff/issues/207), [#208](https://github.com/kuvbur/AddOn_SomeStuff/issues/208), [#209](https://github.com/kuvbur/AddOn_SomeStuff/issues/209) закрыты после финального runner.
+
+### Scope и решение
+`SpecAll` при пустом выделении не обрывается, когда default-правило нашло элементы; JSON-команда принимает обязательный `placementPoint`, необязательный `ruleNames`, обходится без UI-пути и возвращает статус/код/счётчики. `ParamHelpers::GetAttributeValues` не пропускает `fromPropertyDefinition` при чтении строительного материала; `elementsToCreate` считает прирост созданных элементов, а не уже подготовленные изменения. Интерактивный menu-path сохранён.
+
+### Validation и ограничения
+AC25 Windows Debug: clangd по изменённым файлам — 0 диагностик; `restart_archicad_for_test.ps1` — `build=True`, запущен `test_25.pln`. JSON-вызов с `{x:0,y:0}` вернул `completed`, `resultCode=0`, `elementsToCreate=34`; объектов 548→582, последние 34/34 имеют непустое «Спецификации материалов/Наименование в объект». Фоновый вызов, начатый до исправления #209, завершился `failed` с нулевыми счётчиками — это не результат новой сборки. **Не проверено:** AC26–29/macOS, смешанное создание+изменение, визуальное отсутствие всех окон.
+
+---
+
 ## Справочная таблица кэша «Монитора» (2026-09-14, перенесено из IDEA.md)
 
 | Компонент | Файл | Назначение |
