@@ -51,7 +51,8 @@ D:/SomeStuff_addon/
 │   ├── REPOMAP.md              # This file
 │   ├── DISCREPANCIES.md        # Comment/code mismatches
 │   ├── SEQUENCES.md            # 10 sequence diagrams (Mermaid)
-│   ├── modules/                # Per-module documentation (24 модуля + json_commands)
+│   ├── modules/                # Per-module cards (25, включая json_commands;
+│   │                            #   dialogs/OtherDbDialog — описан в карточке Sync.md, #210)
 │   ├── tools/
 │   │   ├── generate_symbols.py  # symbols.json generator (callgraph: НЕ собирается, см. UPDATE_PROCEDURE.md)
 │   │   └── UPDATE_PROCEDURE.md  # Doc update procedure
