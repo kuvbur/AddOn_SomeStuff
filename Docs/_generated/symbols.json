@@ -18967,28 +18967,21 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9787
+    "line": 9788
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9791
+    "line": 9792
   },
   {
     "name": "DBprnt",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9793
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 9800
+    "line": 9794
   },
   {
     "name": "if",
@@ -19002,21 +18995,21 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9805
-  },
-  {
-    "name": "DBprnt",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 9806
+    "line": 9802
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9812
+    "line": 9806
+  },
+  {
+    "name": "DBprnt",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 9807
   },
   {
     "name": "if",
@@ -19033,60 +19026,60 @@
     "line": 9814
   },
   {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 9815
+  },
+  {
     "name": "DBprnt",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9816
+    "line": 9817
   },
   {
     "name": "getAttribute",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9823
+    "line": 9824
   },
   {
     "name": "ParamHelpers::ConvertStringToParamValue",
     "kind": "Method",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9827
+    "line": 9828
   },
   {
     "name": "DBprnt",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9833
+    "line": 9834
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9842
+    "line": 9843
   },
   {
     "name": "ParamHelpers::AddParamValue2ParamDict",
     "kind": "Method",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9843
+    "line": 9844
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9847
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 9849
+    "line": 9848
   },
   {
     "name": "if",
@@ -19096,39 +19089,39 @@
     "line": 9850
   },
   {
-    "name": "DBprnt",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 9852
-  },
-  {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9861
+    "line": 9851
   },
   {
-    "name": "msg_rep",
+    "name": "DBprnt",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 9853
+  },
+  {
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
     "line": 9862
   },
   {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 9863
+  },
+  {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9865
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 9868
+    "line": 9866
   },
   {
     "name": "if",
@@ -19138,11 +19131,18 @@
     "line": 9869
   },
   {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 9870
+  },
+  {
     "name": "return",
     "kind": "Constructor",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9875
+    "line": 9876
   },
   {
     "name": "if",
@@ -47226,91 +47226,105 @@
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/CommandBase.cpp",
     "module": "json_commands",
-    "line": 7
+    "line": 13
   },
   {
     "name": "CommandBase::GetExecutionPolicy",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/CommandBase.cpp",
     "module": "json_commands",
-    "line": 11
+    "line": 23
   },
   {
     "name": "CommandBase::OnResponseValidationFailed",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/CommandBase.cpp",
     "module": "json_commands",
-    "line": 15
+    "line": 30
   },
   {
     "name": "HealthCommand::HealthCommand",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
     "module": "json_commands",
-    "line": 11
+    "line": 14
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/json_commands/JsonCommandRegistrar.cpp",
     "module": "json_commands",
-    "line": 15
+    "line": 18
   },
   {
     "name": "DBprnt",
     "kind": "Constructor",
     "file": "Sources/AddOn/json_commands/JsonCommandRegistrar.cpp",
     "module": "json_commands",
-    "line": 16
+    "line": 19
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/json_commands/JsonCommandRegistrar.cpp",
     "module": "json_commands",
-    "line": 20
+    "line": 23
   },
   {
     "name": "DBprnt",
     "kind": "Constructor",
     "file": "Sources/AddOn/json_commands/JsonCommandRegistrar.cpp",
     "module": "json_commands",
-    "line": 21
+    "line": 24
   },
   {
     "name": "RoomBookCommand::RoomBookCommand",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 11
+    "line": 14
   },
   {
     "name": "Roombook::RoomBook",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 22
+    "line": 37
   },
   {
     "name": "SpecCommand::SpecCommand",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
     "module": "json_commands",
-    "line": 12
+    "line": 15
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+    "module": "json_commands",
+    "line": 60
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+    "module": "json_commands",
+    "line": 64
   },
   {
     "name": "LoadSyncSettingsFromPreferences",
     "kind": "Constructor",
     "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
     "module": "json_commands",
-    "line": 24
+    "line": 71
   },
   {
     "name": "Spec::SpecAll",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
     "module": "json_commands",
-    "line": 25
+    "line": 74
   },
   {
     "name": "for",
@@ -51153,105 +51167,98 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 49
+    "line": 52
   },
   {
     "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 50
-  },
-  {
-    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 53
   },
   {
-    "name": "if",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 55
+    "line": 56
   },
   {
-    "name": "AddRule",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 58
   },
   {
-    "name": "if",
+    "name": "AddRule",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 62
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 66
+    "line": 61
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 72
+    "line": 65
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 74
+    "line": 69
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 76
-  },
-  {
-    "name": "SpecFilter",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 78
+    "line": 75
   },
   {
     "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 77
+  },
+  {
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 79
   },
   {
+    "name": "SpecFilter",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 81
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 82
+  },
+  {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 83
+    "line": 86
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 84
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 88
+    "line": 87
   },
   {
     "name": "if",
@@ -51265,7 +51272,7 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 97
+    "line": 94
   },
   {
     "name": "if",
@@ -51279,49 +51286,63 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 108
+    "line": 103
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 112
+    "line": 111
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 119
+    "line": 115
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 122
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 120
+    "line": 123
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 123
+    "line": 126
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 124
+    "line": 127
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 137
   },
   {
     "name": "ACAPI_WriteReport",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 134
+    "line": 138
   },
   {
     "name": "if",
@@ -51331,42 +51352,14 @@
     "line": 148
   },
   {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 149
-  },
-  {
     "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 155
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 156
-  },
-  {
-    "name": "SpecFilter",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 157
-  },
-  {
-    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 158
   },
   {
-    "name": "if",
+    "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -51377,24 +51370,24 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 164
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 166
+    "line": 165
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
+    "line": 166
+  },
+  {
+    "name": "SpecFilter",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
     "line": 167
   },
   {
-    "name": "if",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -51405,17 +51398,17 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 173
+    "line": 169
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 175
+    "line": 174
   },
   {
-    "name": "SpecFilter",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -51433,6 +51426,13 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
+    "line": 178
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
     "line": 183
   },
   {
@@ -51440,196 +51440,210 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 206
+    "line": 185
+  },
+  {
+    "name": "SpecFilter",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 186
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 187
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 210
+    "line": 192
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 214
+    "line": 215
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 218
+    "line": 219
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 222
+    "line": 223
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 226
+    "line": 227
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 230
+    "line": 231
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 234
+    "line": 235
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 238
+    "line": 239
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 242
+    "line": 243
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 246
+    "line": 247
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 250
+    "line": 251
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 254
+    "line": 255
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 258
+    "line": 259
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 262
+    "line": 263
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 266
+    "line": 267
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 270
+    "line": 271
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 274
+    "line": 275
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 278
+    "line": 279
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 282
+    "line": 283
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 286
+    "line": 287
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 290
+    "line": 291
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 294
+    "line": 295
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 298
+    "line": 299
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 302
+    "line": 303
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 306
+    "line": 307
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 310
+    "line": 311
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 318
+    "line": 315
   },
   {
     "name": "if",
@@ -51639,14 +51653,7 @@
     "line": 319
   },
   {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 324
-  },
-  {
-    "name": "msg_rep",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -51657,38 +51664,31 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 349
+    "line": 328
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 333
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 336
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 358
   },
   {
     "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 354
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 357
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 359
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 361
-  },
-  {
-    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -51699,168 +51699,175 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 365
+    "line": 366
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 367
+    "line": 368
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 369
+    "line": 370
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 371
+    "line": 372
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 373
+    "line": 374
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 375
+    "line": 376
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 377
+    "line": 378
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 379
+    "line": 380
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 381
+    "line": 382
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 383
+    "line": 384
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 385
+    "line": 386
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 387
+    "line": 388
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 389
+    "line": 390
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 391
+    "line": 392
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 393
+    "line": 394
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 395
+    "line": 396
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 397
+    "line": 398
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 399
+    "line": 400
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 401
+    "line": 402
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 403
+    "line": 404
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 405
+    "line": 406
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 407
-  },
-  {
-    "name": "BNZeroMemory",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 409
+    "line": 408
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 415
+    "line": 410
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 412
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 414
   },
   {
     "name": "if",
@@ -51870,109 +51877,102 @@
     "line": 416
   },
   {
+    "name": "BNZeroMemory",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 418
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 424
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 425
+  },
+  {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 420
+    "line": 429
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 423
+    "line": 432
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 427
+    "line": 436
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 459
+    "line": 468
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 461
+    "line": 470
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 463
+    "line": 472
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 471
+    "line": 480
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 481
+    "line": 490
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 483
+    "line": 492
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 486
-  },
-  {
-    "name": "ACAPI_ProcessWindow_SetNextProcessPhase",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 550
-  },
-  {
-    "name": "ACAPI_Interface",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 553
+    "line": 495
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 557
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 559
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 561
+    "line": 533
   },
   {
     "name": "if",
@@ -51982,46 +51982,60 @@
     "line": 564
   },
   {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 565
-  },
-  {
-    "name": "RSGetIndString",
+    "name": "ACAPI_ProcessWindow_SetNextProcessPhase",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 567
   },
   {
-    "name": "ACAPI_WriteReport",
+    "name": "ACAPI_Interface",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 568
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 573
+    "line": 570
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 580
+    "line": 574
   },
   {
-    "name": "GetParamToReadFromRule",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 583
+    "line": 576
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 578
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 581
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 582
+  },
+  {
+    "name": "RSGetIndString",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 584
   },
   {
     "name": "if",
@@ -52031,63 +52045,35 @@
     "line": 585
   },
   {
-    "name": "msg_rep",
+    "name": "ACAPI_WriteReport",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 586
   },
   {
-    "name": "RSGetIndString",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 588
-  },
-  {
-    "name": "ACAPI_WriteReport",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 589
+    "line": 590
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 592
+    "line": 599
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 604
   },
   {
     "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 593
-  },
-  {
-    "name": "RSGetIndString",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 595
-  },
-  {
-    "name": "ACAPI_WriteReport",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 596
-  },
-  {
-    "name": "ACAPI_ProcessWindow_SetNextProcessPhase",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 602
-  },
-  {
-    "name": "ACAPI_Interface",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -52098,31 +52084,52 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 608
+    "line": 610
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 614
+    "line": 617
+  },
+  {
+    "name": "GetParamToReadFromRule",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 620
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 619
+    "line": 622
   },
   {
-    "name": "if",
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 623
+  },
+  {
+    "name": "RSGetIndString",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 625
   },
   {
-    "name": "for",
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 626
+  },
+  {
+    "name": "ACAPI_WriteReport",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -52133,24 +52140,31 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 628
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
     "line": 630
   },
   {
-    "name": "for",
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 631
+  },
+  {
+    "name": "RSGetIndString",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 633
+  },
+  {
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 634
   },
   {
-    "name": "if",
+    "name": "ACAPI_WriteReport",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -52161,28 +52175,28 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 637
+    "line": 639
   },
   {
-    "name": "if",
+    "name": "ACAPI_ProcessWindow_SetNextProcessPhase",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 641
+    "line": 642
   },
   {
-    "name": "for",
+    "name": "ACAPI_Interface",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 645
   },
   {
-    "name": "if",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 654
+    "line": 649
   },
   {
     "name": "if",
@@ -52196,17 +52210,17 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 657
-  },
-  {
-    "name": "DBprnt",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 659
+    "line": 660
   },
   {
     "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 666
+  },
+  {
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -52217,17 +52231,17 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 671
+    "line": 669
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 673
+    "line": 671
   },
   {
-    "name": "DBprnt",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -52238,28 +52252,35 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 685
+    "line": 676
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 689
+    "line": 678
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 691
+    "line": 682
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 686
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 693
+    "line": 695
   },
   {
     "name": "if",
@@ -52269,106 +52290,57 @@
     "line": 696
   },
   {
-    "name": "DBprnt",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 698
   },
   {
-    "name": "GetElementByPropertyDescription",
+    "name": "DBprnt",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 703
+    "line": 700
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 704
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 705
+    "line": 709
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 708
+    "line": 712
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 715
+    "line": 714
   },
   {
-    "name": "for",
+    "name": "DBprnt",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 719
+    "line": 716
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 720
-  },
-  {
-    "name": "ParamHelpers::AddValueToParamDictValue",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 721
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 723
+    "line": 726
   },
   {
     "name": "if",
     "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 724
-  },
-  {
-    "name": "ParamHelpers::AddValueToParamDictValue",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 725
-  },
-  {
-    "name": "ParamHelpers::AddValueToParamDictValue",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 727
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 729
-  },
-  {
-    "name": "ParamHelpers::AddParamDictValue2ParamDictElement",
-    "kind": "Method",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 730
@@ -52378,94 +52350,164 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
+    "line": 732
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
     "line": 734
   },
   {
-    "name": "for",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 736
+    "line": 737
   },
   {
-    "name": "msg_rep",
+    "name": "DBprnt",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 748
+    "line": 739
   },
   {
-    "name": "RSGetIndString",
+    "name": "GetElementByPropertyDescription",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 750
-  },
-  {
-    "name": "ACAPI_WriteReport",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 751
+    "line": 744
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 757
+    "line": 745
   },
   {
-    "name": "msg_rep",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 758
+    "line": 746
   },
   {
-    "name": "ParamHelpers::ElementsRead",
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 749
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 756
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 760
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 761
+  },
+  {
+    "name": "ParamHelpers::AddValueToParamDictValue",
     "kind": "Method",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 763
+    "line": 762
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 767
+    "line": 764
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 773
+    "line": 765
+  },
+  {
+    "name": "ParamHelpers::AddValueToParamDictValue",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 766
+  },
+  {
+    "name": "ParamHelpers::AddValueToParamDictValue",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 768
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 770
+  },
+  {
+    "name": "ParamHelpers::AddParamDictValue2ParamDictElement",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 771
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 785
+    "line": 775
   },
   {
-    "name": "if",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 787
+    "line": 777
   },
   {
-    "name": "if",
+    "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 789
   },
   {
+    "name": "RSGetIndString",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 791
+  },
+  {
     "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 792
+  },
+  {
+    "name": "ACAPI_WriteReport",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -52476,80 +52518,52 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 794
+    "line": 798
   },
   {
-    "name": "ACAPI_UserInput_ClearElementHighlight",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 796
+    "line": 800
   },
   {
-    "name": "ACAPI_Interface_ClearElementHighlight",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 799
-  },
-  {
-    "name": "ACAPI_Interface",
+    "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 801
   },
   {
-    "name": "for",
-    "kind": "Constructor",
+    "name": "ParamHelpers::ElementsRead",
+    "kind": "Method",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 807
   },
   {
-    "name": "ACAPI_UserInput_SetElementHighlight",
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 811
+  },
+  {
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 817
   },
   {
-    "name": "ACAPI_Interface_SetElementHighlight",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 820
-  },
-  {
-    "name": "ACAPI_Interface",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 822
-  },
-  {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 827
-  },
-  {
-    "name": "ACAPI_View_ZoomToSelected",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 828
+    "line": 830
   },
   {
     "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 831
-  },
-  {
-    "name": "ACAPI_Automate",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -52560,168 +52574,203 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 843
+    "line": 834
   },
   {
-    "name": "ACAPI_UserInput_ClearElementHighlight",
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 837
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 838
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 840
+  },
+  {
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 845
   },
   {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 846
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 847
+  },
+  {
+    "name": "ACAPI_UserInput_ClearElementHighlight",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 849
+  },
+  {
     "name": "ACAPI_Interface_ClearElementHighlight",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 848
+    "line": 852
   },
   {
     "name": "ACAPI_Interface",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 850
+    "line": 854
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 855
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 856
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 864
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 869
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 878
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 888
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 890
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 899
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 901
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 906
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 907
+    "line": 860
   },
   {
     "name": "ACAPI_UserInput_SetElementHighlight",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 918
+    "line": 870
   },
   {
     "name": "ACAPI_Interface_SetElementHighlight",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 921
+    "line": 873
   },
   {
     "name": "ACAPI_Interface",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 923
+    "line": 875
   },
   {
-    "name": "ACAPI_ProcessWindow_SetNextProcessPhase",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 930
+    "line": 880
+  },
+  {
+    "name": "ACAPI_View_ZoomToSelected",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 881
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 884
+  },
+  {
+    "name": "ACAPI_Automate",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 885
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 897
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 898
+  },
+  {
+    "name": "ACAPI_UserInput_ClearElementHighlight",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 900
+  },
+  {
+    "name": "ACAPI_Interface_ClearElementHighlight",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 903
   },
   {
     "name": "ACAPI_Interface",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 933
+    "line": 905
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 911
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 912
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 935
+    "line": 920
   },
   {
-    "name": "msg_rep",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 936
+    "line": 925
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 938
+    "line": 934
   },
   {
-    "name": "ACAPI_WriteReport",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 940
+    "line": 944
   },
   {
     "name": "if",
@@ -52731,39 +52780,25 @@
     "line": 946
   },
   {
-    "name": "if",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 947
-  },
-  {
-    "name": "PlaceElements",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 950
-  },
-  {
-    "name": "ACAPI_CallUndoableCommand",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 954
+    "line": 955
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 959
+    "line": 957
   },
   {
-    "name": "ACAPI_Grouping_Tool",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 960
+    "line": 962
   },
   {
     "name": "if",
@@ -52777,59 +52812,45 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 965
-  },
-  {
-    "name": "ParamHelpers::ElementsWrite",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
     "line": 973
   },
   {
-    "name": "if",
+    "name": "ACAPI_UserInput_SetElementHighlight",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 977
+    "line": 975
   },
   {
-    "name": "if",
+    "name": "ACAPI_Interface_SetElementHighlight",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 978
+  },
+  {
+    "name": "ACAPI_Interface",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 980
   },
   {
-    "name": "ACAPI_Grouping_Tool",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 981
-  },
-  {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 983
+    "line": 986
   },
   {
-    "name": "ACAPI_Element_Tool",
+    "name": "ACAPI_ProcessWindow_SetNextProcessPhase",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 984
+    "line": 989
   },
   {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 990
-  },
-  {
-    "name": "if",
+    "name": "ACAPI_Interface",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -52840,10 +52861,17 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
+    "line": 995
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
     "line": 996
   },
   {
-    "name": "for",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -52854,45 +52882,73 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1003
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1005
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1010
+    "line": 1000
   },
   {
     "name": "ACAPI_WriteReport",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1012
+    "line": 1001
   },
   {
-    "name": "for",
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1007
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1008
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1009
+  },
+  {
+    "name": "PlaceElements",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1015
   },
   {
-    "name": "SyncArray",
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1016
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1018
+  },
+  {
+    "name": "ACAPI_CallUndoableCommand",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1023
   },
   {
-    "name": "msg_rep",
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1028
+  },
+  {
+    "name": "ACAPI_Grouping_Tool",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -52903,28 +52959,56 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1051
+    "line": 1032
   },
   {
-    "name": "for",
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1034
+  },
+  {
+    "name": "ParamHelpers::ElementsWrite",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1042
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1046
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1049
+  },
+  {
+    "name": "ACAPI_Grouping_Tool",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1050
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1052
+  },
+  {
+    "name": "ACAPI_Element_Tool",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1053
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1055
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1057
   },
   {
     "name": "if",
@@ -52945,14 +53029,14 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1067
+    "line": 1065
   },
   {
-    "name": "if",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1069
+    "line": 1067
   },
   {
     "name": "if",
@@ -52962,11 +53046,18 @@
     "line": 1072
   },
   {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1074
+  },
+  {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1078
+    "line": 1079
   },
   {
     "name": "if",
@@ -52976,277 +53067,200 @@
     "line": 1081
   },
   {
+    "name": "ACAPI_WriteReport",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1082
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1085
+  },
+  {
+    "name": "SyncArray",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1093
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1099
+  },
+  {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1088
+    "line": 1121
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1123
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1125
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1127
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1129
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1131
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1137
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1139
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1142
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1148
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1151
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1158
   },
   {
     "name": "AddRule",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1089
+    "line": 1159
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1150
+    "line": 1220
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1154
+    "line": 1224
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1155
+    "line": 1225
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1160
+    "line": 1230
   },
   {
     "name": "GetPropertyFullName",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1162
+    "line": 1232
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1167
+    "line": 1237
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1171
+    "line": 1241
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1172
+    "line": 1242
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1174
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1203
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1205
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1209
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1211
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1214
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1215
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1218
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1219
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1222
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1223
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1228
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1234
-  },
-  {
-    "name": "ParamHelpers::AddValueToParamDictValue",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1235
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1240
-  },
-  {
-    "name": "ParamHelpers::ParseParamNameMaterial",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1243
-  },
-  {
-    "name": "ParamHelpers::AddValueToParamDictValue",
-    "kind": "Method",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1244
   },
   {
-    "name": "ParamHelpers::AddValueToParamDictValue",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1245
-  },
-  {
-    "name": "ParamHelpers::AddValueToParamDictValue",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1246
-  },
-  {
     "name": "for",
     "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1247
-  },
-  {
-    "name": "ParamHelpers::AddValueToParamDictValue",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1248
-  },
-  {
-    "name": "ParamHelpers::AddParamValue2ParamDict",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1257
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1259
-  },
-  {
-    "name": "ParamHelpers::ParseParamNameMaterial",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1261
-  },
-  {
-    "name": "ParamHelpers::AddParamValue2ParamDict",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1266
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1271
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1272
-  },
-  {
-    "name": "ParamHelpers::AddParamDictValue2ParamDictElement",
-    "kind": "Method",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1273
   },
   {
-    "name": "for",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1278
+    "line": 1275
   },
   {
     "name": "if",
@@ -53256,25 +53270,25 @@
     "line": 1279
   },
   {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1281
+  },
+  {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1282
+    "line": 1284
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1283
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1287
+    "line": 1285
   },
   {
     "name": "for",
@@ -53284,245 +53298,336 @@
     "line": 1288
   },
   {
-    "name": "ParamHelpers::AddValueToParamDictValue",
-    "kind": "Method",
+    "name": "if",
+    "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1294
+    "line": 1289
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1292
   },
   {
     "name": "if",
     "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1293
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1298
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1304
+  },
+  {
+    "name": "ParamHelpers::AddValueToParamDictValue",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1305
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1310
+  },
+  {
+    "name": "ParamHelpers::ParseParamNameMaterial",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1313
+  },
+  {
+    "name": "ParamHelpers::AddValueToParamDictValue",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1314
+  },
+  {
+    "name": "ParamHelpers::AddValueToParamDictValue",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1315
+  },
+  {
+    "name": "ParamHelpers::AddValueToParamDictValue",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1316
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1317
+  },
+  {
+    "name": "ParamHelpers::AddValueToParamDictValue",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1318
+  },
+  {
+    "name": "ParamHelpers::AddParamValue2ParamDict",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1327
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1329
+  },
+  {
+    "name": "ParamHelpers::ParseParamNameMaterial",
+    "kind": "Method",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1331
   },
   {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1332
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1335
-  },
-  {
-    "name": "ParamHelpers::ParseParamName",
+    "name": "ParamHelpers::AddParamValue2ParamDict",
     "kind": "Method",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1346
+    "line": 1336
   },
   {
     "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1341
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1342
+  },
+  {
+    "name": "ParamHelpers::AddParamDictValue2ParamDictElement",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1343
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1348
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1349
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1352
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1353
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1357
+  },
+  {
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1358
   },
   {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1371
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1373
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1375
-  },
-  {
-    "name": "DBprnt",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1377
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1382
-  },
-  {
-    "name": "DBprnt",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1384
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1390
-  },
-  {
-    "name": "DBprnt",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1392
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1396
-  },
-  {
-    "name": "DBprnt",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1398
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1403
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1412
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1426
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1477
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1480
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1485
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1488
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1492
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1505
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1510
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1522
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1524
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1525
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1527
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1536
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1539
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1541
-  },
-  {
-    "name": "ParamHelpers::ConvertIntToParamValue",
+    "name": "ParamHelpers::AddValueToParamDictValue",
     "kind": "Method",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1542
+    "line": 1364
   },
   {
     "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1401
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1402
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1405
+  },
+  {
+    "name": "ParamHelpers::ParseParamName",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1416
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1428
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1441
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1443
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1445
+  },
+  {
+    "name": "DBprnt",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1447
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1452
+  },
+  {
+    "name": "DBprnt",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1454
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1460
+  },
+  {
+    "name": "DBprnt",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1462
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1466
+  },
+  {
+    "name": "DBprnt",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1468
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1473
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1482
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1496
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1548
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1551
+  },
+  {
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -53533,49 +53638,21 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1558
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
     "line": 1559
   },
   {
-    "name": "msg_rep",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1561
+    "line": 1563
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1567
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1571
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1574
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1575
+    "line": 1576
   },
   {
     "name": "for",
@@ -53589,6 +53666,13 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
+    "line": 1593
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
     "line": 1595
   },
   {
@@ -53596,10 +53680,10 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1597
+    "line": 1596
   },
   {
-    "name": "if",
+    "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -53610,28 +53694,42 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1604
+    "line": 1607
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1610
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1619
+    "line": 1612
+  },
+  {
+    "name": "ParamHelpers::ConvertIntToParamValue",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1613
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1620
+    "line": 1627
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1628
+    "line": 1629
   },
   {
     "name": "if",
@@ -53641,119 +53739,91 @@
     "line": 1630
   },
   {
-    "name": "RSGetIndString",
+    "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1632
   },
   {
-    "name": "ACAPI_WriteReport",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1633
+    "line": 1638
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1642
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1635
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1649
+    "line": 1645
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1651
-  },
-  {
-    "name": "RSGetIndString",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1653
-  },
-  {
-    "name": "ACAPI_WriteReport",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1654
+    "line": 1646
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1656
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1670
+    "line": 1652
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1672
+    "line": 1666
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1678
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1681
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1685
+    "line": 1668
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1692
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1693
+    "line": 1669
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1698
+    "line": 1675
   },
   {
-    "name": "msg_rep",
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1690
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1691
+  },
+  {
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -53764,81 +53834,109 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1705
+    "line": 1701
   },
   {
-    "name": "msg_rep",
+    "name": "RSGetIndString",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1706
+    "line": 1703
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1714
+    "line": 1704
   },
   {
-    "name": "msg_rep",
+    "name": "ACAPI_WriteReport",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1715
+    "line": 1705
   },
   {
     "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1707
+  },
+  {
+    "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1721
   },
   {
-    "name": "msg_rep",
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1723
+  },
+  {
+    "name": "RSGetIndString",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1725
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1726
+  },
+  {
+    "name": "ACAPI_WriteReport",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1727
   },
   {
-    "name": "ParamHelpers::ConvertByFormatString",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1731
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1732
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1735
-  },
-  {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1748
+    "line": 1729
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
+    "line": 1743
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1745
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1751
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
     "line": 1754
   },
   {
-    "name": "ParamHelpers::ConvertByFormatString",
-    "kind": "Method",
+    "name": "for",
+    "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1758
@@ -53848,196 +53946,210 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1759
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1762
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1776
+    "line": 1765
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1780
+    "line": 1766
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1771
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1772
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1778
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1779
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1787
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1788
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1784
+    "line": 1794
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1800
+  },
+  {
+    "name": "ParamHelpers::ConvertByFormatString",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1804
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1789
+    "line": 1805
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1808
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1798
+    "line": 1821
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1827
+  },
+  {
+    "name": "ParamHelpers::ConvertByFormatString",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1831
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1799
+    "line": 1832
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1839
+    "line": 1835
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1842
+    "line": 1849
   },
   {
-    "name": "if",
+    "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1847
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1850
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1856
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1861
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1866
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1874
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1881
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1889
+    "line": 1853
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1897
+    "line": 1857
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1900
+    "line": 1862
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1901
+    "line": 1871
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1909
+    "line": 1872
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1910
+    "line": 1912
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1916
+    "line": 1915
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1918
+    "line": 1920
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1927
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1932
+    "line": 1923
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1936
+    "line": 1929
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1934
   },
   {
     "name": "if",
@@ -54051,38 +54163,24 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1941
+    "line": 1947
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1946
+    "line": 1954
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1952
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1956
+    "line": 1962
   },
   {
     "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1967
-  },
-  {
-    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -54093,21 +54191,14 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1972
+    "line": 1973
   },
   {
-    "name": "if",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 1974
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1978
   },
   {
     "name": "if",
@@ -54121,49 +54212,56 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1986
+    "line": 1983
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1990
+    "line": 1989
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1991
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2000
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1995
+    "line": 2005
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1997
+    "line": 2009
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2002
+    "line": 2012
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2006
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2008
+    "line": 2014
   },
   {
     "name": "if",
@@ -54177,13 +54275,6 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2024
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
     "line": 2025
   },
   {
@@ -54191,35 +54282,77 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2034
+    "line": 2029
   },
   {
-    "name": "ParamHelpers::ReplaceProcToBrace",
-    "kind": "Method",
+    "name": "for",
+    "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2036
+    "line": 2040
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2037
-  },
-  {
-    "name": "switch",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2053
+    "line": 2043
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2071
+    "line": 2045
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2047
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2051
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2055
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2059
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2063
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2068
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2070
   },
   {
     "name": "if",
@@ -54229,18 +54362,11 @@
     "line": 2075
   },
   {
-    "name": "for",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2076
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2078
+    "line": 2079
   },
   {
     "name": "if",
@@ -54250,91 +54376,56 @@
     "line": 2081
   },
   {
-    "name": "for",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2083
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2085
+    "line": 2092
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2086
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2095
+    "line": 2097
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2096
+    "line": 2098
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2106
+    "line": 2107
   },
   {
-    "name": "for",
-    "kind": "Constructor",
+    "name": "ParamHelpers::ReplaceProcToBrace",
+    "kind": "Method",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2114
+    "line": 2109
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2115
+    "line": 2110
   },
   {
-    "name": "if",
+    "name": "switch",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2127
+    "line": 2126
   },
   {
     "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2134
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2141
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2142
-  },
-  {
-    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -54345,10 +54436,17 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2149
+    "line": 2148
   },
   {
     "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2149
+  },
+  {
+    "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -54359,42 +54457,63 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2162
+    "line": 2154
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2156
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2158
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2164
+    "line": 2159
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2168
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2166
+    "line": 2169
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2193
+    "line": 2179
   },
   {
-    "name": "BNZeroMemory",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2197
+    "line": 2187
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2199
+    "line": 2188
   },
   {
     "name": "if",
@@ -54402,20 +54521,6 @@
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 2200
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2201
-  },
-  {
-    "name": "GetPropertyFullName",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2204
   },
   {
     "name": "if",
@@ -54429,196 +54534,238 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2211
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2212
-  },
-  {
-    "name": "BMGetHandleSize",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
     "line": 2214
   },
   {
-    "name": "for",
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 2215
   },
   {
-    "name": "if",
+    "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2221
-  },
-  {
-    "name": "ACAPI_DisposeElemMemoHdls",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2226
-  },
-  {
-    "name": "SetElemTypeID",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2236
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2240
+    "line": 2217
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2242
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2243
-  },
-  {
-    "name": "ACAPI_DisposeElemMemoHdls",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2244
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2247
+    "line": 2222
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2249
+    "line": 2224
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2255
-  },
-  {
-    "name": "ACAPI_DisposeElemMemoHdls",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2259
+    "line": 2235
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2268
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2269
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2272
-  },
-  {
-    "name": "GetPropertyFullName",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2275
+    "line": 2237
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2278
+    "line": 2239
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2300
+    "line": 2266
   },
   {
     "name": "BNZeroMemory",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2303
+    "line": 2270
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2305
+    "line": 2272
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2273
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2274
+  },
+  {
+    "name": "GetPropertyFullName",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2277
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2280
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2284
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2285
+  },
+  {
+    "name": "BMGetHandleSize",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2287
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2288
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2294
   },
   {
     "name": "ACAPI_DisposeElemMemoHdls",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2310
+    "line": 2299
   },
   {
     "name": "SetElemTypeID",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2314
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2319
-  },
-  {
-    "name": "ACAPI_DisposeElemMemoHdls",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2320
+    "line": 2309
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2321
+    "line": 2313
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2315
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2316
+  },
+  {
+    "name": "ACAPI_DisposeElemMemoHdls",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2317
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2320
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2322
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2328
+  },
+  {
+    "name": "ACAPI_DisposeElemMemoHdls",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2332
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2341
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2342
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2345
+  },
+  {
+    "name": "GetPropertyFullName",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2348
   },
   {
     "name": "if",
@@ -54628,53 +54775,18 @@
     "line": 2351
   },
   {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2354
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2357
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2361
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2365
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2369
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2372
-  },
-  {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 2373
+  },
+  {
+    "name": "BNZeroMemory",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2376
   },
   {
     "name": "if",
@@ -54684,18 +54796,18 @@
     "line": 2378
   },
   {
-    "name": "if",
+    "name": "ACAPI_DisposeElemMemoHdls",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2384
+    "line": 2383
   },
   {
-    "name": "for",
+    "name": "SetElemTypeID",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2389
+    "line": 2387
   },
   {
     "name": "if",
@@ -54705,84 +54817,112 @@
     "line": 2392
   },
   {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2396
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2400
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2444
-  },
-  {
-    "name": "BMKillHandle",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2447
-  },
-  {
-    "name": "ACAPI_CallUndoableCommand",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2449
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2451
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2453
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2462
-  },
-  {
     "name": "ACAPI_DisposeElemMemoHdls",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2463
+    "line": 2393
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2464
+    "line": 2394
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2467
+    "line": 2424
   },
   {
-    "name": "UnhideUnlockElementLayer",
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2427
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2430
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2434
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2438
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2442
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2445
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2446
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2451
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2457
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2462
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2465
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2469
+  },
+  {
+    "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
@@ -54793,112 +54933,112 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2477
+    "line": 2517
   },
   {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2482
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2491
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2502
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2504
-  },
-  {
-    "name": "for",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2513
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2515
-  },
-  {
-    "name": "if",
+    "name": "BMKillHandle",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 2520
   },
   {
-    "name": "if",
+    "name": "ACAPI_CallUndoableCommand",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2521
+    "line": 2522
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2534
+    "line": 2524
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2526
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2539
+    "line": 2535
+  },
+  {
+    "name": "ACAPI_DisposeElemMemoHdls",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2536
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2537
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2543
+    "line": 2540
   },
   {
-    "name": "switch",
+    "name": "UnhideUnlockElementLayer",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2545
-  },
-  {
-    "name": "GS::ucscpy",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2567
-  },
-  {
-    "name": "GS::Min",
-    "kind": "Method",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2570
+    "line": 2546
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2585
+    "line": 2550
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2555
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2564
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2575
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2577
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2586
   },
   {
     "name": "if",
@@ -54912,77 +55052,147 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2591
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2601
-  },
-  {
-    "name": "ACAPI_DisposeElemMemoHdls",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2603
+    "line": 2593
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2606
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2610
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2615
-  },
-  {
-    "name": "if",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2618
-  },
-  {
-    "name": "msg_rep",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2619
+    "line": 2594
   },
   {
     "name": "for",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2624
+    "line": 2607
   },
   {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2630
+    "line": 2612
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2616
+  },
+  {
+    "name": "switch",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2618
+  },
+  {
+    "name": "GS::ucscpy",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2640
+  },
+  {
+    "name": "GS::Min",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2643
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2658
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2661
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2664
   },
   {
     "name": "msg_rep",
     "kind": "Constructor",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2631
+    "line": 2674
+  },
+  {
+    "name": "ACAPI_DisposeElemMemoHdls",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2676
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2679
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2683
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2688
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2691
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2692
+  },
+  {
+    "name": "for",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2697
+  },
+  {
+    "name": "if",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2703
+  },
+  {
+    "name": "msg_rep",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2704
   },
   {
     "name": "if",

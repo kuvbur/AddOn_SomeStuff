@@ -33,7 +33,10 @@ namespace Spec {
     // Ищет правила спецификации в свойствах элемента по умолчанию.
     // Это нужно, когда пользователь не выделил конкретные элементы и правила берутся из шаблона.
     // -----------------------------------------------------------------------------
-    bool GetRuleFromDefaultElem (SpecRuleDict &rules, API_DatabaseInfo &homedatabaseInfo, bool &has_elementspec) {
+    bool GetRuleFromDefaultElem (SpecRuleDict &rules,
+                                 API_DatabaseInfo &homedatabaseInfo,
+                                 bool &has_elementspec,
+                                 bool showUserInterface) {
 #ifndef ServerMainVers_2300
         return false;
 #else
@@ -131,13 +134,20 @@ namespace Spec {
                     SpecRuleNotFoundString.Append (s);
                 }
             }
-            ACAPI_WriteReport (SpecRuleNotFoundString, true);
+            if (showUserInterface)
+                ACAPI_WriteReport (SpecRuleNotFoundString, true);
         }
         return has_element;
 #endif
     }
 
-    GSErrCode SpecAll (const SyncSettings &syncSettings) {
+    GSErrCode SpecAll (const SyncSettings &syncSettings,
+                       const GS::Array<GS::UniString> *ruleNames,
+                       const Point2D *placementPoint,
+                       SpecRunResult *runResult) {
+        if (runResult != nullptr)
+            *runResult = {};
+        const bool showUserInterface = placementPoint == nullptr;
         GSErrCode err = NoError;
         API_DatabaseInfo homedatabaseInfo = {};
 #ifdef ServerMainVers_2700
@@ -162,7 +172,7 @@ namespace Spec {
         }
         bool has_elementspec = false;
         if (guidArray.IsEmpty ())
-            hasrule = GetRuleFromDefaultElem (rules, homedatabaseInfo, has_elementspec);
+            hasrule = GetRuleFromDefaultElem (rules, homedatabaseInfo, has_elementspec, showUserInterface);
         if (hasrule)
             msg_rep ("Spec", "Create spec from default element", NoError, APINULLGuid);
         if (guidArray.IsEmpty () && !hasrule) {
@@ -177,12 +187,11 @@ namespace Spec {
                 msg_rep ("Spec", "Create spec from all visible element", NoError, APINULLGuid);
             }
         }
-        // Ранний выход допустим только если нет элементов для обработки.
-        // Даже если правила получены из элемента по умолчанию, это не означает, что нужно завершаться,
-        // потому что часть логики может быть взята из самих выбранных элементов.
-        if (guidArray.IsEmpty ())
+        // Если default element уже нашёл включённые элементы, они сохранены в rule.elements
+        // и должны быть обработаны SpecArray даже при пустом guidArray.
+        if (guidArray.IsEmpty () && !has_elementspec)
             return NoError;
-        err = SpecArray (syncSettings, guidArray, rules, selected_elements);
+        err = SpecArray (syncSettings, guidArray, rules, selected_elements, ruleNames, placementPoint, runResult);
         return err;
     }
 
@@ -516,15 +525,25 @@ namespace Spec {
     GSErrCode SpecArray (const SyncSettings &syncSettings,
                          GS::Array<API_Guid> &guidArray,
                          SpecRuleDict &rules,
-                         const UnicGuid &selected_elements) {
+                         const UnicGuid &selected_elements,
+                         const GS::Array<GS::UniString> *ruleNames,
+                         const Point2D *placementPoint,
+                         SpecRunResult *runResult) {
+        const bool showUserInterface = placementPoint == nullptr;
+        if (runResult != nullptr)
+            *runResult = {};
         clock_t start, finish;
         double duration;
         start = clock ();
         GS::UniString funcname = "SpecAll";
         GS::Int32 nPhase = 4;
         GS::UniString subtitle = "";
+#ifdef ServerMainVers_2700
         Int32 maxval = 1;
+        bool showPercent = true;
+#else
         short i = 1;
+#endif
         ParamDictElement paramToRead = {};                   // Словарь с параметрами для чтения
         ParamDictCompositeElement paramCompositeToRead = {}; // Прочитанные составы конструкции
         ListData::LibElements paramListDataToRead = {};      // Прочитанные данные объектов
@@ -539,20 +558,18 @@ namespace Spec {
         ParamDict error_name = {};              // Список имён, не найденных у избранного
         GS::HashTable<GS::UniString, GS::HashTable<GS::UniString, GS::UniString>> paramdict_favorite =
             {}; // Словарь с именами параметров и описаниями свойств избранных элементов
-#ifdef ServerMainVers_2700
-        bool showPercent = true;
-#endif
-        ProcessWindowGuard pwGuard (funcname, nPhase);
+        ProcessWindowGuard pwGuard (funcname, nPhase, showUserInterface);
         GSErrCode err = NoError;
         subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ());
+        if (showUserInterface) {
 #ifdef ServerMainVers_2700
-        maxval = 2;
-        ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
+            maxval = 2;
+            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
-        i = 2;
-        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+            i = 2;
+            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
-        int dummymode = IsDummyModeOn ();
+        }
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         if (!guidArray.IsEmpty ()) {
             bool flagfindspec = false;
@@ -565,8 +582,28 @@ namespace Spec {
                 msg_rep ("Spec", "Rules not found", APIERR_GENERAL, APINULLGuid);
                 GS::UniString SpecRuleNotFoundString =
                     RSGetIndString (iseng, SpecRuleNotFoundId, ACAPI_GetOwnResModule ());
-                ACAPI_WriteReport (SpecRuleNotFoundString, true);
+                if (showUserInterface)
+                    ACAPI_WriteReport (SpecRuleNotFoundString, true);
                 return APIERR_GENERAL;
+            }
+        }
+        if (ruleNames != nullptr) {
+            bool hasSelectedRule = false;
+            for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL;
+                 ++cIt) {
+#ifdef ServerMainVers_2800
+                SpecRule &rule = cIt->value;
+#else
+                SpecRule &rule = *cIt->value;
+#endif
+                if (!rule.is_Valid)
+                    continue;
+                rule.is_Valid = ruleNames->Contains (rule.rule_name);
+                hasSelectedRule = hasSelectedRule || rule.is_Valid;
+            }
+            if (!hasSelectedRule) {
+                msg_rep ("Spec", "Requested rules not found", APIERR_BADPARS, APINULLGuid);
+                return APIERR_BADPARS;
             }
         }
         // Теперь пройдём по правилам и соберём все нужные параметры для чтения из исходных элементов.
@@ -586,24 +623,28 @@ namespace Spec {
             msg_rep ("Spec", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
             GS::UniString SpecRuleReadFoundString =
                 RSGetIndString (iseng, SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
-            ACAPI_WriteReport (SpecRuleReadFoundString, true);
+            if (showUserInterface)
+                ACAPI_WriteReport (SpecRuleReadFoundString, true);
             return APIERR_GENERAL;
         }
         if (paramToWrite.IsEmpty ()) {
             msg_rep ("Spec", "Parameters for write not found", APIERR_GENERAL, APINULLGuid);
             GS::UniString SpecWriteNotFoundString =
                 RSGetIndString (iseng, SpecWriteNotFoundId, ACAPI_GetOwnResModule ());
-            ACAPI_WriteReport (SpecWriteNotFoundString, true);
+            if (showUserInterface)
+                ACAPI_WriteReport (SpecWriteNotFoundString, true);
             return APIERR_GENERAL;
         }
         subtitle = GS::UniString::Printf ("Reading parameters from %d elements", paramToRead.GetSize ());
+        if (showUserInterface) {
 #ifdef ServerMainVers_2700
-        maxval = 2;
-        ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
+            maxval = 2;
+            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
-        i = 2;
-        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+            i = 2;
+            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
+        }
         // Читаем свойства избранного
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
 #ifdef ServerMainVers_2800
@@ -748,17 +789,20 @@ namespace Spec {
             msg_rep ("Spec", "Can't find parameters in place element: " + out, err, APINULLGuid);
             GS::UniString SpecEmptyListdString =
                 RSGetIndString (iseng, SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ());
-            ACAPI_WriteReport (SpecEmptyListdString + out, true);
+            if (showUserInterface)
+                ACAPI_WriteReport (SpecEmptyListdString + out, true);
             return APIERR_GENERAL;
         }
         // Перед формированием итоговых элементов читаются данные уже размещённых объектов, чтобы их можно было сравнить
         // с правилами.
-        bool rule_from_one = false;
-        if (!SpecDG (rules, rule_from_one)) {
-            msg_rep ("ReNumSelected", "Execution interrupted by user", NoError, APINULLGuid);
-            // FIX (ревью 2026-09-12): return false в GSErrCode означал NoError —
-            // отмена пользователя сообщалась вызывающему как успех.
-            return APIERR_CANCEL;
+        if (placementPoint == nullptr) {
+            bool rule_from_one = false;
+            if (!SpecDG (rules, rule_from_one)) {
+                msg_rep ("ReNumSelected", "Execution interrupted by user", NoError, APINULLGuid);
+                // FIX (ревью 2026-09-12): return false в GSErrCode означал NoError —
+                // отмена пользователя сообщалась вызывающему как успех.
+                return APIERR_CANCEL;
+            }
         }
         ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, true);
         // Массив со словарями элементов для создания по правилам
@@ -781,7 +825,8 @@ namespace Spec {
                                               elements_n,
                                               elements_m,
                                               elements_delete,
-                                              error_element);
+                                              error_element,
+                                              showUserInterface);
             if (!elements_n.IsEmpty ())
                 elements_new.Push (elements_n);
             if (!elements_m.IsEmpty ())
@@ -789,67 +834,78 @@ namespace Spec {
             if (rule.delete_old)
                 has_v2 = true;
         }
+        if (runResult != nullptr) {
+            for (const ElementDict &elements : elements_new)
+                runResult->elementsToCreate += elements.GetSize ();
+            for (const ElementDict &elements : elements_mod)
+                runResult->elementsToModify += elements.GetSize ();
+            runResult->elementsToDelete = elements_delete.GetSize ();
+        }
 #ifdef ServerMainVers_2300
         if (!error_element.IsEmpty ()) {
-            if (error_element.GetSize () < 20) {
+            if (showUserInterface) {
+                if (error_element.GetSize () < 20) {
     #ifdef ServerMainVers_2700
-                ACAPI_UserInput_ClearElementHighlight ();
+                    ACAPI_UserInput_ClearElementHighlight ();
     #else
         #ifdef ServerMainVers_2600
-                ACAPI_Interface_ClearElementHighlight ();
+                    ACAPI_Interface_ClearElementHighlight ();
         #else
-                ACAPI_Interface (APIIo_HighlightElementsID);
+                    ACAPI_Interface (APIIo_HighlightElementsID);
         #endif
     #endif
-                GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
-                API_RGBAColor hlColor = {1, 0.0, 0.0, 1};
-                GS::Array<API_Neig> error_elements = {};
-                for (const auto &cIt : error_element) {
+                    GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
+                    API_RGBAColor hlColor = {1, 0.0, 0.0, 1};
+                    GS::Array<API_Neig> error_elements = {};
+                    for (const auto &cIt : error_element) {
     #ifdef ServerMainVers_2800
-                    API_Guid el = cIt.key;
+                        API_Guid el = cIt.key;
     #else
-                    API_Guid el = *cIt.key;
+                        API_Guid el = *cIt.key;
     #endif
-                    hlElems.Add (el, hlColor);
-                    error_elements.PushNew (el);
-                }
+                        hlElems.Add (el, hlColor);
+                        error_elements.PushNew (el);
+                    }
     #ifdef ServerMainVers_2700
-                ACAPI_UserInput_SetElementHighlight (hlElems);
+                    ACAPI_UserInput_SetElementHighlight (hlElems);
     #else
         #ifdef ServerMainVers_2600
-                ACAPI_Interface_SetElementHighlight (hlElems);
+                    ACAPI_Interface_SetElementHighlight (hlElems);
         #else
-                ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+                    ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
         #endif
     #endif
     #ifdef ServerMainVers_2700
-                err = ACAPI_Selection_Select (error_elements, true);
-                if (err == NoError)
-                    ACAPI_View_ZoomToSelected ();
+                    err = ACAPI_Selection_Select (error_elements, true);
+                    if (err == NoError)
+                        ACAPI_View_ZoomToSelected ();
     #else
-                err = ACAPI_Element_Select (error_elements, true);
-                if (err == NoError)
-                    ACAPI_Automate (APIDo_ZoomToSelectedID);
+                    err = ACAPI_Element_Select (error_elements, true);
+                    if (err == NoError)
+                        ACAPI_Automate (APIDo_ZoomToSelectedID);
     #endif
-            } else {
-                msg_rep ("Spec",
-                         GS::UniString::Printf ("Too many element for highlight - %d", error_element.GetSize ()),
-                         err,
-                         APINULLGuid);
+                } else {
+                    msg_rep ("Spec",
+                             GS::UniString::Printf ("Too many element for highlight - %d", error_element.GetSize ()),
+                             err,
+                             APINULLGuid);
+                }
             }
             return APIERR_GENERAL;
         }
 #endif
         if (!elements_mod.IsEmpty ()) {
+            if (showUserInterface) {
 #ifdef ServerMainVers_2700
-            ACAPI_UserInput_ClearElementHighlight ();
+                ACAPI_UserInput_ClearElementHighlight ();
 #else
     #ifdef ServerMainVers_2600
-            ACAPI_Interface_ClearElementHighlight ();
+                ACAPI_Interface_ClearElementHighlight ();
     #else
-            ACAPI_Interface (APIIo_HighlightElementsID);
+                ACAPI_Interface (APIIo_HighlightElementsID);
     #endif
 #endif
+            }
             GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
             API_RGBAColor hlColor = {0.8, 0.0, 0.0, 0.5};
             for (const auto &eldict : elements_mod) {
@@ -914,40 +970,55 @@ namespace Spec {
                     paramOut.Add (el.exs_guid, param);
                 }
             }
+            if (showUserInterface) {
 #ifdef ServerMainVers_2700
-            ACAPI_UserInput_SetElementHighlight (hlElems);
+                ACAPI_UserInput_SetElementHighlight (hlElems);
 #else
     #ifdef ServerMainVers_2600
-            ACAPI_Interface_SetElementHighlight (hlElems);
+                ACAPI_Interface_SetElementHighlight (hlElems);
     #else
-            ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+                ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
     #endif
 #endif
+            }
         }
         subtitle = GS::UniString::Printf ("Create %d elements", n_elements);
+        if (showUserInterface) {
 #ifdef ServerMainVers_2700
-        maxval = 3;
-        ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
+            maxval = 3;
+            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
-        i = 3;
-        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+            i = 3;
+            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
+        }
         if (elements_new.IsEmpty () && elements_mod.IsEmpty () && elements_delete.IsEmpty ()) {
             msg_rep ("Spec", "Elements list empty", NoError, APINULLGuid);
             GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecEmptyListdId, ACAPI_GetOwnResModule ());
             if (has_v2)
                 SpecEmptyListdString += LINEBRAKE + RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
-            ACAPI_WriteReport (SpecEmptyListdString, true);
+            if (showUserInterface)
+                ACAPI_WriteReport (SpecEmptyListdString, true);
             return APIERR_GENERAL;
         }
         Point2D startpos = {0, 0};
         finish = clock ();
         duration = (double)(finish - start) / CLOCKS_PER_SEC;
         if (!elements_new.IsEmpty ()) {
-            if (!ClickAPoint ("Click the lower corner of the spec elements creation", &startpos))
-                return APIERR_CANCEL;
+            if (placementPoint == nullptr) {
+                if (!ClickAPoint ("Click the lower corner of the spec elements creation", &startpos))
+                    return APIERR_CANCEL;
+            } else {
+                startpos = *placementPoint;
+            }
             start = clock ();
+            const UInt32 previousCount = paramOut.GetSize ();
             PlaceElements (elements_new, paramToWrite, paramOut, startpos);
+            const UInt32 createdCount = paramOut.GetSize () - previousCount;
+            if (runResult != nullptr)
+                runResult->elementsToCreate = createdCount;
+            if (createdCount == 0 && elements_mod.IsEmpty () && elements_delete.IsEmpty ())
+                return APIERR_GENERAL;
         } else {
             start = clock ();
         }
@@ -1009,7 +1080,8 @@ namespace Spec {
             }
             if (msg.IsEmpty ())
                 msg = RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
-            ACAPI_WriteReport (msg, true);
+            if (showUserInterface)
+                ACAPI_WriteReport (msg, true);
         }
 
         for (ParamDictElement::PairIterator cIt = paramOut.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -1467,7 +1539,8 @@ namespace Spec {
                               ElementDict &elements,
                               ElementDict &elements_mod,
                               GS::Array<API_Guid> &elements_delete,
-                              UnicGuid &error_element) {
+                              UnicGuid &error_element,
+                              bool showUserInterface) {
         ParamDict not_found_paramname = {};
         ParamDict not_found_unic = {};
         Int32 n_elements = 0;
@@ -1630,7 +1703,8 @@ namespace Spec {
             if (!not_found_paramname.IsEmpty ()) {
                 GS::UniString SpecNotFoundParametersString =
                     RSGetIndString (iseng, SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
-                ACAPI_WriteReport (SpecNotFoundParametersString, true);
+                if (showUserInterface)
+                    ACAPI_WriteReport (SpecNotFoundParametersString, true);
                 GS::UniString out = "Not found param:";
                 for (auto &cIt : not_found_paramname) {
 #ifdef ServerMainVers_2800
@@ -1651,7 +1725,8 @@ namespace Spec {
             if (!not_found_unic.IsEmpty ()) {
                 GS::UniString SpecNotFoundParametersString =
                     RSGetIndString (iseng, SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
-                ACAPI_WriteReport (SpecNotFoundParametersString, true);
+                if (showUserInterface)
+                    ACAPI_WriteReport (SpecNotFoundParametersString, true);
                 GS::UniString out = "Not found unic:";
                 for (auto &cIt : not_found_unic) {
 #ifdef ServerMainVers_2800

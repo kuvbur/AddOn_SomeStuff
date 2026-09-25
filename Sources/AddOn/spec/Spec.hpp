@@ -65,11 +65,24 @@ namespace Spec {
 
     typedef GS::HashTable<GS::UniString, SpecRule> SpecRuleDict; // Словарь правил, ключ - имя правила
 
+    struct SpecRunResult {
+        UInt32 elementsToCreate = 0;
+        UInt32 elementsToModify = 0;
+        UInt32 elementsToDelete = 0;
+    };
+
     // Ищет правила спецификации в свойствах элемента по умолчанию и собирает связанные с ними элементы.
-    bool GetRuleFromDefaultElem (SpecRuleDict &rules, API_DatabaseInfo &homedatabaseInfo, bool &has_elementspec);
+    bool GetRuleFromDefaultElem (SpecRuleDict &rules,
+                                 API_DatabaseInfo &homedatabaseInfo,
+                                 bool &has_elementspec,
+                                 bool showUserInterface = true);
 
     // Создаёт спецификацию из текущего выбора, всех видимых элементов или правил по умолчанию.
-    GSErrCode SpecAll (const SyncSettings &syncSettings);
+    // При переданной точке выполняет non-interactive запуск: `ruleNames == nullptr` означает все валидные правила.
+    GSErrCode SpecAll (const SyncSettings &syncSettings,
+                       const GS::Array<GS::UniString> *ruleNames = nullptr,
+                       const Point2D *placementPoint = nullptr,
+                       SpecRunResult *runResult = nullptr);
 
     // Исключает из обработки элементы неподходящих типов и элементы из других баз данных.
     void SpecFilter (API_Guid &elemguid, API_DatabaseInfo &homedatabaseInfo);
@@ -81,7 +94,10 @@ namespace Spec {
     GSErrCode SpecArray (const SyncSettings &syncSettings,
                          GS::Array<API_Guid> &guidArray,
                          SpecRuleDict &rules,
-                         const UnicGuid &selected_elements);
+                         const UnicGuid &selected_elements,
+                         const GS::Array<GS::UniString> *ruleNames,
+                         const Point2D *placementPoint,
+                         SpecRunResult *runResult);
 
     // Получает правила из свойства выбранного элемента и добавляет их в словарь.
     GSErrCode GetRuleFromElement (const API_Guid &elemguid, SpecRuleDict &rules);
@@ -114,7 +130,8 @@ namespace Spec {
                               ElementDict &elements,
                               ElementDict &elements_mod,
                               GS::Array<API_Guid> &elements_delete,
-                              UnicGuid &error_element);
+                              UnicGuid &error_element,
+                              bool showUserInterface);
 
     // Выбирает из параметров групп имена свойств, которые нужно прочитать в начале обработки.
     void GetParamToReadFromRule (SpecRule &rules, ParamDictElement &paramToRead, ParamDictValue &paramToWrite);

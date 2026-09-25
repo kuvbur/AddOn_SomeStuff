@@ -9784,7 +9784,8 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex &constrinx,
             }
         }
 
-        if (!param.fromAttribDefinition)
+        // Свойство может быть недоступно на элементе, но задано у строительного материала.
+        if (!param.fromAttribDefinition && !param.fromPropertyDefinition)
             continue;
 
         // пропуск пустых ствойств

@@ -214,7 +214,9 @@ typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 // RAII-обёртка для окна прогресса ArchiCAD.
 // Автоматически открывает и закрывает процесс-окно, чтобы не оставлять его в случае исключения.
 struct ProcessWindowGuard {
-    ProcessWindowGuard (GS::UniString &name, GS::Int32 &phase) {
+    ProcessWindowGuard (GS::UniString &name, GS::Int32 &phase, bool enabled = true) : enabled (enabled) {
+        if (!enabled)
+            return;
     #ifdef ServerMainVers_2700
         ACAPI_ProcessWindow_InitProcessWindow (&name, &phase);
     #else
@@ -223,12 +225,17 @@ struct ProcessWindowGuard {
     }
 
     ~ProcessWindowGuard () {
+        if (!enabled)
+            return;
     #ifdef ServerMainVers_2700
         ACAPI_ProcessWindow_CloseProcessWindow ();
     #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
     #endif
     }
+
+  private:
+    bool enabled;
 };
 
 // -----------------------------------------------------------------------------

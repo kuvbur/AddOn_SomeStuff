@@ -1,6 +1,6 @@
 # spec/Spec — Движок спецификаций
 
-> Хеш коммита: 493caf5 (2026-09-22). Номера строк — определения в `.cpp` (1-based, проверены grep; функции внутри namespace Spec).
+> Хеш состояния: незакоммиченная правка #207 (base `07b97e0`, 2026-09-24). Номера строк — определения в `.cpp` (1-based, проверены source; функции внутри namespace Spec).
 
 ## Назначение
 Генерация спецификаций по правилам: разбор описаний, выбор элементов, группировка, создание/обновление элементов. [из комментария, Spec.hpp:8-9]
@@ -37,13 +37,14 @@
 
 ## Карточки
 
-### `Spec::SpecAll(const SyncSettings &syncSettings) -> GSErrCode`
+### `Spec::SpecAll(const SyncSettings &syncSettings, const GS::Array<GS::UniString> *ruleNames = nullptr, const Point2D *placementPoint = nullptr, SpecRunResult *runResult = nullptr) -> GSErrCode`
 - Расположение: `Sources/AddOn/spec/Spec.cpp:140`
 - Назначение: создаёт спецификацию из текущего выбора, всех видимых элементов или правил по умолчанию. [из комментария]
-- Контракт: не проверено.
+- Контракт: если выделение пусто и `GetRuleFromDefaultElem` обнаружил включённые элементы (`has_elementspec`), передаёт заполненные `rules` в `SpecArray` даже при пустом `guidArray`; возвращает `NoError` только когда нет ни выделения, ни включённых элементов default-правила. Для non-interactive запуска `placementPoint` задаёт начальную точку без диалога и окна прогресса; при `ruleNames == nullptr` обрабатываются все валидные правила. `runResult->elementsToCreate` после размещения равен приросту `paramOut` (число реально созданных элементов, без уже запланированных изменений); остальные счётчики отражают сформированные списки. [по коду; AC25 Debug #207 и runtime #208/#209]
+- Если требуемое значение свойства строительного материала не прочитано, строка не формируется: пустое наименование не подставляется вместо исходных данных. `ParamHelpers::GetAttributeValues` для отсутствующего у исходного элемента свойства с `fromPropertyDefinition` пробует получить значение у строительного материала. [по коду; AC25 runtime #209]
 - Побочные эффекты: **создаёт/обновляет/удаляет элементы спецификации** (PlaceElements-цепочка); читает выделение и свойства. [по коду]
-- Вызывает: `GetRuleFromDefaultElem` (:165), `SpecFilter` (:157/176), `SpecArray` (:185), `GetSelectedElements` (Helpers.cpp:695). [из callgraph.json]
-- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:441) и `SomeStuffCommand.Spec` (`json_commands/SpecCommand.cpp`; JSON API AC25–29). JSON-команда предварительно загружает текущие `SyncSettings`, выполняется на главном потоке и возвращает `status="returned"` с длительностью вызова; значение `GSErrCode` из `SpecAll` в ответ не передаётся. [по коду / DevKit-25 API_AddOnCommand]
+- Вызывает: `GetRuleFromDefaultElem` (:165), `SpecFilter` (:157/176), `SpecArray` (:184), `GetSelectedElements` (Helpers.cpp:695). [по коду]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:441) и `SomeStuffCommand.Spec` (`json_commands/SpecCommand.cpp`; JSON API AC25–29). Menu-path сохраняет `SpecDG` и `ClickAPoint`; JSON-команда требует `placementPoint {x, y}`, необязательно принимает `ruleNames` и возвращает `status`, `resultCode`, `elementsToCreate`, `elementsToModify`, `elementsToDelete`, `elapsedSeconds`. AC25 runtime: после вызова с точкой число объектов выросло с 548 до 582, в последних 34 объектах свойство «Спецификации материалов/Наименование в объект» заполнено. [по коду и AC25 runtime #208/#209]
 
 ### `Spec::PlaceElements(GS::Array<ElementDict> &elementstocreate, ParamDictValue &paramToWrite, ParamDictElement &paramOut, Point2D &startpos) -> GSErrCode`
 - Расположение: `Sources/AddOn/spec/Spec.cpp:2427`

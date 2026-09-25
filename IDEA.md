@@ -7,39 +7,85 @@ https://github.com/kuvbur/AddOn_SomeStuff/issues/206
 
 ## Scope
 
-- `Sources/AddOn/json_commands/SpecCommand.hpp/.cpp`, регистрация в `Sources/AddOn/json_commands/JsonCommandRegistrar.cpp`, `IDEA.md`, `Docs/modules/spec/Spec.md`.
-- Команда без входных параметров, загружает текущие `SyncSettings` и вызывает `Spec::SpecAll(syncSettings)` на главном потоке.
-- Не менять меню, алгоритм спецификации, правила выбора элементов или пересоздание элементов.
+- `Sources/AddOn/json_commands/SpecCommand.hpp/.cpp`, `Sources/AddOn/spec/Spec.hpp/.cpp`, `IDEA.md`, `Docs/modules/spec/Spec.md` и затронутые generated docs.
+- Non-interactive контракт #208: обязательный `placementPoint {x, y}`, необязательный `ruleNames`; при отсутствии `ruleNames` применяются все валидные правила.
+- #209: восстановить заполнение наименования из материала в `Sources/AddOn/Helpers.cpp`/`Sources/AddOn/spec/Spec.cpp` на тестовом проекте AC25; не считать пустую строку правильным итогом. https://github.com/kuvbur/AddOn_SomeStuff/issues/209
+- Не менять menu-path: интерактивный запуск по-прежнему использует `SpecDG` и `ClickAPoint`.
 
 ## Status
 
-IN_PROGRESS — `SpecCommand` реализована и зарегистрирована; идёт проверка формата, LSP и сборки AC25.
+WAITING_FOR_CHECKPOINT — #207/#208/#209 проверены на AC25: после финального runner JSON-вызов вернул `completed`, `resultCode=0`, `elementsToCreate=34`; объектов 548→582, наименование заполнено у 34/34. Старый фоновый вызов, начатый до исправления #209, вернул ошибку и не характеризует текущую сборку. Смешанное создание/изменение и версии AC26–29 не проверены.
 
 ## Last Completed
 
-Создан #206. LightRAG подтвердил `ACAPI_Install_AddOnCommandHandler(GS::Owner<API_AddOnCommand>)`, `Execute(const GS::ObjectState&, GS::ProcessControl&) -> GS::ObjectState` и выполнение на главном потоке через базовую команду.
+2026-09-25 — #207/#208/#209: на текущей сборке AC25 Debug после финального runner (`build=True`) JSON-вызов с `placementPoint {0,0}` вернул `status=completed`, `resultCode=0`, `elementsToCreate=34`; число объектов выросло 548→582, в последних 34/34 заполнено свойство «Спецификации материалов/Наименование в объект». Дополнительный вызов до последней правки счётчика дал 582→616 и 34/34. Старый фоновый вызов (запущен до исправления #209) завершился с `resultCode=-2130313215`, нулевыми счётчиками — он не характеризует текущую сборку. Отладка КЖ/Favorite относилась не к актуальному правилу АР и снята как объяснение дефекта.
 
 ## Next Step
 
-Реализовать `SpecCommand` по образцу `RoomBookCommand`, зарегистрировать её и проверить AC25.
+Проверить адресный diff, отметить результат в локальном tracker, создать checkpoint `Refs: #207 #208 #209`; после него обновить Last Checkpoint и перенести завершённый блок в Archive. Отдельно, при необходимости, проверить смешанное создание/изменение и AC26–29.
 
 ## Last Checkpoint
 
-Чекпоинта нет.
+`5b6914b` — `[#206] JSON-команда Spec`.
 
 ## Plan
 
 - [x] Создать #206 и отделить команду Spec от #205/#195.
-- [ ] Реализовать `SpecCommand` и регистрацию без изменения алгоритма Spec.
-- [ ] Выполнить clang-format, clangd, LSP и BuildAddOn.py AC25.
-- [ ] Проверить HTTP endpoint и результат спецификации на тестовом проекте.
-- [ ] Обновить карточку Spec, проверить diff и создать checkpoint.
+- [x] Реализовать `SpecCommand` и регистрацию без изменения алгоритма Spec (`5b6914b`).
+- [x] На тестовом проекте установлено активное правило АР; гипотеза о КЖ/Favorite отвергнута пользователем и не используется.
+- [x] #209: исправлено чтение наименования из свойства материала; AC25 JSON-вызов создал 34 объекта, 34/34 с заполненным наименованием.
+- [x] Обнаружить независимый дефект #207: при пустом выделении и rules из default element `SpecAll` возвращается до `SpecArray`; issue создан и проверен.
+- [x] #207: разрешить `SpecArray` по найденным default-правилом элементам; clang-format, clangd, AC25 BuildAddOn.py и live breakpoint `SpecArray` прошли.
+- [x] Обнаружить #208: JSON-вызов блокируется интерактивными `SpecDG` и `ClickAPoint`; issue создан и проверен.
+- [x] Получить контракт #208: `ruleNames` необязателен (иначе все валидные правила), `placementPoint {x, y}` обязателен.
+- [x] #208: non-interactive вариант с JSON-результатом реализован; финальный runner и AC25 runtime подтвердили создание 34 объектов и заполнение наименования. Смешанное создание/изменение не проверено.
 
 ## Decisions
 
-- Имя команды: `SomeStuffCommand.Spec`; входных параметров нет.
-- Ответ повторяет RoomBook: `status="returned"` и `elapsedSeconds`; `SpecAll` возвращает `GSErrCode`, но контракт не утверждает успех расчёта, undo или корректность модели.
+- Имя команды: `SomeStuffCommand.Spec`; non-interactive вызов принимает обязательный `placementPoint {x, y}` и необязательный `ruleNames` (при отсутствии — все валидные правила).
+- Ответ возвращает `status` (`completed`/`failed`), `resultCode`, счётчики `elementsToCreate`/`elementsToModify`/`elementsToDelete` и `elapsedSeconds`; AC25 runtime подтвердил создание 34 объектов и заполнение наименования (34/34).
 - Выбор экземпляра Archicad остаётся на вызывающей стороне: HTTP-порт соответствует конкретному запущенному процессу.
+- #207 (https://github.com/kuvbur/AddOn_SomeStuff/issues/207) — отдельный дефект `SpecAll`; он не входит в исходный scope #206 и требует отдельного изменения/валидации.
+
+## Отдельная задача — #207: обработка видимых элементов при rules из default element
+
+### Scope
+
+- AC25: `Sources/AddOn/spec/Spec.cpp`, адресный регрессионный тест в `Sources/AddOn/TestFunc.cpp/.hpp`, `Docs/modules/spec/Spec.md`, затронутые generated docs и `IDEA.md`.
+- Восстановить только путь пустого выделения: если `GetRuleFromDefaultElem` уже нашёл включённые элементы в `rule.elements`, передать правила в `SpecArray` даже с пустым `guidArray`.
+- В #207 не менять правила выбора Favorite, синтаксис конфигурационных правил или интерактивное размещение; JSON-контракт меняется только отдельным scope #208.
+
+### Status / Next Step
+
+COMPLETED (AC25) — исправление #207 прошло clang-format, clangd (0 ошибок), сборку через финальный runner и JSON runtime: при пустом выделении с default-правилом создано 34 объекта. Другие версии не проверены.
+
+### Plan
+
+- [x] Воспроизвести ранний выход: `guidArray=0`, `hasrule=true`, `has_elementspec=true` на `SpecAll:168`.
+- [x] Разрешить выполнение `SpecArray` при пустом `guidArray`, если `GetRuleFromDefaultElem` уже нашёл включённые элементы.
+- [x] Выполнить clang-format, clangd, AC25 BuildAddOn.py и подтвердить live breakpoint `SpecArray`.
+- [x] Получено решение по #208: `ruleNames` необязателен, `placementPoint {x, y}` обязателен.
+- [x] Завершена AC25 JSON runtime-проверка создания после реализации #208; гипотеза КЖ/Favorite не относится к текущему тестовому правилу АР.
+
+## Отдельная задача — #208: non-interactive запуск Spec через JSON
+
+### Scope
+
+- AC25–29: отдельный контракт `SomeStuffCommand.Spec`; параметры выбора правил и точки размещения, корректный статус ответа и runtime-проверка.
+- Не менять существующие menu-path, `SpecDG` или `ClickAPoint` для интерактивного запуска без согласованного контракта.
+
+### Status / Next Step
+
+COMPLETED (AC25) — #208: JSON-путь требует `placementPoint`, не вызывает `SpecDG`/`ClickAPoint` и не открывает отчётное/процессное окно по коду; возвращает статус, код ошибки и счётчики. Финальный AC25-вызов вернул 34 созданных объекта (548→582), подтверждены 34 заполненных наименования. Отсутствие любых окон не проверено визуально; AC26–29 не собирались. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/208.
+
+### Plan
+
+- [x] Подтвердить live Debug, что старый HTTP-вызов блокируется в `RuleSelectDialog::Invoke()` и требует `ClickAPoint`.
+- [x] Согласовать контракт: `placementPoint {x, y}` обязателен; `ruleNames` необязателен, по умолчанию — все валидные правила.
+- [x] Добавить схему и разбор параметров `SpecCommand`, передать настройки в `SpecAll`/`SpecArray` без изменения интерактивного пути; clang-format, clangd и `BuildAddOn.py -v 25` прошли.
+- [x] Для JSON-пути отключены отчётные окна/окно прогресса и возвращён результат со счётчиками вместо UI; menu-path сохранён.
+- [x] AC25 JSON-вызов с координатой завершился без интерактивной паузы; подтверждены ответ `completed`/34 и фактическое заполнение модели (34/34 наименования). Визуальное отсутствие всех окон не проверено.
+- [/] Обновить документацию и generated docs, проверить diff, создать checkpoint с `Refs: #207 #208 #209`.
 
 ## Параллельная задача — #193: Roombook должен пересоздавать отделку без дублей
 

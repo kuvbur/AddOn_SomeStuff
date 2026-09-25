@@ -17,7 +17,7 @@ class SpecCommand : public CommandBase {
     GS::String GetName () const override;
 
     // -----------------------------------------------------------------------------
-    // Возвращает схему входных параметров команды.
+    // Возвращает схему параметров non-interactive запуска спецификации.
     // -----------------------------------------------------------------------------
     GS::Optional<GS::UniString> GetInputParametersSchema () const override;
 
