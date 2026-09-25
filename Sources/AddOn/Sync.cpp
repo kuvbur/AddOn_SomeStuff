@@ -563,7 +563,6 @@ void RunParamSelected (const SyncSettings &syncSettings) {
     GS::UniString fmane = "Run parameter script";
     // Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
     API_AttributeIndex layerCombIndex = {};
-    API_DatabaseInfo databaseInfo = {};
     GSErrCode err = NoError;
 #ifdef ServerMainVers_2700
     err = ACAPI_Navigator_GetCurrLayerComb (&layerCombIndex);
@@ -574,27 +573,16 @@ void RunParamSelected (const SyncSettings &syncSettings) {
         msg_rep (fmane, "APIEnv_GetCurrLayerCombID", err, APINULLGuid);
         return;
     }
-#ifdef ServerMainVers_2700
-    err = ACAPI_Database_GetCurrentDatabase (&databaseInfo);
-#else
-    err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
-#endif
-
-    if (err != NoError) {
-        msg_rep (fmane, "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
-        return;
-    }
     CallOnSelectedElemSettings (RunParam, false, true, syncSettings, fmane, false);
     SyncSelected (syncSettings);
 #ifdef ServerMainVers_2700
     if (layerCombIndex.IsPositive ())
         err = ACAPI_Navigator_ChangeCurrLayerComb (&layerCombIndex); // Устанавливаем комбинацию слоёв
-    err = ACAPI_Database_ChangeCurrentDatabase (&databaseInfo);
 #else
     if (layerCombIndex != 0)
         err = ACAPI_Environment (APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
-    err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databaseInfo, nullptr);
 #endif
+    ACAPI_Database (APIDb_RebuildCurrentDatabaseID);
     finish = clock ();
     duration = (double)(finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
@@ -608,81 +596,125 @@ void RunParam (const API_Guid &elemGuid, const SyncSettings &syncSettings) {
 #if defined(TESTING)
     DBprnt ("RunParam");
 #endif
+    GSErrCode err = NoError;
+    // Получаем заголовок элемента. Если заголовка нет - выходим (элемент удалён или не существует)
     API_Elem_Head tElemHead = {};
     tElemHead.guid = elemGuid;
-    GSErrCode err = ACAPI_Element_GetHeader (&tElemHead);
+    err = ACAPI_Element_GetHeader (&tElemHead);
     if (err != NoError)
         return;
-    API_DatabaseInfo databaseInfo;
-    API_DatabaseInfo dbInfo;
+    // Получаем информацию о текущей БД и БД, в которой находится элемент. Если они разные - переключаемся на БД
+    // элемента
+    API_DatabaseInfo currentdb = {};
+    API_DatabaseInfo elementdb = {};
 #ifdef ServerMainVers_2700
-    err = ACAPI_Database_GetContainingDatabase (&tElemHead.guid, &dbInfo);
+    err = ACAPI_Database_GetContainingDatabase (&tElemHead.guid, &elementdb);
 #else
-    err = ACAPI_Database (APIDb_GetContainingDatabaseID, &tElemHead.guid, &dbInfo);
+    err = ACAPI_Database (APIDb_GetContainingDatabaseID, &tElemHead.guid, &elementdb);
 #endif
     if (err != NoError)
         return;
 #ifdef ServerMainVers_2700
-    err = ACAPI_Database_GetCurrentDatabase (&databaseInfo);
+    err = ACAPI_Database_GetCurrentDatabase (&currentdb);
 #else
-    err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
+    err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &currentdb, nullptr);
 #endif
     if (err != NoError)
         return;
-    if (dbInfo.databaseUnId != databaseInfo.databaseUnId) {
+    bool isBDchanged = false;
+    if (elementdb.databaseUnId != currentdb.databaseUnId) {
 #ifdef ServerMainVers_2700
-        err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
+        err = ACAPI_Database_ChangeCurrentDatabase (&elementdb);
 #else
-        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
+        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &elementdb, nullptr);
 #endif
         if (err != NoError)
             return;
+        isBDchanged = true;
     }
-    API_Element element = {};
-    API_Element mask = {};
-    ACAPI_ELEMENT_MASK_CLEAR (mask);
-    ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, renovationStatus);
-    element.header = tElemHead;
-    err = ACAPI_Element_Get (&element);
-    if (err != NoError) {
-        msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
-        return;
-    }
+
+    // Запускаем скрипт параметров элемента
 #ifdef ServerMainVers_2700
     err = ACAPI_LibraryManagement_RunGDLParScript (&tElemHead, 0);
 #else
     err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &tElemHead, 0);
 #endif
-    if (err != NoError) {
-        msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
+    // Сохраняем результат скрипта: восстановление БД не должно затирать ошибку скрипта
+    GSErrCode scriptErr = err;
+
+    // Если была смена БД - возвращаемся в исходную БД
+    if (isBDchanged) {
+#ifdef ServerMainVers_2700
+        err = ACAPI_Database_ChangeCurrentDatabase (&currentdb);
+#else
+        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &currentdb, nullptr);
+#endif
+    }
+
+    if (scriptErr != NoError) {
+        msg_rep ("RunParam", "APIAny_RunGDLParScriptID", scriptErr, elemGuid);
         return;
     }
 
+    // Если элемент - окно или дверь, запускаем скрипт параметров маркера
     API_Guid markGuid = APINULLGuid;
-    const API_ElemTypeID elemType = GetElemTypeID (element);
+    const API_ElemTypeID elemType = GetElemTypeID (tElemHead);
+    if (elemType != API_WindowID && elemType != API_DoorID)
+        return;
+    API_Element element = {};
+    element.header = tElemHead;
+    err = ACAPI_Element_Get (&element);
+    if (err != NoError) {
+        msg_rep ("RunParam", "ACAPI_Element_Get", err, elemGuid);
+        return;
+    }
     if (elemType == API_WindowID)
         markGuid = element.window.openingBase.markGuid;
     else if (elemType == API_DoorID)
         markGuid = element.door.openingBase.markGuid;
-
     if (markGuid == APINULLGuid)
         return;
 
+    BNZeroMemory (&elementdb, sizeof (API_DatabaseInfo));
+#ifdef ServerMainVers_2700
+    err = ACAPI_Database_GetContainingDatabase (&markGuid, &elementdb);
+#else
+    err = ACAPI_Database (APIDb_GetContainingDatabaseID, &markGuid, &elementdb);
+#endif
+    if (err != NoError)
+        return;
+    isBDchanged = false;
+    if (elementdb.databaseUnId != currentdb.databaseUnId) {
+#ifdef ServerMainVers_2700
+        err = ACAPI_Database_ChangeCurrentDatabase (&elementdb);
+#else
+        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &elementdb, nullptr);
+#endif
+        if (err != NoError)
+            return;
+        isBDchanged = true;
+    }
     API_Elem_Head markHead = {};
     markHead.guid = markGuid;
     err = ACAPI_Element_GetHeader (&markHead);
     if (err != NoError) {
         msg_rep ("RunParam marker", "ACAPI_Element_GetHeader", err, markGuid);
-        return;
-    }
-
+    } else {
 #ifdef ServerMainVers_2700
-    err = ACAPI_LibraryManagement_RunGDLParScript (&markHead, 0);
+        err = ACAPI_LibraryManagement_RunGDLParScript (&markHead, 0);
 #else
-    err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &markHead, 0);
+        err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &markHead, 0);
 #endif
-    if (err != NoError)
-        msg_rep ("RunParam marker", "APIAny_RunGDLParScriptID", err, markGuid);
+        if (err != NoError)
+            msg_rep ("RunParam marker", "APIAny_RunGDLParScriptID", err, markGuid);
+    }
+    if (isBDchanged) {
+#ifdef ServerMainVers_2700
+        err = ACAPI_Database_ChangeCurrentDatabase (&currentdb);
+#else
+        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &currentdb, nullptr);
+#endif
+    }
 }
 
 // --------------------------------------------------------------------
@@ -792,7 +824,8 @@ bool SyncData (const API_Guid &elemGuid,
     if (!(cache.isPropertyDefinitionRead_full && cache.isPropertyDefinition_OK)) {
         cache.AddPropertyDefinition (definitions);
     }
-    // Заполняем правила синхронизации с учётом субэлементов, попутно заполняем словарь параметров для чтения/записи
+    // Заполняем правила синхронизации с учётом субэлементов, попутно заполняем словарь параметров для
+    // чтения/записи
     SyncAddSubelement (subelemGuids, mainsyncRules, syncRules, paramToRead);
     mainsyncRules.Clear ();
     subelemGuids.Push (elemGuid); // Это теперь список всех элементов для синхронизации
@@ -1559,8 +1592,8 @@ bool SyncString (const API_ElemTypeID &elementType,
     if (rulestring_one.Contains (TABSTRING))
         rulestring_one.ReplaceAll (TABSTRING, EMPTYSTRING);
     // Выбор типа копируемого свойства
-    // Я не очень понял - умеет ли с++ в ленивые вычисления, поэтому сделаю вложенные условия, чтобы избежать ненужного
-    // поиска по строке
+    // Я не очень понял - умеет ли с++ в ленивые вычисления, поэтому сделаю вложенные условия, чтобы избежать
+    // ненужного поиска по строке
     if (rulestring_one.Contains ("{symb_pos_")) {
         rulestring_one.ReplaceAll ("{symb_pos_", "{Coord:symb_pos_");
     }
@@ -2108,8 +2141,8 @@ bool SyncString (const API_ElemTypeID &elementType,
                             rawName_row_start = paramNamePrefix;
                             rawName_row_start.Append (sr1);
                             rawName_row_start.Append (BRACEEND);
-                            // Исправлен copy-paste: конец диапазона для строк должен брать значение от row_start, а не
-                            // col_start
+                            // Исправлен copy-paste: конец диапазона для строк должен брать значение от
+                            // row_start, а не col_start
                             rawName_row_end = rawName_row_start;
                         }
                     }
