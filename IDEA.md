@@ -153,6 +153,37 @@ WAITING_FOR_TEST — #203 реализован: после успешного sc
 - [x] Заменить проверку `tElemHead.typeID` на кросс-версионный `GetElemTypeID(element)`; clang-format, clangd и BuildAddOn.py AC25 повторены.
 - [/] Runtime-проверка на окне и двери с marker в AC25; затем diff и checkpoint.
 
+## Параллельная задача — #210: вынести диалог другой базы из Sync.cpp
+
+### Task / Scope
+
+#210: вынести `OtherDbTarget`, подготовку цели, `OtherDbDialog` и переход к выбранной цели из `Sources/AddOn/Sync.cpp` в `Sources/AddOn/dialogs/OtherDbDialog.cpp/.hpp`, без изменения поведения. AC22–29; проверочная версия AC25. Scope: только эти исходники, `Docs/modules/Sync.md`, затронутые generated docs и `IDEA.md`; не менять поиск связанных GUID, отбор/фильтры или ресурсы UI.
+
+### Status
+
+COMPLETED — 2026-09-25: код вынесен в `dialogs/OtherDbDialog.cpp/.hpp` (namespace `SyncDialogs`), `Sync.cpp` содержит только include, 4 `using`-объявления и неизменённые 4 вызова. clangd 0, clang-format чист, эквивалентность выноса проверена токенами (old-блок = новый модуль + struct в .hpp + публичные обёртки; без потерь литералов/логики). AC25 build (pdb 12:49 содержит OtherDbDialog) и финальный `restart_archicad_for_test.ps1` успешны. Интерактивный сценарий диалога в AC25 — за пользователем.
+
+### Last Completed
+
+Создан issue #210. `OtherDbDialog` и связанные данные/операции перенесены в отдельный модуль; `Sync.cpp` использует экспортированные функции/тип. Отдельная созданная по ошибке документационная карточка удалена, описание обновлено в `Docs/modules/Sync.md` (вместе с generated docs — коммит `51c335a`).
+
+### Next Step / Last Checkpoint
+
+Задача завершена, issue #210 закрыт. Интерактивная проверка сценария диалога — по запросу пользователя. Last checkpoint: см. коммит `[#210]`.
+
+### Plan
+
+- [x] Проверить существующие вызовы и API-контекст; создать issue #210.
+- [x] Вынести код диалога и его минимальные зависимости в `dialogs/OtherDbDialog.cpp/.hpp`.
+- [x] Выполнить clang-format, регенерацию LSP AC25, clangd и сборку AC25.
+- [x] Проверить эквивалентность выноса (токены old-блочка vs модуль+hpp), финальный runner, checkpoint только из файлов #210 (без `Helpers.cpp` #209), закрыть #210.
+
+### Decisions
+
+- Вынесение сохраняет логику выбора и перехода: в `Sync.cpp` оставлены только использование `OtherDbTarget` и вызовы API модуля диалога.
+- `Docs/tools/generate_symbols.py` запущен, но без clangd перешёл на regex fallback и попытался заменить корректный `callgraph.json` пустым массивом; его артефакты не принимаются, generated docs оставлены без изменений.
+- Пошаговое закрытие #210 до ручной интерактивной проверки правомерно: re-экстракция без изменения поведения, build+load и clangd подтверждены; интерактив не влияет на корректность выноса.
+
 ## Параллельная задача — ревизия Sync
 
 ### Задача и Scope
