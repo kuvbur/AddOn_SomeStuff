@@ -65,7 +65,7 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     GS::UniString undoString = RSGetIndString (iseng, UndoReNumId, ACAPI_GetOwnResModule ());
 
     // Получаем выбранные элементы (только видимые, только из модели)
-    GS::Array<API_Guid> guidArray = GetSelectedElements (true, false, syncSettings, true, false, false);
+    GS::Array<API_Guid> guidArray = GetSelectedElements (true, false, syncSettings, false, false, false);
     if (guidArray.IsEmpty ())
         return NoError;
     // Если выбран только один элемент - правило берётся из него одного

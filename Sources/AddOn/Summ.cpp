@@ -37,7 +37,7 @@ GSErrCode SumSelected (SyncSettings &syncSettings) {
     Int32 maxval = 6;
 #endif
     ProcessWindowGuard pwGuard (funcname, nPhase);
-    GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, syncSettings, true, false, false);
+    GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, syncSettings, false, false, false);
     if (guidArray.IsEmpty ())
         return NoError;
     ParamDictElement paramToWriteelem = {};
