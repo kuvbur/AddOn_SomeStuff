@@ -1,12 +1,13 @@
 # Sync — Синхронизация свойств
 
-> Базовый хеш карточки: 3a24131 (2026-09-22); локальное дополнение #199 — 2026-09-24 (ещё без коммита). Исторические номера строк ниже относятся к базовой ревизии и могут не совпадать с текущим кодом. CallHierarchy собран для 6 ключевых функций (0-based у clangd; в таблицах 1-based).
+> Базовый хеш карточки: 3a24131 (2026-09-22); #199 — в `9ae0138` (2026-09-24); #210 (вынесение `OtherDbDialog`) и #203 (script marker) — рабочее дерево `llm_test` (2026-09-25). Исторические номера строк относятся к базовой ревизии и могут не совпадать с текущим кодом. CallHierarchy собран для 6 ключевых функций (0-based у clangd; в таблицах 1-based).
 
 ## Назначение
 Главный модуль: синхронизация и мониторинг свойств между элементами по правилам из описаний свойств (Sync_from/Sync_to). Ядро add-on. [по коду]
 
 ## Файлы
 - `Sync.cpp/hpp`
+- `dialogs/OtherDbDialog.cpp/hpp` — выбор базы/этажа для связанных элементов вне текущего контекста. [по коду]
 
 ## Ключевые типы
 
@@ -70,13 +71,13 @@
 - Регрессия: `TestSyncAddSubelement` воспроизвёл отсутствие записи для внешнего GUID (RED), затем сформировал запись (GREEN) на AC25. [по результату запуска TESTING]
 
 ### `OtherDbDialog` — переход к элементам в другой базе данных
-- Расположение: локальный класс `Sources/AddOn/Sync.cpp:135` (рабочее дерево #194).
-- Контракт: заголовок получает `SubElementHalfId`, а подписи кнопок и столбцов — `OtherDbCloseId`…`OtherDbElementsId` из `ID_ADDON_STRINGS`/`ID_ADDON_STRINGS_ENG` в `Tools/AddOn.grc.in` через `RSGetIndString`. Встроенных RU/EN строк интерфейса в классе нет. [по коду и ресурсам]
-- Побочные эффекты: UI-локализация не меняет выбор строки, `SelectOtherDbTarget`, текущую БД или состав GUID. [по коду]
-- Проверка окна на реальном Archicad — не выполнена: пользователь тестирует уже запущенную сборку.
+- Расположение: `Sources/AddOn/dialogs/OtherDbDialog.cpp/.hpp` (#210); `Sync.cpp` формирует цели и вызывает модуль. [по коду]
+- Контракт: `OtherDbTarget` группирует GUID по базе и этажу. Заголовок получает `SubElementHalfId`, а подписи кнопок и столбцов — `OtherDbCloseId`…`OtherDbElementsId` из `ID_ADDON_STRINGS`/`ID_ADDON_STRINGS_ENG` через `RSGetIndString`. Встроенных RU/EN строк интерфейса в классе нет. [по коду и ресурсам]
+- Побочные эффекты: после принятия модального окна `SelectOtherDbTarget` переключает текущую БД/этаж, выделяет связанные GUID и выполняет zoom; отмена и невалидный индекс ничего не меняют. [по коду]
+- Проверка окна на реальном Archicad — не выполнена; runner подтвердил сборку и загрузочный путь AC25, но не интерактивный сценарий.
 
 ## Зависимости
-- `Helpers.hpp`, `Propertycache.hpp`, `CommonFunction.hpp`, `DG.h`, `dialogs/SyncSettings.hpp` [по include]
+- `Helpers.hpp`, `Propertycache.hpp`, `CommonFunction.hpp`, `DG.h`, `dialogs/SyncSettings.hpp`, `dialogs/OtherDbDialog.hpp` (#210) [по include]
 
 ## Зависимости (используется в)
 - `BrowserPalette`, `SyncSettings.cpp`, `SomeStuff_Main` [по коду]

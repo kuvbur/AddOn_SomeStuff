@@ -70,7 +70,7 @@
 | `ComponentsCompositeStructure` | 717 | Многослойная конструкция |
 | `ComponentsProfileStructure` | 728 | Сложный профиль (AC24+) |
 | `ComponentsGetUnic` | 712 | Уникальные слои |
-| `GetAttributeValues` | 748 | Данные одного слоя; для пользовательского свойства, недоступного на исходном элементе, пробует считать его со строительного материала при наличии определения. AC25 runtime #209: восстанавливает «Наименование в спецификацию» для правила АР. [по коду и runtime] |
+| `GetAttributeValues` | 748 | Данные одного слоя (определение — Helpers.cpp:9577); для чтения определений свойств материала допускает только параметры с `fromAttribDefinition` (рабочее дерево #209, open). Расширение на произвольный `fromPropertyDefinition` отменено. [по коду] |
 | `ReadMaterial_ReadAddParam` | 685 | Доп. параметры материалов |
 | `SubGuid_GetDefinition` / `SubGuid_GetParamValue` | 630, 636 | Описания/значения с GUID родителя |
 | `GDLParamByDescription` / `GDLParamByName` | 649, 657 | Поиск GDL-параметра (только чтение / чтение+запись) |

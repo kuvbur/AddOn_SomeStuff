@@ -1,6 +1,6 @@
 # SomeStuff_Main — Точка входа
 
-> Хеш коммита: 493caf5 (2026-09-22). Номера строк — определения в `.cpp` (1-based, проверены grep).
+> Базовый хеш: 493caf5 (2026-09-22); номера строк — ревизия базы, в рабочем дереве `llm_test` (HEAD `13c1948`) смещены (например, `Initialize` — 544). Номера строк — определения в `.cpp` (1-based, проверены grep).
 
 ## Назначение
 Главный модуль add-on: регистрация интерфейса, обработка команд меню, события проекта и элементов (observer'ы). [по коду]
@@ -18,17 +18,27 @@
 | `SelectionChangeHandlerProc` | 326 | Обработчик изменения выделения [из комментария] — карточка |
 | `MenuSetState` | 337 | Состояние пунктов меню по настройкам синхронизации [из комментария] |
 | `SetPaletteMenuText` | 351 | Тексты пунктов меню по языку [из комментария] |
-| `MenuCommandHandler` | 366 | Маршрутизация команд меню по ID [из комментария]; вызывается из `Initialize` (Main:587) [из callgraph.json] — карточка |
+| `MenuCommandHandler` | 371 | Маршрутизация команд меню по ID [из комментария]; устанавливается из `Initialize` через `ACAPI_Install_MenuHandler` (Main:588) [по коду] — карточка |
+| `RegisterInterface` | 525 | Регистрация интерфейса/меню/палитры/навитора (включая `TablesNavigator::RegisterInterface` :537) [по коду] |
+| `Initialize` | 544 | Инициализация после открытия проекта: настройки, мониторинг, JSON-команды, палитра, навигатор, menu-handler [по коду] — карточка |
+| `FreeData` | 594 | Освобождение при выгрузке (сейчас только `NoError`; AC28 — 592) [по коду] |
 
 ## Карточки
 
+### `Initialize() -> GSErrCode`
+- Расположение: `Sources/AddOn/SomeStuff_Main.cpp:544` (AC25; AC28 — 542)
+- Назначение: инициализация после открытия проекта: настройки, мониторинг, JSON-команды, палитра, навигатор, установка menu-handler. [по коду]
+- Контракт: при ошибке `TablesNavigator::Initialize` — возврат её кода; `TestFunc::Test()` — только под `TESTING`; `ACAPI_KeepInMemory(true)`. [по коду]
+- Побочные эффекты: `LoadSyncSettingsFromPreferences(syncSettings, true)` (:550, forceReload); `MenuSetState` (:553); `Do_ElementMonitor` (:554); `MonAll` (:555); `RegisterJsonCommands` (:569, AC25+); `BrowserPalette::RegisterPaletteControlCallBack` (:571); `CatchSelectionChange` (:574/576); `InstallMenuHandler` (:586/588). [по коду]
+- Вызывается из: ArchiCAD (лifecycle). [по коду]
+
 ### `MenuCommandHandler(const API_MenuParams *menuParams) -> GSErrCode`
-- Расположение: `Sources/AddOn/SomeStuff_Main.cpp:366`
+- Расположение: `Sources/AddOn/SomeStuff_Main.cpp:371` (рабочее дерево `llm_test`; ревизия базы — :366)
 - Назначение: маршрутизирует команды меню add-on по ID пункта. [из комментария]
-- Контракт: не проверено полностью; подтверждённые ветки: `Auto3D_CommandID` → `AutoFunc::ProfileByLine()` (:461), `AutoLay_CommandID` → `AutoFunc::AlignDrawingsByPoints()` (:464). [по коду]
+- Контракт: не проверено полностью; подтверждённые ветки: `Auto3D_CommandID` → `AutoFunc::ProfileByLine()` (:467), `AutoLay_CommandID` → `AutoFunc::AlignDrawingsByPoints()` (:470). [по коду, рабочее дерево `llm_test`]
 - Побочные эффекты: каждая ветка делегирует модуль (Sync, Summ, Spec, ReNum, Dimensions, Roombook, pk) со своими эффектами записи. [по коду]
-- Вызывает (карта из callHierarchy, 1-based): `LoadSyncSettingsFromPreferences` (:372), `PROPERTYCACHE().Update` (:389), `Do_ElementMonitor` (:399), `MonAll` (:400), `SyncAndMonAll` (:405), `SyncSelected` (:410), `RunParamSelected` (:437), `SumSelected` (:433), `ReNumSelected` (:427), `SpecAll` (:441), `SyncShowSubelement` (:445), `SyncSetSubelement` (:453), `SetRevision` (:449), `RoomBook` (:457), `ProfileByLine` (:462), `AlignDrawingsByPoints` (:465), `ShowOrHideBrowserPalette` (:469), `DimRoundAll` (:489), `MenuSetState` (:498), `WriteSyncSettingsToPreferences` (:494). [из callgraph.json]
-- Внимание: `RoomBook` определён в Roombook.cpp:57; `LoadSyncSettingsFromPreferences` — clangd даёт SyncSettings.cpp:518 (grep находил 429 — второе совпадение в файле, уточнять при правках). [из callgraph.json + grep]
+- Вызывает (grep рабочего дерева `llm_test`, 1-based): `LoadSyncSettingsFromPreferences` (:377), `PROPERTYCACHE().Update` (:394), `Do_ElementMonitor` (:404), `MonAll` (:405), `SyncAndMonAll` (:410), `SyncSelected` (:415), `ReNumSelected` (:432), `SumSelected` (:438), `RunParamSelected` (:442), `Spec::SpecAll` (:446), `SyncShowSubelement` (:450), `Revision::SetRevision` (:454), `SyncSetSubelement` (:458), `Roombook::RoomBook` (:462), `ProfileByLine` (:467), `AlignDrawingsByPoints` (:470), `ShowOrHideBrowserPalette` (:474), `DimRoundAll` (:493), `WriteSyncSettingsToPreferences` (:498), `MenuSetState` (:500). [по коду]
+- Внимание: `Roombook::RoomBook` определён в Roombook.cpp:674 (AC25; AC22–23 — заглушка :23); `LoadSyncSettingsFromPreferences` — SyncSettings.cpp:432. [grep]
 
 ### `ElementEventHandlerProc(const API_NotifyElementType *elemType) -> GSErrCode`
 - Расположение: `Sources/AddOn/SomeStuff_Main.cpp:142`

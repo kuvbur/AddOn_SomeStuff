@@ -5,7 +5,7 @@
     "filter": "рёбра только внутри Sources/AddOn/; вызовы SDK (Build/DevKit, MSVC, Windows Kits) исключены и подсчитаны отдельно",
     "limitation": "docs/tools/generate_symbols.py не может говорить с clangd через subprocess.PIPE на Windows (clangd 22.1.8 не поддерживает --port, pipe даёт Errno 22/пустой greeting); сбор выполнялся напрямую через clangd MCP. Для регенерации запрашивать get_call_hierarchy на позициях определений из symbols.json.",
     "lines": "координаты 0-based (clangd LSP); в Docs/modules/*.md строки 1-based (grep) — при сверке добавлять +1",
-    "coverage": "pk + Sync + Summ/ReNum/Spec/Dimensions/Classification/Propertycache/Table/Roombook/Main (входные и ключевые функции)",
+    "coverage": "pk + Sync + Summ/ReNum/Spec/Dimensions/Classification/Propertycache/Table/Roombook/Main (входные и ключевые функции) + json_commands (RegisterJsonCommands, 2026-09-25)",
     "body_scan_note": "для 6 нерезолвящихся clangd функций: вызовы извлечены скриптом из тел функций (Docs/tools/_body_scan.py, brace-matching), источник — [по коду, grep тела]; ResetPropertyElement2Defult у ResetProperty подтверждён чтением (ResetProperty.cpp:34)"
   },
   "edges": [
@@ -2898,6 +2898,57 @@
           "line": 431
         }
       ]
+    },
+    {
+      "caller": {
+        "name": "RegisterJsonCommands",
+        "file": "Sources/AddOn/json_commands/JsonCommandRegistrar.cpp",
+        "line": 14
+      },
+      "callee": {
+        "name": "RoomBookCommand::RoomBookCommand",
+        "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
+        "line": 13
+      },
+      "call_sites": [
+        {
+          "line": 15
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "RegisterJsonCommands",
+        "file": "Sources/AddOn/json_commands/JsonCommandRegistrar.cpp",
+        "line": 14
+      },
+      "callee": {
+        "name": "SpecCommand::SpecCommand",
+        "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+        "line": 14
+      },
+      "call_sites": [
+        {
+          "line": 20
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "Initialize",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 543
+      },
+      "callee": {
+        "name": "RegisterJsonCommands",
+        "file": "Sources/AddOn/json_commands/JsonCommandRegistrar.cpp",
+        "line": 14
+      },
+      "call_sites": [
+        {
+          "line": 568
+        }
+      ]
     }
   ],
   "sdk_edges_summary": {
@@ -2937,9 +2988,9 @@
     }
   ],
   "stats": {
-    "project_edges": 152,
-    "functions_queried": 30,
-    "functions_resolved": 24
+    "project_edges": 155,
+    "functions_queried": 31,
+    "functions_resolved": 25
   },
   "body_scan": {
     "ResetProperty (Sources/AddOn/pk/ResetProperty.cpp:14)": {

@@ -1,7 +1,8 @@
 # Состояние работы — документирование кодовой базы
 
 ## Обновления по задачам
-- #207/#208/#209 (2026-09-25, рабочее дерево `llm_test`, перед checkpoint): пустое выделение с default-правилом теперь доходит до `SpecArray`; JSON Spec требует `placementPoint`, не открывает интерфейс, возвращает код/счётчики; чтение материала учитывает `fromPropertyDefinition`. Финальный runner AC25 собрал аддон и открыл `test_25.pln`; JSON-вызов создал 34 объекта (548→582), в последних 34/34 заполнено «Спецификации материалов/Наименование в объект». `symbols.json` пересобран regex fallback (8544 символа), `callgraph.json` сохранён. AC26–29 и смешанное создание/изменение — не проверены.
+- Документация (2026-09-25, рабочее дерево `llm_test`, HEAD `13c1948`): самостоятельный проход по `Docs/`. (1) Новая карточка `Docs/modules/json_commands.md` для `json_commands/` (модуль AC25+ #205/#206/#207/#208, не был задокументирован): `CommandBase`/`ReadOnlyCommand`/`ModifyCommand`, `RegisterJsonCommands`, `RoomBookCommand`, `SpecCommand`, `HealthCommand` (шаблон, не регистрируется); все строки .cpp проверены grep. (2) `symbols.json` пересобран regex fallback — 8549 символов (было 8544; добавлен `dialogs/OtherDbDialog.cpp`, учтён `json_commands/`); `callgraph.json` сохранён (152→155 рёбер: добавлено `RegisterJsonCommands`→`RoomBookCommand`/`SpecCommand` и `Initialize`→`RegisterJsonCommands`, call_sites 1-based). (3) `REPOMAP.md` и `ARCHITECTURE.md`: добавлены `json_commands/` и `dialogs/OtherDbDialog.*` в структуру, слои и Mermaid-граф; исправлена статистика compile_commands.json (31 запись, 1464 `/I` — было «210/0 include»). (4) `SomeStuff_Main.md`: добавлены `RegisterInterface`/`Initialize`/`FreeData`, карточка `Initialize` (с `RegisterJsonCommands` :569), карта вызовов `MenuCommandHandler` обновлена под дерево `llm_test`; `Sync.md` — шапка (#203/#210) + include `OtherDbDialog.hpp`; `Helpers.md` — строка `GetAttributeValues` (определение .cpp:9577, hpp:748; фильтр `fromAttribDefinition`, #209 open). Не тронуты: code-файлы, `IDEA.md`, `DISCREPANCIES.md` (расхождений не найдено).
+- #207/#208/#209 (2026-09-25, рабочее дерево `llm_test`, перед checkpoint): пустое выделение с default-правилом теперь доходит до `SpecArray`; JSON Spec требует `placementPoint`, не открывает интерфейс, возвращает код/счётчики; расширение фильтра `GetAttributeValues` на `fromPropertyDefinition` отменено (#209 — open, фильтр возвращён к `fromAttribDefinition`). Финальный runner AC25 собрал аддон и открыл `test_25.pln`; JSON-вызов создал 34 объекта (548→582), в последних 34/34 заполнено «Спецификации материалов/Наименование в объект». `symbols.json` пересобран regex fallback (8544 символа), `callgraph.json` сохранён. AC26–29 и смешанное создание/изменение — не проверены.
 - #206 (2026-09-24, рабочее дерево `llm_test`, перед checkpoint): добавлена `SomeStuffCommand.Spec`, которая загружает текущие `SyncSettings` и вызывает `Spec::SpecAll` на главном потоке. `Docs/modules/spec/Spec.md` обновлён; clang-format, clangd 0 и финальный runner AC25 успешны. HTTP-вызов вернул `status="returned"`, `elapsedSeconds=318.3851546`; корректность созданной спецификации отдельно не проверялась.
 
 - #205 (2026-09-24, рабочее дерево `llm_test`, перед checkpoint): восстановлена минимальная инфраструктура `API_AddOnCommand`, зарегистрирована `SomeStuffCommand.RoomBook`. Финальный runner AC25 успешен; два последовательных HTTP-вызова вернули `status="returned"` за 17.5131455 и 16.9828768 с неизменными итоговыми количествами элементов на втором расчёте.
@@ -15,10 +16,10 @@
 - #195 (2026-09-24, рабочее дерево `llm_test`, перед checkpoint): `RoomBook` разделён на контекст, сбор элементов, чтение параметров, обработку отделки, свод/запись материалов, сбор GUID на удаление и резервирование (см. `Docs/modules/Roombook.md`). `symbols.json`: regex fallback выполнен (8514 символов), `callgraph.json` сохранён байт-в-байт. clang-format, clangd 0, финальный AC25 runner и два последовательных runtime-вызова RoomBook успешны; второй расчёт сохранил количества Object/Wall/Slab/Beam без накопления элементов.
 
 ## Текущая ветка
-`docs/codebase-map` (создана)
+Документация `Docs/` ведётся на `docs/codebase-map` (AGENTS.md §17); рабочий код — `llm_test`.
 
 ## Хеш коммита
-`72ec74a` (2026-09-22) — фазы 0-2 задокументированы и закоммичены
+`72ec74a` (2026-09-22) — фазы 0-2 задокументированы и закоммичены; HEAD `llm_test` — `13c1948` (2026-09-25)
 
 ## Список модулей
 
@@ -49,6 +50,7 @@
 | pk/ResetProperty | Sources/AddOn/pk/ResetProperty.cpp/hpp | 1 | 1 | Маленький |
 | pk/Revision | Sources/AddOn/pk/Revision.cpp/hpp | 1 | 1 | Средний |
 | third_party/qrcodegen | Sources/AddOn/third_party/qrcodegen.cpp/hpp | 1 | 1 | Большой |
+| json_commands | Sources/AddOn/json_commands/*.cpp/hpp | 5 | 5 | Маленький (AC25+) |
 
 ## Статус фаз
 

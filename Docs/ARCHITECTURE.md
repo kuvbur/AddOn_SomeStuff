@@ -1,8 +1,10 @@
 # Архитектура AddOn_SomeStuff
 
+> Обновлено 2026-09-25 (рабочее дерево `llm_test`, HEAD `13c1948`): добавлен слой `json_commands/` (#205/#206/#207/#208) и `dialogs/OtherDbDialog.*` (#210).
+
 ## Обзор
 
-ArchiCAD C++ Add-On для работы со стройдокументацией. Поддерживает ArchiCAD 22–29 (Win + macOS). Код расположен в `Sources/AddOn/`.
+ArchiCAD C++ Add-On для работы со стройдокументацией. Поддерживает ArchiCAD 22–29 (Win + macOS). Код расположен в `Sources/AddOn/`. HTTP/JSON-команды доступны только с AC25 (`ServerMainVers_2500`).
 
 ## Структура каталогов
 
@@ -13,22 +15,25 @@ Sources/AddOn/
 ├── Propertycache.*          — Кэш свойств/классификации/атрибутов
 ├── Sync.*                   — Синхронизация свойств, мониторинг
 ├── Summ.*                   — Суммирование свойств
-├── Spec.*                   — Правила спецификаций
 ├── ReNum.*                  — Перенумерация
-├── Revision.*               — Ревизионные маркеры
 ├── Dimensions.*             — Размеры (см. AGENTS.md §16: pen_original не менять)
 ├── Roombook.*               — Спецификация отделки
 ├── ClassificationFunction.* — Авто-классификация
-├── ResetProperty.*          — Сброс свойств (см. AGENTS.md §6: undo-регионы)
-├── AutomateFunction.*       — Автоматизация/выравнивание (pk/)
 ├── MEPv1.*                  — MEP
 ├── CommonFunction.*         — Утилиты
+├── TestFunc.*               — Локальные тесты (TESTING)
+├── Constants.hpp            — Справочник констант
 ├── dialogs/                 — DG-диалоги, HTML-интерфейс
 │   ├── BrowserPalette.*     — Браузер-палитра (HTML из RFIX/HTML/)
 │   ├── CommandHelpers.*
 │   ├── DG4rule.*
-│   └── SyncSettings.*       — Настройки синхронизации (SyncSettings.dat)
-├── spec/                    — Движок спецификаций
+│   ├── SyncSettings.*       — Настройки синхронизации (SyncSettings.dat)
+│   └── OtherDbDialog.*      — Выбор базы/этажа для связанных элементов (#210)
+├── json_commands/           — JSON-команды AC25+ (#205/#206/#207/#208)
+│   ├── CommandBase.*, JsonCommandRegistrar.*
+│   ├── RoomBookCommand.*, SpecCommand.*, HealthCommand.*
+│   └── How JSON Commands work.md
+├── spec/                    — Движок спецификаций (Spec.*, Spec_libpart.*)
 ├── table/                   — Рендерер таблиц, навигатор
 ├── pk/                      — Автоматизация, сброс свойств, ревизии
 ├── api_headers/             — Заголовки ArchiCAD API
@@ -49,10 +54,11 @@ Sources/AddOn/
 │  PROPERTYCACHE(), ReadSyncSettingsFromFile  │
 ├─────────────────────────────────────────────┤
 │           Application Logic                 │
-│  Sync, Summ, Spec, ReNum, ResetProperty,    │
-│  Revision, AutomateFunction, MEPv1,         │
-│  ClassificationFunction, Roombook,         │
-│  Dimensions, SomeStuff_Main                 │
+│  Sync, Summ, spec/Spec, ReNum,             │
+│  pk/(ResetProperty, Revision, Automate),   │
+│  MEPv1, ClassificationFunction, Roombook,  │
+│  Dimensions, SomeStuff_Main,               │
+│  json_commands/ (AC25+ HTTP API)           │
 ├─────────────────────────────────────────────┤
 │              UI Layer                       │
 │  Dialogs (DG::Palette, BrowserPalette,      │
@@ -75,6 +81,13 @@ graph TD
     Main --> ReNum
     Main --> Helpers
     Main --> BP[dialogs/BrowserPalette]
+    Main --> JC[json_commands]
+    JC --> RB2[Roombook]
+    JC --> SS2[dialogs/SyncSettings]
+    JC --> Spec
+    JC --> CF
+    JC --> Const[Constants]
+    Sync --> OD[dialogs/OtherDbDialog]
     Sync --> Helpers
     Sync --> PC[Propertycache]
     Sync --> SS[dialogs/SyncSettings]
@@ -123,8 +136,15 @@ graph TD
 ### JS Bridge
 
 - Bridge = inline функции через `RegisterACAPIJavaScriptObject`
-- JSON-команды были удалены (b7a996b) — не reintroduce
 - Парсить аргументы через `DynamicCast<JSValue>` — `DynamicCast<JSArray>` крашит ArchiCAD
+- Bridge и JSON-команды — разные каналы: мост = инлайн-функции CEF-палитры, JSON-команды = HTTP API `API_AddOnCommand` (AC25+). JSON-канал восстановлен в #205/#206 (карточка `Docs/modules/json_commands.md`)
+
+### JSON-команды (AC25+)
+
+- `RegisterJsonCommands()` из `Initialize` (SomeStuff_Main.cpp:569): `RoomBookCommand` и `SpecCommand`; `HealthCommand` — шаблон, не регистрируется (решение #205)
+- Выполнение: `ScheduleForExecutionOnMainThread` — модифицирующие операции только в главном потоке
+- `#include "ACAPinc.h"` ДО проверки `ServerMainVers_2500` в каждом `.cpp` (макрос версии даёт именно этот заголовок), иначе пустая единица трансляции
+- Выбор экземпляра Archicad — через HTTP-порт вызывающего, параметром не передаётся
 
 ### Undo Regions
 
