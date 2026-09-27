@@ -3,6 +3,8 @@
 > Карточка создана 2026-09-25 по коду ветки `llm_test` (HEAD `13c1948`). Модуль восстановлен в #205 (RoomBook) и #207/#208 (Spec); AC22–24 не поддерживаются — весь код под `#if defined(ServerMainVers_2500)`. Номера строк — определения в `.cpp`, 1-based (проверены grep/read). Своя справка по API: `Sources/AddOn/json_commands/How JSON Commands work.md` [из файла].
 >
 > Обновлено 2026-09-27 (#213): добавлена команда `SyncAll`; строка `Health`-решения сместилась в `How JSON Commands work.md` (:132 заголовок, :149 решение) [по коду].
+>
+> Обновлено 2026-09-27 (AC26, #170): в `CommandBase` добавлен `IsProcessWindowVisible` (метод `API_AddOnCommand` существует только с AC26, под `#ifdef ServerMainVers_2600`); номера строк `CommandBase.hpp/.cpp` ниже — после этой правки [по коду].
 
 ## Назначение
 
@@ -23,8 +25,8 @@
 | Тип | Где | Назначение |
 |-----|-----|-----------|
 | `CommandBase` | CommandBase.hpp:17 | Базовый `API_AddOnCommand`: namespace `SomeStuffCommand` (CommandBase.cpp:8), политика `ScheduleForExecutionOnMainThread` (CommandBase.cpp:23) [по коду] |
-| `ReadOnlyCommand` | CommandBase.hpp:58 | Подкласс без undo; унаследован только `HealthCommand` (не зарегистрирован) [по коду] |
-| `ModifyCommand` | CommandBase.hpp:77 | Подкласс с поддержкой undo; в актуальном коде не используется — команды-изменения наследуют `CommandBase` напрямую [по коду] |
+| `ReadOnlyCommand` | CommandBase.hpp:68 | Подкласс без undo; унаследован только `HealthCommand` (не зарегистрирован) [по коду] |
+| `ModifyCommand` | CommandBase.hpp:87 | Подкласс с поддержкой undo; в актуальном коде не используется — команды-изменения наследуют `CommandBase` напрямую [по коду] |
 | `RoomBookCommand` | RoomBookCommand.hpp:7 | Команда без параметров, free-form ответ [по коду] |
 | `SpecCommand` | SpecCommand.hpp:7 | Команда со схемой параметров (обязательный `placementPoint`) [по коду] |
 | `SyncAllCommand` | SyncAllCommand.hpp:7 | Команда без параметров, free-form ответ (`SyncAll`) [по коду] |
@@ -38,6 +40,7 @@
 | `RegisterJsonCommands()` | JsonCommandRegistrar.cpp:16 | Регистрирует `RoomBookCommand`, `SpecCommand` и `SyncAllCommand` через `ACAPI_Install_AddOnCommandHandler`; ошибка — `DBprnt`. Вне AC25 — пустая (JsonCommandRegistrar.cpp:38) [по коду] |
 | `CommandBase::GetNamespace` | CommandBase.cpp:18 | Возвращает `SomeStuffCommand` [из комментария] |
 | `CommandBase::GetExecutionPolicy` | CommandBase.cpp:23 | `ScheduleForExecutionOnMainThread` — модифицирующие команды только в главном потоке [из комментария] |
+| `CommandBase::IsProcessWindowVisible` | CommandBase.cpp:32 | AC26+ (`#ifdef ServerMainVers_2600`): сообщает Archicad о показе окна процесса — `true` (команды длительные, в главном потоке) [по коду; DevKit-пример AddOnCommandTest] |
 | `RoomBookCommand::GetName` | RoomBookCommand.cpp:19 | Имя команды `RoomBook` [по коду] |
 | `RoomBookCommand::Execute` | RoomBookCommand.cpp:34 | Запускает `Roombook::RoomBook()`; ответ `{status:"returned", elapsedSeconds}` — `void`-функция не сообщает ошибку/отмену [по коду; IDEA.md Decisions #205] |
 | `SpecCommand::GetName` | SpecCommand.cpp:20 | Имя команды `Spec` [по коду] |
@@ -46,8 +49,8 @@
 | `SyncAllCommand::GetName` | SyncAllCommand.cpp:21 | Имя команды `SyncAll` [по коду] |
 | `SyncAllCommand::Execute` | SyncAllCommand.cpp:36 | Параметров нет; `LoadSyncSettingsFromPreferences(syncSettings, true)` → `PROPERTYCACHE().Update()` → `SyncAndMonAll(syncSettings)`; ответ `{status:"returned", elapsedSeconds}` — `void`-функция не сообщает ошибку/отмену/признак раннего выхода по `ResetProperty()` [по коду; #213] |
 | `HealthCommand::Execute` | HealthCommand.cpp:34 | Ответ `{status:"ok", version: <из ID_ADDON_STRINGS VersionId>, addon:"SomeStuff"}` [по коду] |
-| `CreateErrorResponse` / `CreateSuccessResponse` | CommandBase.cpp:50 / 60 | Свободные хелперы ответов (`error{code}`, `message` / `success:true`) [по коду] |
-| `GetGuidFromObjectState` / `CreateGuidObjectState` (2 перегрузки) | объявлены в CommandBase.hpp:99-109 | Хелперы GUID-обёрток; определения не найдены в .cpp — [назначение не установлено: потенциально мёртвый код, не проверено] |
+| `CreateErrorResponse` / `CreateSuccessResponse` | CommandBase.cpp:58 / 68 | Свободные хелперы ответов (`error{code}`, `message` / `success:true`) [по коду] |
+| `GetGuidFromObjectState` / `CreateGuidObjectState` (2 перегрузки) | объявлены в CommandBase.hpp:109-119 | Хелперы GUID-обёрток; определения не найдены в .cpp — [назначение не установлено: потенциально мёртвый код, не проверено] |
 
 ## Карточки
 
@@ -96,4 +99,5 @@
 - Не реинтродуцировать JSON-команды «в ствол» через BrowserPalette-мост: мост и JSON-команды — разные каналы (мост = инлайн-функции `RegisterACAPIJavaScriptObject`), см. ARCHITECTURE.md §JS Bridge. [по коду]
 - `HealthCommand` намеренно не регистрируется — остаётся шаблоном read-only команды (решение #205). [из How JSON Commands work.md:149]
 - `SyncAllCommand` вызывает `SyncAndMonAll` as-is: прогресс-окно и фазы не подавляются и `Sync.cpp` не правится — осознанное решение #213, а не недоделка; не «оптимизировать» его без отдельной задачи. [по коду; #213]
-- Конфликт имен: `CreateErrorResponse`/`CreateSuccessResponse` существуют и как свободные (CommandBase.cpp:50/60), и как protected-методы `ReadOnlyCommand`/`ModifyCommand` — дублирование API; актуальные команды используют свободные. [по коду]
+- Конфликт имен: `CreateErrorResponse`/`CreateSuccessResponse` существуют и как свободные (CommandBase.cpp:58/68), и как protected-методы `ReadOnlyCommand`/`ModifyCommand` — дублирование API; актуальные команды используют свободные. [по коду]
+- AC26 добавил в `API_AddOnCommand` чистый виртуальный `IsProcessWindowVisible` — без его реализации команды не инстанцируются (`GS::NewOwned<…>` в `JsonCommandRegistrar.cpp:17/22/27`); реализация — в `CommandBase` под `#ifdef ServerMainVers_2600`, AC25–24 её не компилируют. [по коду; сборка AC26]

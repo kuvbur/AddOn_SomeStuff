@@ -706,19 +706,20 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
             for (const API_Guid &guid : guids)
                 hlElems.Put (guid, hlColor);
+            // С AC26 функции подсветки возвращают void, поэтому код ошибки от них
+            // не получить и hlErr остаётся NoError.
+            GSErrCode hlErr = NoError;
 #ifdef ServerMainVers_2700
-            GSErrCode hlErr = ACAPI_UserInput_ClearElementHighlight ();
-            if (hlErr == NoError)
-                hlErr = ACAPI_UserInput_SetElementHighlight (hlElems);
+            ACAPI_UserInput_ClearElementHighlight ();
+            ACAPI_UserInput_SetElementHighlight (hlElems);
 #else
     #ifdef ServerMainVers_2600
-        GSErrCode hlErr = ACAPI_Interface_ClearElementHighlight ();
-        if (hlErr == NoError)
-            hlErr = ACAPI_Interface_SetElementHighlight (hlElems);
+            ACAPI_Interface_ClearElementHighlight ();
+            ACAPI_Interface_SetElementHighlight (hlElems);
     #else
-        // Вызов без par1 снимает предыдущую подсветку
-        ACAPI_Interface (APIIo_HighlightElementsID);
-        const GSErrCode hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+            // Вызов без par1 снимает предыдущую подсветку
+            ACAPI_Interface (APIIo_HighlightElementsID);
+            hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
     #endif
 #endif
             if (hlErr != NoError) {
@@ -1563,7 +1564,11 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             return GS::Ref<DG::JSBase> (new DG::JSValue (false));
         }));
 
+#ifndef ServerMainVers_2600
+    // В AC26+ DG::BrowserBase::UnregisterJSObject удалён из DGLib,
+    // в API остался только RegisterAsynchJSObject.
     browser.UnregisterJSObject (GS::UniString ("ACAPI"));
+#endif
     const bool registerOk = browser.RegisterAsynchJSObject (jsACAPI);
     if (!registerOk) {
         DBprnt ("RegisterACAPIJavaScriptObject: browser.RegisterAsynchJSObject failed for object 'ACAPI'");
@@ -1623,7 +1628,9 @@ GS::Array<API_Guid> FilterElementsByType (const GS::Array<API_Guid> &elements, U
         head.guid = guid;
         if (ACAPI_Element_GetHeader (&head) != NoError)
             continue;
-        if (!ElementCanHaveProperty (head.typeID))
+        // В AC26 поле API_Elem_Head::typeID заменено на type (API_ElemType);
+        // GetElemTypeID инкапсулирует различие версий.
+        if (!ElementCanHaveProperty (GetElemTypeID (head)))
             continue;
         result.Push (guid);
     }

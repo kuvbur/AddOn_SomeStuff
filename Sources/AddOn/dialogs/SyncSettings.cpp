@@ -19,12 +19,19 @@
 // CMakeCommon.cmake добавляет Modules/* в include path.
 // Внутри заголовков rapidjson есть нестрогие memcpy — глушим только здесь,
 // чтобы clangd не поднимал -Wnontrivial-memcall до ошибки в этом файле.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnontrivial-memcall"
+// Под MSVC прагмы clang неизвестны; до AC25 предупреждение C4068 глушилось
+// заголовком DevKit (APIdefs_AnalyticalModel.h), в AC26 там его нет и /WX
+// превращает C4068 в ошибку сборки.
+#ifdef __clang__
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wnontrivial-memcall"
+#endif
 #include "document.h"
 #include "prettywriter.h"
 #include "stringbuffer.h"
-#pragma clang diagnostic pop
+#ifdef __clang__
+    #pragma clang diagnostic pop
+#endif
 
 static const Int32 PreferencesVersion = 7;
 

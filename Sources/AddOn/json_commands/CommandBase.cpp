@@ -24,6 +24,14 @@ API_AddOnCommandExecutionPolicy CommandBase::GetExecutionPolicy () const {
     return API_AddOnCommandExecutionPolicy::ScheduleForExecutionOnMainThread;
 }
 
+    #ifdef ServerMainVers_2600
+// -----------------------------------------------------------------------------
+// Сообщает Archicad о показе окна процесса во время выполнения команды.
+// Метод появился в API_AddOnCommand начиная с AC26.
+// -----------------------------------------------------------------------------
+bool CommandBase::IsProcessWindowVisible () const { return true; }
+    #endif // ServerMainVers_2600
+
 // -----------------------------------------------------------------------------
 // Обрабатывает ошибку проверки ответа команды.
 // -----------------------------------------------------------------------------
