@@ -36,6 +36,29 @@ BLOCKED — фильтр восстановлен, clangd 0; исходная п
 - Ранее предложенная причина КЖ/Favorite не относится к тестовому проекту с правилом АР (уточнение пользователя).
 - `GetAttributeValues` должен читать только `fromAttribDefinition`; расширение на `fromPropertyDefinition` — обход, а не исправление причины.
 
+## Parallel Task — Name2Rawname (AC25)
+
+### Scope
+Только восстановление дополнения отсутствующей фигурной скобки в `Sources/AddOn/Sync.cpp::Name2Rawname`, регрессионные тесты `Sources/AddOn/TestFunc.cpp`, карточка `Docs/modules/Sync.md` и связанные generated docs. Незакоммиченные правки `Sync.cpp` и `Helpers.cpp` других задач сохранить. Пользователь разрешил выполнить без GitHub issue только для этой задачи.
+
+### Status
+BLOCKED_FOR_CHECKPOINT — `Name2Rawname` исправлена и локальные RED/GREEN проверки AC25 прошли; полный TESTING-набор не зелёный: после фикса в двух проходах 8 `ERROR IN TEST` в `Helpers.cpp::CompareParamValue` (классификации), отсутствовавших в сопоставимом прогоне с прежним условием (там 8 ошибок новых проверок скобок). После правильного ключа в `ParseSyncString` также остаётся `!subproperty.ContainsKey` для указанного свойства. Не утверждать, что весь сценарий синхронизации восстановлен. Issue не создавался по просьбе пользователя.
+
+### Last Completed
+Сравнены ревизии до `11add7a` и до `1625cf1`; RED на реальном AC25 (отсутствующая закрывающая скобка), затем GREEN для неполных/полных/отсутствующих скобок в VS «Отладка». `clang-format`, clangd Sync.cpp 0, финальная сборка `BuildAddOn.py -v 25` успешна. Чужие изменения Sync.cpp/Helpers.cpp сохранены; созданные в этой отладке breakpoint-ы удалены, две ранее существовавшие отключённые точки сохранены.
+
+### Next Step
+Разобрать отдельно появившиеся 8 ошибок классификации (`Helpers.cpp:1632-1634`) и отсутствие ключа в `subproperty` без изменения кода вне scope; после зелёного полного прогона решить вопрос checkpoint. `_generated/` не обновлён: сигнатуры и связи не менялись, а генератор обнуляет callgraph; точечное обновление строк — отдельный шаг.
+
+### Last Checkpoint
+Не создан: полный TESTING-набор не прошёл; посторонние незакоммиченные изменения Sync.cpp нельзя включать в checkpoint.
+
+### Plan
+- [x] Сравнить историю `Name2Rawname` и установить причину для неполного имени (по коду/Git).
+- [x] Добавить и выполнить RED + GREEN тесты AC25 на двух недостающих скобках и контрольных формах.
+- [x] Исправить условие, проверить clang-format/clangd/AC25 build, обновить карточки Sync/TestFunc.
+- [/] Исследовать ошибки полного TESTING-набора и подтверждение сценария `subproperty`, прежде чем делать checkpoint.
+
 ## Parallel Task — #211 performance Helpers.cpp
 
 ### Scope
@@ -59,6 +82,79 @@ WAITING_FOR_TEST — по просьбе пользователя checkpoint #21
 - [/] Проверить diff, clang-format, clangd и AC25 build (выполнено); runtime сравнение и профилирование ожидаются.
 - [x] Актуализировать карточку и выполнить checkpoint `ccf9cae` без #209 по запросу; generated docs обновить отдельно.
 
+## Parallel Task — #213 JSON-команда SyncAll
+
+### Scope
+Только новые `Sources/AddOn/json_commands/SyncAllCommand.hpp/.cpp`, регистрация в `json_commands/JsonCommandRegistrar.cpp`, справка `json_commands/How JSON Commands work.md`, карточка `Docs/modules/json_commands.md`, `Docs/REPOMAP.md` и строка в `Reviews/open-2026-09-12.tracker.csv`. `Sources/AddOn/Sync.cpp` не менять (решение пользователя); незакоммиченные правки других задач (`IDEA.md`, `Sync.cpp`, `Helpers.cpp`, `TestFunc.cpp`, `Docs/modules/Sync.md`, `Docs/modules/TestFunc.md`) сохранить и в checkpoint не включать.
+
+### Status
+DONE (локально) — checkpoint `97377dc`, AC25 build и runtime endpoint-вызов пройдены; issue #213 открыт до проверки пользователем синхронизации.
+
+### Last Completed
+2026-09-27 — созданы `SyncAllCommand.hpp/.cpp` (обёртка: `LoadSyncSettingsFromPreferences(syncSettings, true)` → `PROPERTYCACHE().Update()` → `SyncAndMonAll`), регистрация в `RegisterJsonCommands`; clang-format, clangd 0 диагностик, `BuildAddOn.py -v 25` и `restart_archicad_for_test.ps1` (build=True, Archicad запущен); `API.ExecuteAddOnCommand` на порту 19723 вернул `{"status":"returned","elapsedSeconds":4.1818899}`.
+
+### Next Step
+Оформить checkpoint `[#213] JSON-команда SyncAll` (`Refs: #213`) без чужих правок и добавить строку в `Reviews/open-2026-09-12.tracker.csv`. Issue #213 закрывать после проверки пользователем.
+
+### Last Checkpoint
+`97377dc` — `[#213] JSON-команда SyncAll` (только файлы #213; чужие правки остались незакоммиченными).
+
+### Plan
+- [x] Согласовать объём и контракт (issue #213).
+- [x] Создать команду и зарегистрировать её; clang-format, clangd, AC25 build.
+- [x] Runtime: вызов endpoint на запущенном AC25 (`status=returned`).
+- [x] Обновить справку, карточку `Docs/modules/json_commands.md` и `Docs/REPOMAP.md`.
+- [x] Checkpoint `97377dc` (`Refs: #213`).
+- [x] Строка `#213` в `Reviews/open-2026-09-12.tracker.csv` (локальный трекер, вне git).
+
+### Decisions
+- Команда вызывает только `SyncAndMonAll`: `DimRoundAll`, `WriteSyncSettingsToPreferences` и обновление меню из пункта меню `SyncAll_CommandID` не воспроизводятся.
+- `Sync.cpp` не правится — `SyncAndMonAll` остаётся `void`, прогресс-окно и фазы сохраняются; отсюда контракт ответа только `{status, elapsedSeconds}` (согласовано после уточнения о недоказуемости `skippedByReset`/`elementsToWrite` без правки `Sync.cpp`).
+- `LoadSyncSettingsFromPreferences(syncSettings, true)` — у внешнего вызова нет интерфейса для смены флагов обхода; `PROPERTYCACHE().Update()` — паритет с `MenuCommandHandler`.
+
+## Parallel Task — #214 перенос наработок из официального шаблона сборки
+
+### Scope
+
+Только `Tools/CMakeCommon.cmake`, новые `Tools/VersionInfo.rc.in` / `Tools/AddOn.rc.in`, `CMakeLists.txt`, `config.json`, `Tools/AddOn.grc.in`. Кода в `Sources/AddOn/` не трогать. Локализация JSON→grc+XLIFF и code signing macOS исключены по решению пользователя. Пункты 1–7 issue — каждый отдельным шагом и коммитом с `Refs: #214`.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/214
+
+### Status
+
+IN_PROGRESS — пункт 1 выполнен (AC25 build + проверенная версия в grc и .apx). Пункты 2–7 не начаты. mac-сборка нужна для пунктов 2 и 7.
+
+### Last Completed
+
+2026-09-27 — пункт 1: `version`/`description`/`copyright` в `config.json` (версия числом `1.78`, без `v`), `parse_version` + `ReadConfigJson` в `CMakeCommon.cmake`, экспорт `ADDON_VERSION` двумя каналами, хардкод `v1.78` убран. AC25 build успешен, версия `1.78 2026-09-27-15` подтверждена в `RINT/AddOn.grc` и в `.apx`, compile DB регенерирован.
+
+### Next Step
+
+Пункт 2: `Tools/VersionInfo.rc.in` + `Tools/AddOn.rc.in`, подключение к target, `AC_ADDON_FOR_DISTRIBUTION`. Перед правкой `-r/--release` согласовать семантику «метка для дистрибуции» (сейчас = RelWithDebInfo + все языки).
+
+### Last Checkpoint
+
+Не создан — задача начата, кода не менялось.
+
+### Plan
+
+- [x] Сравнить форк `Tools/` с upstream, зафиксировать расхождения (скилл + issue #214).
+- [x] Пункт 1: версия и метаданные из `config.json` (AC25 build, версия в grc и .apx проверена).
+- [ ] Пункт 2: `VersionInfo.rc` + `AddOn.rc` на Windows, `AC_ADDON_FOR_DISTRIBUTION`.
+- [ ] Пункт 3: глоб `*.hpp` / `*.c` в target.
+- [ ] Пункт 4: `SYSTEM` для `${devKitDir}/Inc` и `ModuleFolders`.
+- [ ] Пункт 5: `find_package` с `REQUIRED` и границей версии Python.
+- [ ] Пункт 6: `verify_api_devkit_folder` (не заменяя `DetectACVersion`).
+- [ ] Пункт 7: `-fno-constant-cfstrings`, мёртвый `MINIMUM_SYSTEM_VERSION`, `addOnNameIdentifier`.
+
+### Decisions
+
+- `Tools/` — форк upstream, сплошная синхронизация запрещена: сломает AC22–24, `-DTESTING` (`TestFunc.cpp`/`DBprnt`), `/W3`, маркеры `AI_STATUS` раннера и `-DAC_${acVersion}` (цепочка `api_headers/APICommon<N>.h`).
+- Локализация JSON→grc+XLIFF и code signing macOS не берутся по решению пользователя; глоб `*.json` из исходников тоже не берём.
+- Переход `/W3` → `/W4` вынесен из issue: слишком рискован при `/WX`, отдельный follow-up.
+- `-r/--release` (`RelWithDebInfo` + все языки) не переименовываем в «метку для дистрибуции» молча — семантика решается при пункте 2.
+- Версия — число без `v`: upstream `parse_version` принимает только `^([0-9]+)(\.[0-9]+){0,2}$`, а каждая компонента 0–65535 попадает в `FILEVERSION`.
+- Нужны **оба** канала `ADDON_VERSION`: CMake-переменная для `configure_file` → `RINT/AddOn.grc` (компилятор туда не подставится) и `target_compile_definitions` для C++.
+
 ## WAITING_FOR_TEST — проверки за пользователем
 
 - #189 `2213388`: инлайн-кнопка сброса убрана из строк «Монитора»; в строке осталась только кнопка закрепления.
@@ -73,6 +169,9 @@ WAITING_FOR_TEST — по просьбе пользователя checkpoint #21
 - Прочее: #156 (классификатор видов работ), #155 (быстрый сброс свойств), #149/#148/#147 (откосы), #143/#142/#141 (чтение атрибутов), #136 (геометрия перекрытий), #130/#129/#128 (фильтры/поиск), #115 (координаты окон/дверей).
 - #157 — пресеты фильтров реализованы (issue остался открытым по недосмотру; кандидат на закрытие после проверки палитры).
 
+
+- **CMake `string(REPLACE)` требует 4 аргумента** (match, replace, output, **input**) — с тремя `requires at least four arguments`. Проверено на `"%Y"`.
+- **Вложенный путь JSON в списке CMake разъезжается**: `set (a copyright\;name)` даёт 2 элемента, а не 1 — вложенные поля читать отдельными вызовами `string(JSON ... GET "${json}" copyright name)`.
 ## Грабли
 
 - **HTML вшит в ресурс** (`'DATA' ID_ADDON_HTML`) — правки `Interface_ru.html` требуют пересборки; после каждой правки `Tools/test_html.ps1`.

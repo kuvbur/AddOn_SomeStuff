@@ -1,5 +1,79 @@
 set (CMAKE_VS_GLOBALS UseMultiToolTask=true EnforceProcessCountAcrossBuilds=true)
 
+# Чтение метаданных аддона из config.json (формат совпадает с официальным
+# шаблоном GRAPHISOFT archicad-addon-cmake).
+# Версия — только число, 1-3 компоненты, каждая 0-65535: из неё собирается
+# FILEVERSION в VersionInfo.rc, поэтому префикс "v" недопустим.
+set (GS_CONFIG_JSON_PATH "${CMAKE_SOURCE_DIR}/config.json" CACHE FILEPATH "")
+mark_as_advanced (GS_CONFIG_JSON_PATH)
+
+function (parse_version inValue outList)
+    set (v1 0)
+    set (v2 0)
+    set (v3 0)
+    unset (CMAKE_MATCH_COUNT)
+    if (inValue MATCHES [[^([0-9]+)\.([0-9]+)\.([0-9]+)$]])
+    elseif (inValue MATCHES [[^([0-9]+)\.([0-9]+)$]])
+    elseif (inValue MATCHES [[^([0-9]+)$]])
+    endif ()
+    if (DEFINED CMAKE_MATCH_COUNT)
+        foreach (i RANGE 1 "${CMAKE_MATCH_COUNT}")
+            set ("v${i}" "${CMAKE_MATCH_${i}}")
+            if ("${v${i}}" LESS "0" OR "${v${i}}" GREATER "65535")
+                message (FATAL_ERROR "Component ${i} of version number '${inValue}' is outside the 0-65535 range.")
+            endif ()
+        endforeach ()
+        set ("${outList}" "${v1};${v2};${v3}" PARENT_SCOPE)
+    else ()
+        unset ("${outList}" PARENT_SCOPE)
+    endif ()
+endfunction ()
+
+function (ReadConfigJson)
+    if (NOT EXISTS "${GS_CONFIG_JSON_PATH}")
+        message (FATAL_ERROR "Config file not found: ${GS_CONFIG_JSON_PATH}")
+    endif ()
+    file (READ "${GS_CONFIG_JSON_PATH}" json)
+
+    set (requiredMembers addOnName version description)
+    set (returnAs addOnName addOnVersion addOnDescription)
+    foreach (out members IN ZIP_LISTS returnAs requiredMembers)
+        string (JSON "${out}" ERROR_VARIABLE error GET "${json}" ${members})
+        if (error)
+            message (FATAL_ERROR "Error getting required member (${members}): ${error}")
+        endif ()
+        set ("${out}" "${${out}}" PARENT_SCOPE)
+    endforeach ()
+
+    # Поля copyright читаем отдельными вызовами: вложенный путь в списке
+    # ("copyright\;name") CMake разбирает как два отдельных элемента.
+    string (JSON addOnCompanyName ERROR_VARIABLE error GET "${json}" copyright name)
+    if (error)
+        message (FATAL_ERROR "Error getting required member (copyright.name): ${error}")
+    endif ()
+    string (JSON addOnCopyrightYear ERROR_VARIABLE error GET "${json}" copyright year)
+    if (error)
+        message (FATAL_ERROR "Error getting required member (copyright.year): ${error}")
+    endif ()
+
+    # Год с плейсхолдером %Y разворачиваем в текущий год.
+    if (addOnCopyrightYear MATCHES "%Y")
+        string (TIMESTAMP currentYear "%Y")
+        string (REPLACE "%Y" "${currentYear}" addOnCopyrightYear "${addOnCopyrightYear}")
+    endif ()
+
+    parse_version ("${addOnVersion}" addOnVersionParts)
+    if (NOT DEFINED addOnVersionParts)
+        message (FATAL_ERROR "'${addOnVersion}' does not follow the '123', '1.23' or '1.2.3' version format.")
+    endif ()
+    if (addOnVersionParts STREQUAL "0;0;0")
+        message (WARNING "Add-on version is '0.0.0', a placeholder. Change it in 'config.json'.")
+    endif ()
+    list (JOIN addOnVersionParts . addOnVersion)
+
+    set (AC_ADDON_FOR_DISTRIBUTION OFF CACHE BOOL "")
+endfunction ()
+
 function (SetGlobalCompilerDefinitions acVersion)
 
     if (WIN32)
@@ -217,6 +291,13 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         add_library (${addOnName} MODULE ${AddOnFiles})
     endif ()
 
+    # Версия аддона: из config.json (число, без "v"). CMake-переменная нужна для
+    # configure_file ниже, compile definition — для исходников C++.
+    if (NOT addOnVersion)
+        message (FATAL_ERROR "addOnVersion is empty. Call ReadConfigJson () before GenerateAddOnProject ().")
+    endif ()
+    set (ADDON_VERSION ${addOnVersion})
+    set (ADDON_NAME ${addOnName})
     string(TIMESTAMP addonsubversion "%Y-%m-%d-%H")
     set(ADDON_SUBVERSION ${addonsubversion})
     
@@ -275,6 +356,12 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
     )
 
     LinkGSLibrariesToProject (${acVersion} ${devKitDir} ${addOnName})
+
+    target_compile_definitions (${addOnName} PRIVATE
+        "ADDON_VERSION=\"${ADDON_VERSION}\""
+        "ADDON_NAME=\"${ADDON_NAME}\""
+        "ADDON_LANGUAGE=\"${addOnLanguage}\""
+    )
 
     set_source_files_properties (${AddOnSourceFiles} PROPERTIES LANGUAGE CXX)
     SetCompilerOptions (${addOnName} ${acVersion})

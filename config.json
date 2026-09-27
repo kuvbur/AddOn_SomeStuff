@@ -1,5 +1,11 @@
 {
   "addOnName": "SomeStuff",
+  "version": "1.78",
+  "description": "Синхронизация свойств и параметров GDL элементов",
+  "copyright": {
+    "name": "kuvbur",
+    "year": "1984-%Y"
+  },
   "devKitLinks": {
     "WIN": {
       "29": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/29.3100/API.Development.Kit.WIN.29.3100.zip",

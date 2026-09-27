@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.19)
 
 include (Tools/CMakeCommon.cmake)
 
-set(ADDON_VERSION "v1.78")
+ReadConfigJson ()
 
 set (API_DEVKIT_DIR $ENV{AC_API_DEVKIT_DIR})
 
