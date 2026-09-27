@@ -203,10 +203,12 @@ static const GS::UniString TOGUID = "to_GUID";
 static const GS::UniString SYNCPART = "Sync_";
 // Маркер правила чтения значения из источника.
 static const GS::UniString SYNCFROMSTRING = "from{";
+static const GS::UniString SYNCFROMFULLSTRING = "Sync_from{";
 // Маркер правила чтения значения из дочерних элементов.
 static const GS::UniString SYNCFROMSUBSTRING = "from_sub{";
 // Маркер правила записи значения в целевой объект.
 static const GS::UniString SYNCTOSTRING = "to{";
+static const GS::UniString SYNCTOFULLSTRING = "Sync_to{";
 // Маркер правила записи значения в дочерние элементы.
 static const GS::UniString SYNCTOSUBSTRING = "to_sub{";
 

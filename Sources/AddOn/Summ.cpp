@@ -360,7 +360,7 @@ bool Sum_Rule (const API_PropertyDefinition &definition, SumRule &paramtype) {
     if (nparam == 0)
         return false;
     GS::UniString key = PVALPREFIX + partstring[0] + BRACEEND;
-    GS::UniString rawName_rule = "";
+    GS::UniString rawName_rule;
     GetPropertyFullName (definition, rawName_rule);
     paramtype.rule_name = rawName_rule;
     rawName_rule = PROPERTYNAMEPREFIX + rawName_rule.ToLowerCase () + BRACEEND;

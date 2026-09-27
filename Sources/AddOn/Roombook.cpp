@@ -217,7 +217,7 @@ namespace Roombook
         auto &exsistot_byzone = context.exsistot_byzone;
         for (OtdSlab &otdslab : otd.otdslab) {
             bool base_flipped = false;
-            GS::UniString fav_name = "";
+            GS::UniString fav_name;
             if (!Param_SetToBase (otdslab.base_guid,
                                   base_flipped,
                                   otdslab.base_composite,
@@ -296,7 +296,7 @@ namespace Roombook
         GS::Array<OtdWall> opw; // Массив созданных стен
         for (OtdWall &otdw : otd.otdwall) {
             // Заполняем данные для отделочных стен (состав)
-            GS::UniString fav_name = "";
+            GS::UniString fav_name;
             if (!Param_SetToBase (otdw.base_guid,
                                   otdw.base_flipped,
                                   otdw.base_composite,
@@ -411,7 +411,7 @@ namespace Roombook
                 const ParamDictValue *roomparams = paramToRead.GetPtr (otd.zone_guid);
                 if (roomparams != nullptr) {
                     GS::Array<GS::UniString> rawnames;
-                    GS::UniString msg = "";
+                    GS::UniString msg;
                     if (!otd.om_up.rawname.IsEmpty ())
                         rawnames.Push (otd.om_up.rawname);
                     if (!otd.om_main.rawname.IsEmpty ())
@@ -1030,7 +1030,7 @@ namespace Roombook
         addspace = (Int32)(c.width_area / c.width_narow_space);
         if (fabs (addspace * c.width_narow_space - c.width_area) > c.width_narow_space)
             addspace -= 1;
-        c.space_line = "";
+        c.space_line = EMPTYSTRING;
         for (Int32 j = 0; j < addspace; j++) {
             c.space_line.Append (c.narow_space);
         }
@@ -1039,7 +1039,7 @@ namespace Roombook
         addspace = (Int32)((c.width_mat + c.width_area) / width_delim);
         if (fabs (addspace * width_delim - c.width_mat - c.width_area) > c.width_narow_space)
             addspace -= 1;
-        c.delim_line = "";
+        c.delim_line = EMPTYSTRING;
         for (Int32 j = 0; j < addspace; j++) {
             c.delim_line.Append (delim);
         }
@@ -1183,7 +1183,7 @@ namespace Roombook
             // Проверяем - есть ли считанное свойство в зоне для записи
             ParamValue paramtow = paramToRead.Get (zone_guid).Get (rawname);
             GS::UniString old_val = paramtow.val.uniStringValue;
-            GS::UniString new_val = "";
+            GS::UniString new_val;
             // Если такой тип отделки есть в словаре - записываем послойно материалы
             // и площади
             OtdMaterialAreaDict dcta;
@@ -2206,7 +2206,7 @@ namespace Roombook
     ReadParams Param_GetForWindowParams () {
         ReadParams zoneparams;
         ReadParam zoneparam;
-        GS::UniString zoneparam_name = "";
+        GS::UniString zoneparam_name;
 
         zoneparam_name = "frame";
         zoneparam.rawnames.Push ("{@gdl:gs_frame_thk}");
@@ -2263,13 +2263,13 @@ namespace Roombook
         GS::UniString propdesc_hasfin = "some_stuff_layer_has_finish";
         GS::UniString propdesc_hasfin_elem = "some_stuff_element_has_finish";
         GS::UniString propdesc_onoff_elem = "some_stuff_element_onoff";
-        GS::UniString rawName_onoff = "";
-        GS::UniString rawName_desc = "";
-        GS::UniString rawName_fav = "";
-        GS::UniString rawName_hasfin = "";
+        GS::UniString rawName_onoff;
+        GS::UniString rawName_desc;
+        GS::UniString rawName_fav;
+        GS::UniString rawName_hasfin;
         ParamValue param_hasfin_elem;
         ParamValue param_onoff_elem;
-        GS::UniString msg = "";
+        GS::UniString msg;
         if (!ParamHelpers::isPropertyDefinitionRead ())
             return;
         ParamDictValue &propertyParams = PROPERTYCACHE ().property;
@@ -2402,7 +2402,7 @@ namespace Roombook
     ReadParams Param_GetForRooms () {
         ReadParams zoneparams;
         ReadParam zoneparam;
-        GS::UniString zoneparam_name = "";
+        GS::UniString zoneparam_name;
 
         // Включение потолка
         zoneparam_name = "has_ceil";
@@ -2758,7 +2758,7 @@ namespace Roombook
             msg_rep ("Roombook", "Can't read zone params", NoError, base_guid);
             return;
         }
-        GS::UniString param_name = "";
+        GS::UniString param_name;
         ParamValueData val;
 
         param_name = "tip_pot";
@@ -3213,7 +3213,7 @@ namespace Roombook
             GSErrCode err = ACAPI_Attribute_Get (&attrib);
             if (err == NoError) {
                 API_AttributeIndex cutMaterial = attrib.buildingMaterial.cutMaterial;
-                GS::UniString attribname = "";
+                GS::UniString attribname;
                 BNZeroMemory (&attrib, sizeof (API_Attribute));
                 attrib.header.typeID = API_MaterialID;
                 attrib.header.index = cutMaterial;
@@ -3265,7 +3265,7 @@ namespace Roombook
             return;
         }
 
-        GS::UniString param_name = "";
+        GS::UniString param_name;
         double frame = 0;
         double sill = 0;
         bool plaster_show_3D = false;
@@ -3911,7 +3911,7 @@ namespace Roombook
         switch (otdw.type) {
         case NoSet:
             material.material = 0;
-            material.smaterial = "";
+            material.smaterial = EMPTYSTRING;
     #if defined(TESTING)
             DBprnt ("SetMaterialByType err",
                     "NoSet material.smaterial = "
@@ -3992,7 +3992,7 @@ namespace Roombook
             break;
         default:
             material.material = 0;
-            material.smaterial = "";
+            material.smaterial = EMPTYSTRING;
     #if defined(TESTING)
             DBprnt ("SetMaterialByType err",
                     "default material.smaterial = "
@@ -4881,7 +4881,7 @@ namespace Roombook
         }
         p.str = otdslab.tip;
         accsessoryparams.Add ("{@gdl:tip_pol}", p);
-        p.str = "";
+        p.str = EMPTYSTRING;
         p.num = 1;
         accsessoryparams.Add ("{@gdl:mun_zone}", p);
         p.num = 0;
@@ -5234,7 +5234,7 @@ namespace Roombook
     void SetSyncOtdWall (UnicElementByType &subelementByparent, ParamDictElement &paramToWrite) {
         API_Elem_Head parentelementhead;
         UnicGuid syncguidsdict;
-        GS::UniString suffix = "";
+        GS::UniString suffix;
         GS::Array<API_Guid> syncguids;
         GS::UniString funcname = "Create link with base element";
         bool suspGrp = false;
@@ -5490,7 +5490,7 @@ namespace Roombook
         if (favdict.IsEmpty ()) {
             msg_rep ("RoomBook favorite", "Recommended items not found in favorites", NoError, APINULLGuid);
         } else {
-            GS::UniString msg = "";
+            GS::UniString msg;
             if (!favdict.ContainsKey ("smstf wall"))
                 msg += "'smstf wall' ";
             if (!favdict.ContainsKey ("smstf floor"))
@@ -5509,7 +5509,7 @@ namespace Roombook
                          APINULLGuid);
             }
 
-            msg = "";
+            msg = EMPTYSTRING;
             if (!favdict.ContainsKey ("smstf reveal side"))
                 msg += "'smstf reveal side' ";
             if (!favdict.ContainsKey ("smstf reveal up"))
@@ -5571,7 +5571,7 @@ namespace Roombook
         const ParamComposite *base_composite = paramcomposite.GetPtr (param_composite.rawName);
         if (base_composite == nullptr)
             return;
-        GS::UniString fav_name_ = "";
+        GS::UniString fav_name_;
         Param_SetComposite (*base_composite, element.wall.flipped, favData->composite, fav_name_, true);
     }
 
@@ -5624,7 +5624,7 @@ namespace Roombook
             }
         }
         if (favorite.type == API_ZombieElemID) {
-            GS::UniString favorite_name_defult = "";
+            GS::UniString favorite_name_defult;
             switch (type) {
             case Wall_Main:
             case Wall_Up:

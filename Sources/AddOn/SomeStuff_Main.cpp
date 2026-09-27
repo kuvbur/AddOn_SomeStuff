@@ -355,7 +355,7 @@ void MenuSetState (SyncSettings &syncSettings) {
 
 void SetPaletteMenuText (short paletteItemInd) {
     API_MenuItemRef itemRef = {};
-    GS::UniString itemStr = "";
+    GS::UniString itemStr;
     const Int32 bisEng = ID_ADDON_PROMT + isEng ();
     itemStr = RSGetIndString (bisEng, paletteItemInd + 1, ACAPI_GetOwnResModule ());
     itemRef.menuResID = ID_ADDON_MENU;

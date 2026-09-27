@@ -44,7 +44,7 @@ void GetUnicGuid (GS::Array<API_Guid> &guidArray) {
 }
 
 GS::UniString GetDBName (API_DatabaseInfo &databaseInfo) {
-    GS::UniString рname = EMPTYSTRING;
+    GS::UniString рname;
     // Определяем строковое имя базы данных по её типу
     switch (databaseInfo.typeID) {
     case (APIWind_FloorPlanID):
@@ -166,7 +166,7 @@ double GetzPos (const double bottomOffset, const short floorInd, const Stories &
 // Преобразует текст в QR-код заданного уровня коррекции ошибок
 // -----------------------------------------------------------------------------
 GS::UniString TextToQRCode (const GS::UniString &text, const int error_lvl) {
-    GS::UniString qr_txt = EMPTYSTRING;
+    GS::UniString qr_txt;
     if (text.IsEmpty ())
         return qr_txt;
     // Определяем уровень коррекции ошибок QR-кода
@@ -266,7 +266,7 @@ void DBprnt (double a, GS::UniString reportString) {
 #if defined(TESTING)
     // Форматируем число и выводим отладочный префикс
     GS::UniString msg = GS::UniString::Printf ("%f", a);
-    std::string reportString_str = "";
+    std::string reportString_str;
     if (!reportString.IsEmpty ()) {
         reportString_str = reportString.ToCStr (0, MaxUSize, CC_UTF8).Get ();
     #ifndef ServerMainVers_2300
@@ -316,7 +316,7 @@ void DBprnt (GS::UniString msg, GS::UniString reportString) {
     #endif
     }
     std::string var_str = msg.ToCStr (0, MaxUSize, CC_UTF8).Get ();
-    std::string reportString_str = "";
+    std::string reportString_str;
     if (!reportString.IsEmpty ()) {
         reportString_str = reportString.ToCStr (0, MaxUSize, CC_UTF8).Get ();
     #ifndef ServerMainVers_2300
@@ -410,7 +410,7 @@ void msg_rep (const GS::UniString &modulename,
               const API_Guid &elemGuid,
               bool show) {
     // Формируем строковое описание ошибки для репорта
-    GS::UniString error_type = EMPTYSTRING;
+    GS::UniString error_type;
     if (err != NoError) {
         switch (err) {
         case APIERR_GENERAL:
@@ -694,7 +694,7 @@ void msg_rep (const GS::UniString &modulename,
             }
             if (elem_head.renovationFilterGuid != APINULLGuid)
                 error_type = error_type + " IN renovationFilter";
-            GS::UniString elemName = EMPTYSTRING;
+            GS::UniString elemName;
 #ifdef ServerMainVers_2700
             if (ACAPI_Element_GetElemTypeName (elem_head.type, elemName) == NoError) {
 #else
@@ -711,7 +711,7 @@ void msg_rep (const GS::UniString &modulename,
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError)
                 error_type = error_type + " layer:" + layer.header.name;
-            GS::UniString infoString = EMPTYSTRING;
+            GS::UniString infoString;
             GSErrCode err = NoError;
 #ifdef ServerMainVers_2700
             if (ACAPI_Element_GetElementInfoString (&elem_head.guid, &infoString) == NoError)
@@ -1070,7 +1070,7 @@ void ReplaceCR (GS::UniString &val, bool clear) {
 void GetNumSymbSpase (GS::UniString &outstring, GS::UniChar symb, char charrepl) {
     // Ищем указание длины строки
     Int32 stringlen = 0;
-    GS::UniString part = EMPTYSTRING;
+    GS::UniString part;
     if (outstring.Contains (symb)) {
         part = outstring.GetSubstring (symb, ' ', 0);
         if (!part.IsEmpty () && part.GetLength () < 4)
@@ -1206,7 +1206,7 @@ GS::Array<GS::UniString> DelimTextLine (short font,
     }
 
     GS::Array<GS::UniString> parts;
-    GS::UniString currentPart = EMPTYSTRING;
+    GS::UniString currentPart;
 
     for (UIndex i = 0; i < var.GetLength (); ++i) {
         GS::UniChar ch = var[i];
@@ -1225,7 +1225,7 @@ GS::Array<GS::UniString> DelimTextLine (short font,
     }
 
     // Сборка строк с контролем ширины
-    GS::UniString currentLine = EMPTYSTRING;
+    GS::UniString currentLine;
     double currentLineWidth = 0.0;
     UInt32 npart = parts.GetSize ();
 
@@ -1335,8 +1335,8 @@ bool EvalExpression (GS::UniString &unistring_expression) {
 
         UIndex formulaLength = endPos - startPos - 1;
         GS::UniString part = unistring_expression.GetSubstring (startPos + 1, formulaLength);
-        GS::UniString stringformat = EMPTYSTRING;
-        GS::UniString rezult_txt = EMPTYSTRING;
+        GS::UniString stringformat;
+        GS::UniString rezult_txt;
         FormatString fstring;
         if (!part.IsEmpty ()) {
             fstring = FormatStringFunc::GetFormatStringFromFormula (unistring_expression, part, stringformat);
@@ -1435,8 +1435,9 @@ GS::UniString StringUnic (const GS::UniString &instring, const GS::UniString &de
     if (!instring.Contains (delim))
         return instring;
     GS::Array<GS::UniString> partstring;
-    GS::UniString outsting = EMPTYSTRING;
+    GS::UniString outsting;
     UInt32 n = StringSpltUnic (instring, delim, partstring);
+    outsting.SetCapacity (partstring.GetSize ());
     for (UInt32 i = 0; i < n; i++) {
         outsting.Append (partstring[i]);
         if (i < n - 1)

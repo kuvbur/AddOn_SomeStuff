@@ -331,8 +331,8 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
     }
     ParamHelpers::ElementsRead (paramToReadelem); // Читаем значения
     bool has_error_ones = false;
-    GS::UniString error_rule_name = "";
-    GS::UniString ok_rule_name = "";
+    GS::UniString error_rule_name;
+    GS::UniString ok_rule_name;
     // Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
@@ -489,7 +489,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                     }
                     ruleparamName = ruleparamName.ToLowerCase ().GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
                     GS::UniString rawNamecriteria = PVALPREFIX;
-                    GS::UniString rawNamedelimetr = EMPTYSTRING;
+                    GS::UniString rawNamedelimetr;
                     if (ruleparamName.Contains (SEMICOLON)) { // Есть указание на нули
                         partstring.Clear ();
                         int nparam = StringSplt (ruleparamName, SEMICOLON, partstring, true, &local_scratch);
@@ -509,7 +509,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         rulecritetia.state = true;
                         rulecritetia.oldalgoritm = false;
                         rulecritetia.position = rawNameposition;
-                        GS::UniString fname = EMPTYSTRING;
+                        GS::UniString fname;
                         GS::UniString rawName = PROPERTYNAMEPREFIX;
                         GetPropertyFullName (definition, fname);
                         rawName.Append (fname.ToLowerCase ());
@@ -903,7 +903,7 @@ bool ElementsSeparation (RenumRule &rule,
         }
 
         // Получаем разделитель (delimetr), если он задан в правиле
-        std::string delimetr = "";
+        std::string delimetr;
         const ParamValue *paramdelimetr = params->GetPtr (rule.delimetr);
         if (paramdelimetr != nullptr) {
             if (paramdelimetr->isValid) {
@@ -921,7 +921,7 @@ bool ElementsSeparation (RenumRule &rule,
         }
 
         // Получаем критерий (criteria), если он задан в правиле
-        std::string criteria = "";
+        std::string criteria;
         const ParamValue *paramcriteria = params->GetPtr (rule.criteria);
         if (paramcriteria != nullptr) {
             if (paramcriteria->isValid) {

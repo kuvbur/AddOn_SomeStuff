@@ -244,7 +244,7 @@ namespace MEPv1 {
             return;
         if (elem_head.type.typeID != API_ExternalElemID)
             return;
-        GS::UniString txttype = "";
+        GS::UniString txttype;
         if (IsRoutingElement (elem_head.type.classID)) {
             subelemGuid = GetSubElementOfRoutingCached (elemGuid);
             return;

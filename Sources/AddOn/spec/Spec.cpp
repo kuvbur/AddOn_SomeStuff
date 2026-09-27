@@ -537,7 +537,7 @@ namespace Spec {
         start = clock ();
         GS::UniString funcname = "SpecAll";
         GS::Int32 nPhase = 4;
-        GS::UniString subtitle = "";
+        GS::UniString subtitle;
 #ifdef ServerMainVers_2700
         Int32 maxval = 1;
         bool showPercent = true;
@@ -1051,7 +1051,7 @@ namespace Spec {
             return NoError;
         });
         if (has_v2) {
-            GS::UniString msg = "";
+            GS::UniString msg;
             if (!elements_delete.IsEmpty ()) {
                 msg += RSGetIndString (iseng, 70, ACAPI_GetOwnResModule ()) +
                        GS::UniString::Printf (" %d \n", elements_delete.GetSize ());
@@ -1222,7 +1222,7 @@ namespace Spec {
             // Добавление группы и элемента
             SpecRule rule = GetRuleFromDescription (description);
             if (rule.is_Valid) {
-                GS::UniString fname = "";
+                GS::UniString fname;
                 GetPropertyFullName (definition, fname);
                 rule.subguid_paramrawname = fname;
                 rule.subguid_rulevalue = fname;
@@ -1406,7 +1406,7 @@ namespace Spec {
             if (!ListData::AddLibdataToParamValueDict (
                     elemguid, n_layer, paramListDataToRead, formula_expression, paramDict)) {
                 pvalue.val.type = API_PropertyStringValueType;
-                pvalue.val.uniStringValue = "";
+                pvalue.val.uniStringValue=EMPTYSTRING;
                 pvalue.val.doubleValue = 0;
                 pvalue.val.rawDoubleValue = 0;
                 pvalue.val.intValue = 0;
@@ -1416,7 +1416,7 @@ namespace Spec {
             }
             if (!ParamHelpers::ReadFormula (paramDict, true)) {
                 pvalue.val.type = API_PropertyStringValueType;
-                pvalue.val.uniStringValue = "";
+                pvalue.val.uniStringValue=EMPTYSTRING;
                 pvalue.val.doubleValue = 0;
                 pvalue.val.rawDoubleValue = 0;
                 pvalue.val.intValue = 0;
@@ -1461,7 +1461,7 @@ namespace Spec {
         GS::Int32 max_layers = pcelem.composite.GetSize ();
         if (n_layer >= max_layers) {
             pvalue.val.type = API_PropertyStringValueType;
-            pvalue.val.uniStringValue = "";
+            pvalue.val.uniStringValue;
             pvalue.val.doubleValue = 0;
             pvalue.val.rawDoubleValue = 0;
             pvalue.val.intValue = 0;
@@ -1542,7 +1542,7 @@ namespace Spec {
             }
             for (const GroupSpec &group : rule.groups) {
                 Element element = {};
-                GS::UniString key = "";
+                GS::UniString key;
                 if (!group.is_Valid)
                     continue;
                 // Проверяем значение флага, если он не найден - всё равно добавляем
@@ -1635,7 +1635,7 @@ namespace Spec {
                                 exsists_element.out_sum_param[j].val + element.out_sum_param[j].val;
                     }
                 } else {
-                    GS::UniString key_out = "";
+                    GS::UniString key_out;
                     for (const GS::UniString &rawname : group.out_paramrawname) {
                         ParamValue pvalue = {};
                         if (GetParamValue (elemguid,
@@ -1739,7 +1739,7 @@ namespace Spec {
             return n_elements;
         UnicGuid guids = {};
         for (const API_Guid &elemguid : rule.exsist_elements) {
-            GS::UniString key_out = "";
+            GS::UniString key_out;
             bool hasunic = true;
             // Принадлежность субэлемента к группе определим по ключу - сцепке значений уникальных параметров
             for (const GS::UniString &rawname : rule.out_paramrawname) {
@@ -1791,7 +1791,7 @@ namespace Spec {
                 ParamHelpers::ConvertByFormatString (elvalue);
                 if (elvalue != pvalue) {
                     GS::UniString old_s = "old ";
-                    GS::UniString new_s = "";
+                    GS::UniString new_s;
                     if (pvalue.type != API_PropertyStringValueType) {
                         old_s += FormatStringFunc::NumToString (pvalue.val.doubleValue, pvalue.val.formatstring);
                         new_s += FormatStringFunc::NumToString (elvalue.val.doubleValue, pvalue.val.formatstring);
@@ -1818,7 +1818,7 @@ namespace Spec {
                 ParamHelpers::ConvertByFormatString (elvalue);
                 if (elvalue != pvalue) {
                     GS::UniString old_s = "old ";
-                    GS::UniString new_s = "";
+                    GS::UniString new_s;
                     if (pvalue.type != API_PropertyStringValueType) {
                         old_s += FormatStringFunc::NumToString (pvalue.val.doubleValue, pvalue.val.formatstring);
                         new_s += FormatStringFunc::NumToString (elvalue.val.doubleValue, pvalue.val.formatstring);
@@ -2060,7 +2060,7 @@ namespace Spec {
                     name.Trim (CHARBRACEEND);
                     name.Trim ();
                     if (part == 1 && name.IsEqual ("-")) {
-                        name = "";
+                        name=EMPTYSTRING;
                         continue;
                     }
                     if (name.IsEmpty ())
@@ -2077,7 +2077,7 @@ namespace Spec {
                             min_row = n_row;
                         min_row = n_row < min_row ? n_row : min_row;
                     }
-                    GS::UniString rawName = "";
+                    GS::UniString rawName;
                     if (name.Contains (STRINGPROC)) {
                         if (group.fromMaterial) {
                             rawName = MATERIALNAMEPREFIX + "layers_auto,all;" + name + BRACEEND;
@@ -2256,7 +2256,7 @@ namespace Spec {
             if (err == NoError) {
                 if (favorite.properties.HasValue ()) {
                     for (const auto &property : favorite.properties.Get ()) {
-                        GS::UniString fname = "";
+                        GS::UniString fname;
                         GS::UniString rawName = PROPERTYNAMEPREFIX;
                         GetPropertyFullName (property.definition, fname);
                         rawName.Append (fname.ToLowerCase ());
@@ -2327,7 +2327,7 @@ namespace Spec {
             return err;
         }
         for (const auto &definition : definitions) {
-            GS::UniString fname = "";
+            GS::UniString fname;
             GS::UniString rawName = PROPERTYNAMEPREFIX;
             GetPropertyFullName (definition, fname);
             rawName.Append (fname.ToLowerCase ());
@@ -2586,7 +2586,7 @@ namespace Spec {
                     for (GSIndex ii = 0; ii < nParams; ++ii) {
                         API_AddParType &actParam = (*memo.params)[ii];
                         GS::UniString name = GS::UniString (actParam.name);
-                        GS::UniString rawname = "";
+                        GS::UniString rawname;
                         bool flag_find = false;
                         if (actParam.typeMod == API_ParSimple) {
                             rawname = GDLNAMEPREFIX + name.ToLowerCase () + BRACEEND;

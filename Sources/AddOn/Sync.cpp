@@ -335,7 +335,7 @@ bool SyncByType (const API_ElemTypeID &elementType,
 #if defined(TESTING)
     DBprnt ("    SyncByType start");
 #endif
-    GS::UniString subtitle = "";
+    GS::UniString subtitle;
     GSErrCode err = NoError;
     GS::Array<API_Guid> guidArray = {};
     clock_t start, finish;
@@ -351,9 +351,6 @@ bool SyncByType (const API_ElemTypeID &elementType,
 #endif
     if (guidArray.IsEmpty ())
         return false;
-// #ifdef TESTING
-// TestFunc::ResetSyncPropertyArray (guidArray);
-// #endif
 #ifdef ServerMainVers_2600
     API_ElemType elemType;
     elemType.typeID = elementType;
@@ -371,9 +368,7 @@ bool SyncByType (const API_ElemTypeID &elementType,
         GS::UniString::Printf ("Reading data from %d elements : ", guidArray.GetSize ()) + subtitle;
     bool flag_chanel = false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-        // Захватываем возврат SyncElement (needResync) для короткого замыкания по группам типов
-        if (SyncElement (guidArray[i], syncSettings, paramToWrite, dummymode, syncedelem))
-            flag_chanel = true;
+        SyncElement (guidArray[i], syncSettings, paramToWrite, dummymode, syncedelem);
 #ifdef ServerMainVers_2700
         if (i % 10 == 0)
             ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -757,7 +752,7 @@ bool SyncData (const API_Guid &elemGuid,
     GSErrCode err = NoError;
     GS::Array<API_PropertyDefinition> definitions = {};
     GS::Array<WriteData> mainsyncRules = {};
-    ParamDictValue subproperty = {};
+    ParamDictValue subproperty = {};         // Словарь GUID связанных элементов, если они заданы (Sync_GUID)
     ParamDictElement paramToRead = {};       // Словарь с параметрами для чтения
     UnicGuidString property_write_guid = {}; // Словарь GUID свойств, в которые могла быть осуществлена запись
     WriteDict syncRules = {};                // Словарь с правилами для каждого элемента
@@ -1079,13 +1074,15 @@ void SyncAddRule (const WriteData &writeSub, WriteDict &syncRules, ParamDictElem
 bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
     if (name.IsEmpty ())
         return false;
-    GS::UniString paramNamePrefix = "";
-    if (!name.Contains (BRACESTART) && !name.Contains (BRACEEND))
-        name = BRACESTART + name + BRACEEND;
+    GS::UniString paramNamePrefix;
+    if (!name.Contains (BRACESTART))
+        name = BRACESTART + name;
+    if (!name.Contains (BRACEEND))
+        name += BRACEEND;
     const GS::UniString loweredName = name.ToLowerCase ();
 
     // 1) Каноническая форма rawname '{@prefix:name}': префикс известен — вход уже
-    if (loweredName.BeginsWith (PVALPREFIX) && loweredName.EndsWith (BRACEEND)) {
+    if (loweredName.BeginsWith (PVALPREFIX)) {
         const UIndex colonInx = loweredName.FindFirst (':');
         if (colonInx != MaxUIndex) {
             const GS::UniString prefixPart =
@@ -1331,7 +1328,7 @@ bool ParseSyncString (const API_Guid &elemGuid,
     for (auto &rulestring_one : rulestring) {
         ParamValue param;
         SyncMode syncdirection = SYNC_NO; // Направление синхронизации
-        GS::UniString rawparamName = "";  // Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
+        GS::UniString rawparamName;       // Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
         SkipValues ignorevals = {};       // Игнорируемые значения
         FormatString stringformat = {};
         API_Guid elemGuidfrom = elemGuid;              // Элемент, из которого читаем данные
@@ -1339,65 +1336,30 @@ bool ParseSyncString (const API_Guid &elemGuid,
         API_ElemTypeID elementType_from = elementType; // Тип элемента, из которого читаем данные
         // Если правило ссылается на другой элемент через from_GUID, извлекаем GUID из
         // подстановочного свойства и подменяем исходный элемент на найденный.
-        if (rulestring_one.Contains (FROMGUIDBR)) {
-            params.Clear ();
-            rulestring_one.ReplaceAll (FROMGUID, EMPTYSTRING);
-            UInt32 nparams = StringSplt (rulestring_one, SEMICOLON, params, true, &local_scratch);
-            if (nparams == 2) {
-                GS::UniString rawname = "";
-                Name2Rawname (params[0], rawname);
-                if (ParamValue *p = subproperty.GetPtr (rawname)) {
-                    if (p->isValid) {
-                        if (p->val.uniStringValue.IsEmpty ())
-                            continue;
-                        elemGuidfrom = APIGuidFromString (p->val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
-                        if (elemGuidfrom == APINULLGuid)
-                            continue;
-                        rulestring_one = "Sync_from{" + params[1];
-                        elementType_from = GetElemTypeID (elemGuidfrom);
-                        if (elementType_from == API_ZombieElemID) {
-#if defined(TESTING)
-                            DBprnt ("ParseSyncString err", "elementType_from == API_ZombieElemID");
-#endif
-                            continue;
-                        }
-                    } else {
-#if defined(TESTING)
-                        DBprnt ("ParseSyncString err", "p.isValid");
-#endif
-                        continue;
-                    }
-                } else {
-#if defined(TESTING)
-                    DBprnt ("ParseSyncString err", "!subproperty.ContainsKey (rawname) " + rawname);
-#endif
-                    continue;
-                }
-            } else {
-#if defined(TESTING)
-                DBprnt ("ParseSyncString err", "nparams == 2 ");
-#endif
-                continue;
-            }
-        } else {
-            // Аналогично для to_GUID — правило будет применено к другому элементу, который
-            // указан в подстановочном свойстве.
-            if (rulestring_one.Contains (TOGUIDBR)) {
+        if (!subproperty.IsEmpty ()) { //  Обработка ссылочных свойств имеет смысл, только если есть прочитанные
+                                       //  свойства с GUID родительского элемента
+            if (rulestring_one.Contains (FROMGUIDBR)) { // Считывавение данных из другого элемента
                 params.Clear ();
-                rulestring_one.ReplaceAll (TOGUID, EMPTYSTRING);
+                rulestring_one.ReplaceAll (FROMGUID, EMPTYSTRING);
                 UInt32 nparams = StringSplt (rulestring_one, SEMICOLON, params, true, &local_scratch);
                 if (nparams == 2) {
-                    GS::UniString rawname = "";
+                    GS::UniString rawname;
                     Name2Rawname (params[0], rawname);
                     if (ParamValue *p = subproperty.GetPtr (rawname)) {
                         if (p->isValid) {
                             if (p->val.uniStringValue.IsEmpty ())
                                 continue;
-                            elemGuidto = APIGuidFromString (p->val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
-                            if (elemGuidto == APINULLGuid)
+                            elemGuidfrom = APIGuidFromString (p->val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
+                            if (elemGuidfrom == APINULLGuid)
                                 continue;
-                            param.fromGuid = elemGuidto;
-                            rulestring_one = "Sync_to{" + params[1];
+                            rulestring_one = SYNCFROMFULLSTRING + params[1];
+                            elementType_from = GetElemTypeID (elemGuidfrom);
+                            if (elementType_from == API_ZombieElemID) {
+#if defined(TESTING)
+                                DBprnt ("ParseSyncString err", "elementType_from == API_ZombieElemID");
+#endif
+                                continue;
+                            }
                         } else {
 #if defined(TESTING)
                             DBprnt ("ParseSyncString err", "p.isValid");
@@ -1415,6 +1377,44 @@ bool ParseSyncString (const API_Guid &elemGuid,
                     DBprnt ("ParseSyncString err", "nparams == 2 ");
 #endif
                     continue;
+                }
+            } else {
+                // Аналогично для to_GUID — правило будет применено к другому элементу, который
+                // указан в подстановочном свойстве.
+                if (rulestring_one.Contains (TOGUIDBR)) {
+                    params.Clear ();
+                    rulestring_one.ReplaceAll (TOGUID, EMPTYSTRING);
+                    UInt32 nparams = StringSplt (rulestring_one, SEMICOLON, params, true, &local_scratch);
+                    if (nparams == 2) {
+                        GS::UniString rawname;
+                        Name2Rawname (params[0], rawname);
+                        if (ParamValue *p = subproperty.GetPtr (rawname)) {
+                            if (p->isValid) {
+                                if (p->val.uniStringValue.IsEmpty ())
+                                    continue;
+                                elemGuidto = APIGuidFromString (p->val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
+                                if (elemGuidto == APINULLGuid)
+                                    continue;
+                                param.fromGuid = elemGuidto;
+                                rulestring_one = SYNCTOFULLSTRING + params[1];
+                            } else {
+#if defined(TESTING)
+                                DBprnt ("ParseSyncString err", "p.isValid");
+#endif
+                                continue;
+                            }
+                        } else {
+#if defined(TESTING)
+                            DBprnt ("ParseSyncString err", "!subproperty.ContainsKey (rawname) " + rawname);
+#endif
+                            continue;
+                        }
+                    } else {
+#if defined(TESTING)
+                        DBprnt ("ParseSyncString err", "nparams == 2 ");
+#endif
+                        continue;
+                    }
                 }
             }
         }
@@ -1568,7 +1568,7 @@ bool SyncString (const API_ElemTypeID &elementType,
     // Если направление синхронизации не нашли - выходим
     if (syncdirection == SYNC_NO)
         return false;
-    GS::UniString paramNamePrefix = "";
+    GS::UniString paramNamePrefix;
     bool synctypefind = false;
     // Нормализуем входную строку правила: убираем переносы строк, табуляцию и другие
     // служебные символы, чтобы они не мешали последующему разбору префиксов и параметров.
@@ -1744,7 +1744,7 @@ bool SyncString (const API_ElemTypeID &elementType,
             synctypefind = true;
         }
     }
-    GS::UniString stringformat_raw = "";
+    GS::UniString stringformat_raw;
 
     // TODO Дописать чтение состава многослойной конструкции по её имени
     if (synctypefind == false) {
@@ -1766,7 +1766,7 @@ bool SyncString (const API_ElemTypeID &elementType,
             rulestring_one.ReplaceAll ("{Layers_auto;", "{Layers_auto,20;");
             paramNamePrefix = MATERIALNAMEPREFIX;
             param.typeinx = MATERIALTYPEINX;
-            GS::UniString templatestring = "";
+            GS::UniString templatestring;
             if (hasformula) {
                 if (rulestring_one.Contains (CHARDQUT)) {
                     templatestring = rulestring_one.GetSubstring (CHARDQUT, CHARDQUT, 0);
@@ -1822,7 +1822,7 @@ bool SyncString (const API_ElemTypeID &elementType,
     }
     if (synctypefind == false) {
         if (hasformula) {
-            GS::UniString templatestring = "";
+            GS::UniString templatestring;
             if (rulestring_one.Contains (CHARDQUT)) {
                 templatestring = rulestring_one.GetSubstring (CHARDQUT, CHARDQUT, 0);
                 FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
@@ -2086,10 +2086,10 @@ bool SyncString (const API_ElemTypeID &elementType,
             int array_row_end = 0;
             int array_column_start = 0;
             int array_column_end = 0;
-            GS::UniString rawName_row_start = ""; // Имя параметра со значением начала диапазона чтения строк
-            GS::UniString rawName_row_end = "";   // Имя параметра со значением конца диапазона чтения строк
-            GS::UniString rawName_col_start = ""; // Имя параметра со значением начала диапазона чтения столбцов
-            GS::UniString rawName_col_end = "";   // Имя параметра со значением конца диапазона чтения столбцов
+            GS::UniString rawName_row_start; // Имя параметра со значением начала диапазона чтения строк
+            GS::UniString rawName_row_end;   // Имя параметра со значением конца диапазона чтения строк
+            GS::UniString rawName_col_start; // Имя параметра со значением начала диапазона чтения столбцов
+            GS::UniString rawName_col_end;   // Имя параметра со значением конца диапазона чтения столбцов
             double p;
             if (params[1].Contains ("(")) {
                 GS::Array<GS::UniString> sr;
@@ -2216,7 +2216,7 @@ bool SyncString (const API_ElemTypeID &elementType,
         // при чтении/записи, а также специальные маркеры для пустых/обнулённых случаев.
         if (nparam > start_ignore) {
             for (UInt32 j = start_ignore; j < nparam; j++) {
-                GS::UniString ignoreval = "";
+                GS::UniString ignoreval;
                 if (params[j].Contains (CHARDQUT)) {
                     ignoreval = params[j].GetSubstring (CHARDQUT, CHARDQUT, 0);
                 } else {
@@ -2414,7 +2414,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
     clock_t start, finish;
     double duration;
     start = clock ();
-    GS::UniString fmane = "";
+    GS::UniString fmane;
     GSErrCode err = NoError;
 #ifdef ServerMainVers_2300
     // Шаг 1. Собираем выделение: выбрасываем выноски (API_LabelID); у элементов,
@@ -2566,7 +2566,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
                 if (!ACAPI_Element_Filter (guid, APIFilt_OnActFloor)) {
                     BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
                     tElemHead.guid = guid;
-                    GS::UniString name = "";
+                    GS::UniString name;
                     if (ACAPI_Element_GetHeader (&tElemHead, 0) == NoError) {
                         name = GS::UniString::Printf ("%d", tElemHead.floorInd);
                         AddOtherDbTarget (otherDbTargets,
@@ -2613,7 +2613,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
     // Шаг 4. Сводка: в fmane — статистика для лога, в errmsg — текст для пользователя
     // о том, сколько элементов нашлось, но выделить их нельзя (удалены/скрыты/другой этаж).
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
-    GS::UniString errmsg = "";
+    GS::UniString errmsg;
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     if (count_otherplan > 0) {
         GS::UniString SubElementOtherPlanString =
@@ -3056,7 +3056,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
             ParsedPropertyCommand cmd;
             cmd.commandType = cmdPrefix.commandType;
             cmd.fullCommand = description.GetSubstring (startPos, description.GetLength () - startPos);
-            cmd.parameters = "";
+            cmd.parameters=EMPTYSTRING;
             cmd.isValid = false;
             cmd.errorMessage = "Не найдена закрывающая скобка }";
             commands.Push (std::move (cmd));
@@ -3072,7 +3072,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
         cmd.fullCommand = cmdPrefix.prefix + parameters + BRACEEND;
         cmd.parameters = parameters;
         cmd.isValid = true;
-        cmd.errorMessage = "";
+        cmd.errorMessage=EMPTYSTRING;
 
         // Дополнительная валидация для Sync команд
         if (cmdPrefix.commandType == "Sync") {
@@ -3118,7 +3118,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
         if (braceEnd != MaxUSize) {
             remainingText = description.GetSubstring (braceEnd + 1, description.GetLength () - (braceEnd + 1));
         } else {
-            remainingText = "";
+            remainingText=EMPTYSTRING;
         }
     }
 

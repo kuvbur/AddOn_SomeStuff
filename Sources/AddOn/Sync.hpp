@@ -12,17 +12,17 @@
 // --------------------------------------------------------------------
 struct SyncRule {
     // Имя исходного параметра или свойства.
-    GS::UniString paramNameFrom = "";
+    GS::UniString paramNameFrom;
     // Описание исходного свойства для синхронизации.
     API_PropertyDefinition paramFrom = {};
     // Имя целевого параметра или свойства.
-    GS::UniString paramNameTo = "";
+    GS::UniString paramNameTo;
     // Описание целевого свойства для синхронизации.
     API_PropertyDefinition paramTo = {};
     // Набор значений, которые следует игнорировать.
     SkipValues ignorevals = {};
     // Шаблон строки форматирования для преобразования значения.
-    GS::UniString templatestring = "";
+    GS::UniString templatestring;
     // Тип выполняемой синхронизации.
     SyncMode synctype = SYNC_NO;
     // Направление синхронизации.

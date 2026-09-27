@@ -44,7 +44,7 @@ namespace ParamHelpers {
         std::string lineStr;
         GS::UniString s;
         API_LibPart settingsText = {};
-        GS::UniString locPath = EMPTYSTRING;
+        GS::UniString locPath;
         GSErrCode err = NoError;
         // Поиск файла
         GS::ucscpy (settingsText.file_UName,
@@ -84,7 +84,7 @@ namespace ParamHelpers {
         }
         file.Close ();
         std::istringstream stream (std::string (buff, fSize));
-        GS::UniString separatorString = EMPTYSTRING;
+        GS::UniString separatorString;
         USize n_col = 0;
         while (std::getline (stream, lineStr)) {
             GS::Array<GS::UniString> lines;
@@ -398,8 +398,8 @@ namespace ParamHelpers {
     #if defined(TESTING)
         DBprnt ("   GetGeoLocationToParamDict start");
     #endif
-        GS::UniString name = EMPTYSTRING;
-        GS::UniString rawName = EMPTYSTRING;
+        GS::UniString name;
+        GS::UniString rawName;
         ParamValue pvalue = {};
         GSErrCode err = NoError;
         API_GeoLocation apiGeoLocation = {};
@@ -498,8 +498,8 @@ namespace ParamHelpers {
 #if defined(TESTING)
         DBprnt ("   GetAllGlobToParamDict start");
 #endif
-        GS::UniString name = EMPTYSTRING;
-        GS::UniString rawName = EMPTYSTRING;
+        GS::UniString name;
+        GS::UniString rawName;
         ParamValue pvalue = {};
         API_PlaceInfo placeInfo = {};
         GSErrCode err = NoError;
@@ -661,7 +661,7 @@ namespace ParamHelpers {
             msg_rep ("GetAllInfoToParamDict", "APIAny_GetAutoTextsID", err, APINULLGuid);
             return false;
         }
-        GS::UniString rawName = EMPTYSTRING;
+        GS::UniString rawName;
         for (UInt32 i = 0; i < autotexts.GetSize (); i++) {
             if (autotexts[i][0].Contains ("Addon_Dimens") && !autotexts[i][2].IsEmpty ()) {
                 rawName = "{@info:addon_dimension_autotext}";
@@ -788,8 +788,8 @@ namespace ParamHelpers {
                                                 GS::Array<API_PropertyDefinition> &definitions) {
         if (definitions.IsEmpty ())
             return false;
-        GS::UniString name = EMPTYSTRING;
-        GS::UniString rawName = EMPTYSTRING;
+        GS::UniString name;
+        GS::UniString rawName;
         API_PropertyGroup group;
         bool flag_add = false;
         for (auto &definision : definitions) {
@@ -894,7 +894,7 @@ void AddUnreadGDLParams (const Int32 &libinx, const GS::UniString &rawname) {
 }
 
 GS::UniString CountUnreadGDLParams () {
-    GS::UniString out = EMPTYSTRING;
+    GS::UniString out;
     Int32 clib = 0;
     Int32 cparam = 0;
     auto &cache = PROPERTYCACHE ();
@@ -1015,7 +1015,7 @@ bool DimReadPref (DimRules &dimrules, const GS::UniString &autotext, bool &hasLa
         if (DimParsePref (autotext, dimrule, hasexpression, hasLayerNameInOneDimRules)) {
             if (hasLayerNameInOneDimRules)
                 hasLayerNameInDimRules = true;
-            GS::UniString kstr = EMPTYSTRING;
+            GS::UniString kstr;
             if (dimrule.layer.IsEmpty ()) {
                 kstr = GS::UniString::Printf ("%d", dimrule.pen_original);
             } else {

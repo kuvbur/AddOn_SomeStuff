@@ -635,7 +635,7 @@ namespace AutoFunc {
             if (err != NoError) {
                 msg_rep ("ProfileByLine", "APIDo_ShowAllIn3DID", err, APINULLGuid);
             }
-            GS::UniString id = "";
+            GS::UniString id;
             GS::UniString name = "Участок ";
             err = GetSectLine (elems[0], lines, id, startpos);
             if (err != NoError) {

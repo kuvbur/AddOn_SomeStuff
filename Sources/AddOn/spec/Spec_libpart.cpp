@@ -85,7 +85,7 @@ namespace ListData {
     }
 
     GS::UniString GetParam (const GS::UniString &param_zone, GS::UniString param_name) {
-        GS::UniString param = "";
+        GS::UniString param;
         if (!param_zone.Contains (param_name))
             return param;
         if (!param_zone.Contains (ATSIGN))
@@ -107,7 +107,7 @@ namespace ListData {
                  double &qty,
                  const short &version) {
         Mat p = {};
-        GS::UniString subpos = "";
+        GS::UniString subpos;
         if (version == 3) {
             if (partstring.GetSize () < 11) {
                 return;
@@ -144,7 +144,7 @@ namespace ListData {
                  double &qty,
                  const short &version) {
         Arm p = {};
-        GS::UniString subpos = "";
+        GS::UniString subpos;
         if (version == 3) {
             if (partstring.GetSize () < 10) {
                 return;
@@ -195,13 +195,13 @@ namespace ListData {
                     GS::UniString &unitcode,
                     double &qty,
                     const short &version) {
-        GS::UniString subpos = "";
-        GS::UniString pos = "";   // Позиция
-        GS::UniString obozn = ""; // ГОСТ
-        GS::UniString naen = "";  // Наименование
+        GS::UniString subpos;
+        GS::UniString pos;   // Позиция
+        GS::UniString obozn; // ГОСТ
+        GS::UniString naen;  // Наименование
         double _qty = 0;          // Количество
         double ves = 0;           // Масса ед.
-        GS::UniString unit = "";  // Ед. измерения
+        GS::UniString unit;  // Ед. измерения
         if (version == 3) {
             if (partstring.GetSize () < 10) {
                 return;
@@ -243,7 +243,7 @@ namespace ListData {
                     double &qty,
                     const short &version) {
         Prokat p = {};
-        GS::UniString subpos = "";
+        GS::UniString subpos;
         if (version == 3) {
             if (partstring.GetSize () < 15) {
                 return;

@@ -265,7 +265,7 @@ namespace Revision {
                 GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", i);
                 if (layout_note_guid.ContainsKey (prop_name)) {
                     API_Guid prop_guid = layout_note_guid.Get (prop_name);
-                    GS::UniString str = "";
+                    GS::UniString str;
                     if (layoutInfo.customData->ContainsKey (prop_guid)) {
                         flag_write = true;
                         layoutInfo.customData->Set (prop_guid, str);
@@ -275,7 +275,7 @@ namespace Revision {
                     GS::UniString prop_name = GS::UniString::Printf ("somestuff_izm_%d_column_%d", i, j);
                     if (layout_note_guid.ContainsKey (prop_name)) {
                         API_Guid prop_guid = layout_note_guid.Get (prop_name);
-                        GS::UniString str = "";
+                        GS::UniString str;
                         if (layoutInfo.customData->ContainsKey (prop_guid)) {
                             flag_write = true;
                             layoutInfo.customData->Set (prop_guid, str);
@@ -311,7 +311,7 @@ namespace Revision {
                 prop_name = GS::UniString::Printf ("somestuff_izm_%d_column_2", n_row);
                 if (layout_note_guid.ContainsKey (prop_name)) {
                     API_Guid prop_guid = layout_note_guid.Get (prop_name);
-                    GS::UniString str = "";
+                    GS::UniString str;
                     // Правильная сортировка по алфавиту
                     std::map<std::string, GS::UniString, doj::alphanum_less<std::string>> abc_changes = {};
                     for (auto l : note.layoutId) {
@@ -445,7 +445,7 @@ namespace Revision {
             GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", i);
             if (layout_note_guid.ContainsKey (prop_name)) {
                 API_Guid prop_guid = layout_note_guid.Get (prop_name);
-                GS::UniString str = "";
+                GS::UniString str;
                 if (layoutInfo.customData->ContainsKey (prop_guid)) {
                     flag_write = true;
                     layoutInfo.customData->Set (prop_guid, str);
@@ -455,7 +455,7 @@ namespace Revision {
                 GS::UniString prop_name = GS::UniString::Printf ("somestuff_izm_%d_column_%d", i, j);
                 if (layout_note_guid.ContainsKey (prop_name)) {
                     API_Guid prop_guid = layout_note_guid.Get (prop_name);
-                    GS::UniString str = "";
+                    GS::UniString str;
                     if (layoutInfo.customData->ContainsKey (prop_guid)) {
                         flag_write = true;
                         layoutInfo.customData->Set (prop_guid, str);
@@ -471,7 +471,7 @@ namespace Revision {
                 layoutInfo.customData->Set (prop_guid, EMPTYSTRING);
         }
         UInt32 n_izm = 1;
-        GS::UniString note = "";
+        GS::UniString note;
         for (std::map<std::string, GS::UniString, doj::alphanum_less<std::string>>::iterator k = abc_changes.begin ();
              k != abc_changes.end ();
              ++k) {
@@ -654,15 +654,15 @@ namespace Revision {
             Changes &change = *ch.value;
             GS::UniString id = *ch.key;
 #endif
-            GS::UniString note = "";
+            GS::UniString note;
             // Проверим тиы изменений
             // Если есть облачко с типом Изм - то ставим Изм
             // Если есть облачка без проставленного изменения и у листа стоит Зам - ставим Изм
             GS::Int32 typeizm_marker = TypeNone;
             GS::Int32 typeizm_layout = TypeNone;
             GS::Int32 typeizm = TypeNone;
-            GS::UniString fam_marker = "";
-            GS::UniString fam_layout = "";
+            GS::UniString fam_marker;
+            GS::UniString fam_layout;
             bool hasmarker = false;
             bool hasmarkerIzm = false;
             for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
@@ -772,7 +772,7 @@ namespace Revision {
         GS::Array<GS::UniString> local_scratch;
         for (auto c : layoutchange) {
             Change ch;
-            GS::UniString nizm = "";
+            GS::UniString nizm;
             GS::UniString changeId = c.id;
             changeId.Trim ();
             changeId.ReplaceAll ("  ", SPACESTRING);
@@ -842,10 +842,10 @@ namespace Revision {
             element.header.guid = guidArray[i];
             err = ACAPI_Element_Get (&element);
             if (err == NoError && element.header.hasMemo) {
-                GS::UniString fam = "";
-                GS::UniString note = "";
-                GS::UniString nuch = "";
-                GS::UniString nizm = "";
+                GS::UniString fam;
+                GS::UniString note;
+                GS::UniString nuch;
+                GS::UniString nizm;
                 API_Coord startpoint;
                 GS::Int32 typeizm = TypeNone;
                 GS::Int32 code = 0;
@@ -999,7 +999,7 @@ namespace Revision {
                         change.arr[i].nuch = GS::UniString::Printf ("%d", number_n);
                         change.nuch = number_n;
                     } else {
-                        change.arr[i].nuch = "";
+                        change.arr[i].nuch = EMPTYSTRING;
                     }
                     ChangeMarkerText (change.arr[i].markerguid, change.arr[i].nuch, change.arr[i].nizm);
                 }
