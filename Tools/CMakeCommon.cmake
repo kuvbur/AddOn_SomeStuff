@@ -100,9 +100,28 @@ function (SetCompilerOptions target acVersion)
     else ()
         target_compile_features (${target} PUBLIC cxx_std_20)
     endif ()
-    target_compile_options (${target} PUBLIC "$<$<CONFIG:Debug>:-DDEBUG>")
-    target_compile_options (${target} PUBLIC "$<$<CONFIG:Debug>:-DTESTING>")
+    # DEBUG/TESTING нужны и профильной конфигурации: без них DBprnt/DBtest
+    # компилируются в пустоту и подтвердить загрузку сборки нечем.
+    target_compile_options (${target} PUBLIC "$<$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileDebug>>:-DDEBUG>")
+    target_compile_options (${target} PUBLIC "$<$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileDebug>>:-DTESTING>")
     if (WIN32)
+        # В ProfileDebug нет флагов из CMAKE_CXX_FLAGS_DEBUG (нет /Od и /RTC1),
+        # но и оптимизации по умолчанию тоже нет — задаём явно.
+        # /Gy (function-level linking) и /Gw нужны, чтобы /PROFILE мог переставлять
+        # функции и данные по частоте; /Zi — символы для привязки образцов к строкам.
+        # /GL намеренно не задаётся: требует LTCG-метаданных во входных .lib DevKit,
+        # при /WX предупреждения LTCG станут фатальными.
+        target_compile_options (${target} PUBLIC
+            "$<$<CONFIG:ProfileDebug>:/O2>"
+            "$<$<CONFIG:ProfileDebug>:/Gy>"
+            "$<$<CONFIG:ProfileDebug>:/Gw>"
+            "$<$<CONFIG:ProfileDebug>:/Zi>"
+            # /O2 поднимает ложное C4724 ("возможный остаток от деления на 0") в заголовке
+            # DevKit GSRoot/HashSet.hpp:1235 (hashEntry.item % newHashListCount); заголовок
+            # не наш, править нельзя, а /WX делает предупреждение ошибкой. Гасим только
+            # в этой конфигурации, чтобы не ослаблять /WX для остальных сборок.
+            "$<$<CONFIG:ProfileDebug>:/wd4724>"
+        )
         target_compile_options (${target} PUBLIC /W3 /WX
             /Zc:wchar_t-
             /wd4499
@@ -311,6 +330,23 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
     if (WIN32)
         set_target_properties (${addOnName} PROPERTIES SUFFIX ".apx")
         set_target_properties (${addOnName} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_$<CONFIG> "${CMAKE_BINARY_DIR}/$<CONFIG>")
+        # Профильная сборка кладёт .apx в ту же папку Debug: Add-On Manager грузит
+        # .../25/Debug/SomeStuff.apx, поэтому артефакт подхватывается без копирования.
+        # Перезапись Debug-сборки намеренная — профилирование и обычная отладка
+        # не сосуществуют; суффикс к имени не добавляется, иначе модуль не загрузится.
+        # Имя свойства — с конфигурацией в ВЕРХНЕМ регистре: CMake ищет
+        # RUNTIME_OUTPUT_DIRECTORY_<CONFIG-UPPER>, поэтому ProfileDebug не подходит.
+        set_target_properties (${addOnName} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_PROFILEDEBUG "${CMAKE_BINARY_DIR}/Debug")
+        # /PROFILE — опция линковщика (не компилятора): даёт образ с привязкой символов
+        # для VSInstr и семплера. /DEBUG обязателен: в ProfileDebug нет /Zi-/DEBUG из
+        # CMAKE_*_FLAGS_DEBUG, поэтому CMake ставит GenerateDebugInformation=false и
+        # PDB не создаётся — символы компиляции остаются неиспользованными.
+        # /INCREMENTAL:NO — при /PROFILE инкрементальная линковка неприменима (LNK4075).
+        target_link_options (${addOnName} PUBLIC
+            "$<$<CONFIG:ProfileDebug>:/PROFILE>"
+            "$<$<CONFIG:ProfileDebug>:/DEBUG>"
+            "$<$<CONFIG:ProfileDebug>:/INCREMENTAL:NO>"
+        )
         target_link_options (${addOnName} PUBLIC "${ResourceObjectsDir}/${addOnName}.res")
         target_link_options (${addOnName} PUBLIC /export:GetExportedFuncAddrs,@1 /export:SetImportedFuncAddrs,@2)
     else ()

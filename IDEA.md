@@ -112,6 +112,36 @@ DONE (локально) — checkpoint `97377dc`, AC25 build и runtime endpoint
 - `Sync.cpp` не правится — `SyncAndMonAll` остаётся `void`, прогресс-окно и фазы сохраняются; отсюда контракт ответа только `{status, elapsedSeconds}` (согласовано после уточнения о недоказуемости `skippedByReset`/`elementsToWrite` без правки `Sync.cpp`).
 - `LoadSyncSettingsFromPreferences(syncSettings, true)` — у внешнего вызова нет интерфейса для смены флагов обхода; `PROPERTYCACHE().Update()` — паритет с `MenuCommandHandler`.
 
+## Parallel Task — #215 конфигурация сборки ProfileDebug
+
+### Scope
+
+Только `CMakeLists.txt`, `Tools/CMakeCommon.cmake` (флаги, линковка, вывод артефакта) и `Tools/BuildAddOn.py` (запуск новой конфигурации). Кода в `Sources/AddOn/` не трогать.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/215
+
+### Status
+
+IN_PROGRESS — CMake-часть внесена; `ProfileDebug` конфигурируется, `OutDir` = `.../25/Debug/`, в vcxproj есть `<Profile>true</Profile>` и `GenerateDebugInformation=true`. `BuildAddOn.py` ещё не умеет новую конфигурацию (сборка идёт напрямую через `cmake --build`).
+
+### Last Completed
+
+2026-09-27 — `CMAKE_CONFIGURATION_TYPES` + `ProfileDebug` (только `CMAKE_HOST_WIN32`); флаги `/O2 /Gy /Gw /Zi` и `-DDEBUG`/`-DTESTING` через `$<OR:...>`; линковка `/PROFILE /DEBUG /INCREMENTAL:NO`; `RUNTIME_OUTPUT_DIRECTORY_PROFILEDEBUG` → `${CMAKE_BINARY_DIR}/Debug`. Проверено по сгенерированному `SomeStuff.vcxproj`.
+
+### Next Step
+
+Доказать критерий готовности: `VSInstr /DUMPFUNCS` на собранном артефакте возвращает список функций. Затем флаг в `BuildAddOn.py` и копирование `test_<ver>.pln` для новой конфигурации.
+
+### Last Checkpoint
+
+Не создан: критерий готовности (#215) не подтверждён.
+
+### Plan
+
+- [x] Issue #215 и CMake-правки; проверка vcxproj (`Profile=true`, `OutDir`, `DEBUG`/`TESTING`).
+- [/] Сборка `ProfileDebug` и проверка `VSInstr /DUMPFUNCS`.
+- [ ] `BuildAddOn.py`: флаг запуска новой конфигурации + копирование `test_<ver>.pln`.
+- [ ] Checkpoint и карточка `Docs/modules/` (если затронут контракт сборки).
+
 ## Parallel Task — #214 перенос наработок из официального шаблона сборки
 
 ### Scope

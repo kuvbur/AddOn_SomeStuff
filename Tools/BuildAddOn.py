@@ -129,7 +129,14 @@ def ParseArguments():
                         action='store_true', help='Create zip archive.')
     parser.add_argument('-L', '--lsp', dest='lsp', required=False,
                         action='store_true', help='Generate compile_commands.json for clangd/LSP only, no full build.')
+    parser.add_argument('--profile', dest='profile', required=False,
+                        action='store_true',
+                        help='Build ProfileDebug configuration for profiling (/PROFILE, optimized). '
+                             'Windows only, mutually exclusive with --release.')
     args = parser.parse_args()
+
+    if args.profile and args.release:
+        raise Exception('--profile and --release cannot be combined: release builds RelWithDebInfo.')
 
     if args.devKitPath is not None:
         if args.acVersion is None:
@@ -372,7 +379,9 @@ def BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder, devKi
         f'version={version} configuration={configuration} language={languageCode or "default"} build_path="{buildPath}"'
     )
     buildResult = subprocess.call(buildParams)
-    if configuration == 'Debug':
+    # Профильная сборка тоже кладёт .apx в папку Debug и запускается с тем же PLN,
+    # поэтому тестовый проект ей нужен так же, как Debug.
+    if configuration in ('Debug', 'ProfileDebug'):
         testPlnDestination = buildPath / f'test_{version}.pln'
         AIStatus('COPY_TEST_PLN', f'version={version} destination="{testPlnDestination}"')
         shutil.copy(
@@ -410,8 +419,15 @@ def BuildAddOns(args, configData, platformName, languageList, workspaceRootFolde
                                devKitFolder, version, 'RelWithDebInfo', languageCode)
 
             else:
-                BuildAddOn(configData, platformName, workspaceRootFolder,
-                           buildFolder, devKitFolder, version, 'Debug')
+                if args.profile:
+                    if platformName != 'WIN':
+                        raise Exception(
+                            'Profiling configuration (ProfileDebug) is available on Windows only.')
+                    BuildAddOn(configData, platformName, workspaceRootFolder,
+                               buildFolder, devKitFolder, version, 'ProfileDebug')
+                else:
+                    BuildAddOn(configData, platformName, workspaceRootFolder,
+                               buildFolder, devKitFolder, version, 'Debug')
             AIStatus('VERSION_OK', f'version={version}')
 
     except Exception as e:
