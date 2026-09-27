@@ -5,6 +5,19 @@
 
 ---
 
+## #212 — удаление служебных комментариев FIX (2026-09-27)
+
+### Status
+COMPLETED. Issue [#212](https://github.com/kuvbur/AddOn_SomeStuff/issues/212) закрыт; checkpoint `1da2b9f` — `[#212] Удалить комментарии FIX из исходников`.
+
+### Scope и решение
+Из 18 файлов `Sources/AddOn/` удалены 198 блоков комментариев с отдельным маркером `FIX`. Исполняемый код и вызовы ArchiCAD API не изменялись. Незакоммиченные изменения #209 в `Helpers.cpp` были временно изолированы на время валидации и восстановлены после checkpoint.
+
+### Validation
+AC25 Windows Debug: `restart_archicad_for_test.ps1` завершён с `AI_RESULT status=success exit_code=0 reason=completed build=True archicad=running`; `SomeStuff.apx` собран, тестовый `test_25.pln` запущен. Поиск комментариев `FIX` в `Sources/AddOn/` — 0 совпадений; `git diff --check` — успешно; `clang-format` выполнен. JSON-тесты пропущены: `Tools/test_json_commands.py` отсутствует. C++ output/DBtest не проверялся.
+
+---
+
 ## Реорганизация задач (2026-09-25) — закрытие issues и перенос блоков из IDEA.md
 
 ### Что сделано
