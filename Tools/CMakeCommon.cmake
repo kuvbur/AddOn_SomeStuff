@@ -317,8 +317,29 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
     endif ()
     set (ADDON_VERSION ${addOnVersion})
     set (ADDON_NAME ${addOnName})
+
+    # Хэш коммита в подверсию: по строке версии в grc/plist видно, из какой
+    # ревизии собран аддон. Хэш читается на этапе configure, поэтому без
+    # повторного configure он не обновляется после новых коммитов.
+    find_package (Git QUIET)
+    if (GIT_FOUND)
+        execute_process (
+            COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            OUTPUT_VARIABLE gitCommitHash
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE gitResult
+        )
+        if (NOT gitResult EQUAL 0)
+            set (gitCommitHash "unknown")
+        endif ()
+    else ()
+        set (gitCommitHash "unknown")
+    endif ()
+    message (STATUS "Building from commit: ${gitCommitHash}")
+
     string(TIMESTAMP addonsubversion "%Y-%m-%d-%H")
-    set(ADDON_SUBVERSION ${addonsubversion})
+    set(ADDON_SUBVERSION "${addonsubversion}-${gitCommitHash}")
     
     configure_file(
                 "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.grc.in"
