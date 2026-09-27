@@ -38,6 +38,33 @@ PropertyCache &GetCache () {
 
 PropertyCache &(*PROPERTYCACHE) () = GetCache;
 
+#if defined(TESTING)
+// -----------------------------------------------------------------------------
+// Печатает накопленные счётчики кэшей формул EvalExpression (#217).
+// Доли попаданий считаются от числа вызовов, дошедших до кэшей: вызовы,
+// отсечённые пустой строкой или отсутствием разделителей, к кэшам не доходят.
+// -----------------------------------------------------------------------------
+void ReportFormulaCacheStats (const GS::UniString &reason) {
+    const FormulaCacheStats &stats = PROPERTYCACHE ().formulaCacheStats;
+    if (stats.calls == 0)
+        return;
+
+    const double fullHitRate = (double)stats.fullHits * 100.0 / (double)stats.calls;
+    const double exprHitRate = (double)stats.exprHits * 100.0 / (double)stats.calls;
+
+    DBprnt ("=EvalExpression=", "перед очисткой кэша: " + reason);
+    DBprnt ("  вызовов          : " + GS::UniString::Printf ("%llu", (unsigned long long)stats.calls));
+    DBprnt ("  попаданий (вся строка) : " +
+            GS::UniString::Printf ("%llu (%.1f%%)", (unsigned long long)stats.fullHits, fullHitRate));
+    DBprnt ("  попаданий (выражение)  : " +
+            GS::UniString::Printf ("%llu (%.1f%%)", (unsigned long long)stats.exprHits, exprHitRate));
+    DBprnt ("  очисток по переполнению : " +
+            GS::UniString::Printf ("%llu", (unsigned long long)stats.fullClears + stats.exprClears) + " (вся строка " +
+            GS::UniString::Printf ("%llu", (unsigned long long)stats.fullClears) + ", выражение " +
+            GS::UniString::Printf ("%llu", (unsigned long long)stats.exprClears) + ")");
+}
+#endif // defined (TESTING)
+
 namespace ParamHelpers {
 
     bool ReadLibraryFile (const GS::UniString &fileName, GS::Array<GS::Array<GS::UniString>> &data) {

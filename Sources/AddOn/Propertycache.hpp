@@ -112,6 +112,22 @@ struct PropertyRuleFlag {
     bool hasRule = false;
 };
 
+    // Счётчики кэшей вычисления выражений EvalExpression (#217).
+    // Ключи кэшей строятся ПОСЛЕ подстановки значений параметров
+    // (ReplaceParamInExpression), поэтому формула, ссылающаяся на размер элемента,
+    // даёт уникальный ключ и не попадает в кэш. По доле попаданий и числу сбросов
+    // видно, какой уровень кэша вообще окупается.
+    // Компилируются только под TESTING: в обычных сборках счётчиков нет.
+    #if defined(TESTING)
+struct FormulaCacheStats {
+    UInt64 calls = 0;      // вызовы EvalExpression, дошедшие до кэшей
+    UInt64 fullHits = 0;   // попадания в кэш всей строки (внешний уровень)
+    UInt64 exprHits = 0;   // попадания в кэш текста выражения (внутренний уровень)
+    UInt64 fullClears = 0; // сбросы внешнего кэша по переполнению
+    UInt64 exprClears = 0; // сбросы внутреннего кэша по переполнению
+};
+    #endif
+
 struct PropertyCache {
     ParamDictValue property;
     ParamDictValue info;
@@ -204,6 +220,14 @@ struct PropertyCache {
 
     // Кэш правил SomeStuff в описаниях свойств (#158), ключ — GUID определения
     mutable GS::HashTable<API_Guid, PropertyRuleFlag> propertyRuleFlags;
+
+    // Счётчики кэшей формул EvalExpression (#217), накапливаются за всю сессию.
+    // Намеренно НЕ обнуляются ни в конструкторе, ни в Update(): нужна картина
+    // накопительного попадания и числа сбросов по переполнению, а не состояние
+    // на момент последнего обновления кэша свойств.
+    #if defined(TESTING)
+    mutable FormulaCacheStats formulaCacheStats;
+    #endif
 
     PropertyCache () {
     #if defined(TESTING)
@@ -730,6 +754,15 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition &definision, GS::Uni
 // Парсит описание только при промахе кэша или после изменения описания.
 // -----------------------------------------------------------------------------
 bool GetPropertyRuleFlag (const API_PropertyDefinition &definition);
+
+    #if defined(TESTING)
+// -----------------------------------------------------------------------------
+// Печатает накопленные счётчики кэшей формул EvalExpression (#217) через DBprnt.
+// Вызывается перед Clear() каждого кэша по переполнению — сброс уничтожает
+// единственные данные о попаданиях, поэтому сводку нужно успеть вывести.
+// -----------------------------------------------------------------------------
+void ReportFormulaCacheStats (const GS::UniString &reason);
+    #endif
 
 PropertyCache &GetCache ();
 
