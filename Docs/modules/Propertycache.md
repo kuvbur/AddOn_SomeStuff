@@ -15,6 +15,7 @@
 | `PropertyCache` | Основной класс-кэш (property/info/attrib/glob/file/filedata/systemdict/dimrules/compositeCache и др.) [по коду, Propertycache.hpp:115-153] |
 | `CachedLayer` | Данные слоя: buildingMaterial, fillThick, flagBits [по коду, Propertycache.hpp:101-105] |
 | `PropertyRuleFlag` | Кэш правил SomeStuff в описаниях свойств (#158): description + parsed + hasRule [из комментария, Propertycache.hpp:107-113] |
+| `FormulaCacheStats` | Счётчики кэшей формул `EvalExpression` (#217): calls/fullHits/exprHits/fullClears/exprClears. Только под `TESTING` [из комментария, Propertycache.hpp:115-129] |
 
 ## Методы PropertyCache
 - `Update()` — полное обновление всех кэшей (glob, geo, survey, placeSets, locOrigin, classification, groups, definitions, attribute, info, files, MEP) [по коду, Propertycache.hpp:326-355]
@@ -26,6 +27,7 @@
 | Функция | .cpp строка | Назначение |
 |---------|-------------|------------|
 | `GetPropertyRuleFlag` | 11 | Кэш правил SomeStuff (#158): парсит описание при промахе кэша [из комментария] — карточка; **вызывается только из TestFunc** (см. DISCREPANCIES #9) |
+| `ReportFormulaCacheStats` | 47 | Печать накопленных счётчиков кэшей формул `EvalExpression` (#217) через `DBprnt`. Только под `TESTING` [из комментария, Propertycache.cpp:47-66] |
 | `GetCache` | 34 | Единственный экземпляр кэша [по коду] |
 | `isEng` | 878 | Язык ArchiCAD: для INT возвращает 1000 [из комментария] |
 | `DimReadPref` | 1005 | Чтение правил размеров из информации о проекте (`Addon_Dimenstions`) [из комментария, Propertycache.hpp:23-29] |
@@ -46,6 +48,14 @@
 - Назначение: полное обновление всех кэшей с таймированием (clock, лог длительности). [по коду]
 - Контракт: перечитывание определений очищает `propertyRuleFlags` (правила удалённых свойств). [из комментария, Propertycache.hpp:559]
 - Побочные эффекты: **мутирует весь кэш**; вызовы множества ACAPI_* (GetPreferences, классификации, группы свойств и др.). [по коду]
+
+### `ReportFormulaCacheStats(const GS::UniString &reason)` (#217, только `TESTING`)
+- Расположение: `Sources/AddOn/Propertycache.cpp:47`
+- Назначение: печатает в `DBprnt` накопленные счётчики кэшей формул `EvalExpression` перед каждым `Clear()` по переполнению. [из комментария, Propertycache.cpp:47-49]
+- Контракт: молчит при `calls == 0`; доли попаданий считаются от вызовов, дошедших до кэшей (вызовы, отсечённые пустой строкой или отсутствием разделителей, не учитываются). [по коду]
+- Побочные эффекты: только вывод в `DBprnt`; счётчики **не** обнуляет. [по коду]
+- Вызывается из: `EvalExpression` (`CommonFunction.cpp:1314` перед `exprResultFullCache.Clear`, `:1383` перед `exprResultCache.Clear`). [по коду]
+- Инвариант: счётчики в `formulaCacheStats` намеренно не сбрасываются ни в конструкторе `PropertyCache`, ни в `Update()` — нужна картина за всю сессию. [из комментария, Propertycache.hpp:224-230]
 
 ## Зависимости
 - `Helpers.hpp`, `dialogs/CommandHelpers.hpp`, `CommonFunction.hpp`, `ClassificationFunction.hpp` [по include]
