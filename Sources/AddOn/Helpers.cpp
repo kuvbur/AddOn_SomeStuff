@@ -4093,7 +4093,7 @@ GS::UniString PropertyHelpers::ToString (const API_Property &property, const For
     case API_PropertySingleChoiceEnumerationCollectionType: {
 #ifdef ServerMainVers_2500
         API_Guid guidValue = value->singleVariant.variant.guidValue;
-        GS::Array<API_SingleEnumerationVariant> possibleEnumValues = property.definition.possibleEnumValues;
+        const auto &possibleEnumValues = property.definition.possibleEnumValues;
         for (UInt32 i = 0; i < possibleEnumValues.GetSize (); i++) {
             if (possibleEnumValues[i].keyVariant.guidValue == guidValue) {
                 string.Append (ToString (possibleEnumValues[i].displayVariant, stringformat));
@@ -4106,18 +4106,19 @@ GS::UniString PropertyHelpers::ToString (const API_Property &property, const For
     } break;
     case API_PropertyMultipleChoiceEnumerationCollectionType: {
 #ifdef ServerMainVers_2500
-        GS::Array<API_SingleEnumerationVariant> possibleEnumValues = property.definition.possibleEnumValues;
-        UInt32 qty_finded_values = value->listVariant.variants.GetSize ();
+        const auto &possibleEnumValues = property.definition.possibleEnumValues;
+        const auto &selectedValues = value->listVariant.variants;
+        GS::HashSet<API_Guid> selectedGuids;
+        for (const auto &selected : selectedValues)
+            selectedGuids.Add (selected.guidValue);
+        UInt32 qty_finded_values = selectedValues.GetSize ();
         for (UInt32 i = 0; i < possibleEnumValues.GetSize (); i++) {
             API_Guid guidValue = possibleEnumValues[i].keyVariant.guidValue;
-            for (UInt32 j = 0; j < value->listVariant.variants.GetSize (); j++) {
-                if (value->listVariant.variants[j].guidValue == guidValue) {
-                    string.Append (ToString (possibleEnumValues[i].displayVariant, stringformat));
-                    qty_finded_values = qty_finded_values - 1;
-                    if (qty_finded_values != 0)
-                        string.Append ("; ");
-                    break;
-                }
+            if (selectedGuids.Contains (guidValue)) {
+                string.Append (ToString (possibleEnumValues[i].displayVariant, stringformat));
+                qty_finded_values = qty_finded_values - 1;
+                if (qty_finded_values != 0)
+                    string.Append ("; ");
             }
             if (qty_finded_values == 0)
                 break;
@@ -4904,21 +4905,14 @@ void ParamHelpers::WriteCoord (const API_Guid &elemGuid, ParamDictValue &params)
     if (elemGuid == APINULLGuid)
         return;
     GSErrCode err = NoError;
-    API_Elem_Head elem_head = {};
     API_Element element = {};
-    elem_head.guid = elemGuid;
-    err = ACAPI_Element_GetHeader (&elem_head);
-    if (err != NoError) {
-        msg_rep ("ParamHelpers::WriteCoord", "ACAPI_Element_GetHeader", err, elem_head.guid);
-        return;
-    }
-    API_ElemTypeID elemType = GetElemTypeID (elem_head);
     element.header.guid = elemGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError) {
-        msg_rep ("ParamHelpers::WriteCoord", "ACAPI_Element_Get", err, elem_head.guid);
+        msg_rep ("ParamHelpers::WriteCoord", "ACAPI_Element_Get", err, elemGuid);
         return;
     }
+    API_ElemTypeID elemType = GetElemTypeID (element.header);
     API_Element mask = {};
     ACAPI_ELEMENT_MASK_CLEAR (mask);
     bool flag_write = false;
@@ -5115,7 +5109,7 @@ void ParamHelpers::WriteCoord (const API_Guid &elemGuid, ParamDictValue &params)
     if (flag_write) {
         err = ACAPI_Element_Change (&element, &mask, nullptr, 0, true);
         if (err != NoError) {
-            msg_rep ("ParamHelpers::WriteCoord", "ACAPI_Element_Change", err, elem_head.guid);
+            msg_rep ("ParamHelpers::WriteCoord", "ACAPI_Element_Change", err, elemGuid);
             return;
         }
     } else {
@@ -5136,25 +5130,19 @@ void ParamHelpers::WriteGDL (const API_Guid &elemGuid, ParamDictValue &params) {
 #endif
     if (elemGuid == APINULLGuid)
         return;
-    API_Elem_Head elem_head = {};
     API_Element element = {};
     API_ElemTypeID elemType;
     API_Guid elemGuidt;
     API_ParamOwnerType apiOwner = {};
     API_GetParamsType apiParams = {};
     API_ChangeParamType chgParam;
-    elem_head.guid = elemGuid;
-    GSErrCode err = ACAPI_Element_GetHeader (&elem_head);
-    if (err != NoError) {
-        msg_rep ("ParamHelpers::WriteGDL", "ACAPI_Element_GetHeader", err, elem_head.guid);
-        return;
-    }
     element.header.guid = elemGuid;
-    err = ACAPI_Element_Get (&element);
+    GSErrCode err = ACAPI_Element_Get (&element);
     if (err != NoError) {
-        msg_rep ("ParamHelpers::WriteGDL", "ACAPI_Element_Get", err, elem_head.guid);
+        msg_rep ("ParamHelpers::WriteGDL", "ACAPI_Element_Get", err, elemGuid);
         return;
     }
+    API_Elem_Head &elem_head = element.header;
     API_ElemTypeID eltype = GetElemTypeID (elem_head);
     GetGDLParametersHead (element, elem_head, elemType, elemGuidt);
     apiOwner.guid = elemGuidt;
@@ -7261,7 +7249,15 @@ void ParamHelpers::ReadFile (ParamDictValue &params) {
     bool flag_find = false;
     auto &cache = PROPERTYCACHE ();
     GS::UniString filename;
-    GS::Array<ParamValue> vals;
+
+    struct SearchCriterion {
+        int column;
+        GS::UniString value;
+    };
+
+    GS::Array<SearchCriterion> vals;
+    using RowIndex = GS::HashTable<GS::UniString, GS::Array<UIndex>>;
+    GS::HashTable<GS::UniString, GS::HashTable<int, RowIndex>> fileIndexes;
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
 #ifdef ServerMainVers_2800
         ParamValue &param = cIt->value;
@@ -7322,9 +7318,7 @@ void ParamHelpers::ReadFile (ParamDictValue &params) {
                 }
                 if (const auto *valPtr = params.GetPtr (rawName)) {
                     if (valPtr->isValid) {
-                        ParamValue val = *valPtr;
-                        val.val.array_format_out = arrayColumn;
-                        vals.Push (std::move (val));
+                        vals.Push ({arrayColumn, valPtr->val.uniStringValue});
                     }
                 }
             }
@@ -7337,14 +7331,39 @@ void ParamHelpers::ReadFile (ParamDictValue &params) {
         if (hasInvalidIndex || vals.IsEmpty ())
             continue;
 
-        for (const auto &d : *dataPtr) {
-            const int currentRowSize = (int)d.GetSize ();
-            // Защита от поврежденных строк в файле
-            if (currentRowSize < firstRowSize || col_out > currentRowSize)
-                continue;
+        auto *columns = fileIndexes.GetPtr (filename);
+        if (columns == nullptr) {
+            fileIndexes.Put (filename, GS::HashTable<int, RowIndex>{});
+            columns = fileIndexes.GetPtr (filename);
+        }
+        const int indexedColumn = vals[0].column;
+        RowIndex *index = columns->GetPtr (indexedColumn);
+        if (index == nullptr) {
+            RowIndex newIndex;
+            for (USize row = 0; row < dataPtr->GetSize (); ++row) {
+                const auto &dataRow = (*dataPtr)[row];
+                if (dataRow.GetSize () < static_cast<USize> (firstRowSize))
+                    continue;
+                const GS::UniString &key = dataRow[indexedColumn - 1];
+                if (auto *rows = newIndex.GetPtr (key)) {
+                    rows->Push (row);
+                } else {
+                    GS::Array<UIndex> newRows;
+                    newRows.Push (row);
+                    newIndex.Put (key, std::move (newRows));
+                }
+            }
+            columns->Put (indexedColumn, std::move (newIndex));
+            index = columns->GetPtr (indexedColumn);
+        }
+        const auto *candidateRows = index->GetPtr (vals[0].value);
+        if (candidateRows == nullptr)
+            continue;
+        for (UIndex row : *candidateRows) {
+            const auto &d = (*dataPtr)[row];
             bool flag = true;
             for (const auto &v : vals) {
-                if (!d[v.val.array_format_out - 1].IsEqual (v.val.uniStringValue)) {
+                if (!d[v.column - 1].IsEqual (v.value)) {
                     flag = false;
                     break;
                 }
@@ -7617,11 +7636,19 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
                 GS::UniString part = outstring.GetSubstring (CHARFORMULASTART, CHARFORMULAEND, 0);
                 stringformat = "";
                 FormatStringFunc::GetFormatStringFromFormula (outstring, part, stringformat);
-                for (Int32 i = 0; i < nlayers; ++i) {
-                    if (i == nlayers - 1) {
-                        outstring.ReplaceAll (part, GS::UniString::Printf ("&%d&", i));
-                    } else {
-                        outstring.ReplaceAll (part, part + GS::UniString::Printf ("&%d&", i));
+                if (nlayers > 0 && !part.IsEmpty () && outstring.Count (part) == 1) {
+                    GS::UniString expanded;
+                    expanded.SetCapacity (part.GetLength () + nlayers * 12);
+                    for (Int32 i = nlayers - 1; i >= 0; --i)
+                        expanded.Append (GS::UniString::Printf ("&%d&", i));
+                    outstring.ReplaceAll (part, expanded);
+                } else {
+                    for (Int32 i = 0; i < nlayers; ++i) {
+                        if (i == nlayers - 1) {
+                            outstring.ReplaceAll (part, GS::UniString::Printf ("&%d&", i));
+                        } else {
+                            outstring.ReplaceAll (part, part + GS::UniString::Printf ("&%d&", i));
+                        }
                     }
                 }
             }
@@ -9093,6 +9120,11 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage &profileDescri
         }
     }
     bool hasData = false;
+    GS::HashTable<API_AttributeIndex, bool> readMaterials;
+    auto readMaterialOnce = [&] (const API_AttributeIndex &index) {
+        if (!readMaterials.ContainsKey (index) && ParamHelpers::GetAttributeValues (index, params, paramsAdd))
+            readMaterials.Put (index, true);
+    };
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     Point2D startp = {-10000, 0};
     while (!profileDescriptionIt1.IsEOI ()) {
@@ -9183,7 +9215,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage &profileDescri
                                 layer.width = width;
                             layer.length = length;
                             layer.structype = structype;
-                            ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
+                            readMaterialOnce (constrinxL);
                             composite_all.Push (std::move (layer));
                         } else {
     #if defined(TESTING)
@@ -9220,7 +9252,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage &profileDescri
                             layer.area_fill = area_fill;
                             layer.structype = structype;
                             comp->composite.Push (std::move (layer));
-                            ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
+                            readMaterialOnce (constrinxL);
                             hasData = true;
                         }
                     }

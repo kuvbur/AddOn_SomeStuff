@@ -42,7 +42,7 @@
 | `test` | 222 | [назначение не установлено — нет комментария; тестовый стублика по имени] |
 
 ## PropertyHelpers [по коду, hpp:252-257]
-`ToString` ×4 — API_Variant/API_Property (± FormatString) → строка.
+`ToString` ×4 — API_Variant/API_Property (± FormatString) → строка. Для AC25+ перечисления читаются без копирования списка допустимых значений; множественный выбор сохраняет порядок определений при поиске выбранных GUID. [по коду Helpers.cpp]
 
 ## ParamHelpers — чтение/запись источников [из комментариев]
 
@@ -64,11 +64,11 @@
 | `ReadListData` | 667 | GDL COMPONENT-данные |
 | `ReadQuantities` | 672 | Количества |
 | `ReadElementValues` | 674 | [назначение не установлено — по имени: значения элемента] |
-| `ReadFile` | 679 | Поиск значений в файлах |
+| `ReadFile` | 679 | Поиск значений в файлах: индекс строк по файлу и первой колонке поиска создаётся на время вызова; совпадения проверяются в исходном порядке. [по коду Helpers.cpp] |
 | `Components` | 739 | «Вытаскивает всё из состава элемента» |
 | `ComponentsBasicStructure` | 700 | Однородная конструкция |
 | `ComponentsCompositeStructure` | 717 | Многослойная конструкция |
-| `ComponentsProfileStructure` | 728 | Сложный профиль (AC24+) |
+| `ComponentsProfileStructure` | 728 | Сложный профиль (AC24+): повторный `GetAttributeValues` пропускается после успешного чтения того же индекса материала в рамках профиля. [по коду Helpers.cpp] |
 | `ComponentsGetUnic` | 712 | Уникальные слои |
 | `GetAttributeValues` | 748 | Данные одного слоя (определение — Helpers.cpp:9577); для чтения определений свойств материала допускает только параметры с `fromAttribDefinition` (рабочее дерево #209, open). Расширение на произвольный `fromPropertyDefinition` отменено. [по коду] |
 | `ReadMaterial_ReadAddParam` | 685 | Доп. параметры материалов |
