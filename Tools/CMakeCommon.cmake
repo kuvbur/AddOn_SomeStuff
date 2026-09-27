@@ -338,8 +338,8 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
     endif ()
     message (STATUS "Building from commit: ${gitCommitHash}")
 
-    string(TIMESTAMP addonsubversion "%Y-%m-%d-%H")
-    set(ADDON_SUBVERSION "${addonsubversion}-${gitCommitHash}")
+    string(TIMESTAMP addonsubversion "%Y-%m-%d ")
+    set(ADDON_SUBVERSION "${addonsubversion} #${gitCommitHash}")
     
     configure_file(
                 "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.grc.in"
