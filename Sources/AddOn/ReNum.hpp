@@ -7,7 +7,6 @@
     #include "Helpers.hpp"
     #include "third_party/alphanum.h"
 
-
 class RenumPos {
   public:
     API_Guid guid = APINULLGuid;
@@ -107,7 +106,10 @@ class RenumPos {
         return posvalue;
     }
 
-    bool operator== (const RenumPos &b) {
+    // const обязателен: с AC29 проект собирается как C++20, а для неконстантного
+    // operator== компилятор добавляет перевёрнутый кандидат (y == x) — сравнение
+    // двух объектов становится неоднозначным (MSVC C2666).
+    bool operator== (const RenumPos &b) const {
         if (this->isNum == b.isNum && this->isNum) {
             if (this->prefix != b.prefix)
                 return false;
