@@ -477,3 +477,194 @@ Only `Sources/AddOn/CommonFunction.cpp` and `IDEA.md` were changed. Existing unc
 ### Checkpoint
 
 No git commit created; the user did not request one.
+
+## Parallel Task — #213 JSON-команда SyncAll (COMPLETED, issue #213 CLOSED 2026-09-27)
+
+### Scope
+
+Только новые `Sources/AddOn/json_commands/SyncAllCommand.hpp/.cpp`, регистрация в `json_commands/JsonCommandRegistrar.cpp`, справка `json_commands/How JSON Commands work.md`, карточка `Docs/modules/json_commands.md`, `Docs/REPOMAP.md` и строка в `Reviews/open-2026-09-12.tracker.csv`. `Sources/AddOn/Sync.cpp` не менялся (решение владельца); чужие незакоммиченные правки сохранены и в checkpoint не включены.
+
+### Status
+
+COMPLETED — issue #213 закрыт 2026-09-27.
+
+### Last Completed
+
+Созданы `SyncAllCommand.hpp/.cpp` (обёртка: `LoadSyncSettingsFromPreferences(syncSettings, true)` → `PROPERTYCACHE().Update()` → `SyncAndMonAll`), регистрация в `RegisterJsonCommands`; clang-format, clangd 0 диагностик, `BuildAddOn.py -v 25` и `restart_archicad_for_test.ps1` (build=True, Archicad запущен); `API.ExecuteAddOnCommand` на порту 19723 вернул `{"status":"returned","elapsedSeconds":4.1818899}`.
+
+### Next Step
+
+Нет. Следующие шаги по Sync при необходимости: #201, #202.
+
+### Last Checkpoint
+
+`97377dc` — `[#213] JSON-команда SyncAll` (`Refs: #213`).
+
+### Validation
+
+- Verified: контракт команды и факт регистрации — по исходникам `json_commands/`.
+- Compiled: да, AC25, `BuildAddOn.py -c config.json -v 25` (build=True).
+- Tested: да, AC25 — JSON-вызов на порту 19723 вернул `status=returned`/`elapsedSeconds=4.1818899`.
+- AC26–29: `not verified` (сборка и runtime только на AC25).
+
+### Decisions
+
+- Команда вызывает только `SyncAndMonAll`: `DimRoundAll`, `WriteSyncSettingsToPreferences` и обновление меню из пункта меню `SyncAll_CommandID` не воспроизводятся.
+- `Sync.cpp` не правится — `SyncAndMonAll` остаётся `void`, прогресс-окно и фазы сохраняются; отсюда контракт ответа только `{status, elapsedSeconds}` (согласовано после уточнения о недоказуемости `skippedByReset`/`elementsToWrite` без правки `Sync.cpp`).
+- `LoadSyncSettingsFromPreferences(syncSettings, true)` — у внешнего вызова нет интерфейса для смены флагов обхода; `PROPERTYCACHE().Update()` — паритет с `MenuCommandHandler`.
+
+---
+
+## Parallel Task — #215 конфигурация сборки ProfileDebug (COMPLETED, issue #215 CLOSED 2026-09-27)
+
+### Scope
+
+Только `CMakeLists.txt`, `Tools/CMakeCommon.cmake` (флаги, линковка, вывод артефакта) и `Tools/BuildAddOn.py` (запуск новой конфигурации). Кода в `Sources/AddOn/` не трогал.
+
+### Status
+
+COMPLETED — issue #215 закрыт 2026-09-27 (критерий `VSInstr /DUMPFUNCS` подтверждён, загрузка артефакта в AC25 проверена пользователем).
+
+### Last Completed
+
+Checkpoint `0549622`. `CMAKE_CONFIGURATION_TYPES` + `ProfileDebug` (только `CMAKE_HOST_WIN32`); флаги `/O2 /Gy /Gw /Zi` + `/wd4724` и `-DDEBUG`/`-DTESTING` через `$<OR:...>`; линковка `/PROFILE /DEBUG /INCREMENTAL:NO`; `RUNTIME_OUTPUT_DIRECTORY_PROFILEDEBUG` → `${CMAKE_BINARY_DIR}/Debug`; `BuildAddOn.py --profile` + копирование `test_<ver>.pln`. Сборка `BuildAddOn.py -c config.json -v 25 --profile` успешна, `.apx` и `.pdb` в `Build/SomeStuff/25/Debug/`, `VSInstr /DUMPFUNCS` вернул 50 966 функций (16 заглушек — `ACAP_STAT.lib` DevKit без `API_c.pdb`).
+
+### Next Step
+
+Нет. Дальше по профилированию — план `.hermes/plans/2026-09-27-addon-profiling-plan-v2.md`, шаг 3.
+
+### Last Checkpoint
+
+`0549622` — `[#215] Сборка: конфигурация ProfileDebug (/PROFILE, вывод артефакта в Debug)`.
+
+### Validation
+
+- Verified: критерий issue — `VSInstr /DUMPFUNCS` возвращает список функций вместо ошибки про `/PROFILE`.
+- Compiled: да, AC25 (Windows), конфигурация ProfileDebug, `BuildAddOn.py -c config.json -v 25 --profile` (build=True).
+- Tested: да, артефакт загружается в AC25 (пользовательская проверка); реальные замеры — вне объёма #215.
+
+### Decisions
+
+- `ProfileDebug` выводит `.apx` и `.pdb` в общую папку `Debug` (решение владельца): Add-On Manager грузит `.../25/Debug/SomeStuff.apx`, поэтому артефакт подхватывается сам. Перезапись рабочей Debug-сборки — намеренная, суффикс к имени не добавляется.
+- `ProfileDebug` включается только на Windows (`CMAKE_HOST_WIN32`): смысл конфигурации в MSVC-флагах, аналога на macOS нет.
+- `/GL` не задаётся: требует LTCG-метаданных во входных `.lib` DevKit, при `/WX` предупреждения LTCG фатальны.
+
+### Снято
+
+- Headless-подключение профилировщика VS к процессу даёт 0 образцов — не повторять, для замеров нужен другой путь (WPR/ETW, требует прав администратора). Это к способу замера, а не к конфигурации сборки.
+
+---
+
+## Parallel Task — #216 хэш коммита в ADDON_SUBVERSION (COMPLETED, issue #216 CLOSED 2026-09-27)
+
+### Scope
+
+Только `Tools/CMakeCommon.cmake` (подверсия в `GenerateAddOnProject`) и `IDEA.md`; кода в `Sources/AddOn/` не трогал. Проверочная версия AC25 (Windows).
+
+### Status
+
+COMPLETED — issue #216 закрыт 2026-09-27 (AC25 build + пользовательская проверка версии).
+
+### Last Completed
+
+`find_package(Git QUIET)` + `git rev-parse --short HEAD` в `CMAKE_SOURCE_DIR`; при отсутствии git/репозитория `unknown`. `ADDON_SUBVERSION` = `<YYYY-MM-DD-HH>-<хэш>`; configure печатает `Building from commit: 72a5088`. Сборка через `restart_archicad_for_test.ps1` успешна (первый прогон `BuildAddOn.py` упал на LNK1168 — Archicad держал `.apx`); строка `1.78 2026-09-27-18-72a5088` есть в `RINT/AddOn.grc` и в `.apx` (3 вхождения).
+
+### Next Step
+
+Нет. Помнить: хэш читается на этапе configure, после новых коммитов без повторного configure он не обновится.
+
+### Last Checkpoint
+
+`780f508` — `[#216] CMakeCommon: хэш коммита в ADDON_SUBVERSION`; `6713c75` — запись в IDEA.md. `Refs: #216`
+
+### Validation
+
+- Verified: строка версии в `RINT/AddOn.grc` и в собранном `.apx` (3 вхождения).
+- Compiled: да, AC25 (Windows), `BuildAddOn.py` + `restart_archicad_for_test.ps1` (build=True).
+- Tested: да, версия проверена в AC25 пользователем.
+
+---
+
+## Parallel Task — #214 перенос наработок из официального шаблона сборки (пункт 1 COMPLETED, issue #214 CLOSED 2026-09-27)
+
+### Scope
+
+Только `Tools/CMakeCommon.cmake`, `CMakeLists.txt`, `config.json`, `Tools/AddOn.grc.in`. Кода в `Sources/AddOn/` не трогал. Локализация JSON→grc+XLIFF и code signing macOS исключены по решению пользователя.
+
+### Status
+
+COMPLETED (пункт 1) — issue #214 закрыт 2026-09-27 по пункту 1; пункты 2–7 вынесены в **#218** (открыт), состояние перенесено туда.
+
+### Last Completed
+
+Пункт 1: `version`/`description`/`copyright` в `config.json` (версия числом `1.78`, без `v`), `parse_version` + `ReadConfigJson` в `CMakeCommon.cmake`, экспорт `ADDON_VERSION` двумя каналами, хардкод `v1.78` в `CMakeLists.txt:5` убран. AC25 build успешен, версия `1.78 2026-09-27-15` подтверждена в `RINT/AddOn.grc` и в `.apx`, compile DB регенерирован. Регрессия `7dd2310`: сборка падала на другой машине (`charmap` 0x8f) — `config.json` читался без кодировки; кириллическое `description`, добавленное в `3c9e14c`, вскрыло скрытый баг.
+
+### Next Step
+
+Пункт 2 в #218: `Tools/VersionInfo.rc.in` + `Tools/AddOn.rc.in`, подключение к target, `AC_ADDON_FOR_DISTRIBUTION`. Перед правкой `-r/--release` согласовать семантику «метка для дистрибуции» (сейчас = RelWithDebInfo + все языки).
+
+### Last Checkpoint
+
+`7dd2310` — `[#214] BuildAddOn.py: явная кодировка UTF-8 при чтении config.json` (предыдущий: `3c9e14c` — версия из config.json).
+
+### Validation
+
+- Verified: `parse_version`/`ReadConfigJson` и оба канала `ADDON_VERSION` — по исходникам; версия в `RINT/AddOn.grc`.
+- Compiled: да, AC25, `BuildAddOn.py -c config.json -v 25` (build=True).
+- Tested: не в этой сессии — версия видна в UI по сообщению пользователя о рабочей сборке.
+- Пункты 2–7: `not verified` — не реализованы, перенесены в #218.
+
+### Decisions
+
+- `Tools/` — форк upstream, сплошная синхронизация запрещена: сломает AC22–24, `-DTESTING` (`TestFunc.cpp`/`DBprnt`), `/W3`, маркеры `AI_STATUS` раннера и `-DAC_${acVersion}` (цепочка `api_headers/APICommon<N>.h`).
+- Локализация JSON→grc+XLIFF и code signing macOS не берутся по решению пользователя; глоб `*.json` из исходников тоже не берём.
+- Переход `/W3` → `/W4` вынесен из issue: слишком рискован при `/WX`, отдельный follow-up.
+- `-r/--release` (`RelWithDebInfo` + все языки) не переименовываем в «метку для дистрибуции» молча — семантика решается при пункте 2.
+- Версия — число без `v`: upstream `parse_version` принимает только `^([0-9]+)(\.[0-9]+){0,2}$`, а каждая компонента 0–65535 попадает в `FILEVERSION`.
+- Нужны **оба** канала `ADDON_VERSION`: CMake-переменная для `configure_file` → `RINT/AddOn.grc` (компилятор туда не подставится) и `target_compile_definitions` для C++.
+
+### Снято (не возвращать в IDEA.md)
+
+Три грабли по сборочным файлам дублировали durable-знание и перенесены в скилл `archicad-plugin-build` → `references/cmake-json-metadata-pitfalls.md`: `open()` в `Tools/*.py` без `encoding` = кодировка локали ОС; CMake `string(REPLACE)` требует 4 аргумента (match, replace, output, **input**); вложенный путь JSON в списке CMake разъезжается — читать отдельными вызовами `string(JSON ... GET)`.
+
+---
+
+## Archive — диагностика отсутствия элементов SpecAll (AC25) (DIAGNOSED, перенос 2026-09-27)
+
+### Scope
+
+Только диагностика JSON Spec/SpecAll на тестовом PLN через VS Debug и путь чтения материалов; производственный код и задачи #209/ReadQuantities не менялись.
+
+### Status
+
+DIAGNOSED — в текущей AC25-сборке элементы не создаются из-за неполных выходных параметров правила материалов; код не менялся.
+
+### Last Completed
+
+JSON `SomeStuffCommand.Spec` вернул `status=failed`, `resultCode=-2130313215`, `elementsToCreate=0`, `elementsToModify=0`, `elementsToDelete=0`. Под отладчиком в `SpecArray` после обработки правил `n_elements=0`, `elements_new=0`, `elements_mod=0`, `error_element=0`; `Spec.cpp:989-996` возвращает ошибку для пустого списка. Для стены `4041C8C1-CEB0-484B-A310-43EC545F6FC9` шаблон «Материалы/Обозначение в спецификацию» не подставился ни в одном из 6 слоёв (`ReadMaterial`, `Helpers.cpp:7743-7782`, `flag=false`). Состав из 6 слоёв присутствует, но нужный `ParamValue` имеет `fromPropertyDefinition=true`, `fromAttribDefinition=false`, `isValid=false`; `paramsAdd` пуст. `GetAttributeValues` пропускает параметр при `!fromAttribDefinition` (`Helpers.cpp:9756`), а `GetParamValueForElements` отклоняет невалидный источник (`Helpers.cpp:3979-3987`). В `GetElementsForRule` прочитано 6 из 7 выходных параметров, условие полного набора (`Spec.cpp:1664-1682`) не добавляет кандидата. Балка и нулевые флаги количеств к этой установленной причине не привязаны.
+
+### Next Step
+
+Отдельно в рамках #209 выяснить, где должен устанавливаться `fromAttribDefinition` для указанного свойства материала, и проверить исправление на AC25 без обходного расширения `GetAttributeValues`. Исходники в этой диагностике не менялись.
+
+### Last Checkpoint
+
+Нет: диагностика без правок производственного кода.
+
+### Проверка гипотезы «кэш / вариативность флага» (2026-09-27)
+
+Ответ: **на тестовом PLN вариативности нет, а кэш тут ни при чём.** Пять запусков подряд (4 без брейков) дали идентичный результат: `status=failed`, `resultCode=-2130313215`, `elementsToCreate=0`, `elapsedSeconds` 0.4471/0.4471/0.4510/0.4493. Расхождения времени в прошлой сессии (122 с против 0.46 с) объясняются простоем ArchiCAD на брейкпоинтах, а не состоянием кэша: 122 с включали остановки в Break-режиме.
+
+Что проверено наблюдением (VS Debug, AC25, `test_25.pln`):
+
+- Кэш свойств читается полностью: `PROPERTYCACHE().property.GetSize()=519`, `isPropertyDefinitionRead_full=true`, `isPropertyDefinition_OK=true`. Кэш не пуст и не частичен — версии «кэш не успел прогреться» нет.
+- `GetAllPropertyDefinitionToParamDict` фильтрует группы по `group.name.Contains("Material")` либо по трём жёстким GUID (AC25, ветка `#else`) — `Propertycache.cpp:760-767`. От того, какая ветка активна, зависит состав кэша, но флаг `fromAttribDefinition` ставится не здесь, а в `ConvertToParamValue_CheckAttrib` по тексту описания свойства.
+- Остановка на `Helpers.cpp:9756` (фильтр `!fromAttribDefinition`) показала **не** наше свойство, а material-слот: `typeinx=11` (`MATERIALTYPEINX`, `Constants.hpp:298`), `fromMaterial=true`, `fromPropertyDefinition=false`, `fromAttribDefinition=false`, `definition.guid=APINULLGuid`. Такой слот отбрасывается фильтром штатно, к делу он не относится.
+- `rule.stop_on_error=false`, поэтому элементы с неполным набором отбрасываются молча (`Spec.cpp:1676-1682` — ветка `else` без записи в `error_element`). `not_found_paramname=0` — причина не регистрируется в отчёте.
+- Итог по правилу: `rule.out_paramrawname=7` против `element.out_param=6`, `rule.out_sum_paramrawname=2` равно `element.out_sum_param=2`. Не хватает ровно одного выходного параметра, и это «Материалы/Обозначение в спецификацию».
+
+Механизм (статически, по коду): флаг `fromAttribDefinition` присваивается исключительно в `ParamHelpers::ConvertToParamValue_CheckAttrib` (`Helpers.cpp:8348`, ветки 8367/8371/8375/8383/8391/8395/8399/8403/8407/8414) — по совпадениям в `definition.description` (`SYNCNAME`, `buildingmaterial`, `component`, `some_stuff_*`) и в `pvalue.rawName` для `{@property:buildingmaterialproperties/...}` (`Helpers.cpp:1381-1382`). Шаблон `%Материалы/Обозначение в спецификацию%` не содержит ни одного из этих признаков, поэтому для него флаг не выставляется ни при одном пересчёте кэша — вариативности быть не может, условие детерминированное. Второй путь, `ParseParamName` (`Helpers.cpp:3796-3799`), для `PROPERTYTYPEINX` ставит только `fromPropertyDefinition`, а затем `CompareParamDictValue` (`Helpers.cpp:7423`, вызов из `ReadMaterial_ReadAddParam`) копирует в `paramsAdd` состояние из `PROPERTYCACHE().property` — то есть флаг приходит из кэша, но значение кэша детерминированно.
+
+Значит «иногда создаются» на этом проекте объясняется не кэшем и не флагом. Возможные иные причины (не проверены, требуют отдельной проверки): другой PLN/правило; состояние правила, заданное вручную в UI до запуска; в прошлых прогонах результат зависел от того, что Archicad стоял на брейкпоинте, а не от данных.
+
+Свойства чтения в отладчике, которые сработали: `param.typeinx`, `param.from*`, `param.definition.guid.time_low`, `params.GetSize()`, `PROPERTYCACHE().property.GetSize()`, `element.out_param.GetSize()`, `rule.out_paramrawname.GetSize()`. Не сработали: `param.rawName.ToCStr()` и `params.ContainsKey("строка")` — VS требует явный `GS::UniString(...)`; `GetPtr(...) != nullptr` — «неизвестное выражение». Для вывода строки использовать `get_locals` (там имена ключей печатаются) либо сравнения с литералом.

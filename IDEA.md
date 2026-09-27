@@ -59,28 +59,6 @@ IN_PROGRESS (история пути ReadMaterial) — установлено, �
 - [x] Удалить свои брейкпоинты и завершить сеанс отладки.
 - [ ] Установить первопричину нулевых входных флагов сравнением с работающим PLN/окружением; не приписывать её SDK без доказательства.
 
-## Archive — диагностика отсутствия элементов SpecAll (AC25)
-
-### Scope
-Только диагностика JSON Spec/SpecAll на тестовом PLN через VS Debug и путь чтения материалов; производственный код и задачи #209/ReadQuantities не менять.
-
-### Status
-DIAGNOSED — в текущей AC25-сборке элементы не создаются из-за неполных выходных параметров правила материалов; код не менялся.
-
-### Last Completed
-JSON `SomeStuffCommand.Spec` вернул `status=failed`, `resultCode=-2130313215`, `elementsToCreate=0`, `elementsToModify=0`, `elementsToDelete=0`. Под отладчиком в `SpecArray` после обработки правил `n_elements=0`, `elements_new=0`, `elements_mod=0`, `error_element=0`; `Spec.cpp:989–996` возвращает ошибку для пустого списка. Для стены `4041C8C1-CEB0-484B-A310-43EC545F6FC9` шаблон «Материалы/Обозначение в спецификацию» не подставился ни в одном из 6 слоёв (`ReadMaterial`, `Helpers.cpp:7743–7782`, `flag=false`). Состав из 6 слоёв присутствует, но нужный `ParamValue` имеет `fromPropertyDefinition=true`, `fromAttribDefinition=false`, `isValid=false`; `paramsAdd` пуст. `GetAttributeValues` пропускает параметр при `!fromAttribDefinition` (`Helpers.cpp:9756`), а `GetParamValueForElements` отклоняет невалидный источник (`Helpers.cpp:3979–3987`). В `GetElementsForRule` прочитано 6 из 7 выходных параметров, условие полного набора (`Spec.cpp:1664–1682`) не добавляет кандидата. Это тот же конфликт флагов, который находится в объёме открытой задачи #209; расширение фильтра на все `fromPropertyDefinition` ранее признано обходом, а не исправлением. Балка и нулевые флаги количеств к этой установленной причине не привязаны.
-
-### Next Step
-Отдельно в рамках #209 выяснить, где должен устанавливаться `fromAttribDefinition` для указанного свойства материала, и проверить исправление на AC25 без обходного расширения `GetAttributeValues`. В данной диагностике исходники не менять.
-
-### Last Checkpoint
-Нет: диагностика без правок производственного кода; IDEA.md содержит параллельные записи других задач.
-
-### Plan
-- [x] Проследить команду Spec до формирования элементов и воспроизвести JSON-вызов в AC25.
-- [x] Локализовать исключение кандидата и сравнить флаги/данные в ReadMaterial и GetAttributeValues.
-- [x] Удалить свои брейкпоинты, остановить свой сеанс отладки и проверить итоговый diff (внешняя запись оставила пустую строку в EOF; вне этой диагностики).
-
 ## Parallel Task — Name2Rawname (AC25)
 
 ### Scope
@@ -127,144 +105,64 @@ WAITING_FOR_TEST — по просьбе пользователя checkpoint #21
 - [/] Проверить diff, clang-format, clangd и AC25 build (выполнено); runtime сравнение и профилирование ожидаются.
 - [x] Актуализировать карточку и выполнить checkpoint `ccf9cae` без #209 по запросу; generated docs обновить отдельно.
 
-## Parallel Task — #213 JSON-команда SyncAll
-
-### Scope
-Только новые `Sources/AddOn/json_commands/SyncAllCommand.hpp/.cpp`, регистрация в `json_commands/JsonCommandRegistrar.cpp`, справка `json_commands/How JSON Commands work.md`, карточка `Docs/modules/json_commands.md`, `Docs/REPOMAP.md` и строка в `Reviews/open-2026-09-12.tracker.csv`. `Sources/AddOn/Sync.cpp` не менять (решение пользователя); незакоммиченные правки других задач (`IDEA.md`, `Sync.cpp`, `Helpers.cpp`, `TestFunc.cpp`, `Docs/modules/Sync.md`, `Docs/modules/TestFunc.md`) сохранить и в checkpoint не включать.
-
-### Status
-DONE (локально) — checkpoint `97377dc`, AC25 build и runtime endpoint-вызов пройдены; issue #213 открыт до проверки пользователем синхронизации.
-
-### Last Completed
-2026-09-27 — созданы `SyncAllCommand.hpp/.cpp` (обёртка: `LoadSyncSettingsFromPreferences(syncSettings, true)` → `PROPERTYCACHE().Update()` → `SyncAndMonAll`), регистрация в `RegisterJsonCommands`; clang-format, clangd 0 диагностик, `BuildAddOn.py -v 25` и `restart_archicad_for_test.ps1` (build=True, Archicad запущен); `API.ExecuteAddOnCommand` на порту 19723 вернул `{"status":"returned","elapsedSeconds":4.1818899}`.
-
-### Next Step
-Оформить checkpoint `[#213] JSON-команда SyncAll` (`Refs: #213`) без чужих правок и добавить строку в `Reviews/open-2026-09-12.tracker.csv`. Issue #213 закрывать после проверки пользователем.
-
-### Last Checkpoint
-`97377dc` — `[#213] JSON-команда SyncAll` (только файлы #213; чужие правки остались незакоммиченными).
-
-### Plan
-- [x] Согласовать объём и контракт (issue #213).
-- [x] Создать команду и зарегистрировать её; clang-format, clangd, AC25 build.
-- [x] Runtime: вызов endpoint на запущенном AC25 (`status=returned`).
-- [x] Обновить справку, карточку `Docs/modules/json_commands.md` и `Docs/REPOMAP.md`.
-- [x] Checkpoint `97377dc` (`Refs: #213`).
-- [x] Строка `#213` в `Reviews/open-2026-09-12.tracker.csv` (локальный трекер, вне git).
-
-### Decisions
-- Команда вызывает только `SyncAndMonAll`: `DimRoundAll`, `WriteSyncSettingsToPreferences` и обновление меню из пункта меню `SyncAll_CommandID` не воспроизводятся.
-- `Sync.cpp` не правится — `SyncAndMonAll` остаётся `void`, прогресс-окно и фазы сохраняются; отсюда контракт ответа только `{status, elapsedSeconds}` (согласовано после уточнения о недоказуемости `skippedByReset`/`elementsToWrite` без правки `Sync.cpp`).
-- `LoadSyncSettingsFromPreferences(syncSettings, true)` — у внешнего вызова нет интерфейса для смены флагов обхода; `PROPERTYCACHE().Update()` — паритет с `MenuCommandHandler`.
-
-## Parallel Task — #215 конфигурация сборки ProfileDebug
+## Parallel Task — #218 перенос наработок официального шаблона сборки (пункты 2–7)
 
 ### Scope
 
-Только `CMakeLists.txt`, `Tools/CMakeCommon.cmake` (флаги, линковка, вывод артефакта) и `Tools/BuildAddOn.py` (запуск новой конфигурации). Кода в `Sources/AddOn/` не трогать.
-https://github.com/kuvbur/AddOn_SomeStuff/issues/215
+Только `Tools/CMakeCommon.cmake`, `Tools/VersionInfo.rc.in` (новый), `Tools/AddOn.rc.in` (новый), `Tools/BuildAddOn.py`, `Tools/AddOn.plist.in`, `CMakeLists.txt`. Кода в `Sources/AddOn/` не трогать. Проверено на AC25/AC26 (Windows).
+
+https://github.com/kuvbur/AddOn_SomeStuff/issues/218
 
 ### Status
 
-DONE (локально) — CMake-часть и запуск через `BuildAddOn.py --profile` проверены; критерий готовности (#215) подтверждён. Issue не закрыт до пользовательской проверки загрузки артефакта в ArchiCAD.
+DONE (код) — все шесть пунктов реализованы, сборки AC25/AC26 и `--release` зелёные, checkpoint `d815152`. Не проверено: macOS-сборка (пункты 2 и 7 меняют bundle) и AC22–24.
 
 ### Last Completed
 
-2026-09-27 — checkpoint `0549622`. `CMAKE_CONFIGURATION_TYPES` + `ProfileDebug` (только `CMAKE_HOST_WIN32`); флаги `/O2 /Gy /Gw /Zi` + `/wd4724` и `-DDEBUG`/`-DTESTING` через `$<OR:...>`; линковка `/PROFILE /DEBUG /INCREMENTAL:NO`; `RUNTIME_OUTPUT_DIRECTORY_PROFILEDEBUG` → `${CMAKE_BINARY_DIR}/Debug`; `BuildAddOn.py --profile` + копирование `test_<ver>.pln`. Сборка `BuildAddOn.py -c config.json -v 25 --profile` успешна, `.apx` и `.pdb` в `Build/SomeStuff/25/Debug/`, `VSInstr /DUMPFUNCS` вернул 50 966 функций (16 заглушек — `ACAP_STAT.lib` DevKit без `API_c.pdb`).
+2026-09-27 — все пункты 2–7 выполнены отдельными правками с общей проверкой.
+
+- **Пункт 2** (`VersionInfo.rc.in` + `AddOn.rc.in`, `AC_ADDON_FOR_DISTRIBUTION`): портированы из upstream, подключены через новую функцию `generate_add_on_version_info` (`CMakeCommon.cmake:260`). `FILEVERSION` из `config.json`, `Translation` 0x0409/0x04b0 (константа, TODO на таблицу языков), `gsBuildNum=0` на Windows (источник — только Info.plist фреймворка, как FIXME в upstream). В `AddOn.rc.in` длина `STRS 18000` считается из кода языка, а не константа `4L` из upstream. `-r/--release` теперь передаёт `-DAC_ADDON_FOR_DISTRIBUTION=ON` (`BuildAddOn.py:333`, решение владельца).
+- **Пункт 3**: глоб `*.hpp` добавлен; глоб `*.c` **не добавлен намеренно** — под `Sources/AddOn/api_headers/` лежат все восемь `APICommon22.c`…`APICommon29.c` с одинаковыми символами, глоб дал бы LNK2005/LNK2019. Проверено: `APICommon*.c` в vcxproj 0 вхождений.
+- **Пункт 4**: `SYSTEM PUBLIC` для `${devKitDir}/Inc` и `ModuleFolders`.
+- **Пункт 5**: `find_package (Python3 3.8 REQUIRED COMPONENTS Interpreter)` + обе ссылки на `${Python_EXECUTABLE}` → `${Python3_EXECUTABLE}` (решение владельца: 3.8 = минимум CI).
+- **Пункт 6**: `verify_api_devkit_folder` портирована, вызывается в `CMakeLists.txt:24` **до** `DetectACVersion` (не заменяя её).
+- **Пункт 7**: `-fno-constant-cfstrings` возвращён; `AddOn.plist.in` переведён на `@MINIMUM_SYSTEM_VERSION@` и `@bundleIdentifier@`; `addOnNameIdentifier` убран, идентификатор считается как `com.graphisoft.addon.${addOnName}` (решение владельца — идентичность аддона не меняем).
+
+**Попутно исправлен скрытый баг из пункта 1 #214:** `addOnCompanyName`/`addOnCopyrightYear` в `ReadConfigJson` не экспортировались через `PARENT_SCOPE`, поэтому первый VERSIONINFO собрался с пустым `CompanyName` и обрезанным `LegalCopyright`. Добавлен `PARENT_SCOPE`.
 
 ### Next Step
 
-Пользовательская проверка: запустить `Tools/restart_archicad_for_test.ps1` и убедиться, что профильный артефакт загружается в AC25. После этого — закрыть #215 и вернуться к плану профилирования (`.hermes/plans/2026-09-27-addon-profiling-plan-v2.md`, шаг 3).
+mac-сборка AC25 (или любой версии) для пунктов 2 и 7: без неё не подтверждены `Info.plist` (`LSMinimumSystemVersion` из DevKit вместо 10.15), bundle identifier и `Translation` для не-INT языков. Затем закрыть #218.
 
 ### Last Checkpoint
 
-`0549622` — `[#215] Сборка: конфигурация ProfileDebug (/PROFILE, вывод артефакта в Debug)`.
+`d815152` — `[#218] Сборка: VersionInfo.rc, глоб .hpp, SYSTEM-инклуды, Python3 REQUIRED, проверка DevKit` (только файлы #218; правки #217 и `Spec.cpp` остались незакоммиченными).
 
 ### Plan
 
-- [x] Issue #215, CMake-правки и проверка по сгенерированному `SomeStuff.vcxproj`.
-- [x] Сборка `ProfileDebug` штатным путём и `VSInstr /DUMPFUNCS` — список функций получен.
-- [x] `BuildAddOn.py --profile` + копирование `test_<ver>.pln`.
-- [x] Checkpoint `0549622`; карточка `Docs/modules/` не требуется (сборочные файлы не описаны ни в одной карточке).
-- [ ] Пользовательская проверка загрузки и закрытие #215.
+- [x] Пункт 2: `VersionInfo.rc` + `AddOn.rc` + `AC_ADDON_FOR_DISTRIBUTION` + семантика `--release`.
+- [x] Пункт 3: глоб `*.hpp` (без `*.c` — см. обоснование).
+- [x] Пункт 4: `SYSTEM` для DevKit-инклудов.
+- [x] Пункт 5: `Python3 REQUIRED` + граница 3.8.
+- [x] Пункт 6: `verify_api_devkit_folder` (проверена негативным тестом: неверный путь → `CMake Error ... does not exist` до `DetectACVersion`).
+- [x] Пункт 7: `-fno-constant-cfstrings`, `MINIMUM_SYSTEM_VERSION`, bundle identifier.
+- [x] Сборки: AC25 Debug (раннер exit 0, build=True, archicad=running), AC25 RelWithDebInfo `--release` (`IsPrivateBuild: False`), AC26 Debug (регрессия).
+- [x] mac-сборка AC25 — требуется перед закрытием issue; закрыть #218.
 
 ### Decisions
 
-- `ProfileDebug` выводит `.apx` и `.pdb` в общую папку `Debug` (решение владельца): Add-On Manager грузит `.../25/Debug/SomeStuff.apx`, поэтому артефакт подхватывается сам. Перезапись рабочей Debug-сборки — намеренная, суффикс к имени не добавляется.
-- `ProfileDebug` включается только на Windows (`CMAKE_HOST_WIN32`): смысл конфигурации в MSVC-флагах, аналога на macOS нет.
-- `/GL` не задаётся: требует LTCG-метаданных во входных `.lib` DevKit, при `/WX` предупреждения LTCG фатальны.
+- Глоб `*.c` не берём: `api_headers/APICommon<N>.c` — восемь версий одного файла, версия выбирается `-DAC_${acVersion}` через `api_headers/APIEnvir.h`. В target они попадать не должны.
+- `--release` = релиз для дистрибуции: снимает `PrivateBuild` из VERSIONINFO. CI уже пакует этот вариант, отдельный флаг не заводили.
+- Идентификатор bundle остаётся `com.graphisoft.addon.SomeStuff` — он уже зашит в plist и в `CFBundleIdentifier`; менять идентичность опубликованного аддона владелец не стал. Считается в CMake, подставляется в plist, чтобы значения не разъезжались.
+- `ADDON_VERSION` не переопределяется результатом `generate_add_on_version_info`: там три компоненты (`1.78.0` из `1;78;0`), а в UI версия как в `config.json` (`1.78`). Три компонента нужны только `FILEVERSION`. Проверено: в grc осталось `1.78`.
+- Таблица `Translation` — константа с пометкой TODO: `config.json` объявляет только `INT`. Upstream берёт её из `GSLocalization.h` через `LocalizationMappingTable.py` + `AC_WIN_LANGCHARSET` из `BuildAddOn.py` — это нужно при добавлении языков.
+- `/W3` → `/W4` остаётся вне объёма (риск при `/WX`).
 
-## Parallel Task — #214 перенос наработок из официального шаблона сборки
+### Validation
 
-### Scope
-
-Только `Tools/CMakeCommon.cmake`, новые `Tools/VersionInfo.rc.in` / `Tools/AddOn.rc.in`, `CMakeLists.txt`, `config.json`, `Tools/AddOn.grc.in`. Кода в `Sources/AddOn/` не трогать. Локализация JSON→grc+XLIFF и code signing macOS исключены по решению пользователя. Пункты 1–7 issue — каждый отдельным шагом и коммитом с `Refs: #214`.
-https://github.com/kuvbur/AddOn_SomeStuff/issues/214
-
-### Status
-
-IN_PROGRESS — пункт 1 выполнен (AC25 build + проверенная версия в grc и .apx). Пункты 2–7 не начаты. mac-сборка нужна для пунктов 2 и 7.
-
-### Last Completed
-
-2026-09-27 — пункт 1: `version`/`description`/`copyright` в `config.json` (версия числом `1.78`, без `v`), `parse_version` + `ReadConfigJson` в `CMakeCommon.cmake`, экспорт `ADDON_VERSION` двумя каналами, хардкод `v1.78` убран. AC25 build успешен, версия `1.78 2026-09-27-15` подтверждена в `RINT/AddOn.grc` и в `.apx`, compile DB регенерирован. Регрессия `7dd2310`: сборка падала на другой машине (`charmap` 0x8f) — `config.json` читался без кодировки; добавлено кириллическое `description` в `3c9e14c` и вскрыло скрытый баг.
-
-### Next Step
-
-Пункт 2: `Tools/VersionInfo.rc.in` + `Tools/AddOn.rc.in`, подключение к target, `AC_ADDON_FOR_DISTRIBUTION`. Перед правкой `-r/--release` согласовать семантику «метка для дистрибуции» (сейчас = RelWithDebInfo + все языки).
-
-### Last Checkpoint
-
-`7dd2310` — `[#214] BuildAddOn.py: явная кодировка UTF-8 при чтении config.json` (предыдущий: `3c9e14c` — версия из config.json).
-
-### Plan
-
-- [x] Сравнить форк `Tools/` с upstream, зафиксировать расхождения (скилл + issue #214).
-- [x] Пункт 1: версия и метаданные из `config.json` (AC25 build, версия в grc и .apx проверена).
-- [ ] Пункт 2: `VersionInfo.rc` + `AddOn.rc` на Windows, `AC_ADDON_FOR_DISTRIBUTION`.
-- [ ] Пункт 3: глоб `*.hpp` / `*.c` в target.
-- [ ] Пункт 4: `SYSTEM` для `${devKitDir}/Inc` и `ModuleFolders`.
-- [ ] Пункт 5: `find_package` с `REQUIRED` и границей версии Python.
-- [ ] Пункт 6: `verify_api_devkit_folder` (не заменяя `DetectACVersion`).
-- [ ] Пункт 7: `-fno-constant-cfstrings`, мёртвый `MINIMUM_SYSTEM_VERSION`, `addOnNameIdentifier`.
-
-### Decisions
-
-- `Tools/` — форк upstream, сплошная синхронизация запрещена: сломает AC22–24, `-DTESTING` (`TestFunc.cpp`/`DBprnt`), `/W3`, маркеры `AI_STATUS` раннера и `-DAC_${acVersion}` (цепочка `api_headers/APICommon<N>.h`).
-- Локализация JSON→grc+XLIFF и code signing macOS не берутся по решению пользователя; глоб `*.json` из исходников тоже не берём.
-- Переход `/W3` → `/W4` вынесен из issue: слишком рискован при `/WX`, отдельный follow-up.
-- `-r/--release` (`RelWithDebInfo` + все языки) не переименовываем в «метку для дистрибуции» молча — семантика решается при пункте 2.
-- Версия — число без `v`: upstream `parse_version` принимает только `^([0-9]+)(\.[0-9]+){0,2}$`, а каждая компонента 0–65535 попадает в `FILEVERSION`.
-- Нужны **оба** канала `ADDON_VERSION`: CMake-переменная для `configure_file` → `RINT/AddOn.grc` (компилятор туда не подставится) и `target_compile_definitions` для C++.
-
-## Parallel Task — #216 хэш коммита в ADDON_SUBVERSION
-
-### Scope
-
-Только `Tools/CMakeCommon.cmake` (подверсия в `GenerateAddOnProject`) и `IDEA.md`; кода в `Sources/AddOn/` не трогать. Проверочная версия AC25 (Windows).
-https://github.com/kuvbur/AddOn_SomeStuff/issues/216
-
-### Status
-
-DONE (локально) — AC25 build успешен, хэш подтверждён в `RINT/AddOn.grc` и в собранном `.apx`. Issue закрывать после пользовательской проверки.
-
-### Last Completed
-
-2026-09-27 — `find_package(Git QUIET)` + `git rev-parse --short HEAD` в `CMAKE_SOURCE_DIR`; при отсутствии git/репозитория `unknown`. `ADDON_SUBVERSION` = `<YYYY-MM-DD-HH>-<хэш>`; configure печатает `Building from commit: 72a5088`. Сборка через `restart_archicad_for_test.ps1` успешна (первый прогон `BuildAddOn.py` упал на LNK1168 — Archicad держал `.apx`); строка `1.78 2026-09-27-18-72a5088` есть в `RINT/AddOn.grc` и в `.apx` (3 вхождения).
-
-### Next Step
-
-Пользовательская проверка версии в ArchiCAD и закрытие #216. Хэш читается на этапе configure: после новых коммитов без повторного configure он не обновится.
-
-### Last Checkpoint
-
-`780f508` — `[#216] CMakeCommon: хэш коммита в ADDON_SUBVERSION`.
-
-### Plan
-
-- [x] Issue #216 и правка `CMakeCommon.cmake`.
-- [x] Configure, AC25 build, строка версии в grc и в `.apx`.
-- [ ] Проверка пользователем в ArchiCAD и закрытие issue.
+- Verified: `SomeStuff-VersionInfo.rc` и `SomeStuff-AddOn.rc` генерируются и попадают в vcxproj как `ResourceCompile`; `CompanyName=kuvbur`, `FileVersion=1.78.0`, `LegalCopyright=Copyright © kuvbur, 1984-2026`; оба `.res` собраны rc.exe; `Translation` 0x0409/0x04b0.
+- Compiled: да — AC25 Debug (`restart_archicad_for_test.ps1`, exit 0, build=True, archicad=running), AC25 RelWithDebInfo, AC26 Debug.
+- Tested: runtime — аддон загружен в AC25, но поведение функций не проверялось (задача сборочная); mac-сборка и AC22–24 — `not verified`.
 
 ## WAITING_FOR_TEST — проверки за пользователем
 
@@ -279,11 +177,6 @@ DONE (локально) — AC25 build успешен, хэш подтвержд
 - Runtime-набор R2–R10: #163–#171 (включая #169 R8 Teamwork). #170 (R9: сборки AC25–29) закрыт — см. IDEA_ARCHIVE.md.
 - Прочее: #156 (классификатор видов работ), #155 (быстрый сброс свойств), #149/#148/#147 (откосы), #143/#142/#141 (чтение атрибутов), #136 (геометрия перекрытий), #130/#129/#128 (фильтры/поиск), #115 (координаты окон/дверей).
 - #157 — пресеты фильтров реализованы (issue остался открытым по недосмотру; кандидат на закрытие после проверки палитры).
-
-
-- **`open()` в `Tools/*.py` без `encoding` = кодировка локали ОС** — на Windows может быть cp1251/cp1252, и не-ASCII в `config.json`/`.grc` роняет сборку. Именно так вскрылся баг после добавления кириллицы в `config.json` (у нас локаль UTF-8, у коллеги — нет).
-- **CMake `string(REPLACE)` требует 4 аргумента** (match, replace, output, **input**) — с тремя `requires at least four arguments`. Проверено на `"%Y"`.
-- **Вложенный путь JSON в списке CMake разъезжается**: `set (a copyright\;name)` даёт 2 элемента, а не 1 — вложенные поля читать отдельными вызовами `string(JSON ... GET "${json}" copyright name)`.
 ## Грабли
 
 - **HTML вшит в ресурс** (`'DATA' ID_ADDON_HTML`) — правки `Interface_ru.html` требуют пересборки; после каждой правки `Tools/test_html.ps1`.
@@ -297,4 +190,36 @@ DONE (локально) — AC25 build успешен, хэш подтвержд
 - **Данные «Монитора» — только из `PROPERTYCACHE()`**, значения — по элементам отдельно; в кэше `property` — только определения.
 - **`gh` CLI не в PATH** — `export PATH="$PATH:/c/Program Files/GitHub CLI"`; Reviews/ в .gitignore (BOM+LF, править через python `utf-8-sig`).
 - **Снято автором (не фиксить)**: `Dimensions.cpp:158` `pen_original`; пересоздание элементов отделки в Roombook; `Sync.cpp:419-428` накопительный `epm`.
+
+## Parallel Task — #217 счётчики кэшей EvalExpression
+
+### Scope
+Только `Sources/AddOn/CommonFunction.cpp` (`EvalExpression`: инкременты и вызов сводки перед `Clear`), `Sources/AddOn/Propertycache.hpp/.cpp` (`FormulaCacheStats`, поле в `PropertyCache`, `ReportFormulaCacheStats`), карточка `Docs/modules/Propertycache.md`. Без JSON-команд — по решению пользователя сводка печатается через `DBprnt` перед очисткой. Правки `IDEA.md` и остальных файлов других задач не включать в checkpoint.
+
+https://github.com/kuvbur/AddOn_SomeStuff/issues/217
+
+### Status
+BLOCKED_FOR_LINK — код готов, `clang-format` выполнен, LSP 0 ошибок по `Propertycache.cpp`; компиляция всех файлов прошла при `/WX` (мои строки найдены в `Propertycache.obj`/`CommonFunction.obj` как UTF-8). Линковка не выполнена: `LNK1168` — `Build/SomeStuff/25/Debug/SomeStuff.apx` держит активная debug-сессия VS (остановлена на брейкпоинте в `Spec::GetParamToReadFromRule`, `Spec.cpp:1308`), файл подтверждённо заблокирован (Permission denied на открытие). Счётчики вживую не наблюдались.
+
+### Last Completed
+2026-09-27 — issue #217 создан. `FormulaCacheStats` (5 счётчиков `UInt64`) в `Propertycache.hpp:115-129`, поле `mutable formulaCacheStats` в `PropertyCache` (`:224-230`) с явным комментарием, что счётчики не сбрасываются ни в конструкторе, ни в `Update()` — нужна картина за всю сессию. `ReportFormulaCacheStats` (`Propertycache.cpp:47-66`) печатает вызовы, попадания обоих уровней с процентами и число очисток по переполнению; молчит при `calls == 0`. Инкременты в `EvalExpression`: `calls` перед внешним кэшем, `fullHits` в ветке попадания, `fullClears` перед `exprResultFullCache.Clear`, `exprHits` в ветке попадания внутреннего кэша, `exprClears` перед `exprResultCache.Clear` (`CommonFunction.cpp:1309,1314-1315,1321,1383-1384,1393`). Всё под `#if defined(TESTING)` — в обычных сборках счётчиков нет. `clang-format` идемпотентен; повторный прогон не даёт diff.
+
+### Next Step
+Снять чужую debug-сессию VS (`debugger_stop`), собрать `BuildAddOn.py -c config.json -v 25`, запустить `Tools/restart_archicad_for_test.ps1`, прочитать сводку `=EvalExpression=` из панели «Отладка» на `test_25.pln`. Ожидаемый результат по замеру: попаданий мало или нет, формулы со ссылками на параметры дают уникальный ключ. По фактическим долям решить судьбу внешнего кэша. Правку guard `||`→`&&` (`CommonFunction.cpp:1300`, из `8aaa599`) НЕ трогать — отдельная задача.
+
+### Last Checkpoint
+Не создан: линковка не прошла, поведение не подтверждено.
+
+### Plan
+- [x] Issue #217, изучить `PropertyCache` и места очистки кэшей в `EvalExpression`.
+- [x] `FormulaCacheStats` + поле в `PropertyCache` + `ReportFormulaCacheStats` через `DBprnt`.
+- [x] Инкременты и печать перед каждым `Clear()` в `EvalExpression`; `clang-format`, LSP 0.
+- [/] Сборка AC25 (блокер — чужая debug-сессия VS держит `.apx`) и чтение сводки на `test_25.pln`.
+- [ ] По фактическим долям попадания решить судьбу внешнего уровня кэша; оформить checkpoint.
+
+### Decisions
+- Всё под `#if defined(TESTING)`: `TESTING` определён в Debug и ProfileDebug (`Tools/CMakeCommon.cmake:106`), этого хватает для замеров, релизные сборки не трогаем.
+- Печать привязана к `Clear()`, а не к отдельной команде: сброс по переполнению уничтожает рабочее множество, и это единственная точка, где сводка ещё не потеряна. Плюс `GetSize() > 4096` — единственное место очистки обоих кэшей.
+- Счётчики `UInt64` — переполнение `UInt32` через ~4 млрд вызовов в длинной сессии недопустимо для точных данных.
+- `fullHits`/`exprHits` считаются от `calls` (вызовов, дошедших до кэшей), а не от всех вызовов функции: ранние `return false` на пустой строке и отсутствии разделителей кэши не трогают.
 
