@@ -154,8 +154,10 @@ def PrepareParameters(args):
     configPath = pathlib.Path(args.configFile)
     if configPath.is_dir():
         raise Exception(f'{configPath} is a directory!')
-    configFile = open(configPath)
-    configData = json.load(configFile)
+    # Кодировка задана явно: default open() берёт локаль ОС, и не-ASCII
+    # в config.json (description) ломает сборку на другой машине.
+    with open(configPath, encoding='utf-8') as configFile:
+        configData = json.load(configFile)
     addOnName = configData['addOnName']
     acVersionList = None
     languageList = None
