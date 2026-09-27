@@ -121,26 +121,33 @@ https://github.com/kuvbur/AddOn_SomeStuff/issues/215
 
 ### Status
 
-IN_PROGRESS — CMake-часть внесена; `ProfileDebug` конфигурируется, `OutDir` = `.../25/Debug/`, в vcxproj есть `<Profile>true</Profile>` и `GenerateDebugInformation=true`. `BuildAddOn.py` ещё не умеет новую конфигурацию (сборка идёт напрямую через `cmake --build`).
+DONE (локально) — CMake-часть и запуск через `BuildAddOn.py --profile` проверены; критерий готовности (#215) подтверждён. Issue не закрыт до пользовательской проверки загрузки артефакта в ArchiCAD.
 
 ### Last Completed
 
-2026-09-27 — `CMAKE_CONFIGURATION_TYPES` + `ProfileDebug` (только `CMAKE_HOST_WIN32`); флаги `/O2 /Gy /Gw /Zi` и `-DDEBUG`/`-DTESTING` через `$<OR:...>`; линковка `/PROFILE /DEBUG /INCREMENTAL:NO`; `RUNTIME_OUTPUT_DIRECTORY_PROFILEDEBUG` → `${CMAKE_BINARY_DIR}/Debug`. Проверено по сгенерированному `SomeStuff.vcxproj`.
+2026-09-27 — checkpoint `0549622`. `CMAKE_CONFIGURATION_TYPES` + `ProfileDebug` (только `CMAKE_HOST_WIN32`); флаги `/O2 /Gy /Gw /Zi` + `/wd4724` и `-DDEBUG`/`-DTESTING` через `$<OR:...>`; линковка `/PROFILE /DEBUG /INCREMENTAL:NO`; `RUNTIME_OUTPUT_DIRECTORY_PROFILEDEBUG` → `${CMAKE_BINARY_DIR}/Debug`; `BuildAddOn.py --profile` + копирование `test_<ver>.pln`. Сборка `BuildAddOn.py -c config.json -v 25 --profile` успешна, `.apx` и `.pdb` в `Build/SomeStuff/25/Debug/`, `VSInstr /DUMPFUNCS` вернул 50 966 функций (16 заглушек — `ACAP_STAT.lib` DevKit без `API_c.pdb`).
 
 ### Next Step
 
-Доказать критерий готовности: `VSInstr /DUMPFUNCS` на собранном артефакте возвращает список функций. Затем флаг в `BuildAddOn.py` и копирование `test_<ver>.pln` для новой конфигурации.
+Пользовательская проверка: запустить `Tools/restart_archicad_for_test.ps1` и убедиться, что профильный артефакт загружается в AC25. После этого — закрыть #215 и вернуться к плану профилирования (`.hermes/plans/2026-09-27-addon-profiling-plan-v2.md`, шаг 3).
 
 ### Last Checkpoint
 
-Не создан: критерий готовности (#215) не подтверждён.
+`0549622` — `[#215] Сборка: конфигурация ProfileDebug (/PROFILE, вывод артефакта в Debug)`.
 
 ### Plan
 
-- [x] Issue #215 и CMake-правки; проверка vcxproj (`Profile=true`, `OutDir`, `DEBUG`/`TESTING`).
-- [/] Сборка `ProfileDebug` и проверка `VSInstr /DUMPFUNCS`.
-- [ ] `BuildAddOn.py`: флаг запуска новой конфигурации + копирование `test_<ver>.pln`.
-- [ ] Checkpoint и карточка `Docs/modules/` (если затронут контракт сборки).
+- [x] Issue #215, CMake-правки и проверка по сгенерированному `SomeStuff.vcxproj`.
+- [x] Сборка `ProfileDebug` штатным путём и `VSInstr /DUMPFUNCS` — список функций получен.
+- [x] `BuildAddOn.py --profile` + копирование `test_<ver>.pln`.
+- [x] Checkpoint `0549622`; карточка `Docs/modules/` не требуется (сборочные файлы не описаны ни в одной карточке).
+- [ ] Пользовательская проверка загрузки и закрытие #215.
+
+### Decisions
+
+- `ProfileDebug` выводит `.apx` и `.pdb` в общую папку `Debug` (решение владельца): Add-On Manager грузит `.../25/Debug/SomeStuff.apx`, поэтому артефакт подхватывается сам. Перезапись рабочей Debug-сборки — намеренная, суффикс к имени не добавляется.
+- `ProfileDebug` включается только на Windows (`CMAKE_HOST_WIN32`): смысл конфигурации в MSVC-флагах, аналога на macOS нет.
+- `/GL` не задаётся: требует LTCG-метаданных во входных `.lib` DevKit, при `/WX` предупреждения LTCG фатальны.
 
 ## Parallel Task — #214 перенос наработок из официального шаблона сборки
 
