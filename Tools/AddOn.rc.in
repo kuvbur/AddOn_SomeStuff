@@ -1,0 +1,10 @@
+#include <Windows.h>
+
+/* UTF-8 */
+#pragma code_page(65001)
+
+18000 STRS
+BEGIN
+    @addOnLanguageLength@L, 						/* addOnLanguage length null terminated */
+    "@addOnLanguage@\0"									/* Language code for localized data */
+END

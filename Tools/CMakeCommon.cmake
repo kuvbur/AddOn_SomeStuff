@@ -62,6 +62,12 @@ function (ReadConfigJson)
         string (REPLACE "%Y" "${currentYear}" addOnCopyrightYear "${addOnCopyrightYear}")
     endif ()
 
+    # Без PARENT_SCOPE значения остаются локальными внутри функции и во внешнем
+    # scope не видны: VERSIONINFO-ресурс собирался с пустыми CompanyName и
+    # обрезанным LegalCopyright.
+    set (addOnCompanyName "${addOnCompanyName}" PARENT_SCOPE)
+    set (addOnCopyrightYear "${addOnCopyrightYear}" PARENT_SCOPE)
+
     parse_version ("${addOnVersion}" addOnVersionParts)
     if (NOT DEFINED addOnVersionParts)
         message (FATAL_ERROR "'${addOnVersion}' does not follow the '123', '1.23' or '1.2.3' version format.")
@@ -72,6 +78,29 @@ function (ReadConfigJson)
     list (JOIN addOnVersionParts . addOnVersion)
 
     set (AC_ADDON_FOR_DISTRIBUTION OFF CACHE BOOL "")
+endfunction ()
+
+function (verify_api_devkit_folder devKitPath)
+    if (NOT EXISTS "${devKitPath}")
+        message (FATAL_ERROR "The supplied API DevKit path ${devKitPath} does not exist")
+    endif ()
+
+    cmake_path (GET devKitPath FILENAME currentFolderName)
+    if (NOT currentFolderName STREQUAL "Support")
+        message (FATAL_ERROR "The supplied API DevKit path should point to the /Support subfolder of the API DevKit. Actual path: ${devKitPath}")
+    endif ()
+
+    if (NOT EXISTS "${devKitPath}/Lib")
+        message (FATAL_ERROR "${devKitPath}/Lib does not exist")
+    endif ()
+
+    if (NOT EXISTS "${devKitPath}/Modules")
+        message (FATAL_ERROR "${devKitPath}/Modules does not exist")
+    endif ()
+
+    if (APPLE AND NOT EXISTS "${devKitPath}/Frameworks")
+        message (FATAL_ERROR "${devKitPath}/Frameworks does not exist")
+    endif ()
 endfunction ()
 
 function (SetGlobalCompilerDefinitions acVersion)
@@ -135,6 +164,7 @@ function (SetCompilerOptions target acVersion)
     else ()
         target_compile_options (${target} PUBLIC -Wall -Wextra -Werror
             -fvisibility=hidden
+            -fno-constant-cfstrings
             -Wno-multichar
             -Wno-ctor-dtor-privacy
             -Wno-invalid-offsetof
@@ -216,8 +246,10 @@ function (LinkGSLibrariesToProject acVersion devKitDir addOnName)
         endif ()
     endif ()
 
+    # SYSTEM: предупреждения из заголовков DevKit не наши — при /WX они стали бы
+    # фатальными, и на каждый такой заголовок пришлось бы ставить ручной /wd.
     file (GLOB ModuleFolders ${devKitDir}/Modules/*)
-    target_include_directories (${addOnName} PUBLIC ${ModuleFolders})
+    target_include_directories (${addOnName} SYSTEM PUBLIC ${ModuleFolders})
     if (WIN32)
         file (GLOB LibFilesInFolder ${devKitDir}/Modules/*/*/*.lib)
         target_link_libraries (${addOnName} ${LibFilesInFolder})
@@ -231,10 +263,68 @@ function (LinkGSLibrariesToProject acVersion devKitDir addOnName)
 
 endfunction ()
 
+function (generate_add_on_version_info target acVersion outSemver)
+
+    parse_version ("${addOnVersion}" vers)
+    if (NOT DEFINED vers)
+        message (FATAL_ERROR "'${addOnVersion}' does not follow the '123' or '1.23' or '1.2.3' version format.")
+    endif ()
+    if (vers STREQUAL "0;0;0")
+        message (WARNING "Addon version is '0.0.0', which is a placeholder version. Please change it in 'config.json'.")
+    endif ()
+
+    list (JOIN vers . version)
+    string (TIMESTAMP copyright "Copyright © ${addOnCompanyName}, ${addOnCopyrightYear}")
+
+    if (WIN32)
+        # gsBuildNum на Windows всегда 0: единственный источник — Info.plist
+        # фреймворка GSRoot, которого на Windows нет (FIXME(HVA) в upstream).
+        set (gsBuildNum 0)
+        list (APPEND vers "${gsBuildNum}")
+        list (JOIN vers , versionComma)
+
+        # В строке ресурса кавычки и обратные слэши недопустимы. Подмена локальна
+        # для функции — вызывающий scope не затрагивается.
+        string (REGEX REPLACE [[(\\|")]] [[\\\1]] addOnDescription "${addOnDescription}")
+
+        if (autoupdate STREQUAL "1")
+            set (autoupdate "\n            VALUE \"Autoupdate\", \"1\"")
+        else ()
+            set (autoupdate "")
+        endif ()
+
+        # Translation для блока StringFileInfo. TODO: таблица константная, потому
+        # что config.json объявляет только "INT" (0x0409 en-US, 0x04b0 Unicode).
+        # При добавлении языков таблицу надо брать из GSLocalization.h
+        # (WIN_LANGCHARSET_STR), как это делает upstream через
+        # LocalizationMappingTable.py + AC_WIN_LANGCHARSET из BuildAddOn.py.
+        set (winLangCharset "040904B0")
+        set (winLanguageId 0x0409)
+        set (winCharsetId 0x04B0)
+
+        # STRS 18000: длина кода языка с завершающим нулём. Константа 4L из
+        # upstream верна только для трёхбуквенных кодов, поэтому считаем.
+        string (LENGTH "${addOnLanguage}" addOnLanguageLength)
+        math (EXPR addOnLanguageLength "${addOnLanguageLength} + 1")
+
+        foreach (res IN ITEMS VersionInfo AddOn)
+            set (out "${CMAKE_CURRENT_BINARY_DIR}/${target}-${res}.rc")
+            configure_file ("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/${res}.rc.in" "${out}" @ONLY)
+            target_sources ("${target}" PRIVATE "${out}")
+        endforeach ()
+    endif ()
+
+    set ("${outSemver}" "${version}" PARENT_SCOPE)
+endfunction ()
+
 function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder addOnResourcesFolder addOnLanguage)
 
     message (STATUS "AI_CMAKE_STATUS [GENERATE_ADDON_PROJECT] addon='${addOnName}' ac_version='${acVersion}' language='${addOnLanguage}' sources='${addOnSourcesFolder}' resources='${addOnResourcesFolder}'")
-    find_package (Python COMPONENTS Interpreter)
+    # REQUIRED: без него конфигурация молча проходит с пустым Python3_EXECUTABLE,
+    # и падение приходит позже — уже при запуске CompileResources.py, с
+    # невнятным сообщением. Граница 3.8 — минимум текущего CI (Win 3.8, Mac 3.10).
+    find_package (Python3 3.8 REQUIRED COMPONENTS Interpreter)
+    message (STATUS "Using Python3 interpreter: ${Python3_EXECUTABLE}")
 
     set (ResourceObjectsDir ${CMAKE_BINARY_DIR}/ResourceObjects)
     set (ResourceStampFile "${ResourceObjectsDir}/AddOnResources.stamp")
@@ -268,7 +358,7 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
             DEPENDS ${AddOnResourceFiles} ${AddOnImageFiles}
             COMMENT "AI_CMAKE_STATUS [COMPILE_RESOURCES] platform='WIN' addon='${addOnName}' language='${addOnLanguage}'"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${ResourceObjectsDir}"
-            COMMAND ${Python_EXECUTABLE} "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/CompileResources.py" "${addOnLanguage}" "${devKitDir}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${ResourceObjectsDir}/${addOnName}.res"
+            COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/CompileResources.py" "${addOnLanguage}" "${devKitDir}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${ResourceObjectsDir}/${addOnName}.res"
             COMMAND ${CMAKE_COMMAND} -E touch ${ResourceStampFile}
         )
     else ()
@@ -277,7 +367,7 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
             DEPENDS ${AddOnResourceFiles} ${AddOnImageFiles}
             COMMENT "AI_CMAKE_STATUS [COMPILE_RESOURCES] platform='MAC' addon='${addOnName}' language='${addOnLanguage}'"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${ResourceObjectsDir}"
-            COMMAND ${Python_EXECUTABLE} "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/CompileResources.py" "${addOnLanguage}" "${devKitDir}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${addOnName}.bundle/Contents/Resources"
+            COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/CompileResources.py" "${addOnLanguage}" "${devKitDir}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${addOnName}.bundle/Contents/Resources"
             COMMAND ${CMAKE_COMMAND} -E copy "${devKitDir}/Inc/PkgInfo" "${CMAKE_BINARY_DIR}/$<CONFIG>/${addOnName}.bundle/Contents/PkgInfo"
             COMMAND ${CMAKE_COMMAND} -E touch ${ResourceStampFile}
         )
@@ -285,7 +375,12 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
 
     file (GLOB_RECURSE AddOnHeaderFiles CONFIGURE_DEPENDS
         ${addOnSourcesFolder}/*.h
+        ${addOnSourcesFolder}/*.hpp
     )
+    # Только *.cpp: под api_headers/ лежат все восемь версий APICommon22.c…APICommon29.c
+    # с одними и теми же символами (WriteReport, ErrID_To_Name, ...), и глоб по *.c
+    # дал бы LNK2005/LNK2019 на восьмикратном дублировании. Версию выбирает
+    # -DAC_${acVersion} через api_headers/APIEnvir.h, в target им попадать не надо.
     file (GLOB_RECURSE AddOnSourceFiles CONFIGURE_DEPENDS
         ${addOnSourcesFolder}/*.cpp
     )
@@ -317,6 +412,13 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
     endif ()
     set (ADDON_VERSION ${addOnVersion})
     set (ADDON_NAME ${addOnName})
+
+    # VERSIONINFO-ресурс .apx (свойства файла) и STRS 18000 (код языка ресурсов).
+    # На Windows только — на macOS эти же данные уходят в Info.plist ниже.
+    # ADDON_VERSION не переопределяем: semver здесь с тремя компонентами
+    # ("1.78.0" из 1;78;0), а в UI по решению #214 показывается версия из
+    # config.json как есть ("1.78"). Три компонента нужны только FILEVERSION.
+    generate_add_on_version_info (${addOnName} ${acVersion} unusedSemver)
 
     # Хэш коммита в подверсию: по строке версии в grc/plist видно, из какой
     # ревизии собран аддон. Хэш читается на этапе configure, поэтому без
@@ -383,8 +485,17 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         set(MACOSX_BUNDLE_BUNDLE_NAME ${addOnName})
         set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${acVersion}.0.0.${gsBuildNum})
         set(MACOSX_BUNDLE_BUNDLE_VERSION ${acVersion}.0.0.${gsBuildNum})
+        # AddOn.plist.in подставляет это значение в LSMinimumSystemVersion:
+        # раньше там был хардкод 10.15, из-за чего значение вычислялось вхолостую
+        # и расходилось с требованиями DevKit (для AC28/29 нужно 11.0).
         set(MINIMUM_SYSTEM_VERSION "${lsMinimumSystemVersion}")
-    
+        # Идентификатор bundle обязан совпадать с CFBundleIdentifier в AddOn.plist.in.
+        # Считаем здесь из addOnName, а в plist подставляем @bundleIdentifier@, иначе
+        # значения в двух местах разъезжаются (было: com.kuvbur. + неопределённый
+        # addOnNameIdentifier, то есть обрезанный префикс). Идентичность аддона
+        # не меняется — префикс com.graphisoft.addon. сохранён.
+        set(bundleIdentifier "com.graphisoft.addon.${addOnName}")
+
         configure_file(
                 "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.plist.in"
                 "${CMAKE_CURRENT_LIST_DIR}/${addOnResourcesFolder}/RFIX.mac/Info.plist"
@@ -395,7 +506,7 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
             BUNDLE TRUE
             MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/${addOnResourcesFolder}/RFIX.mac/Info.plist"
 
-            XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.kuvbur.${addOnNameIdentifier}
+            XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${bundleIdentifier}
             XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET ${lsMinimumSystemVersion}
 
             LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
@@ -409,8 +520,8 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
     
     target_include_directories (${addOnName} PUBLIC
         ${addOnSourcesFolder}
-        ${devKitDir}/Inc
     )
+    target_include_directories (${addOnName} SYSTEM PUBLIC ${devKitDir}/Inc)
 
     LinkGSLibrariesToProject (${acVersion} ${devKitDir} ${addOnName})
 

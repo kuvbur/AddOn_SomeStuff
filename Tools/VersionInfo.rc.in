@@ -1,0 +1,54 @@
+#include <Windows.h>
+
+/* UTF-8 */
+#pragma code_page(65001)
+
+#cmakedefine AC_ADDON_FOR_DISTRIBUTION
+
+#ifdef AC_ADDON_FOR_DISTRIBUTION
+#define PRERELEASE_FLAGS 0
+#else
+#define PRERELEASE_FLAGS VS_FF_PRIVATEBUILD|VS_FF_PRERELEASE
+#endif
+
+/* https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros */
+#ifdef _DEBUG
+#define DEBUG_FLAG VS_FF_DEBUG
+#else
+#define DEBUG_FLAG 0
+#endif
+
+/* https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource */
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION @versionComma@
+    PRODUCTVERSION 0,@acVersion@,0,@gsBuildNum@
+    FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+    FILEFLAGS (PRERELEASE_FLAGS|DEBUG_FLAG)
+    FILEOS VOS_NT_WINDOWS32
+    FILETYPE VFT_DLL
+    FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    /* https://learn.microsoft.com/en-us/windows/win32/menurc/stringfileinfo-block */
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "@winLangCharset@"
+        BEGIN
+            VALUE "CompanyName", "@addOnCompanyName@"
+            VALUE "FileDescription", "@addOnDescription@"
+            VALUE "FileVersion", "@version@"
+            VALUE "InternalName", "@addOnName@"
+            VALUE "LegalCopyright", "@copyright@"
+            VALUE "OriginalFilename", "@addOnName@.apx"
+#ifndef AC_ADDON_FOR_DISTRIBUTION
+            VALUE "PrivateBuild", "Not for distribution"
+#endif
+            VALUE "ProductName", "@addOnName@"
+            VALUE "ProductVersion", "@version@"@autoupdate@
+        END
+    END
+    /* https://learn.microsoft.com/en-us/windows/win32/menurc/varfileinfo-block */
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", @winLanguageId@, @winCharsetId@
+    END
+END

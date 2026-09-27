@@ -19,6 +19,10 @@ set (AC_ADDON_NAME "SomeStuff" CACHE STRING "Add-On name.")
 set (AC_ADDON_LANGUAGE "INT" CACHE STRING "Add-On language code.")
 
 
+# Структура DevKit проверяется до DetectACVersion: тот смотрит только
+# читаемость Support/Inc/ACAPinc.h и сообщает об ошибке сильно позже.
+verify_api_devkit_folder (${AC_API_DEVKIT_DIR})
+
 DetectACVersion (${AC_API_DEVKIT_DIR} ACVersion)
 message (STATUS "Archicad Version: ${ACVersion}")
 

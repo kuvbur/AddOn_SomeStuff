@@ -24,7 +24,7 @@
 			CFBundleIdentifier
 		</key>
 		<string>
-			com.graphisoft.addon.SomeStuff
+			@bundleIdentifier@
 		</string>
 		<key>
 			CFBundleInfoDictionaryVersion
@@ -74,7 +74,7 @@
 			LSMinimumSystemVersion
 		</key>
 		<string>
-			10.15
+			@MINIMUM_SYSTEM_VERSION@
 		</string>
 		<key>
 			LSRequiresCarbon

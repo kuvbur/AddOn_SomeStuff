@@ -298,7 +298,7 @@ def GetInstalledVisualStudioGenerator():
         raise Exception('Installed Visual Studio version not supported!')
 
 
-def GetProjectGenerationParams(workspaceRootFolder, buildPath, platformName, devKitFolder, version, languageCode, optionalParams):
+def GetProjectGenerationParams(workspaceRootFolder, buildPath, platformName, devKitFolder, version, languageCode, optionalParams, release=False):
     # Add params to configure cmake
     projGenParams = [
         'cmake',
@@ -329,12 +329,18 @@ def GetProjectGenerationParams(workspaceRootFolder, buildPath, platformName, dev
         for key in optionalParams:
             projGenParams.append(f'-D{key}={optionalParams[key]}')
 
+    # --release = релиз для дистрибуции: снимаем метку PrivateBuild из
+    # VERSIONINFO-ресурса .apx. Согласовано с решением владельца и с CI, который
+    # пакует именно этот вариант (RelWithDebInfo + все языки + --package).
+    if release:
+        projGenParams.append('-DAC_ADDON_FOR_DISTRIBUTION=ON')
+
     projGenParams.append(str(workspaceRootFolder))
 
     return projGenParams
 
 
-def BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder, devKitFolder, version, configuration, languageCode=None):
+def BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder, devKitFolder, version, configuration, languageCode=None, release=False):
     addOnName = configData['addOnName']
     optionalParams = None
     if 'addOnSpecificCMakeParameterEnvVars' in configData:
@@ -350,7 +356,7 @@ def BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder, devKi
         buildPath = buildPath / languageCode
     # Add params to configure cmake
     projGenParams = GetProjectGenerationParams(
-        workspaceRootFolder, buildPath, platformName, devKitFolder, version, languageCode, optionalParams)
+        workspaceRootFolder, buildPath, platformName, devKitFolder, version, languageCode, optionalParams, release)
     AIStatus(
         'CMAKE_CONFIGURE',
         f'version={version} configuration={configuration} language={languageCode or "default"} '
@@ -416,7 +422,7 @@ def BuildAddOns(args, configData, platformName, languageList, workspaceRootFolde
                 for languageCode in languageList:
                     AIStatus('LANGUAGE_START', f'version={version} language={languageCode}')
                     BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder,
-                               devKitFolder, version, 'RelWithDebInfo', languageCode)
+                               devKitFolder, version, 'RelWithDebInfo', languageCode, release=True)
 
             else:
                 if args.profile:
