@@ -133,7 +133,7 @@ IN_PROGRESS — пункт 1 выполнен (AC25 build + проверенна
 
 ### Last Checkpoint
 
-Не создан — задача начата, кода не менялось.
+`3c9e14c` — `[#214] Версия аддона из config.json вместо хардкода v1.78` (config.json, CMakeLists.txt, Tools/CMakeCommon.cmake, IDEA.md).
 
 ### Plan
 
