@@ -4297,20 +4297,23 @@ namespace Roombook
     #ifdef ServerMainVers_2700
             // Материал горизонтального откоса: для AC_27+ структура API_BeamSegmentType содержит
             // bottomMaterial, leftMaterial, rightMaterial, topMaterial, endsMaterial (AC_29+ extrusionMaterial)
-            beammemo.beamSegments[0].bottomMaterial.overridden = true;
-            beammemo.beamSegments[0].bottomMaterial.attributeIndex = edges.material.material;
+            // AC27: API_OverriddenAttribute заменён на APIOptional<API_AttributeIndex>
+            // (как сделано ниже для стены: hasValue + value).
+            const API_AttributeIndex beamMaterial = ACAPI_CreateAttributeIndex (edges.material.material);
+            beammemo.beamSegments[0].bottomMaterial.hasValue = true;
+            beammemo.beamSegments[0].bottomMaterial.value = beamMaterial;
 
-            beammemo.beamSegments[0].leftMaterial.overridden = true;
-            beammemo.beamSegments[0].leftMaterial.attributeIndex = edges.material.material;
+            beammemo.beamSegments[0].leftMaterial.hasValue = true;
+            beammemo.beamSegments[0].leftMaterial.value = beamMaterial;
 
-            beammemo.beamSegments[0].rightMaterial.overridden = true;
-            beammemo.beamSegments[0].rightMaterial.attributeIndex = edges.material.material;
+            beammemo.beamSegments[0].rightMaterial.hasValue = true;
+            beammemo.beamSegments[0].rightMaterial.value = beamMaterial;
 
-            beammemo.beamSegments[0].topMaterial.overridden = true;
-            beammemo.beamSegments[0].topMaterial.attributeIndex = edges.material.material;
+            beammemo.beamSegments[0].topMaterial.hasValue = true;
+            beammemo.beamSegments[0].topMaterial.value = beamMaterial;
 
-            beammemo.beamSegments[0].endsMaterial.overridden = true;
-            beammemo.beamSegments[0].endsMaterial.attributeIndex = edges.material.material;
+            beammemo.beamSegments[0].endsMaterial.hasValue = true;
+            beammemo.beamSegments[0].endsMaterial.value = beamMaterial;
     #else
             beammemo.beamSegments[0].bottomMaterial.overridden = true;
             beammemo.beamSegments[0].bottomMaterial.attributeIndex = edges.material.material;

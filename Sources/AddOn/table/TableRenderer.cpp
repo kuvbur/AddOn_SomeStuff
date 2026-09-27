@@ -14,6 +14,14 @@ namespace TableRenderer {
         constexpr double kMinWidthMm = 0.01;
         constexpr Int32 kMaxWrappedLines = 512; // защита от вырожденной ширины столбца
 
+        // AC27: API_AttributeIndex — класс, из short он создаётся только через
+        // ACAPI_CreateAttributeIndex (в AC25/26 это typedef GSIndex, работает напрямую).
+#ifdef ServerMainVers_2700
+        API_AttributeIndex AttrIndex (short index) { return ACAPI_CreateAttributeIndex (index); }
+#else
+        API_AttributeIndex AttrIndex (short index) { return index; }
+#endif
+
         API_JustID ToApiJust (HAlign align) {
             switch (align) {
             case HAlign::Center:
@@ -66,11 +74,20 @@ namespace TableRenderer {
         // Self-test берёт первый атрибут заливки проекта: гадать конкретный индекс
         // (например «сплошная заливка») нельзя, он не документирован.
         API_AttributeIndex FindFirstFillIndex () {
+#ifdef ServerMainVers_2700
+            // AC27: счётчик атрибутов передаётся как UInt32, индекс — класс API_AttributeIndex.
+            UInt32 count = 0;
+            if (ACAPI_Attribute_GetNum (API_FilltypeID, count) != NoError || count < 1)
+                return APIInvalidAttributeIndex;
+
+            return ACAPI_CreateAttributeIndex (1);
+#else
             API_AttributeIndex count = 0;
             if (ACAPI_Attribute_GetNum (API_FilltypeID, &count) != NoError || count < 1)
                 return APIInvalidAttributeIndex;
 
             return 1;
+#endif
         }
 
     } // namespace
@@ -778,11 +795,11 @@ namespace TableRenderer {
         element.line.endC = end;
 
         if (rules.layerIndex != 0)
-            element.header.layer = rules.layerIndex;
+            element.header.layer = AttrIndex (rules.layerIndex);
         if (rules.gridPenIndex != 0)
             element.line.linePen.penIndex = rules.gridPenIndex;
         if (rules.lineTypeIndex != 0)
-            element.line.ltypeInd = rules.lineTypeIndex;
+            element.line.ltypeInd = AttrIndex (rules.lineTypeIndex);
 
         return ACAPI_Element_Create (&element, nullptr);
     }
@@ -801,7 +818,7 @@ namespace TableRenderer {
             return err;
 
         if (rules.layerIndex != 0)
-            element.header.layer = rules.layerIndex;
+            element.header.layer = AttrIndex (rules.layerIndex);
 
         element.hatch.fillInd = fill.fillIndex;
         if (fill.fillPen != 0)
@@ -809,7 +826,7 @@ namespace TableRenderer {
         if (fill.contourPen != 0)
             element.hatch.contPen.penIndex = fill.contourPen;
         if (rules.lineTypeIndex != 0)
-            element.hatch.ltypeInd = rules.lineTypeIndex;
+            element.hatch.ltypeInd = AttrIndex (rules.lineTypeIndex);
 
         // Прямоугольник заливки: 5 точек, где последняя замыкает контур (см. Element_Test).
         element.hatch.poly.nCoords = 5;
@@ -869,7 +886,7 @@ namespace TableRenderer {
         }
 
         if (rules.layerIndex != 0)
-            element.header.layer = rules.layerIndex;
+            element.header.layer = AttrIndex (rules.layerIndex);
 
         // Одна строка текста = один элемент: вертикальное выравнивание в API_TextType
         // отсутствует, поэтому позицию строки считает рендерер (см. §5.3 документа).
@@ -887,12 +904,21 @@ namespace TableRenderer {
         // ведомости это уже сброшенная база окна — тогда код не соответствует гарнитуре и
         // кириллица выводится чужими глифами (наблюдалось в окне MyDraw 2026-09-18).
         // Берём код из самой гарнитуры.
+#ifdef ServerMainVers_2700
+        // AC27: шрифт больше не атрибут (API_FontID и API_Attribute::font удалены) —
+        // берём его через ACAPI_Font_GetFont; head.index имеет тип Int32.
+        API_FontType fontType = {};
+        fontType.head.index = layout.fontIndex;
+        if (ACAPI_Font_GetFont (fontType) == NoError)
+            element.text.charCode = fontType.charCode;
+#else
         API_Attribute fontAttr;
         BNZeroMemory (&fontAttr, sizeof (API_Attribute));
         fontAttr.header.typeID = API_FontID;
         fontAttr.header.index = layout.fontIndex;
         if (ACAPI_Attribute_Get (&fontAttr) == NoError)
             element.text.charCode = fontAttr.font.charCode;
+#endif
 
 #ifdef TESTING
         // Печатаем при смене гарнитуры: нужно сравнить путь self-test (база плана)
@@ -1010,7 +1036,11 @@ namespace TableRenderer {
         DBprnt (renderer.GetTotalHeight (), "self-test total height (model)");
 
         double scale = 1.0;
+    #ifdef ServerMainVers_2700
+        err = ACAPI_Drawing_StartDrawingData (reinterpret_cast<double *> (&scale), nullptr);
+    #else
         err = ACAPI_Database (APIDb_StartDrawingDataID, &scale);
+    #endif
         if (err != NoError) {
             DBprnt ("TableRenderer::RunSelfTest err", "StartDrawingData failed");
             DBprnt (static_cast<double> (err), "StartDrawingData err code");
@@ -1022,7 +1052,12 @@ namespace TableRenderer {
 
         GSPtr idfStore = nullptr;
         API_Box boundingBox = {};
+    #ifdef ServerMainVers_2700
+        const GSErrCode stopErr = ACAPI_Drawing_StopDrawingData (reinterpret_cast<GSPtr *> (&idfStore),
+                                                                 reinterpret_cast<API_Box *> (&boundingBox));
+    #else
         const GSErrCode stopErr = ACAPI_Database (APIDb_StopDrawingDataID, &idfStore, &boundingBox);
+    #endif
 
         if (idfStore != nullptr)
             BMKillPtr (&idfStore);
@@ -1039,7 +1074,11 @@ namespace TableRenderer {
         const auto isolateLayer = [&renderer] (const char *label,
                                                GSErrCode (TableRenderer::*drawLayer) (const API_Coord &) const) {
             double layerScale = 1.0;
+    #ifdef ServerMainVers_2700
+            if (ACAPI_Drawing_StartDrawingData (reinterpret_cast<double *> (&layerScale), nullptr) != NoError) {
+    #else
             if (ACAPI_Database (APIDb_StartDrawingDataID, &layerScale) != NoError) {
+    #endif
                 DBprnt ("TableRenderer::RunSelfTest err", GS::UniString ("StartDrawingData failed for ") + label);
                 return;
             }
@@ -1049,7 +1088,12 @@ namespace TableRenderer {
 
             GSPtr layerStore = nullptr;
             API_Box layerBox = {};
+    #ifdef ServerMainVers_2700
+            if (ACAPI_Drawing_StopDrawingData (reinterpret_cast<GSPtr *> (&layerStore),
+                                               reinterpret_cast<API_Box *> (&layerBox)) == NoError) {
+    #else
             if (ACAPI_Database (APIDb_StopDrawingDataID, &layerStore, &layerBox) == NoError) {
+    #endif
                 DBprnt (layerBox.xMax, GS::UniString ("self-test layer bbox xMax ") + label);
                 DBprnt (layerBox.yMax, GS::UniString ("self-test layer bbox yMax ") + label);
             } else {

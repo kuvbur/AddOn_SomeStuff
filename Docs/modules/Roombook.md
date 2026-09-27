@@ -55,3 +55,6 @@
 - Утечка memo при ошибке GetMemo (:2028-2034) — **исправлена** (FIX 2026-09-12) [из комментария + проверено]
 - AGENTS.md §16: recreation of finish elements — out of scope [из AGENTS.md]
 - Глобальные переменные namespace (`reducededges`, `min_dim` в ревью-заметках) — thread-safety ограничение [из ревью; не проверено в этой сессии]
+## Версии
+- AC27 (`#170`): материалы сегментов балки — `API_OverriddenAttribute` (`overridden` + `attributeIndex`) заменён на `APIOptional<API_AttributeIndex>` (`hasValue` + `value`, индекс через `ACAPI_CreateAttributeIndex`). [по коду DevKit + сборка AC27]
+- AC27: `ACAPI_ElementGroup_Create` → `ACAPI_ElementSet_Create`; в новом API нет параметра родительской группы, поэтому аддон передаёт только список элементов и выходной GUID. [по коду DevKit]

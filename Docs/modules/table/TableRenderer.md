@@ -52,3 +52,8 @@
 - Шрифт — индекс атрибута (API_TextType.font) [из комментария, hpp:41-43]
 - defaultFontIndex=0/пустое имя → из ACAPI_Element_GetDefaults [из комментария, hpp:89-90, 102-107]
 - `defaultFontSize = 2.5` мм [из комментария, hpp:92]
+## Версии
+- AC27 (`#170`): `API_AttributeIndex` — класс, из `short` создаётся только `ACAPI_CreateAttributeIndex` → локальный `AttrIndex (short)` в анонимном namespace файла. [по коду DevKit + сборка AC27]
+- AC27: `ACAPI_Attribute_GetNum` принимает `UInt32&` (счётчик), поэтому self-test `FindFirstFillIndex` разведён по версиям. [по коду DevKit]
+- AC27: шрифт перестал быть атрибутом — `API_FontID`/`API_Attribute::font` удалены, код символа берётся из `ACAPI_Font_GetFont (API_FontType)`. [по коду DevKit]
+- AC27: `ACAPI_Database (APIDb_Start/StopDrawingDataID, …)` → `ACAPI_Drawing_Start/StopDrawingData` (в DevKit-обёртке параметр pens был `API_PenType**` — заменён на `const GS::Array<API_Pen>*`). [по коду DevKit + сборка AC27]

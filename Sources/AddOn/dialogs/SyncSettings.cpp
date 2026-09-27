@@ -192,7 +192,12 @@ static bool GetSyncSettingsFolderLocation (IO::Location &folderLoc) {
         API_GraphisoftPrefsFolderID, API_ApplicationPrefsFolderID, API_UserDocumentsFolderID};
     for (API_SpecFolderID folderId : folderIds) {
         IO::Location baseLoc;
+#ifdef ServerMainVers_2700
+        if (ACAPI_ProjectSettings_GetSpecFolder (reinterpret_cast<API_SpecFolderID *> (&folderId),
+                                                 reinterpret_cast<IO::Location *> (&baseLoc)) != NoError)
+#else
         if (ACAPI_Environment (APIEnv_GetSpecFolderID, &folderId, &baseLoc) != NoError)
+#endif
             continue;
         if (baseLoc.GetStatus () != NoError)
             continue;

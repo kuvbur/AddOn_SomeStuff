@@ -12,7 +12,22 @@
 #include "api_headers/APIEnvir.h"
 
 #include "DGModule.hpp"
+// AC27 убрал DGBrowser.hpp из DGModule.hpp — браузерный контрол включаем явно.
+#include "DGBrowser.hpp"
 #include "Sync.hpp"
+
+#ifdef AC_27
+// AC27 перенёс JS-мост из DGLib в модуль JavascriptEngine:
+// DG::JSBase/JSFunction/JSObject/JSArray/JSValue стали JS::Base/Function/Object/Array/Value.
+// Псевдонимы сохраняют код моста без правки всех мест использования.
+namespace DG {
+    using JSBase = JS::Base;
+    using JSFunction = JS::Function;
+    using JSObject = JS::Object;
+    using JSArray = JS::Array;
+    using JSValue = JS::Value;
+} // namespace DG
+#endif
 
 #define BrowserPaletteResId 32580
 #define BrowserPaletteMenuResId 32580

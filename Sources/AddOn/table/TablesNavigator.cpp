@@ -115,7 +115,11 @@ namespace TablesNavigator {
 
         GSErrCode GetViewPointData (const API_Guid &viewPointID, API_NavigatorAddOnViewPointData &vpData) {
             vpData.guid = viewPointID;
+#ifdef ServerMainVers_2700
+            return ACAPI_Navigator_GetNavigatorVPItem (reinterpret_cast<API_NavigatorAddOnViewPointData *> (&vpData));
+#else
             return ACAPI_Navigator (APINavigator_GetNavigatorVPItemID, &vpData);
+#endif
         }
 
         GSErrCode GetNewItemParentGuid (const API_Guid &selectedViewPointID, API_Guid &parentGuid) {
@@ -131,7 +135,12 @@ namespace TablesNavigator {
 
         GSErrCode GetNavigatorChildren (const API_Guid &parentGuid, GS::Array<API_Guid> &children) {
             API_Guid mutableParentGuid = parentGuid;
+#ifdef ServerMainVers_2700
+            return ACAPI_Navigator_GetNavigatorVPItemChildren (reinterpret_cast<const API_Guid *> (&mutableParentGuid),
+                                                               reinterpret_cast<GS::Array<API_Guid> *> (&children));
+#else
             return ACAPI_Navigator (APINavigator_GetNavigatorVPItemChildrenID, &mutableParentGuid, &children);
+#endif
         }
 
         GSErrCode BuildUniqueScheduleDefaults (const API_Guid &parentGuid,
@@ -181,11 +190,23 @@ namespace TablesNavigator {
 
         class ApiWindowGuard {
           public:
+#ifdef ServerMainVers_2700
+            ApiWindowGuard () { ACAPI_Window_ResetCurrentDatabase (); }
+#else
             ApiWindowGuard () { ACAPI_Database (APIDb_ResetCurrentDatabaseID); }
+#endif
 
             ~ApiWindowGuard () {
+#ifdef ServerMainVers_2700
+                if (ACAPI_View_SetZoom (nullptr, nullptr) == NoError)
+#else
                 if (ACAPI_Database (APIDb_SetZoomID) == NoError)
+#endif
+#ifdef ServerMainVers_2700
+                    ACAPI_Database_RebuildCurrentDatabase ();
+#else
                     ACAPI_Database (APIDb_RebuildCurrentDatabaseID);
+#endif
             }
         };
 
@@ -215,7 +236,12 @@ namespace TablesNavigator {
             // (например план). Поэтому сначала проверяем текущее окно: тот же приём, что
             // в Navigator_Test (RegenerateContentIfAppropriate).
             API_WindowInfo windowInfo;
+#ifdef ServerMainVers_2700
+            const GSErrCode windowErr =
+                ACAPI_Window_GetCurrentWindow (reinterpret_cast<API_WindowInfo *> (&windowInfo));
+#else
             const GSErrCode windowErr = ACAPI_Database (APIDb_GetCurrentWindowID, &windowInfo, nullptr);
+#endif
             if (windowErr != NoError || windowInfo.typeID != APIWind_MyDrawID ||
                 windowInfo.databaseUnId.elemSetId != viewPointID) {
 #ifdef TESTING
@@ -261,9 +287,20 @@ namespace TablesNavigator {
                 bool contentChanged = true;
                 API_WindowValidatorInfo validatorInfo;
                 if (GetWindowValidatorInfo (userRefId, validatorInfo) == NoError &&
+#ifdef ServerMainVers_2700
+                    ACAPI_Database_CheckWindowValidator (
+                        reinterpret_cast<const API_WindowValidatorInfo *> (&validatorInfo),
+                        reinterpret_cast<bool *> (&contentChanged)) == NoError &&
+#else
                     ACAPI_Database (APIDb_CheckWindowValidatorID, &validatorInfo, &contentChanged) == NoError &&
+#endif
                     contentChanged) {
+#ifdef ServerMainVers_2700
+                    ACAPI_Database_RebuildWindowValidator (
+                        reinterpret_cast<const API_WindowValidatorInfo *> (&validatorInfo));
+#else
                     ACAPI_Database (APIDb_RebuildWindowValidatorID, &validatorInfo);
+#endif
                     RegenerateScheduleContent (userRefId);
                 }
                 break;
@@ -273,7 +310,11 @@ namespace TablesNavigator {
                 break;
             case APINotifyWindow_Close: {
                 API_Guid mutableGuid = userRefId;
+#ifdef ServerMainVers_2700
+                ACAPI_Window_DestroyWindowValidator (reinterpret_cast<const API_Guid *> (&mutableGuid));
+#else
                 ACAPI_Database (APIDb_DestroyWindowValidatorID, &mutableGuid);
+#endif
                 break;
             }
             default:
@@ -293,7 +334,12 @@ namespace TablesNavigator {
 
             GS::Array<API_Guid> ownWindows;
             API_WindowTypeID windowType = APIWind_MyDrawID;
+#ifdef ServerMainVers_2700
+            err = ACAPI_Window_GetOwnWindows (reinterpret_cast<API_WindowTypeID *> (&windowType),
+                                              reinterpret_cast<GS::Array<API_Guid> *> (&ownWindows));
+#else
             err = ACAPI_Database (APIDb_GetOwnWindowsID, &windowType, &ownWindows);
+#endif
             if (err != NoError)
                 return err;
 
@@ -308,12 +354,22 @@ namespace TablesNavigator {
                     // Окно MyDraw у аддона одно: переиспользуем открытое под другой узел
                     // (тот же приём, что в примере Navigator_Test).
                     API_Guid windowGuid = ownWindows[0];
+#ifdef ServerMainVers_2700
+                    err = ACAPI_Window_SetWindowId (
+                        reinterpret_cast<const API_Guid *> (&windowGuid),
+                        reinterpret_cast<const API_Guid *> (const_cast<API_Guid *> (&viewPointID)));
+#else
                     err = ACAPI_Database (APIDb_SetWindowIdID, &windowGuid, const_cast<API_Guid *> (&viewPointID));
+#endif
                     if (err != NoError)
                         return err;
                 }
 
+#ifdef ServerMainVers_2700
+                return ACAPI_Window_ChangeWindow (reinterpret_cast<const API_WindowInfo *> (&windowInfo));
+#else
                 return ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo);
+#endif
             }
 
             API_NewWindowPars windowPars = {};
@@ -321,13 +377,24 @@ namespace TablesNavigator {
             windowPars.userRefId = viewPointID;
             GS::UTruncate (title.ToUStr ().Get (), windowPars.wTitle, sizeof (windowPars.wTitle));
 
+#ifdef ServerMainVers_2700
+            err = ACAPI_Window_NewWindow (
+                reinterpret_cast<API_NewWindowPars *> (&windowPars),
+                reinterpret_cast<APICustomWindowHandlerProc *> (reinterpret_cast<void *> (ScheduleWindowHandlerProc)));
+#else
             err = ACAPI_Database (APIDb_NewWindowID, &windowPars, reinterpret_cast<void *> (ScheduleWindowHandlerProc));
+#endif
             if (err != NoError)
                 return err;
 
             API_WindowValidatorInfo validatorInfo;
             if (GetWindowValidatorInfo (viewPointID, validatorInfo) == NoError)
+#ifdef ServerMainVers_2700
+                ACAPI_Database_BuildWindowValidator (
+                    reinterpret_cast<const API_WindowValidatorInfo *> (&validatorInfo));
+#else
                 ACAPI_Database (APIDb_BuildWindowValidatorID, &validatorInfo);
+#endif
 
             return NoError;
         }
@@ -367,26 +434,49 @@ namespace TablesNavigator {
         if (!kEnableNavigatorRegistration)
             return NoError;
 
+#ifdef ServerMainVers_2700
+        return ACAPI_AddOnIntegration_RegisterNavigatorAddOnViewPointDataHandler ();
+#else
         return ACAPI_Register_NavigatorAddOnViewPointDataHandler ();
+#endif
     }
 
     GSErrCode Initialize () {
         if (!kEnableNavigatorRegistration)
             return NoError;
 
+#ifdef ServerMainVers_2700
+        GSErrCode err = ACAPI_AddOnIntegration_InstallNavigatorAddOnViewPointDataMergeHandler (MergeViewPointData);
+#else
         GSErrCode err = ACAPI_Install_NavigatorAddOnViewPointDataMergeHandler (MergeViewPointData);
+#endif
         if (err != NoError)
             return err;
 
+#ifdef ServerMainVers_2700
+        err =
+            ACAPI_AddOnIntegration_InstallNavigatorAddOnViewPointDataSaveOldFormatHandler (SaveOldFormatViewPointData);
+#else
         err = ACAPI_Install_NavigatorAddOnViewPointDataSaveOldFormatHandler (SaveOldFormatViewPointData);
+#endif
         if (err != NoError)
             return err;
 
+#ifdef ServerMainVers_2700
+        err = ACAPI_AddOnIntegration_InstallNavigatorAddOnViewPointDataConvertNewFormatHandler (
+            ConvertNewFormatViewPointData);
+#else
         err = ACAPI_Install_NavigatorAddOnViewPointDataConvertNewFormatHandler (ConvertNewFormatViewPointData);
+#endif
         if (err != NoError)
             return err;
 
+#ifdef ServerMainVers_2700
+        return ACAPI_Navigator_RegisterCallbackInterface (
+            reinterpret_cast<INavigatorCallbackInterface *> (&GetNavigatorCallback ()));
+#else
         return ACAPI_Navigator (APINavigator_RegisterCallbackInterfaceID, &GetNavigatorCallback ());
+#endif
     }
 
     namespace {
@@ -396,14 +486,23 @@ namespace TablesNavigator {
                 return NoError;
 
             GS::Array<API_Guid> roots;
+#ifdef ServerMainVers_2700
+            GSErrCode err = ACAPI_Navigator_GetNavigatorVPRootGroups (reinterpret_cast<GS::Array<API_Guid> *> (&roots));
+#else
             GSErrCode err = ACAPI_Navigator (APINavigator_GetNavigatorVPRootGroupsID, &roots);
+#endif
             if (err != NoError)
                 return err;
 
             for (const API_Guid &rootGuid : roots) {
                 API_NavigatorAddOnViewPointData rootData;
                 rootData.guid = rootGuid;
+#ifdef ServerMainVers_2700
+                err = ACAPI_Navigator_GetNavigatorVPItem (
+                    reinterpret_cast<API_NavigatorAddOnViewPointData *> (&rootData));
+#else
                 err = ACAPI_Navigator (APINavigator_GetNavigatorVPItemID, &rootData);
+#endif
                 if (err != NoError)
                     return err;
 
@@ -413,7 +512,12 @@ namespace TablesNavigator {
                         rootData.displayName = rootDisplayName;
                         rootData.displayId = kNavigatorRootDisplayId;
                         rootData.iconId = static_cast<Int32> (API_NavigatorAddOnViewPointRootID);
+#ifdef ServerMainVers_2700
+                        err = ACAPI_Navigator_ChangeNavigatorVPItem (
+                            reinterpret_cast<API_NavigatorAddOnViewPointData *> (&rootData));
+#else
                         err = ACAPI_Navigator (APINavigator_ChangeNavigatorVPItemID, &rootData);
+#endif
 #ifdef TESTING
                         if (err == NoError)
                             DBprnt ("TablesNavigator::EnsureNavigatorRoot", "updated schedules root");
@@ -434,7 +538,12 @@ namespace TablesNavigator {
             rootData.displayId = kNavigatorRootDisplayId;
             rootData.displayName = GetNavigatorRootDisplayName ();
 
+#ifdef ServerMainVers_2700
+            err =
+                ACAPI_Navigator_CreateNavigatorVPItem (reinterpret_cast<API_NavigatorAddOnViewPointData *> (&rootData));
+#else
             err = ACAPI_Navigator (APINavigator_CreateNavigatorVPItemID, &rootData);
+#endif
 #ifdef TESTING
             if (err == NoError)
                 DBprnt ("TablesNavigator::EnsureNavigatorRoot", "created schedules root");
@@ -491,7 +600,11 @@ namespace TablesNavigator {
 
         vpData.displayId = settingsDialog.GetDisplayId ();
         vpData.displayName = settingsDialog.GetDisplayName ();
+#ifdef ServerMainVers_2700
+        return ACAPI_Navigator_ChangeNavigatorVPItem (reinterpret_cast<API_NavigatorAddOnViewPointData *> (&vpData));
+#else
         return ACAPI_Navigator (APINavigator_ChangeNavigatorVPItemID, &vpData);
+#endif
     }
 
     GSErrCode NavigatorCallback::ExecuteMergePostProcess () const {
@@ -535,7 +648,11 @@ namespace TablesNavigator {
         // APIERR_NESTING). Ошибку генерации нельзя затирать ошибкой cleanup: сначала
         // закрываем и освобождаем store, затем возвращаем ошибку рисования.
         double drawingScale = scale;
+#ifdef ServerMainVers_2700
+        err = ACAPI_Drawing_StartDrawingData (reinterpret_cast<double *> (&drawingScale), nullptr);
+#else
         err = ACAPI_Database (APIDb_StartDrawingDataID, &drawingScale);
+#endif
         if (err != NoError)
             return err;
 
@@ -544,7 +661,12 @@ namespace TablesNavigator {
 
         GSPtr idfMemory = nullptr;
         API_Box tableBox = {};
+#ifdef ServerMainVers_2700
+        const GSErrCode stopErr = ACAPI_Drawing_StopDrawingData (reinterpret_cast<GSPtr *> (&idfMemory),
+                                                                 reinterpret_cast<API_Box *> (&tableBox));
+#else
         const GSErrCode stopErr = ACAPI_Database (APIDb_StopDrawingDataID, &idfMemory, &tableBox);
+#endif
 
         if (stopErr != NoError) {
             if (idfMemory != nullptr)
@@ -593,13 +715,23 @@ namespace TablesNavigator {
         newData.iconId = static_cast<Int32> (API_NavigatorAddOnViewPointNodeID);
         newData.displayId = displayId;
         newData.displayName = displayName;
-        newData.viewSettingsFlags = API_NavgatorViewSettingsScaleAttributeID |
-                                    API_NavgatorViewSettingsPenTableAttributeID |
-                                    API_NavgatorViewSettingsLayerAttributeID;
+        newData.viewSettingsFlags =
+#ifdef ServerMainVers_2700
+            // AC27 исправил опечатку в именах констант: Navgator → Navigator.
+            API_NavigatorViewSettingsScaleAttributeID | API_NavigatorViewSettingsPenTableAttributeID |
+            API_NavigatorViewSettingsLayerAttributeID;
+#else
+            API_NavgatorViewSettingsScaleAttributeID | API_NavgatorViewSettingsPenTableAttributeID |
+            API_NavgatorViewSettingsLayerAttributeID;
+#endif
 
-        // Создание leaf node в AC25 всегда выдаёт новый GUID; будущий код обязан
-        // сохранять возвращённый GUID, а не пытаться заранее назначить его сам.
+// Создание leaf node в AC25 всегда выдаёт новый GUID; будущий код обязан
+// сохранять возвращённый GUID, а не пытаться заранее назначить его сам.
+#ifdef ServerMainVers_2700
+        err = ACAPI_Navigator_CreateNavigatorVPItem (reinterpret_cast<API_NavigatorAddOnViewPointData *> (&newData));
+#else
         err = ACAPI_Navigator (APINavigator_CreateNavigatorVPItemID, &newData);
+#endif
         if (err != NoError)
             return err;
 
@@ -619,7 +751,11 @@ namespace TablesNavigator {
             if (vpData.itemType == API_NavigatorAddOnViewPointRootID)
                 continue;
 
+#ifdef ServerMainVers_2700
+            err = ACAPI_Navigator_DeleteNavigatorVPItem (reinterpret_cast<const API_Guid *> (&vpData.guid));
+#else
             err = ACAPI_Navigator (APINavigator_DeleteNavigatorVPItemID, &vpData.guid);
+#endif
             if (err != NoError)
                 return err;
         }

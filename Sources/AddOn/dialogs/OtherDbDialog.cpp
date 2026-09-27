@@ -80,7 +80,11 @@ namespace SyncDialogs {
                 API_StoryCmdType storyCmd = {};
                 storyCmd.action = APIStory_GoTo;
                 storyCmd.index = target.storyIndex;
+#ifdef ServerMainVers_2700
+                err = ACAPI_ProjectSetting_ChangeStorySettings (reinterpret_cast<API_StoryCmdType *> (&storyCmd));
+#else
                 err = ACAPI_Environment (APIEnv_ChangeStorySettingsID, &storyCmd, nullptr);
+#endif
                 if (err != NoError) {
                     msg_rep ("SyncShowSubelement", "APIEnv_ChangeStorySettingsID", err, APINULLGuid);
                     return err;

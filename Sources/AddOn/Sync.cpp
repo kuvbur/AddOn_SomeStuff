@@ -577,7 +577,11 @@ void RunParamSelected (const SyncSettings &syncSettings) {
     if (layerCombIndex != 0)
         err = ACAPI_Environment (APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
 #endif
+#ifdef ServerMainVers_2700
+    ACAPI_Database_RebuildCurrentDatabase ();
+#else
     ACAPI_Database (APIDb_RebuildCurrentDatabaseID);
+#endif
     finish = clock ();
     duration = (double)(finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);

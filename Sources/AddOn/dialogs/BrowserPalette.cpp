@@ -726,8 +726,13 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 DBprnt (GS::UniString ("HighlightElements: highlight error ") + GS::ValueToUniString (hlErr));
             }
 
-            // Приближаем камеру к элементам без смены выделения.
+// Приближаем камеру к элементам без смены выделения.
+#ifdef ServerMainVers_2700
+            const GSErrCode zoomErr =
+                ACAPI_View_ZoomToElements (reinterpret_cast<const GS::Array<API_Guid> *> (&guids));
+#else
             const GSErrCode zoomErr = ACAPI_Automate (APIDo_ZoomToElementsID, &guids);
+#endif
             if (zoomErr != NoError) {
                 DBprnt (GS::UniString ("HighlightElements: zoom error ") + GS::ValueToUniString (zoomErr));
             }
@@ -1564,9 +1569,9 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             return GS::Ref<DG::JSBase> (new DG::JSValue (false));
         }));
 
-#ifndef ServerMainVers_2600
-    // В AC26+ DG::BrowserBase::UnregisterJSObject удалён из DGLib,
-    // в API остался только RegisterAsynchJSObject.
+#if defined(ServerMainVers_2700) || !defined(ServerMainVers_2600)
+    // AC26 удалил UnregisterJSObject из DGLib, AC27 вернул его (перегрузку по имени)
+    // уже в JavascriptEngine — компилируем вызов только там, где метод есть.
     browser.UnregisterJSObject (GS::UniString ("ACAPI"));
 #endif
     const bool registerOk = browser.RegisterAsynchJSObject (jsACAPI);

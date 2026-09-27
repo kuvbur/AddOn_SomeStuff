@@ -35,3 +35,5 @@
 - Новые поля настроек → увеличить `PreferencesVersion` [из AGENTS.md §6]
 - AC25: `MemoryIChannel = GS::MemoryIChannel`; AC26+: `IO::MemoryIChannel` [по коду, hpp:106-112]
 - `#pragma clang diagnostic` вокруг rapidjson закрыты `#ifdef __clang__`: MSVC не знает прагм clang (C4068), при `/WX` это ошибка. До AC25 предупреждение глушил заголовок DevKit (`APIdefs_AnalyticalModel.h`), в AC26 такого глушения нет — без `#ifdef` файл не собирался под AC26 [по коду; сборка AC26, #170]
+## Версии
+- AC27 (`#170`): `ACAPI_Environment (APIEnv_GetSpecFolderID, …)` → `ACAPI_ProjectSettings_GetSpecFolder` под `#ifdef ServerMainVers_2700`. [по коду DevKit + сборка AC27]
