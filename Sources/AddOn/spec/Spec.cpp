@@ -1371,80 +1371,88 @@ namespace Spec {
                         const GS::Int32 &n_layer,
                         const ParamDictCompositeElement &paramCompositeToRead,
                         const ListData::LibElements &paramListDataToRead) {
+        pvalue.isValid = false;
         if (hasLibData (rawname)) {
-            if (!paramToRead.ContainsKey (elemguid))
+            if (n_layer < 0)
                 return false;
-            const ParamDictValue &p = paramToRead.Get (elemguid);
-            if (!p.ContainsKey (rawname))
+            const ParamDictValue *p = paramToRead.GetPtr (elemguid);
+            if (p == nullptr)
+                return false;
+            const ParamValue *formula = p->GetPtr (rawname);
+            if (formula == nullptr)
                 return false;
             ParamDictValue paramDict = {}; // Словарь параметров в формуле
-            const ParamValue &formula = p.Get (rawname);
-            paramDict.Add (rawname, formula);
-            GS::UniString formula_expression = formula.val.uniStringValue;
+            paramDict.Add (rawname, *formula);
+            GS::UniString formula_expression = formula->val.uniStringValue;
             ParamHelpers::ParseParamName (formula_expression, paramDict);
             if (!ListData::AddLibdataToParamValueDict (
                     elemguid, n_layer, paramListDataToRead, formula_expression, paramDict)) {
                 pvalue.val.type = API_PropertyStringValueType;
-                pvalue.val.uniStringValue=EMPTYSTRING;
+                pvalue.val.uniStringValue = EMPTYSTRING;
                 pvalue.val.doubleValue = 0;
                 pvalue.val.rawDoubleValue = 0;
                 pvalue.val.intValue = 0;
                 pvalue.val.boolValue = false;
+                pvalue.val.canCalculate = false;
                 pvalue.isValid = true;
                 return true;
             }
             if (!ParamHelpers::ReadFormula (paramDict, true)) {
                 pvalue.val.type = API_PropertyStringValueType;
-                pvalue.val.uniStringValue=EMPTYSTRING;
+                pvalue.val.uniStringValue = EMPTYSTRING;
                 pvalue.val.doubleValue = 0;
                 pvalue.val.rawDoubleValue = 0;
                 pvalue.val.intValue = 0;
                 pvalue.val.boolValue = false;
+                pvalue.val.canCalculate = false;
                 pvalue.isValid = true;
                 return true;
             }
-            pvalue = paramDict.Get (rawname);
+            const ParamValue *result = paramDict.GetPtr (rawname);
+            if (result == nullptr)
+                return false;
+            pvalue = *result;
             return pvalue.isValid;
         }
         if (!ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue))
             return false;
         if (!pvalue.fromMaterial)
             return true;
-        if (!paramCompositeToRead.ContainsKey (elemguid)) {
+        // Общее значение прочитано, но значение отдельного слоя ещё не получено.
+        pvalue.isValid = false;
+        if (n_layer < 0)
+            return false;
+        const ParamDictComposite *pc = paramCompositeToRead.GetPtr (elemguid);
+        if (pc == nullptr) {
 #if defined(TESTING)
             DBprnt ("Spec err", "!paramCompositeToRead.ContainsKey (elemguid)");
 #endif
             return false;
         }
-        const ParamDictComposite &pc = paramCompositeToRead.Get (elemguid);
-        if (!pc.ContainsKey (rawname)) {
+        const ParamComposite *pcelem = pc->GetPtr (rawname);
+        if (pcelem == nullptr) {
 #if defined(TESTING)
             DBprnt ("Spec err", "!paramCompositeToRead.ContainsKey (rawname)");
 #endif
             return false;
         }
         // Если параметр читался как материал из состава конструкции, берём значение из слоя.
-        const ParamComposite &pcelem = pc.Get (rawname);
-        if (pcelem.composite.IsEmpty ()) {
+        if (pcelem->composite.IsEmpty ()) {
 #if defined(TESTING)
             DBprnt ("Spec err", "pcelem.composite.IsEmpty()");
 #endif
             return false;
         }
-        if (pcelem.isValid) {
-#if defined(TESTING)
-            DBprnt ("Spec err", "pcelem.isValid");
-#endif
-            return false;
-        }
-        GS::Int32 max_layers = pcelem.composite.GetSize ();
+        GS::Int32 max_layers = pcelem->composite.GetSize ();
         if (n_layer >= max_layers) {
             pvalue.val.type = API_PropertyStringValueType;
-            pvalue.val.uniStringValue;
+            pvalue.val.uniStringValue = EMPTYSTRING;
             pvalue.val.doubleValue = 0;
             pvalue.val.rawDoubleValue = 0;
             pvalue.val.intValue = 0;
             pvalue.val.boolValue = false;
+            pvalue.val.canCalculate = false;
+            pvalue.isValid = true;
             return true;
         }
         if (max_layers >= max_group_mat) {
@@ -1455,7 +1463,7 @@ namespace Spec {
         }
         pvalue.val.type = API_PropertyStringValueType;
         double x = 0;
-        const GS::UniString &val = pcelem.composite[n_layer].val;
+        const GS::UniString &val = pcelem->composite[n_layer].val;
         pvalue.val.canCalculate = UniStringToDouble (val, x);
         pvalue.val.uniStringValue = val;
         pvalue.val.doubleValue = x;

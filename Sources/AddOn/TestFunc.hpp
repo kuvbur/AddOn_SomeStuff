@@ -17,6 +17,7 @@
 namespace TestFunc {
     // Запускает набор локальных проверок основных helpers.
     void Test ();
+    void TestSpecGetParamValue ();
 
     // Проверяет вычисление длины текстовой строки в нестандартных случаях.
     void TestGetTextLineLength (GS::UniString &var);

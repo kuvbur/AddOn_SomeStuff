@@ -11,6 +11,7 @@
     #include "Propertycache.hpp"
     #include "ReNum.hpp"
     #include "Roombook.hpp"
+    #include "spec/Spec.hpp"
     #include "Sync.hpp"
 
 namespace TestFunc {
@@ -19,6 +20,7 @@ namespace TestFunc {
 
     void Test () {
         DBprnt ("TEST", "start");
+        TestSpecGetParamValue ();
         TestFormatString ();
         TestCalc ();
         TestFormula ();
@@ -48,6 +50,97 @@ namespace TestFunc {
         TestGetPropertyRuleFlag ();
         TestPropertyRuleFlagOnProjectElements ();
         DBprnt ("TEST", "end");
+    }
+
+    void TestSpecGetParamValue () {
+        DBprnt ("SpecGetParamValue", "start");
+        const API_Guid guid = APINULLGuid;
+        const GS::UniString rawname = "{@property:test-spec}";
+        const GS::UniString libname = FORMULANAMEPREFIX + "{@listdata:elem.naen}<>";
+        ParamDictElement values;
+        ParamDictCompositeElement composites;
+        ListData::LibElements libdata;
+        ParamValue result;
+        ParamValue source;
+        source.isValid = true;
+        source.val.type = API_PropertyStringValueType;
+        source.val.uniStringValue = "original";
+        source.val.canCalculate = true;
+        auto read = [&] (const GS::UniString &name, GS::Int32 layer) {
+            result = source;
+            return Spec::GetParamValue (guid, name, values, result, false, layer, composites, libdata);
+        };
+        DBtest (read (rawname, 0), false, "SpecGetParamValue missing element");
+        DBtest (result.isValid, false, "SpecGetParamValue missing element invalidates");
+        ParamDictValue params;
+        values.Add (guid, params);
+        DBtest (read (rawname, 0), false, "SpecGetParamValue missing key");
+        DBtest (result.isValid, false, "SpecGetParamValue missing key invalidates");
+        values.Get (guid).Add (rawname, source);
+        DBtest (read (rawname, 0), true, "SpecGetParamValue ordinary success");
+        DBtest (result.val.uniStringValue, GS::UniString ("original"), "SpecGetParamValue ordinary unchanged");
+        values.Get (guid).Get (rawname).isValid = false;
+        DBtest (read (rawname, 0), false, "SpecGetParamValue invalid input");
+        DBtest (result.isValid, false, "SpecGetParamValue invalid input invalidates");
+        values.Get (guid).Get (rawname) = source;
+        values.Get (guid).Get (rawname).fromMaterial = true;
+        DBtest (read (rawname, 0), false, "SpecGetParamValue missing composite element");
+        DBtest (result.isValid, false, "SpecGetParamValue missing composite invalidates");
+        ParamDictComposite layers;
+        composites.Add (guid, layers);
+        DBtest (read (rawname, 0), false, "SpecGetParamValue missing composite key");
+        DBtest (result.isValid, false, "SpecGetParamValue composite key invalidates");
+        ParamComposite composite;
+        composites.Get (guid).Add (rawname, composite);
+        DBtest (read (rawname, 0), false, "SpecGetParamValue empty composite");
+        DBtest (result.isValid, false, "SpecGetParamValue empty composite invalidates");
+        ParamValueComposite layer;
+        layer.val = "12.5";
+        composites.Get (guid).Get (rawname).composite.Push (layer);
+        DBtest (read (rawname, 0), true, "SpecGetParamValue numeric layer");
+        DBtest (result.val.doubleValue, 12.5, "SpecGetParamValue layer number");
+        DBtest (result.val.canCalculate, true, "SpecGetParamValue layer calculable");
+        DBtest (result.val.intValue, (GS::Int32)12, "SpecGetParamValue layer integer");
+        DBtest (result.val.boolValue, true, "SpecGetParamValue layer nonzero");
+        DBtest (read (rawname, 1), true, "SpecGetParamValue layer past end");
+        DBtest (result.isValid, true, "SpecGetParamValue past end valid");
+        DBtest (result.val.uniStringValue.IsEmpty (), true, "SpecGetParamValue past end empty");
+        DBtest (result.val.canCalculate, false, "SpecGetParamValue past end not calculable");
+        DBtest (result.val.boolValue, false, "SpecGetParamValue past end false");
+        composites.Get (guid).Get (rawname).composite[0].val = "material";
+        DBtest (read (rawname, 0), true, "SpecGetParamValue text layer");
+        DBtest (result.val.canCalculate, false, "SpecGetParamValue text not calculable");
+        DBtest (result.val.boolValue, true, "SpecGetParamValue text nonempty");
+        DBtest (read (libname, 0), false, "SpecGetParamValue missing lib formula");
+        DBtest (result.isValid, false, "SpecGetParamValue missing lib invalidates");
+        ParamValue formula;
+        formula.rawName = libname;
+        formula.val.hasFormula = true;
+        formula.val.uniStringValue = "{@listdata:elem.naen}<>";
+        values.Get (guid).Add (libname, formula);
+        DBtest (read (libname, 0), true, "SpecGetParamValue missing lib data empty success");
+        DBtest (result.isValid, true, "SpecGetParamValue empty lib valid");
+        DBtest (result.val.uniStringValue.IsEmpty (), true, "SpecGetParamValue empty lib text");
+        DBtest (result.val.canCalculate, false, "SpecGetParamValue empty lib not calculable");
+        DBtest (read (libname, -1), false, "SpecGetParamValue negative lib index");
+        DBtest (result.isValid, false, "SpecGetParamValue negative lib invalidates");
+        DBtest (read (rawname, -1), false, "SpecGetParamValue negative material index");
+        DBtest (result.isValid, false, "SpecGetParamValue negative material invalidates");
+        ListData::LibElement lib;
+        ListData::Subpos subpos;
+        ListData::Arm arm;
+        arm.naen = "Rebar";
+        subpos.arm.Add ("10@test", arm);
+        lib.subpos.Add ("test", subpos);
+        lib.keys.Push (GS::Pair<GS::UniString, GS::UniString> ("test", "10@test"));
+        libdata.Add (guid, lib);
+        DBtest (read (libname, 0), true, "SpecGetParamValue lib formula success");
+        DBtest (result.val.uniStringValue, GS::UniString ("Rebar"), "SpecGetParamValue lib formula result");
+        DBtest (read (libname, 1), true, "SpecGetParamValue lib past end success");
+        DBtest (result.val.uniStringValue.IsEmpty (), true, "SpecGetParamValue lib past end empty");
+        DBtest (read (libname, -1), false, "SpecGetParamValue populated lib negative index");
+        DBtest (result.isValid, false, "SpecGetParamValue populated lib negative invalidates");
+        DBprnt ("SpecGetParamValue", "end");
     }
 
     void TestStringSplt () {
