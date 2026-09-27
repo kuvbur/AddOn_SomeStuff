@@ -69,9 +69,6 @@ GSErrCode SumSelected (SyncSettings &syncSettings) {
 #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
         qtywrite = paramToWriteelem.GetSize ();
-        // FIX (ревью 2026-09-12): восстановление тумблера SuspendGroups —
-        // включили сами (suspGrp==false), значит возвращаем обратно
-        // (образец: Sync.cpp после записи).
 #ifdef ServerMainVers_2300
         if (!suspGrp) {
             bool suspNow = false;
@@ -86,8 +83,6 @@ GSErrCode SumSelected (SyncSettings &syncSettings) {
 #endif
         return NoError;
     });
-    // FIX (ревью 2026-09-12): при откате команды пост-шаги не выполняются —
-    // раньше отчёт и SyncArray шли как при успешной записи.
     if (undoErr != NoError) {
         msg_rep ("SumSelected", "ACAPI_CallUndoableCommand", undoErr, APINULLGuid);
         return undoErr;
@@ -222,8 +217,6 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
                      const GS::HashTable<API_Guid, API_PropertyDefinition> &rule_definitions,
                      ParamDictElement &paramToRead,
                      SumRules &rules) {
-    // FIX (ревью 2026-09-12, PERF): результат фильтра не зависит от правила —
-    // вычисляем один раз на элемент, а не для каждого правила × элемента.
     GS::HashTable<API_Guid, bool> editable;
     for (const auto &elemGuid : guidArray) {
         const bool ok =
@@ -232,14 +225,10 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
     }
     for (const auto &cIt : rule_definitions) {
 #ifdef ServerMainVers_2800
-        // FIX (ревью 2026-09-12, PERF): определение тяжёлое — берём по
-        // const-ссылке вместо копии структуры на каждый параметр.
         const API_PropertyDefinition &definition = cIt.value;
 #else
         const API_PropertyDefinition &definition = *cIt.value;
 #endif
-        // FIX (ревью 2026-09-12, PERF): тройной lookup ContainsKey/ContainsKey/Get
-        // заменён на GetPtr с Add при nullptr и повторным GetPtr.
         SumRule *rulePtr = rules.GetPtr (definition.guid);
         if (rulePtr == nullptr) {
             SumRule paramtype = {};
@@ -270,8 +259,6 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
             GetElementForPropertyDefinition (definitions, _guidArray);
             if (SumRule *rule = rules.GetPtr (definition.guid)) {
                 for (const auto &elemGuid : _guidArray) {
-                    // FIX (#154): Sum_flag — фильтр обработки элемента
-                    // по образцу GetElemStateReverse (для SUM_TO_INFO).
                     GS::Array<API_PropertyDefinition> elemDefinitions = {};
                     GSErrCode elemDefErr = ACAPI_Element_GetPropertyDefinitions (
                         elemGuid, API_PropertyDefinitionFilter_UserDefined, elemDefinitions);
@@ -304,19 +291,11 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
         } else {
             if (SumRule *rule = rules.GetPtr (definition.guid)) {
                 for (const auto &elemGuid : guidArray) {
-                    // FIX (ревью 2026-09-12, PERF): фильтрация вынесена из цикла
-                    // по правилам — берём заранее вычисленный результат.
                     if (!editable.Get (elemGuid)) {
                         rule->n_ignore += 1;
                         msg_rep ("GetSumRuleFromSelected", "Element not editable", NoError, elemGuid);
                         continue;
                     }
-                    // FIX (#154): Sum_flag — фильтр обработки элемента по
-                    // образцу GetElemStateReverse: если свойство есть — берём
-                    // статус из свойства, если статус не найден — обрабатываем.
-                    // Отключаем только при успешном чтении и явно переданном
-                    // значении false; ошибка чтения или отсутствие свойства —
-                    // элемент обрабатывается (safe default).
                     GS::Array<API_PropertyDefinition> elemDefinitions = {};
                     GSErrCode elemDefErr = ACAPI_Element_GetPropertyDefinitions (
                         elemGuid, API_PropertyDefinitionFilter_UserDefined, elemDefinitions);
@@ -470,13 +449,11 @@ void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictEle
     }
     // Проходим по словарю с критериями и суммируем
     for (SumCriteria::iterator i = criteriaList.begin (); i != criteriaList.end (); ++i) {
-        // FIX (ревью 2026-09-12, PERF): массив позиций копировался на каждой
-        // итерации — берём по const-ссылке.
         const GS::Array<UInt32> &eleminpos = i->second.inx;
         ParamValue summ; // Для суммирования числовых значений
         bool has_sum = false;
-        GS::UniString recordedToString;  // FIX (ревью 2026-09-12, PERF): кэш результата ToString
-        FormatString cachedFormatstring; // FIX (ревью 2026-09-12, PERF): formatstring, по которому вычислен кэш
+        GS::UniString recordedToString;
+        FormatString cachedFormatstring;
         for (UInt32 j = 0; j < eleminpos.GetSize (); j++) {
             const API_Guid &elemGuid = rule.elemts[eleminpos[j]];
 
@@ -559,9 +536,6 @@ void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictEle
             if (rule.write_to != SUM_TO_INFO)
                 summ.val.type = paramposition.val.type;
             if (rule.sum_type != TEXT_SUM) {
-                // FIX (ревью 2026-09-12, PERF): ToString(summ) не меняется в цикле,
-                // пока formatstring тот же — вычисляем один раз; при смене
-                // formatstring пересчитываем (поведение идентично прежнему).
                 summ.val.formatstring = paramposition.val.formatstring;
                 if (recordedToString.IsEmpty () ||
                     cachedFormatstring.stringformat != summ.val.formatstring.stringformat ||

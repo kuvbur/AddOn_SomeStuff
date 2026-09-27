@@ -43,9 +43,6 @@ void ShowOrHideBrowserPalette () {
             BrowserPalette::CreateInstance ();
         BrowserPalette::GetInstance ().Show ();
     }
-    // FIX (план 2026-09-12, Шаг 2.3): состояние палитры сохраняется только здесь —
-    // это явное действие пользователя. Show/Hide (в т.ч. из APIPalMsg_HidePalette_*,
-    // которые приходят вокруг каждой операции ввода) настройки больше не пишут.
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings, true);
     syncSettings.SetShowPalette (!wasVisible);
@@ -128,10 +125,6 @@ void BrowserPalette::Show (bool reloadContent) {
     DBprnt ("BrowserPalette::Show () called");
     DG::Palette::Show ();
     MenuItemCheckAC (Menu_Pallete, true);
-    // FIX (план 2026-09-12, Шаг 2.3): записи настроек из Show/Hide убраны — они
-    // вызываются на каждый APIPalMsg_HidePalette_Begin/End (вокруг каждой
-    // операции ввода) и раньше писали блоб аддона в файл проекта. Сохранение
-    // состояния палитры осталось только в ShowOrHideBrowserPalette (команда меню).
     if (reloadContent) {
         // HTML перезагружается и теряет состояние свёртывания — возвращаем окно
         // к развёрнутой ширине, иначе состояние окна и HTML разойдутся.
@@ -189,8 +182,6 @@ void BrowserPalette::UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedEleme
         }
         selectedElements = std::move (filtered);
     }
-    // FIX (ревью 2026-09-12, п.65): при пустом выделении счётчик UI оставался устаревшим —
-    // пушим refreshSelectionInfoText(0) до раннего return; остальные js-вызовы не делаем.
     Int32 count = (Int32)selectedElements.GetSize ();
     DBprnt ("UpdateSelectionInfoInUI: count=" + GS::ValueToUniString (count));
     // Пушим данные в JS через ExecuteJS
@@ -273,7 +264,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     // Регистрируем функцию для получения свойств выделенных элементов (возвращает JSON-строку для обхода ограничений
     // pull-паттерна)
     jsACAPI->AddItem (new DG::JSFunction ("GetPropertiesList", [this] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
-        // FIX (ревью 2026-09-12, п.70): try/catch — исключение, пересекающее CEF-мост, роняет ArchiCAD.
         try {
 #if defined(TESTING)
             const std::clock_t propertiesListStart = std::clock ();
@@ -287,7 +277,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             GS::UniString jsonStr = "{ \"elements\": [";
 
             bool firstElement = true;
-            // FIX (ревью 2026-09-12, п.63): счётчик фактически добавленных в JSON элементов.
             Int32 addedElementCount = 0;
             if (!selectedElements.IsEmpty ()) {
                 for (const API_Guid &elemGuid : selectedElements) {
@@ -331,12 +320,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                         // Получаем имя группы свойства
                         GS::UniString groupName = "Без группы";
                         if (prop.definition.groupGuid != APINULLGuid) {
-                            // FIX (ревью 2026-09-12, п.37): имя группы берём из кэша PROPERTYCACHE
-                            // вместо ACAPI_Property_GetPropertyGroup на каждое свойство каждого элемента.
                             API_PropertyGroup group = {};
                             const bool groupOk = ParamHelpers::GetGroupFromCache (prop.definition.groupGuid, group);
-                            // FIX (ревью 2026-09-12, п.66): DBprnt с чтением group.name перенесён после
-                            // проверки успеха — раньше при ошибке читалась неинициализированная UniString.
                             DBprnt (GS::UniString ("GetPropertiesList: prop=") + prop.definition.name.ToCStr ().Get () +
                                     GS::UniString (", groupGuid=") +
                                     APIGuidToString (prop.definition.groupGuid).ToCStr ().Get () +
@@ -416,13 +401,10 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
                     jsonStr += "]}";
 
-                    // FIX (ревью 2026-09-12, п.63): учитываем элемент только если он попал в JSON.
                     ++addedElementCount;
                 }
             }
 
-            // FIX (ревью 2026-09-12, п.63): count считаем по фактически добавленным в JSON элементам —
-            // элементы с err/пустыми definitions пропускаются, count раньше был больше фактического.
             jsonStr +=
                 GS::UniString ("], \"count\": ") + GS::ValueToUniString (addedElementCount) + GS::UniString (" }");
 
@@ -448,7 +430,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
     // Регистрируем функцию для получения значения свойства для выделенных элементов
     jsACAPI->AddItem (new DG::JSFunction ("GetPropertyValue", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
-        // FIX (ревью 2026-09-12, п.70): try/catch — исключение, пересекающее CEF-мост, роняет ArchiCAD.
         try {
             // Аргумент приходит как одиночная строка — GUID определения свойства.
             // ВАЖНО: DynamicCast<JSArray> на аргументе крашит мост (зонды 2026-08-24),
@@ -545,14 +526,11 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
             jsonStr += "], ";
 
-            // FIX (ревью 2026-09-12, п.68): при пустом выделении «общее значение» семантически true.
             bool isCommon =
                 (selectedElements.IsEmpty ()) || (uniqueValuesCount == 1 && totalCount == selectedElements.GetSize ());
 
             jsonStr +=
                 GS::UniString ("\"common\": ") + GS::UniString (isCommon ? "true" : "false") + GS::UniString (", ");
-            // FIX (ревью 2026-09-12, п.67): поле переименовано propertyName -> propertyId —
-            // оно содержит GUID, а не имя; HTML-гард это поле не читает (grep Interface_ru.html).
             jsonStr += GS::UniString ("\"propertyId\": \"") + EscapeJsonString (propertyId).ToCStr ().Get () +
                        GS::UniString ("\", ");
             jsonStr += GS::UniString ("\"status\": \"ok\" }");
@@ -682,8 +660,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     // выход — true. Элементы подсвечиваются цветом (HashTable GUID->API_RGBAColor),
     // камера зумится на них (APIDo_ZoomToElementsID, par1: const GS::Array<API_Guid>*).
     jsACAPI->AddItem (new DG::JSFunction ("HighlightElements", [] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
-        // FIX (ревью 2026-09-12, п.70): try/catch — исключение, пересекающее CEF-мост, роняет ArchiCAD
-        // (в catch сбрасываем suppressSelectionRefresh — см. п.25).
         try {
             GS::Ref<DG::JSValue> payload = GS::DynamicCast<DG::JSValue> (args);
             if (payload == nullptr) {
@@ -717,8 +693,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             // Подсветка и зум могут транслироваться как смена выделения — на время
             // операции подавляем обновление палитры, чтобы выделение пользователя
             // не сбрасывалось через цепочку SelectionChangeHandler.
-            // FIX (ревью 2026-09-12, п.25): сброс suppressSelectionRefresh сделан exception-safe —
-            // локальная RAII-структура гарантирует единственный сброс флага на любом выходе.
             struct SuppressSelectionRefreshGuard {
                 bool &flag;
                 ~SuppressSelectionRefreshGuard () { flag = false; }
@@ -730,9 +704,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             // Подсветка цветом, выделение не трогаем. Версионные обёртки как в Spec.cpp.
             GS::HashTable<API_Guid, API_RGBAColor> hlElems;
             const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
-            // FIX (ревью 2026-09-11, п.1 + ревью 2026-09-12): Put вместо Add —
-            // Add при повторном GUID в payload возвращает false и НЕ перезаписывает
-            // запись (GS/HashTable.hpp:826-834); Put перезаписывает всегда.
             for (const API_Guid &guid : guids)
                 hlElems.Put (guid, hlColor);
 #ifdef ServerMainVers_2700
@@ -759,22 +730,19 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             if (zoomErr != NoError) {
                 DBprnt (GS::UniString ("HighlightElements: zoom error ") + GS::ValueToUniString (zoomErr));
             }
-            // FIX (ревью 2026-09-12, п.25): явный сброс не нужен — SuppressSelectionRefreshGuard
-            // сбрасывает флаг ровно один раз на любом выходе (включая исключение).
             return GS::Ref<DG::JSBase> (new DG::JSValue (hlErr == NoError && zoomErr == NoError));
         } catch (const std::exception &e) {
             DBprnt (GS::UniString ("HighlightElements: std::exception: ") + e.what ());
-            suppressSelectionRefresh = false; // FIX (ревью 2026-09-12, п.70): не оставлять флаг включённым
+            suppressSelectionRefresh = false;
         } catch (...) {
             DBprnt ("HighlightElements: unknown exception");
-            suppressSelectionRefresh = false; // FIX (ревью 2026-09-12, п.70): не оставлять флаг включённым
+            suppressSelectionRefresh = false;
         }
         return GS::Ref<DG::JSBase> (new DG::JSValue (false));
     }));
 
     // Регистрируем функцию для получения количества выделенных элементов
     jsACAPI->AddItem (new DG::JSFunction ("GetSelectionInfo", [this] (GS::Ref<DG::JSBase>) {
-        // FIX (ревью 2026-09-12, п.70): try/catch — исключение, пересекающее CEF-мост, роняет ArchiCAD.
         try {
             DBprnt ("GetSelectionInfo: function called from JS");
             GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
@@ -869,7 +837,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     // крашит мост), ответ отдаём JSON-строкой — вложенные DG::JSObject/JSArray
     // CEF теряет при передаче в JS.
     jsACAPI->AddItem (new DG::JSFunction ("ParsePropertyDescription", [] (GS::Ref<DG::JSBase> args) {
-        // FIX (ревью 2026-09-12, п.70): try/catch — исключение, пересекающее CEF-мост, роняет ArchiCAD.
         try {
             // args = description string
             GS::Ref<DG::JSValue> descValue = GS::DynamicCast<DG::JSValue> (args);
@@ -933,7 +900,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     // Два аргумента передаются из JS одним JSON-массивом: ParsePropertyForElement(
     // JSON.stringify([description, elemGuid])) и разбираются здесь вручную.
     jsACAPI->AddItem (new DG::JSFunction ("ParsePropertyForElement", [] (GS::Ref<DG::JSBase> args) {
-        // FIX (ревью 2026-09-12, п.70): try/catch — исключение, пересекающее CEF-мост, роняет ArchiCAD.
         try {
             GS::Ref<DG::JSValue> descValue = GS::DynamicCast<DG::JSValue> (args);
             if (descValue == nullptr) {
@@ -1059,9 +1025,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
             if (selectedElements.IsEmpty ()) {
                 DBprnt ("GetClassification: [3] no selected elements, returning empty");
-                // FIX (ревью 2026-09-12, п.69): вложенные DG::JSArray в DG::JSObject не переживают
-                // CEF-мост — HTML получает undefined. Отдаём JSON-строку того же формата,
-                // что и нормальный путь.
                 return new DG::JSValue (GS::UniString (
                     "{\"common\":true,\"commonPath\":[],\"differing\":[],\"options\":[],\"status\":\"ok\"}"));
             }
@@ -1082,8 +1045,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
             if (!readResult) {
                 DBprnt ("GetClassification: [5] failed to load classification system");
-                // FIX (ревью 2026-09-12, п.69): JSON-строка того же формата, что и нормальный путь —
-                // вложенные DG::JSArray в DG::JSObject не переживают CEF-мост.
                 return new DG::JSValue (
                     GS::UniString ("{\"common\":true,\"commonPath\":[],\"differing\":[],\"options\":[],"
                                    "\"status\":\"error\",\"debug_error\":\"ReadSystemDict failed\"}"));
@@ -1212,11 +1173,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             }
 
             // Собираем список всех доступных классификаций (опции для выбора).
-            // FIX (BrowserPalette.cpp-3): словарь классификаций кэширован и в течение
-            // сессии не меняется — полный список полных имён строим один раз и
-            // переиспользуем (GetClassification вызывается на каждое изменение выделения).
-            // Кэш живёт в PropertyCache и чистится вместе с systemdict (смена проекта, TW-receive):
-            //   Propertycache.hpp: classificationOptions.Clear () в Update () и ReadClassification ().
             GS::Array<GS::UniString> &optionsCache = cache.classificationOptions;
             if (optionsCache.IsEmpty ()) {
                 auto &systemdict = cache.systemdict;
@@ -1245,8 +1201,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             // Отладка: выводим первые элементы differing
             for (const auto &d : differing) {
                 GS::UniString cls;
-                // FIX (ревью 2026-09-12, п.64): при отсутствии ключа Get оставляет значение
-                // неинициализированным — инициализируем нулём.
                 Int32 cnt = 0, tot = 0;
                 d.Get ("classification", cls);
                 d.Get ("count", cnt);
@@ -1274,8 +1228,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                     jsonStr += ",";
                 jsonStr += "{";
                 GS::UniString classification;
-                // FIX (ревью 2026-09-12, п.64): при отсутствии ключа Get оставляет значение
-                // неинициализированным — инициализируем нулём.
                 Int32 count = 0, total = 0;
                 differing[i].Get ("classification", classification);
                 differing[i].Get ("count", count);
@@ -1303,8 +1255,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             return new DG::JSValue (jsonStr);
         } catch (const std::exception &e) {
             DBprnt (GS::UniString ("GetClassification: std::exception: ") + e.what ());
-            // FIX (ревью 2026-09-12, п.69): JSON-строка того же формата, что и нормальный путь —
-            // вложенные DG::JSArray в DG::JSObject не переживают CEF-мост.
             return new DG::JSValue (
                 GS::UniString ("{\"common\":true,\"commonPath\":[],\"differing\":[],\"options\":[],"
                                "\"status\":\"error\",\"debug_error\":\"std::exception\",\"debug_exception\":\"") +
@@ -1472,7 +1422,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     // не зависит от DPI и масштаба CEF: целевая ширина = текущая ширина * доля.
     jsACAPI->AddItem (
         new DG::JSFunction ("SetPaletteCollapsed", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
-            // FIX (ревью 2026-09-12, п.70): try/catch — исключение, пересекающее CEF-мост, роняет ArchiCAD.
             try {
                 GS::Ref<DG::JSValue> payload = GS::DynamicCast<DG::JSValue> (args);
                 if (payload == nullptr)
@@ -1614,9 +1563,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             return GS::Ref<DG::JSBase> (new DG::JSValue (false));
         }));
 
-    // FIX (ревью 2026-09-12, п.26): перед повторной регистрацией снимаем старую регистрацию
-    // объекта "ACAPI" (регистрация выполняется на каждой загрузке страницы);
-    // результат RegisterAsynchJSObject проверяем — раньше отказ молча игнорировался.
     browser.UnregisterJSObject (GS::UniString ("ACAPI"));
     const bool registerOk = browser.RegisterAsynchJSObject (jsACAPI);
     if (!registerOk) {
@@ -1649,9 +1595,6 @@ GSErrCode __ACENV_CALL BrowserPalette::SelectionChangeHandler (const API_Neig * 
         return NoError;
 
     SyncSettings syncSettings;
-    // FIX (BrowserPalette.cpp-1): true заставляет перечитывать настройки из файла
-    // (блокирующий файловый ввод-вывод) на каждую смену выделения; процессный кэш
-    // обновляется всеми путями записи (WriteSyncSettingsToPreferences) — читаем из него.
     LoadSyncSettingsFromPreferences (syncSettings, false);
     if (!syncSettings.GetCatchSelectionChanges ())
         return NoError;
@@ -1676,8 +1619,6 @@ GS::Array<API_Guid> FilterElementsByType (const GS::Array<API_Guid> &elements, U
     for (const API_Guid &guid : elements) {
         if (maxSelectionCount > 0 && result.GetSize () >= maxSelectionCount)
             break;
-        // FIX (ревью 2026-09-12, п.38): для проверки типа достаточно заголовка —
-        // ACAPI_Element_Get читает весь элемент на каждый GUID, ACAPI_Element_GetHeader дешевле.
         API_Elem_Head head = {};
         head.guid = guid;
         if (ACAPI_Element_GetHeader (&head) != NoError)
@@ -1737,9 +1678,6 @@ GSErrCode __ACENV_CALL BrowserPalette::PaletteControlCallBack (Int32,
 
     case APIPalMsg_HidePalette_End:
         if (HasInstance () && !GetInstance ().IsVisible ()) {
-            // FIX (план 2026-09-12, Шаг 2.3 + ревью п.3): сообщение приходит
-            // вокруг каждой операции ввода — показываем палитру без перезагрузки
-            // HTML и без записи настроек.
             GetInstance ().Show (false);
         }
         break;

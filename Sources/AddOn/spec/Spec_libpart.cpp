@@ -52,8 +52,6 @@ namespace ListData {
         key.Append (ATSIGN);
         key.Append (p.klass);
         key.Append (ATSIGN);
-        // FIX (ревью 2026-09-12): Arm::diam — double, "%d" в вариадическом Printf
-        // читал мусор; приведение как в AddArm ("d%d", (int)p.diam).
         key.Append (GS::UniString::Printf ("%d_", (int)p.diam));
         key.Append (ATSIGN);
         if (p.isPm) {
@@ -111,13 +109,9 @@ namespace ListData {
         Mat p = {};
         GS::UniString subpos = "";
         if (version == 3) {
-            // FIX (ревью 2026-09-12): guard поднят до maxIndex+1 — читается [10];
-            // при размере ровно 10 доступ partstring[10] выходил за границу.
             if (partstring.GetSize () < 11) {
                 return;
             }
-            // FIX (ревью 2026-09-12): локальное объявление затеняло внешнюю subpos —
-            // GetSubposKey всегда получал пустую строку, материалы v3 смешивались.
             subpos = partstring[0];
             p.pos = partstring[2];
             p.tip_konstr = GetParam (partstring[5], "tk");
@@ -152,7 +146,6 @@ namespace ListData {
         Arm p = {};
         GS::UniString subpos = "";
         if (version == 3) {
-            // FIX (ревью 2026-09-12): guard поднят до maxIndex+1 — читается [9].
             if (partstring.GetSize () < 10) {
                 return;
             }
@@ -171,9 +164,7 @@ namespace ListData {
         if (version == 4) {
             return;
         }
-        // FIX (ревью 2026-09-12): единица измерения из LISTDATA (unitcode) не сохранялась,
-        // arm.unit/elem.unit оставались пустыми.
-        if (p.unit.IsEmpty ()) // FIX (Spec_libpart.cpp-4): v3 уже прочитал unit из partstring[10] — не затираем
+        if (p.unit.IsEmpty ())
             p.unit = unitcode;
         p.naen = GS::UniString::Printf ("d%d ", (int)p.diam);
         p.naen.Append (p.klass);
@@ -212,7 +203,6 @@ namespace ListData {
         double ves = 0;           // Масса ед.
         GS::UniString unit = "";  // Ед. измерения
         if (version == 3) {
-            // FIX (ревью 2026-09-12): guard поднят до maxIndex+1 — читается [9].
             if (partstring.GetSize () < 10) {
                 return;
             }
@@ -243,8 +233,6 @@ namespace ListData {
         s.qty += _qty;
         if (!is_equal (ves, 0))
             s.ves = ves;
-        // FIX (ревью 2026-09-12): единица измерения из LISTDATA (unitcode) не сохранялась,
-        // subpos.unit оставался пустым. Не затираем уже заполненное значение.
         if (s.unit.IsEmpty ())
             s.unit = unitcode;
     }
@@ -257,7 +245,6 @@ namespace ListData {
         Prokat p = {};
         GS::UniString subpos = "";
         if (version == 3) {
-            // FIX (ревью 2026-09-12): guard поднят до maxIndex+1 — читается [14].
             if (partstring.GetSize () < 15) {
                 return;
             }
@@ -280,8 +267,6 @@ namespace ListData {
         if (version == 4) {
             return;
         }
-        // FIX (ревью 2026-09-12): единица измерения из LISTDATA (unitcode) не сохранялась,
-        // prokat.unit/elem.unit выводили марку стали (obozn_mater).
         p.unit = unitcode;
         p.naen = p.tip_profile;
         p.naen.Append (SPACESTRING);
@@ -366,9 +351,6 @@ namespace ListData {
             return;
         GS::Array<GS::UniString> partstring = {};
         UInt32 n = StringSplt (name, SEMICOLON, partstring, false);
-        // FIX (ревью 2026-09-12): при filter_empty == false StringSplt всегда возвращает
-        // минимум 1, проверка n < 1 недостижима. Поле с обозначением — partstring[1]:
-        // нужен n >= 2, иначе (имя без ';') чтение partstring[1] уходило за границу массива.
         if (n < 2)
             return; // нет поля с обозначением
         GS::UniString tip_el = partstring[1];

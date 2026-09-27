@@ -427,7 +427,6 @@ struct PropertyCache {
     }
 
     bool AddFile (GS::UniString &fileName) {
-        // FIX (ревью 2026-09-12): ContainsKey+Get → один GetPtr (двойной lookup).
         if (const bool *cached = file.GetPtr (fileName))
             return *cached;
         GS::Array<GS::Array<GS::UniString>> data = {};
@@ -522,7 +521,6 @@ struct PropertyCache {
         hasLayerNameInDimRules = false;
         if (isInfo_OK) {
             dimrules.Clear ();
-            // FIX (ревью 2026-09-12): ContainsKey+Get → один GetPtr (двойной lookup).
             if (const ParamValue *autotextval = info.GetPtr (autotextkey)) {
                 GS::UniString autotext = autotextval->val.uniStringValue;
                 hasDimAutotext = DimReadPref (dimrules, autotext, hasLayerNameInDimRules);
@@ -630,7 +628,6 @@ struct PropertyCache {
                 ClassificationFunc::ClassificationDict &cd = *cIt->value;
                 GS::UniString systemname = *cIt->key;
     #endif
-                // FIX (ревью 2026-09-12): ContainsKey+Get → один GetPtr (двойной lookup).
                 const ClassificationFunc::ClassificationValues *sysitem = cd.GetPtr ("@system@");
                 if (sysitem == nullptr)
                     continue;

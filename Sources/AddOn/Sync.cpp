@@ -266,7 +266,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
         GS::UniString undoString = RSGetIndString (iseng, UndoSyncId, ACAPI_GetOwnResModule ());
         ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
             GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ());
-            Int32 i = 1; // FIX (Sync.cpp-4): APIIo_SetNextProcessPhaseID ожидает Int32* maxval (см. DevKit-25)
+            Int32 i = 1;
 #ifdef ServerMainVers_2700
             bool showPercent = false;
             Int32 maxval = 2;
@@ -531,7 +531,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
         ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
             start = clock ();
             GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ());
-            Int32 i = 1; // FIX (Sync.cpp-4): APIIo_SetNextProcessPhaseID ожидает Int32* maxval (см. DevKit-25)
+            Int32 i = 1;
 #ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
@@ -764,10 +764,6 @@ bool SyncData (const API_Guid &elemGuid,
     API_ElemTypeID elementType;
     if (!IsElementEditable (elemGuid, syncSettings, true, elementType))
         return false;
-    // FIX (ревью, повторная проверка Sync.cpp-1): ACAPI_CallUndoableCommand запрещён
-    // в обработчике событий базы элементов (док DevKit-25): уведомления приходят изнутри
-    // уже открытой транзакции. В меню-путях (SyncAll/SyncSelected) вокруг записи
-    // уже открыта undo-область (Sync.cpp:244/508).
     ClassificationFunc::SetAutoclass (elemGuid);
     err = ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
     if (err != NoError) {
@@ -1084,20 +1080,11 @@ bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
     if (name.IsEmpty ())
         return false;
     GS::UniString paramNamePrefix = "";
-    // FIX (Sync.cpp-2): ключ определения = prefix + имя + BRACEEND. Раньше скобки
-    // дописывались в конец строки в обратном порядке ('...}{'), GetSubstring('{','}')
-    // давал пусто и функция возвращала false.
     if (!name.Contains (BRACESTART) && !name.Contains (BRACEEND))
         name = BRACESTART + name + BRACEEND;
-    // FIX (Sync.cpp-7): регистронезависимое распознавание. Contains в GS::UniString
-    // регистрозависим (UniString.hpp:626-627), ContainsIgnoreCase в GSRoot нет —
-    // сверяем нижнюю копию. Префиксы ключей кэша всегда в нижнем регистре.
     const GS::UniString loweredName = name.ToLowerCase ();
 
     // 1) Каноническая форма rawname '{@prefix:name}': префикс известен — вход уже
-    //    является ключом кэша. FIX (Sync.cpp-8, #161): регистр нормализуем — ключи
-    //    словаря параметров всегда в нижнем регистре, иначе правило молча не найдёт
-    //    значение для записи вида '{@Coord:Symb_Pos_X}'.
     if (loweredName.BeginsWith (PVALPREFIX) && loweredName.EndsWith (BRACEEND)) {
         const UIndex colonInx = loweredName.FindFirst (':');
         if (colonInx != MaxUIndex) {
@@ -2497,7 +2484,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
     } else {
         msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
     }
-    GS::UniString pname = (err == NoError) ? GetDBName (homedatabaseInfo) : GS::UniString (); // FIX (Sync.cpp-3)
+    GS::UniString pname = (err == NoError) ? GetDBName (homedatabaseInfo) : GS::UniString ();
     int count_inv = 0;
     int count_all = 0;
     int count_otherplan = 0;

@@ -76,8 +76,6 @@ namespace Roombook {
         double r = 0;
         double zBottom = 0;
         double zUp = 0;
-        // FIX (ревью 2026-09-12): п.74 — API_Guid напрямую вместо string
-        // (устраняет двойную конвертацию GUID на каждый slab каждой зоны)
         API_Guid guid = APINULLGuid;
     };
 
@@ -161,16 +159,14 @@ namespace Roombook {
         GS::Array<API_BeamPart> beamPart;                     // Участки балок в зоне
         GS::Array<API_CWSegmentPart> cwSegmentPart;           // Навесные стены в зоне
         GS::Array<API_Niche> niches;                          // Ниши в зоне
-        // FIX (Roombook.cpp-6): поле zonesurf удалено — заполнялось только в CollectRoomInfo
-        // через ACAPI_Element_Get3DInfo (дорогой 3D-проход) и нигде не читалось.
-        double height_down = 0;        // Высота панелей
-        double height_main = 0;        // Высота основной отделки
-        double height_up = 0;          // Высота верхней части отделки
-        OtdSlab poly;                  // Полгон зоны для полов/потолков
-        GS::Array<API_Guid> floorslab; // Перекрытия в уровне пола
-        GS::Array<API_Guid> ceilslab;  // Перекрытия в уровне потолка
-        GS::Array<OtdWall> otdwall;    // Стены-отделки, созданные для расчётов и отрисовки
-        GS::Array<OtdSlab> otdslab;    // Потолки/полы для построения
+        double height_down = 0;                               // Высота панелей
+        double height_main = 0;                               // Высота основной отделки
+        double height_up = 0;                                 // Высота верхней части отделки
+        OtdSlab poly;                                         // Полгон зоны для полов/потолков
+        GS::Array<API_Guid> floorslab;                        // Перекрытия в уровне пола
+        GS::Array<API_Guid> ceilslab;                         // Перекрытия в уровне потолка
+        GS::Array<OtdWall> otdwall;                           // Стены-отделки, созданные для расчётов и отрисовки
+        GS::Array<OtdSlab> otdslab;                           // Потолки/полы для построения
         bool has_ceil = true;
         bool has_floor = true;
         bool ceil_by_slab = false;           // Создавать потолок только по перекрытиям
@@ -331,7 +327,6 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     void Floor_FindInOneRoom (const Stories &storyLevels,
                               API_Guid &elGuid,
-                              // FIX (ревью 2026-09-12): п.73 — const-ссылка в объявлении (массив только читается)
                               const GS::Array<API_Guid> &zoneGuids,
                               OtdRooms &roomsinfo,
                               UnicGUIDByType &guidselementToRead);
@@ -341,7 +336,6 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     void Param_GetForBase (ParamDictValue &paramDict, ParamValue &param_composite);
 
-    // FIX (ревью 2026-09-12): п.36 — ReadParams по неконстантной ссылке (Param_Property_Read мутирует isValid/val)
     void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
                            OtdRoom &roominfo,
                            ParamDictElement &paramToRead,
@@ -364,7 +358,6 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     // Задание прочитанных параметров для окон
     // -----------------------------------------------------------------------------
-    // FIX (ревью 2026-09-12): п.36 — ReadParams по неконстантной ссылке; копия подготавливается вызывающим кодом
     void Param_SetToWindows (OtdOpening &op,
                              ParamDictElement &paramToRead,
                              ReadParams &readparams,
@@ -430,7 +423,6 @@ namespace Roombook {
     // Удаляет отверстия, не попадающие в диапазон
     // Подгоняет размер отверсий
     // -----------------------------------------------------------------------------
-    // FIX (ревью 2026-09-12): п.35 — otdn по const-ссылке (устраняет копию структуры на каждый вызов)
     bool OtdWall_Delim_One (const OtdWall &otdn,
                             GS::Array<OtdWall> &opw,
                             double height,

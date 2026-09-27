@@ -654,8 +654,6 @@ namespace Spec {
 #endif
             if (!rule.is_Valid)
                 continue;
-            // FIX (ревью 2026-09-12, PERF): пары ContainsKey+Get заменены на
-            // один GetPtr — двойной lookup по одному ключу.
             GS::HashTable<GS::UniString, GS::UniString> *pRuleFavorite = paramdict_favorite.GetPtr (rule.favorite_name);
             if (pRuleFavorite == nullptr) {
                 GS::HashTable<GS::UniString, GS::UniString> paramdict = {};
@@ -744,8 +742,6 @@ namespace Spec {
                 GetElementByPropertyDescription (subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase ());
             if (!selected_elements.IsEmpty ()) {
                 for (const API_Guid &exsist_element : exsist_elements) {
-                    // FIX (ревью 2026-09-12): тело цикла использовало посторонний
-                    // индекс i (переменную фаз прогресса) — out-of-bounds/дубли.
                     if (!selected_elements.ContainsKey (exsist_element))
                         continue;
                     rule.exsist_elements.Push (exsist_element);
@@ -799,8 +795,6 @@ namespace Spec {
             bool rule_from_one = false;
             if (!SpecDG (rules, rule_from_one)) {
                 msg_rep ("ReNumSelected", "Execution interrupted by user", NoError, APINULLGuid);
-                // FIX (ревью 2026-09-12): return false в GSErrCode означал NoError —
-                // отмена пользователя сообщалась вызывающему как успех.
                 return APIERR_CANCEL;
             }
         }
@@ -1042,8 +1036,6 @@ namespace Spec {
             }
 #endif // !AC_22
             ParamHelpers::ElementsWrite (paramOut);
-            // FIX (ревью 2026-09-12): восстановление тумблера SuspendGroups —
-            // включили сами (suspGrp==false), возвращаем обратно (образец: Sync.cpp).
 #ifdef ServerMainVers_2300
             if (!suspGrp) {
                 bool suspNow = false;
@@ -1407,11 +1399,6 @@ namespace Spec {
             if (!p.ContainsKey (rawname))
                 return false;
             ParamDictValue paramDict = {}; // Словарь параметров в формуле
-            // FIX (ревью 2026-09-12): без const& формула (ParamValue с API_Property +
-            // API_PropertyDefinition) глубоко копировалась дважды на каждый вызов.
-            // Копируем только строку-выражение: ParseParamName мутирует переданную
-            // строку (expression = std::move(result)), ссылку на значение из словаря
-            // передавать нельзя.
             const ParamValue &formula = p.Get (rawname);
             paramDict.Add (rawname, formula);
             GS::UniString formula_expression = formula.val.uniStringValue;
@@ -1548,8 +1535,6 @@ namespace Spec {
         GS::HashTable<GS::UniString, GS::UniString> out_param = {}; // Ключ - уникальные значения, значение - выходящие
                                                                     // параметры
         for (const API_Guid &elemguid : rule.elements) {
-            // FIX (ревью 2026-09-12, PERF): результат фильтра не зависит от
-            // группы — ACAPI_Element_Filter вынесен из цикла по группам.
             if (rule.only_visible) {
                 if (!ACAPI_Element_Filter (
                         elemguid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay))
@@ -2084,9 +2069,6 @@ namespace Spec {
                         GS::UniString n_row_txt = name.GetSubstring ('[', ']', 0);
                         double doubleValue = 0;
                         Int32 n_row = 10;
-                        // FIX (ревью 2026-09-12): значение из суффикса "[N]" попадает в счётчик
-                        // цикла развёртки (min_row) — ограничиваем разумной границей, опечатка
-                        // вида [100000] приводила к выделению сотен МБ и зависанию.
                         if (UniStringToDouble (n_row_txt, doubleValue) && doubleValue >= 1 &&
                             doubleValue <= max_group_mat) {
                             n_row = (GS::Int32)doubleValue;
@@ -2421,8 +2403,6 @@ namespace Spec {
         double somestuff_spec_hrow = 0;
         double somestuff_spec_bcol = 0;
         Int32 show_type = 0;
-        // FIX (ревью 2026-09-12): guard перед BMGetHandleSize — у объекта без
-        // GDL-параметров params == nullptr, разыменование нулевого хэндла.
         if (memot.params == nullptr)
             return false;
         const GSSize nParams = BMGetHandleSize ((GSHandle)memot.params) / sizeof (API_AddParType);
@@ -2600,9 +2580,6 @@ namespace Spec {
                             param.Add (rawname, paramTo);
                         }
                     }
-                    // FIX (ревью 2026-09-12): guard перед BMGetHandleSize — у объекта без
-                    // GDL-параметров params == nullptr, разыменование нулевого хэндла
-                    // (аналогично GetSizePlaceElement выше).
                     const GSSize nParams = (memo.params == nullptr)
                                                ? 0
                                                : BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);

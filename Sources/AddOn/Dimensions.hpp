@@ -23,13 +23,6 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
 // DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
 // Разбирает значение размера и формирует текст с учётом правил округления и форматирования.
-// FIX (ревью 2026-09-12, Dimensions.cpp-1): preadelem — необязательный предпрочитанный словарь
-// параметров привязанного элемента (DimAutoRound читает его один раз на размер и передаёт во все
-// правила); nullptr — словарь читается внутри (прежнее поведение).
-// FIX (ревью 2026-09-12): п.32 — полная копия dimrule.paramDict (HashTable<UniString, ParamValue>)
-// на каждый размер × каждое правило больше не создаётся ради одного значения measuredvalue;
-// п.62 — входной content больше не мутируется, вычисленный текст возвращается через
-// out-параметр custom_txt — следующее правило сравнивает с исходным текстом размера.
 bool DimParse (const double &dimVal,
                const API_Guid &elemGuid,
                const API_NoteContentType &contentType,

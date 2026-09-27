@@ -149,8 +149,6 @@ namespace MEPv1 {
         } else {
             ACAPI_WriteReport (element.UnwrapErr ().text.c_str (), false);
         }
-        // FIX (ревью 2026-09-12, PERF): повторный GetPtr после Put — двойной
-        // lookup в кэше; используем Add с out-параметром valueInContainer.
         RoutingElementSharedData *pInserted = nullptr;
         routingElementDataCache.Add (key, std::move (data), &pInserted);
         return *pInserted;
@@ -168,8 +166,6 @@ namespace MEPv1 {
         }
         GS::Array<API_Guid> result;
         GetSubElementOfRouting (routingGuid, result);
-        // FIX (ревью 2026-09-12, PERF): повторный GetPtr после Put — двойной
-        // lookup в кэше; используем Add с out-параметром valueInContainer.
         GS::Array<API_Guid> *pInserted = nullptr;
         routingSubelemCache.Add (routingGuid, std::move (result), &pInserted);
         return *pInserted;
@@ -244,8 +240,6 @@ namespace MEPv1 {
         API_Elem_Head elem_head = {};
         elem_head.guid = elemGuid;
         err = ACAPI_Element_GetHeader (&elem_head);
-        // FIX (ревью 2026-09-12): при ошибке GetHeader тип не заполнен —
-        // чтение elem_head.type.typeID шло бы по невалидным данным.
         if (err != NoError)
             return;
         if (elem_head.type.typeID != API_ExternalElemID)
@@ -367,9 +361,6 @@ namespace MEPv1 {
                         }
                     }
                 } else {
-                    // FIX (ревью 2026-09-12): UnwrapErr на успешном Result — UB
-                    // (чтение мусора из union); здесь результат успешный, но
-                    // пустой — физическая система не найдена.
                     ACAPI_WriteReport ("No physical system found", false);
                 }
             }
@@ -570,7 +561,7 @@ namespace MEPv1 {
         if (nodeElement.IsOk ()) {
             ReadRoutingElementData (nodeElement->GetRoutingElementId (), flag, paramByType, transtableID);
         }
-        { // FIX (MEPv1.cpp-1): диаметры и форма сечения — out-параметры по ссылке,
+        {
             // потребитель ReadTransitionPreferenceTable сравнивает их со строками
             // таблицы предпочтений; заполнять нужно всегда, независимо от наличия
             // параметра {@mep:description} в словаре.

@@ -766,9 +766,6 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
 // Возвращает GUID родительского элемента для API_SectElemType
 // -----------------------------------------------------------------------------
 void GetParentGUIDSectElem (const API_Guid &sectElemguid, API_Guid &parentguid, API_ElemTypeID &parentType) {
-    // FIX (ревью 2026-09-12): выходные параметры сбрасываются до обращения к API —
-    // при err != NoError от ACAPI_Element_Get вызывающий получает безопасные
-    // значения (APINULLGuid / API_ZombieElemID) вместо неинициализированного мусора.
     parentguid = APINULLGuid;
     parentType = API_ZombieElemID;
     API_Element elem = {};
@@ -825,8 +822,6 @@ void CallOnSelectedElemSettings (void (*function) (const API_Guid &, const SyncS
 #endif
     }
     long time_end = clock ();
-    // FIX (ревью 2026-09-12): п.40 — clock() возвращает тики CLOCKS_PER_SEC, деление на 1000
-    // давало неверные единицы; приведение к double устраняет целочисленное деление.
     GS::UniString time = GS::UniString::Printf (" %.3f s", (double)(time_end - time_start) / CLOCKS_PER_SEC);
     GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
     msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
@@ -869,8 +864,6 @@ void CallOnSelectedElem (void (*function) (const API_Guid &),
 #endif
         }
         long time_end = clock ();
-        // FIX (ревью 2026-09-12): п.40 — clock() возвращает тики CLOCKS_PER_SEC, деление на 1000
-        // давало неверные единицы; приведение к double устраняет целочисленное деление.
         GS::UniString time =
             GS::UniString::Printf (" %.0f ms", (double)(time_end - time_start) * 1000.0 / CLOCKS_PER_SEC);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
@@ -1020,9 +1013,6 @@ void GetRelationsElement (const API_Guid &elemGuid,
                 subelemGuid.Push (guid);
             connectedElements.Clear ();
         }
-        // FIX (ревью 2026-09-12): break добавлен — без него fall-through из
-        // case API_WallID в case API_RailingID вызывает GetRElementsForRailing
-        // с guid стены при выключенной синхронизации окон.
         break;
     case API_RailingID:
         if (syncSettings.GetCwallS ())
@@ -2554,9 +2544,6 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                                                     true);
         ParamHelpers::AddDoubleValueToParamDictValue (
             pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_rotangle_axis", axisRotationAngle, true);
-        // FIX (ревью 2026-09-12): axis-параметры вычислялись от slantDirectionAngle
-        // и дублировали slant-значения — передаём axisRotationAngle; используем
-        // отдельные out-переменные, чтобы не портить slant-значения.
         double symb_rotangle_axis_fraction = 0.0;
         bool bsymb_rotangle_axis_correct = false;
         bool bsymb_rotangle_axis_correct_1000 = false;
@@ -2628,8 +2615,6 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                 dy = sy - ey;
             }
             double l_wall = sqrt (dx * dx + dy * dy);
-            // FIX (ревью 2026-09-12): деление на нулевую длину стены (вырожденный
-            // случай begC==endC) давало inf/NaN в словаре параметров.
             if (!is_equal (l_wall, 0.0)) {
                 double koeff = x / l_wall;
                 double swx = sx + (ex - sx) * koeff;
@@ -2657,8 +2642,6 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                     windoor_in_wall = false;
                 ParamHelpers::AddBoolValueToParamDictValue (
                     pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "windoor_in_wall", windoor_in_wall, true);
-                // FIX (ревью 2026-09-12): запись координат середины проёма
-                // только при ненулевой длине стены (внутри guard-блока).
                 ParamHelpers::AddLengthValueToParamDictValue (
                     pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sx", swx, true);
                 ParamHelpers::AddLengthValueToParamDictValue (
@@ -2672,8 +2655,6 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                 ParamHelpers::AddLengthValueToParamDictValue (
                     pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_sy", swspy, true);
             }
-            // FIX (ревью 2026-09-12): конец guard-блока нулевой длины стены — при
-            // вырожденной стене координаты середины проёма не вычисляются.
         } else {
             ParamHelpers::AddBoolValueToParamDictValue (
                 pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "windoor_in_wall", true, true);
@@ -3610,12 +3591,6 @@ void CoordNorthAngle (
         angznorth = round (angznorth * k) / k;
     }
     double n = 0.0; //"С"
-    // FIX (ревью 2026-09-12, Helpers.cpp-7): раньше выполнялось до 32 последовательных проверок
-    // с 16 вызовами RSGetIndString на каждый элемент/сегмент, хотя подходит ровно одно
-    // направление. Теперь направление определяется один раз индексом (0..7) и выполняется
-    // единственный вызов RSGetIndString для нужного языка (iseng уже кэшируется в isEng()).
-    // Семантика сохранена: граничные значения 22.5 + 45*k (is_equal) относятся к предыдущему
-    // направлению, как в исходных is_equal-блоках.
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     static const short dirStringID[8] = {
         N_StringID, NE_StringID, E_StringID, SE_StringID, S_StringID, SW_StringID, W_StringID, NW_StringID};
@@ -5167,9 +5142,6 @@ void ParamHelpers::WriteGDL (const API_Guid &elemGuid, ParamDictValue &params) {
 #endif
     if (err != NoError) {
         msg_rep ("ParamHelpers::WriteGDL", "APIAny_GetActParametersID", err, elem_head.guid);
-        // FIX (ревью 2026-09-12): при ошибке GetActParameters параметры закрываются и
-        // выполняется безусловный выход — err от CloseParameters не должен управлять
-        // потоком, иначе ниже идёт чтение мусорного apiParams.params.
         GSErrCode closeErr = NoError;
 #ifdef ServerMainVers_2700
         closeErr = ACAPI_LibraryPart_CloseParameters ();
@@ -5946,8 +5918,6 @@ bool ParamHelpers::ReadIFC (const API_Guid &elemGuid, ParamDictValue &params) {
     GS::UniString fname = "";
     GS::UniString rawName = "";
     for (UInt32 i = 0; i < properties.GetSize (); i++) {
-        // FIX (ревью 2026-09-12, PERF): тяжёлая структура с UniString копировалась
-        // трижды на итерацию — берём по const-ссылке.
         const API_IFCProperty &property = properties[i];
         fname = property.head.propertySetName;
         fname.Append (SLASH);
@@ -6257,8 +6227,6 @@ bool ParamHelpers::ReadGDL (const API_Element &element,
 #else
         ParamValue &param = *cIt->value;
 #endif
-        // FIX (ревью 2026-09-12, PERF): копия строки на каждый параметр каждого
-        // элемента — берём по const-ссылке.
         const GS::UniString &rawName = param.rawName;
         if (param.fromGDLArray) {
             tparams.Clear ();
@@ -6303,8 +6271,6 @@ bool ParamHelpers::ReadGDL (const API_Element &element,
             }
             if (param.val.array_format_out == ARRAY_UNDEF)
                 param.val.array_format_out = ARRAY_SUM;
-            // FIX (ревью 2026-09-12, PERF): локальная копия только здесь, где
-            // имя модифицируется (срезается до "@arr").
             GS::UniString rawName = tparams[0] + BRACEEND;
 
             if (auto *p = paramnamearray.GetPtr (rawName)) {
@@ -6695,8 +6661,6 @@ bool ParamHelpers::ReadListData (const API_Elem_Head &elem_head,
         }
     }
     if (!needListData) {
-        // FIX (ревью 2026-09-12): ранний выход до BMKillHandle — утечка хендла
-        // дескрипторов, полученного от ACAPI_Element_GetDescriptors.
         BMKillHandle ((GSHandle *)&descRefs);
         return !pdictvalue.IsEmpty ();
     }
