@@ -5,6 +5,175 @@
 
 ---
 
+## #170 — совместимость сборок AC25–AC29 (закрытие 2026-09-27, issue #170 CLOSED)
+
+Итог: `python Tools/BuildAddOn.py --configFile config.json --acVersion <V>` — success для AC25/26/27/28/29,
+все `Build/SomeStuff/<V>/Debug/SomeStuff.apx` перезаписаны 2026-09-27 (AC25 — 18:27).
+AC22–24 в этой среде не проверяемы: в репозитории лежат только DevKit-25…29.
+Коммиты: `e0e3a98` (AC26), `a74441f` (AC27), `6ec9b42` (AC28), `acb0232` (AC29).
+Runtime-лаунчер `Tools/restart_archicad_for_test.ps1` (AC25, версия из `config.json`): exit 0, `AI_RESULT status=success build=True archicad=running` — аддон собрался и загрузился в Archicad 25; JSON-тесты пропущены (`JSON_TESTS_SKIPPED reason=script_not_found`, `Tools/test_json_commands.py` в репозитории нет).
+
+Ниже — блоки задач в исходном виде (AC26 — из прошлой сессии, AC27/28/29 — из сессии 2026-09-27).
+
+---
+
+## Parallel Task — #170 сборка AC26
+
+### Task
+
+Сборка под AC26 (`Tools/BuildAddOn.py --configFile config.json --acVersion 26`) падала на AC26-несовместимостях SDK; ошибки устранены, сборка зелёная.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/170
+
+### Scope
+
+Только AC26-сборка: `Sources/AddOn/dialogs/SyncSettings.cpp`, `Sources/AddOn/json_commands/CommandBase.hpp/.cpp`, `Sources/AddOn/dialogs/BrowserPalette.cpp` и карточки `Docs/modules/json_commands.md`, `Docs/modules/dialogs/BrowserPalette.md`, `Docs/modules/dialogs/SyncSettings.md`. Незакоммиченный раздел ReadQuantities в `IDEA.md` — чужая правка, в checkpoint не включать. AC22–24/27–29 не проверялись.
+
+### Status
+
+DONE (AC26) — build успешен, регрессия AC25 успешна. Issue #170 не закрыт: R9 покрывает ещё AC22–24 и 27–29.
+
+### Last Completed
+
+2026-09-27 — `python Tools/BuildAddOn.py --configFile config.json --acVersion 26`: `AI_BUILD_RESULT status=success`, артефакт `Build/SomeStuff/26/Debug/SomeStuff.apx`; AC25-сборка после правок успешна; clangd (AC26 compile DB) 0 ошибок; clang-format. Правки: pragma clang под `#ifdef __clang__` (AC26 DevKit больше не глушит C4068 при `/WX`); `CommandBase::IsProcessWindowVisible` (новый чистый виртуальный в AC26); void-возврат `ACAPI_Interface_*ElementHighlight`; `UnregisterJSObject` закрыт `#ifndef ServerMainVers_2600`; `head.typeID` → `GetElemTypeID(head)`. AC27-сборка запускалась и падает (десятки переименований API) — это отдельный объём, не правился. Комментарий с деталями — в issue #170.
+
+### Next Step
+
+AC27 (и остальные версии R9) — отдельной задачей. Runtime AC26 не проводился: Archicad 26 не запускался, `test_26.pln` не прогонялся.
+
+### Last Checkpoint
+
+`e0e3a98` — `[#170] Сборка AC26: устранены AC26-несовместимости SDK`.
+
+### Plan
+
+- [x] Воспроизвести падение сборки AC26 и собрать полный список ошибок.
+- [x] Подтвердить каждую ошибку по заголовкам DevKit-26/25 (не по памяти).
+- [x] Исправить 5 мест; clang-format, clangd, AC26 build, регрессия AC25.
+- [x] Обновить карточки модулей и tracker-строку R9; комментарий в #170.
+- [ ] AC27–29 и AC22–24 (отдельная задача).
+
+### Decisions
+
+- `IsProcessWindowVisible` возвращает `true` для всех команд: они длительные и идут в главном потоке (`ScheduleForExecutionOnMainThread`), как в DevKit-примере `AddOnCommandTest`. Поведение окна процесса в AC26 runtime не проверялось.
+- Ветка AC27 для подсветки правилась в том же операторе (обе новые ветки возвращают `void`), но AC27-сборка не проходит по другим причинам — эта правка не подтверждена сборкой AC27.
+
+## Parallel Task — #170 сборка AC27
+
+### Task
+
+Сборка под AC27 (`Tools/BuildAddOn.py --configFile config.json --acVersion 27`); AC27 переименовал большую часть API в именованные функции.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/170
+
+### Scope
+
+Только AC27-сборка: `Sources/AddOn/api_headers/APIEnvir.h` (правка откачена), `Roombook.cpp`, `Sync.cpp`, `dialogs/BrowserPalette.cpp/.hpp`, `dialogs/OtherDbDialog.cpp`, `dialogs/SyncSettings.cpp`, `json_commands/JsonCommandRegistrar.cpp`, `table/TableRenderer.cpp`, `table/TablesNavigator.cpp` и карточки `Docs/modules/`. Разделы IDEA.md других задач не коммитить. AC22–24/28–29 не проверялись.
+
+### Status
+
+DONE (AC27) — build успешен, артефакт `Build/SomeStuff/27/Debug/SomeStuff.apx`; AC26 после правок успешна. Регрессия AC25 НЕ подтверждена: сборка падает на LNK1168 (файл `Build/SomeStuff/25/Debug/SomeStuff.apx` держит запущенный пользователем Archicad — по его указанию процесс не закрывать). Issue #170 не закрыт: R9 покрывает ещё AC22–24 и 28–29.
+
+### Last Completed
+
+2026-09-27 — `python Tools/BuildAddOn.py --configFile config.json --acVersion 27`: `AI_BUILD_RESULT status=success`; AC26 — success; clangd (compile DB AC27) 0 ошибок в табличных файлах и BrowserPalette; clang-format. Правки: legacy-вызовы обёрнуты на местах `#ifdef ServerMainVers_2700` / `#else` (новое имя из DevKit-27 `ACAPI_MigrationHeader.hpp`, сам заголовок в проект НЕ подключается — указание пользователя); `UnregisterJSObject` в AC27 вернулся (JavascriptEngine) → гвард `#if defined(ServerMainVers_2700) || !defined(ServerMainVers_2600)`; `DGModule.hpp` в AC27 больше не тянет `DGBrowser.hpp`; JS-мост AC27 (`JS::*` вместо `DG::JS*`) закрыт псевдонимами в `namespace DG` под `#ifdef AC_27`; `API_Navgator*` → `API_Navigator*`; `API_AttributeIndex` через `ACAPI_CreateAttributeIndex`, шрифт через `ACAPI_Font_GetFont (API_FontType)`, `API_OverriddenAttribute` → `APIOptional<API_AttributeIndex>`.
+
+### Next Step
+
+1) Освободить `Build/SomeStuff/25/Debug/SomeStuff.apx` (закрыть сессию отладки AC25) и прогнать регрессию AC25. 2) Runtime-проверка AC27 (`restart_archicad_for_test.ps1` — только по согласованию, чтобы не мешать отладке пользователя). 3) Остальные версии R9 (22–24, 28–29) — отдельными шагами.
+
+### Last Checkpoint
+
+`a74441f` — `[#170] Сборка AC27: legacy-вызовы API обёрнуты #ifdef ServerMainVers_2700` (закоммичены только исходники и карточки Docs; раздел IDEA.md не коммитится вместе с разделами других задач).
+
+### Plan
+
+- [x] Собрать полный список AC27-ошибок и классифицировать (переименования против структурных).
+- [x] Забрать из `ACAPI_MigrationHeader.hpp` нужные соответствия, не подключая заголовок.
+- [x] Обернуть вызовы на местах `#ifdef ServerMainVers_2700`; clang-format.
+- [x] AC27 build — success; AC26 build — success; clangd по правкам — 0.
+- [ ] Регрессия AC25 (блокирована занятым `.apx`).
+- [ ] Runtime AC27.
+
+## Parallel Task — #170 сборка AC28
+
+### Task
+
+Сборка под AC28 (`Tools/BuildAddOn.py --configFile config.json --acVersion 28`). AC28 снял `__ACENV_CALL`, перевёл memo текста на `GS::UniString*`, убрал `charCode` и старые MEP-контейнеры.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/170
+
+### Scope
+
+Только AC28-сборка: `table/TableRenderer.cpp`, `table/TablesNavigator.cpp`, `dialogs/BrowserPalette.cpp/.hpp`, `MEPv1.hpp` и карточки `Docs/modules/`. Разделы IDEA.md других задач не коммитить. AC22–24 и 29 не проверялись; AC25-регрессия не подтверждена.
+
+### Status
+
+DONE (AC28) — build успешен, артефакт `Build/SomeStuff/28/Debug/SomeStuff.apx`; AC27 и AC26 после правок тоже success. AC25 по-прежнему заблокирована (LNK1168: файл держит сессия отладки пользователя, процесс не закрываем). Issue #170 не закрыт: остались AC22–24, AC29 и AC25-регрессия.
+
+### Last Completed
+
+2026-09-27 — AC28: `AI_BUILD_RESULT status=success mode=build versions=28`; AC27/AC26 — success (артефакты перезаписаны 17:41). Ошибок было 128 → 0 за три прохода. Корни: (1) `__ACENV_CALL` удалён из SDK в AC28 (в 27 определялся в `APICalls.h`) — 4 обработчика TablesNavigator, 2 в BrowserPalette; (2) `API_ElementMemo::textContent` стал `GS::UniString*` (был `GSHandle`), `API_TextType::charCode` удалён — TableRenderer создаёт `new GS::UniString (line)` и код гарнитуры больше не подменяет; (3) `GS::HashTable::CurrentPair::value` — ссылка `Value&` вместо `Value*` (7 мест в BrowserPalette.cpp); (4) JS-псевдонимы `DG::JS* → JS::*` стояли под `#ifdef AC_27`, а в AC28 определён `AC_28` → переведены на `ServerMainVers_2700`; (5) старые MEP-контейнеры (`MEPDuctPreferenceTableContainer.hpp` и др.) в AC28 удалены → include под `#ifndef ServerMainVers_2800`.
+
+### Next Step
+
+1) Освободить `Build/SomeStuff/25/Debug/SomeStuff.apx`, прогнать регрессию AC25. 2) AC29 — отдельным шагом. 3) AC22–24 — отдельным шагом. 4) LSP-диагностика AC28 (запущена) + runtime AC27/AC28 по согласованию.
+
+### Last Checkpoint
+
+`6ec9b42` — `[#170] Сборка AC28: __ACENV_CALL, memo текста, CurrentPair::value` (закоммичены исходники и карточки Docs; раздел IDEA.md не коммитится вместе с разделами других задач).
+
+### Plan
+
+- [x] Собрать список AC28-ошибок и классифицировать (128 → 10 → 0).
+- [x] Правки на местах по конвенции (`#ifdef ServerMainVers_2800` + `#else`), clang-format.
+- [x] AC28 build — success; регрессия AC27/AC26 — success.
+- [ ] Регрессия AC25 (блокирована занятым `.apx`).
+- [ ] AC29, AC22–24.
+- [ ] Runtime AC27/AC28.
+
+### Decisions
+
+- В AC28 обходной путь с `charCode` не нужен: кодировку несёт `GS::UniString`; ветка 2800 оставлена с комментарием, поведение AC26/27 не тронуто.
+- `#ifdef AC_27` для JS-псевдонимов заменён на `ServerMainVers_2700` (27/28/29), т.к. при сборке AC28 определяется `AC_28`, а не `AC_27`.
+
+## Parallel Task — #170 сборка AC29
+
+### Task
+
+Сборка под AC29 (`Tools/BuildAddOn.py --configFile config.json --acVersion 29`). AC29 = правила AC28 плюс переход тулчейна на C++20.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/170
+
+### Scope
+
+Только AC29-сборка: `ReNum.hpp` (const-квалификатор `operator==`), карточка `Docs/modules/ReNum.md`. Разделы IDEA.md других задач не коммитить. AC22–24 не проверялись; AC25-регрессия не подтверждена.
+
+### Status
+
+DONE (AC29) — build успешен, артефакт `Build/SomeStuff/29/Debug/SomeStuff.apx`; регрессия AC28/27/26 после правки — success (все `.apx` перезаписаны). AC25 по-прежнему заблокирована (LNK1168: `.apx` держит сессия отладки пользователя). Issue #170 не закрыт: остались AC22–24 и AC25-регрессия.
+
+### Last Completed
+
+2026-09-27 — AC29: `AI_BUILD_RESULT status=success mode=build versions=29`; AC28/27/26 — success. Ошибок было всего 2 (обе `TestFunc.cpp:2839/2841`, C2666 `RenumPos::operator ==`). Корень: AC29 — первый SDK, собирающий аддон как C++20 (`<LanguageStandard>stdcpp20` в vcxproj; в 26–28 `stdcpp17`); для неконстантного члена `operator==` C++20 добавляет перевёрнутый кандидат `y == x`, и `pa == pb` (два разных объекта) становится неоднозначным. Правка — `const` у `bool RenumPos::operator== (const RenumPos &b) const` в `ReNum.hpp`; поведение не меняется, для C++17 правка нейтральна. clangd (compile DB AC29): `ReNum.hpp` 0 ошибок; `TestFunc.cpp` — только предсуществующий clang-only шум (6 `-Wunused*` и 7 `operator= с void` в `GS::Array`), MSVC с `/WX` его пропускает.
+
+### Next Step
+
+1) Освободить `Build/SomeStuff/25/Debug/SomeStuff.apx`, прогнать регрессию AC25. 2) AC22–24 — отдельным шагом (там другой набор API-различий). 3) Runtime AC27/28/29 по согласованию. 4) Закрытие #170 после AC25-регрессии.
+
+### Last Checkpoint
+
+`acb0232` — `[#170] Сборка AC29: C++20 — const у RenumPos::operator==` (закоммичены `ReNum.hpp` и карточка Docs; раздел IDEA.md не коммитится вместе с разделами других задач).
+
+### Plan
+
+- [x] Собрать список AC29-ошибок (2 шт., обе из-за C++20).
+- [x] Правка корня — `const` у `operator==`, clang-format.
+- [x] AC29 build — success; регрессия AC28/27/26 — success; clangd по правке — 0.
+- [ ] Регрессия AC25 (блокирована занятым `.apx`).
+- [ ] AC22–24.
+- [ ] Runtime AC27/28/29.
+
+### Decisions
+
+- Правится прод-тип (`RenumPos::operator==` становится `const`), а не тест: это C++20-корректность самого класса, а не особенность теста; `TestFunc.cpp` не тронут (по §10 AGENTS тест-файлы при правке прод-кода не правятся).
+- AC29 не потребовал новых `#ifdef`-веток: все ветки 2700/2800 в проекте активны и в 29, кроме C++20-эффекта.
 ## #212 — удаление служебных комментариев FIX (2026-09-27)
 
 ### Status
