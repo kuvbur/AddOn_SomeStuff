@@ -183,7 +183,7 @@ namespace TableRenderer {
         // Последний источник — дефолт текста из проекта: своё значение шрифта не выдумываем.
         API_Element element;
         BNZeroMemory (&element, sizeof (API_Element));
-        element.header.typeID = API_TextID;
+        SetElemTypeID (element, API_TextID); // Задание типа с учётом версии AC
         if (ACAPI_Element_GetDefaults (&element, nullptr) == NoError && element.text.font > 0)
             return element.text.font;
 
@@ -769,8 +769,7 @@ namespace TableRenderer {
     GSErrCode TableRenderer::CreateLineElement (const API_Coord &beg, const API_Coord &end) const {
         API_Element element;
         BNZeroMemory (&element, sizeof (API_Element));
-        element.header.typeID = API_LineID;
-
+        SetElemTypeID (element, API_LineID); // Задание типа с учётом версии AC
         GSErrCode err = ACAPI_Element_GetDefaults (&element, nullptr);
         if (err != NoError)
             return err;
@@ -796,9 +795,7 @@ namespace TableRenderer {
         API_ElementMemo memo;
         BNZeroMemory (&element, sizeof (API_Element));
         BNZeroMemory (&memo, sizeof (API_ElementMemo));
-
-        element.header.typeID = API_HatchID;
-
+        SetElemTypeID (element, API_HatchID); // Задание типа с учётом версии AC
         GSErrCode err = ACAPI_Element_GetDefaults (&element, nullptr);
         if (err != NoError)
             return err;
@@ -863,7 +860,7 @@ namespace TableRenderer {
 
         GS::ucscpy (reinterpret_cast<GS::uchar_t *> (*memo.textContent), line.ToUStr ());
 
-        element.header.typeID = API_TextID;
+        SetElemTypeID (element, API_TextID); // Задание типа с учётом версии AC
 
         GSErrCode err = ACAPI_Element_GetDefaults (&element, nullptr);
         if (err != NoError) {

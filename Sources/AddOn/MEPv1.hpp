@@ -45,7 +45,9 @@
         #include "GSUnID.hpp"
 
         #ifdef ServerMainVers_2700
-            #include "ACAPI/MEPCableCarrierPreferenceTableContainer.hpp"
+            #ifndef ServerMainVers_2800
+                #include "ACAPI/MEPCableCarrierPreferenceTableContainer.hpp"
+            #endif
             #include "ACAPI/MEPDuctPreferenceTableContainer.hpp"
             #include "ACAPI/MEPPipePreferenceTableContainer.hpp"
             #include "ACAPI/MEPPreferenceTableBase.hpp"
