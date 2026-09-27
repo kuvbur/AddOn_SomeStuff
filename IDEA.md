@@ -237,6 +237,35 @@ IN_PROGRESS — пункт 1 выполнен (AC25 build + проверенна
 - Версия — число без `v`: upstream `parse_version` принимает только `^([0-9]+)(\.[0-9]+){0,2}$`, а каждая компонента 0–65535 попадает в `FILEVERSION`.
 - Нужны **оба** канала `ADDON_VERSION`: CMake-переменная для `configure_file` → `RINT/AddOn.grc` (компилятор туда не подставится) и `target_compile_definitions` для C++.
 
+## Parallel Task — #216 хэш коммита в ADDON_SUBVERSION
+
+### Scope
+
+Только `Tools/CMakeCommon.cmake` (подверсия в `GenerateAddOnProject`) и `IDEA.md`; кода в `Sources/AddOn/` не трогать. Проверочная версия AC25 (Windows).
+https://github.com/kuvbur/AddOn_SomeStuff/issues/216
+
+### Status
+
+DONE (локально) — AC25 build успешен, хэш подтверждён в `RINT/AddOn.grc` и в собранном `.apx`. Issue закрывать после пользовательской проверки.
+
+### Last Completed
+
+2026-09-27 — `find_package(Git QUIET)` + `git rev-parse --short HEAD` в `CMAKE_SOURCE_DIR`; при отсутствии git/репозитория `unknown`. `ADDON_SUBVERSION` = `<YYYY-MM-DD-HH>-<хэш>`; configure печатает `Building from commit: 72a5088`. Сборка через `restart_archicad_for_test.ps1` успешна (первый прогон `BuildAddOn.py` упал на LNK1168 — Archicad держал `.apx`); строка `1.78 2026-09-27-18-72a5088` есть в `RINT/AddOn.grc` и в `.apx` (3 вхождения).
+
+### Next Step
+
+Пользовательская проверка версии в ArchiCAD и закрытие #216. Хэш читается на этапе configure: после новых коммитов без повторного configure он не обновится.
+
+### Last Checkpoint
+
+`780f508` — `[#216] CMakeCommon: хэш коммита в ADDON_SUBVERSION`.
+
+### Plan
+
+- [x] Issue #216 и правка `CMakeCommon.cmake`.
+- [x] Configure, AC25 build, строка версии в grc и в `.apx`.
+- [ ] Проверка пользователем в ArchiCAD и закрытие issue.
+
 ## WAITING_FOR_TEST — проверки за пользователем
 
 - #189 `2213388`: инлайн-кнопка сброса убрана из строк «Монитора»; в строке осталась только кнопка закрепления.
