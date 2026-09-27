@@ -4106,19 +4106,8 @@ namespace Roombook
         GSErrCode err = NoError;
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         GS::UniString UndoString = RSGetIndString (iseng, RoombookId, ACAPI_GetOwnResModule ());
-    #ifdef ServerMainVers_2300
-        bool suspGrp = false;
         Int32 n_elem = 0;
-        #ifdef ServerMainVers_2700
-        err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
-        if (!suspGrp)
-            ACAPI_Grouping_Tool (deletelist, APITool_SuspendGroups, nullptr);
-        #else
-        err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
-        if (!suspGrp)
-            ACAPI_Element_Tool (deletelist, APITool_SuspendGroups, nullptr);
-        #endif
-    #endif // !AC_22
+        SuspendGroupsGuard suspGuard; // отключаем режим группировки на время записи.
         GS::Array<API_Guid> group;
         ACAPI_CallUndoableCommand (UndoString, [&] () -> GSErrCode {
             if (!deletelist.IsEmpty ()) {
@@ -4235,18 +4224,6 @@ namespace Roombook
         });
         msg_rep (
             "RoomBook", GS::UniString::Printf ("Create or update %d finishing elements", n_elem), err, APINULLGuid);
-    #ifdef ServerMainVers_2300
-        if (!suspGrp) {
-            bool suspNow = false;
-        #ifdef ServerMainVers_2700
-            if (ACAPI_View_IsSuspendGroupOn (&suspNow) == NoError && suspNow)
-                ACAPI_Grouping_Tool (deletelist, APITool_SuspendGroups, nullptr);
-        #else
-            if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspNow, nullptr) == NoError && suspNow)
-                ACAPI_Element_Tool (deletelist, APITool_SuspendGroups, nullptr);
-        #endif
-        }
-    #endif // !AC_22
     }
 
     // -----------------------------------------------------------------------------
@@ -5240,28 +5217,7 @@ namespace Roombook
         GS::UniString suffix;
         GS::Array<API_Guid> syncguids;
         GS::UniString funcname = "Create link with base element";
-        bool suspGrp = false;
-    #ifdef ServerMainVers_2700
-        ACAPI_View_IsSuspendGroupOn (&suspGrp);
-        if (!suspGrp)
-            ACAPI_Grouping_Tool (syncguids, APITool_SuspendGroups, nullptr);
-    #else
-        ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp, nullptr);
-        if (!suspGrp)
-            ACAPI_Element_Tool (syncguids, APITool_SuspendGroups, nullptr);
-    #endif
-        auto RestoreSuspendGroups = [&] () {
-            if (!suspGrp) {
-                bool suspNow = false;
-    #ifdef ServerMainVers_2700
-                if (ACAPI_View_IsSuspendGroupOn (&suspNow) == NoError && suspNow)
-                    ACAPI_Grouping_Tool (syncguids, APITool_SuspendGroups, nullptr);
-    #else
-                if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspNow, nullptr) == NoError && suspNow)
-                    ACAPI_Element_Tool (syncguids, APITool_SuspendGroups, nullptr);
-    #endif
-            }
-        };
+        SuspendGroupsGuard suspGuard; // отключаем режим группировки на время записи.
         for (const API_ElemTypeID &typeelem : typeinzone) {
             if (!subelementByparent.ContainsKey (typeelem))
                 continue;
@@ -5316,13 +5272,11 @@ namespace Roombook
     #ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
             if (ACAPI_ProcessWindow_IsProcessCanceled ()) {
-                RestoreSuspendGroups ();
                 return;
             }
     #else
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) {
-                RestoreSuspendGroups ();
                 return;
             }
     #endif
@@ -5331,22 +5285,18 @@ namespace Roombook
                 return NoError;
             });
         }
-        if (syncguids.IsEmpty ()) {
-            RestoreSuspendGroups ();
+        if (syncguids.IsEmpty ())
             return;
-        }
         funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
         nPhase += 1;
     #ifdef ServerMainVers_2700
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) {
-            RestoreSuspendGroups ();
             return;
         }
     #else
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) {
-            RestoreSuspendGroups ();
             return;
         }
     #endif
@@ -5359,7 +5309,6 @@ namespace Roombook
     #endif
             SyncArray (syncSettings, rereadelem);
         }
-        RestoreSuspendGroups ();
     }
 
     bool Class_IsElementFinClass (const API_Guid &elGuid, const UnicGuid &finclassguids, API_Guid &classguid) {

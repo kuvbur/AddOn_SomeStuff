@@ -9,7 +9,7 @@
 - `CommonFunction.cpp/hpp` (hpp 513 строк)
 
 ## Ключевые типы [из комментария]
-`Story`/`Stories` — этажи; `FormatString` — параметры округления/формата; `ParamValueData` — унифицированное значение; `ParamValueComposite`/`ParamComposite` — слои конструкции; `ParamValue` — полное описание параметра с ~20 флагами источника (fromProperty, fromGDLparam, fromMaterial и др.); `ProcessWindowGuard` — RAII окна прогресса (InitProcessWindow/CloseProcessWindow, AC27+ ACAPI_ProcessWindow_*). [из комментария, CommonFunction.hpp:53-232]
+`Story`/`Stories` — этажи; `FormatString` — параметры округления/формата; `ParamValueData` — унифицированное значение; `ParamValueComposite`/`ParamComposite` — слои конструкции; `ParamValue` — полное описание параметра с ~20 флагами источника (fromProperty, fromGDLparam, fromMaterial и др.); `ProcessWindowGuard` — RAII окна прогресса (InitProcessWindow/CloseProcessWindow, AC27+ ACAPI_ProcessWindow_*); `SuspendGroupsGuard` — RAII режима «приостановить группировку» (AC27+ ACAPI_View_IsSuspendGroupOn/ACAPI_Grouping_Tool, ниже ACAPI_Environment+ACAPI_Element_Tool). [из комментария, CommonFunction.hpp:53-260]
 
 ## Публичный API (выборка)
 
@@ -47,3 +47,4 @@
 
 ## Инварианты
 - `ProcessWindowGuard` — окно прогресса закрывается автоматически даже при исключении [из комментария, CommonFunction.hpp:214-232]
+- `SuspendGroupsGuard` — если режим «приостановить группировку» уже включён (`suspGrp == true`, группировка отключена), guard ничего не делает. Если группировка активна (`suspGrp == false`) — включает режим на время своей жизни и выключает в деструкторе. Если переключение не удалось — восстанавливать нечего, деструктор молчит. `APITool_SuspendGroups` — переключатель On/Off, массив GUID игнорируется. Копирование запрещено. AC22 — заглушка, `APIEnv_IsSuspendGroupOnID` не существует. [из комментария, CommonFunction.hpp:211-253]

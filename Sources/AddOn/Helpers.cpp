@@ -4591,6 +4591,8 @@ GS::Array<API_Guid> ParamHelpers::ElementsWrite (ParamDictElement &paramToWrite)
 #if defined(TESTING)
     DBprnt ("ElementsWrite start");
 #endif
+    // Запись в сгруппированный элемент не проходит - отключаем режим группировки на время записи.
+    SuspendGroupsGuard suspGuard;
     for (ParamDictElement::PairIterator cIt = paramToWrite.EnumeratePairs (); cIt != NULL; ++cIt) {
 #ifdef ServerMainVers_2800
         ParamDictValue &params = cIt->value;
@@ -5277,28 +5279,32 @@ void ParamHelpers::WriteGDL (const API_Guid &elemGuid, ParamDictValue &params) {
 #endif
     if (err != NoError) {
         msg_rep ("ParamHelpers::WriteGDL", "APIAny_GetActParametersID", err, elem_head.guid);
+        GSErrCode closeErr = NoError;
 #ifdef ServerMainVers_2700
-        err = ACAPI_LibraryPart_CloseParameters ();
+        closeErr = ACAPI_LibraryPart_CloseParameters ();
 #else
-        err = ACAPI_Goodies (APIAny_CloseParametersID);
+        closeErr = ACAPI_Goodies (APIAny_CloseParametersID);
 #endif
-        if (err != NoError)
-            msg_rep ("ParamHelpers::WriteGDL", "APIAny_CloseParametersID", err, elem_head.guid);
+        if (closeErr != NoError)
+            msg_rep ("ParamHelpers::WriteGDL", "APIAny_CloseParametersID", closeErr, elem_head.guid);
         return;
     }
+#ifdef ServerMainVers_2700
+    err = ACAPI_LibraryPart_CloseParameters ();
+#else
+    err = ACAPI_Goodies (APIAny_CloseParametersID);
+#endif
+    if (err != NoError) {
+        msg_rep ("ParamHelpers::WriteGDL", "APIAny_CloseParametersID", err, elem_head.guid);
+        return;
+    }
+    // Параметры закрыты до изменения memo: при открытом сеансе того же владельца
+    // ACAPI_Element_ChangeMemo возвращает APIERR_BADPARS.
     API_ElementMemo elemMemo = {};
     elemMemo.params = apiParams.params;
     err = ACAPI_Element_ChangeMemo (elemGuidt, APIMemoMask_AddPars, &elemMemo);
     if (err != NoError)
         msg_rep ("ParamHelpers::WriteGDL", "ACAPI_Element_ChangeMemo", err, elem_head.guid);
-
-#ifdef ServerMainVers_2700
-    GSErrCode err_ = ACAPI_LibraryPart_CloseParameters ();
-#else
-    GSErrCode err_ = ACAPI_Goodies (APIAny_CloseParametersID);
-#endif
-    if (err_ != NoError)
-        msg_rep ("ParamHelpers::WriteGDL", "APIAny_CloseParametersID", err, elem_head.guid);
 
     ACAPI_DisposeAddParHdl (&apiParams.params);
     if (err == NoError) {

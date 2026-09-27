@@ -56,31 +56,8 @@ GSErrCode SumSelected (SyncSettings &syncSettings) {
     GS::UniString undoString = RSGetIndString (iseng, UndoSumId, ACAPI_GetOwnResModule ());
     UInt32 qtywrite = 0;
     GSErrCode undoErr = ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
-        bool suspGrp = false;
-#ifdef ServerMainVers_2300
-    #ifdef ServerMainVers_2700
-        ACAPI_View_IsSuspendGroupOn (&suspGrp);
-        if (!suspGrp)
-            ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
-    #else
-            ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
-            if (!suspGrp) ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
-    #endif
-#endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
         qtywrite = paramToWriteelem.GetSize ();
-#ifdef ServerMainVers_2300
-        if (!suspGrp) {
-            bool suspNow = false;
-    #ifdef ServerMainVers_2700
-            if (ACAPI_View_IsSuspendGroupOn (&suspNow) == NoError && suspNow)
-                ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
-    #else
-                if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspNow, nullptr) == NoError && suspNow)
-                    ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
-    #endif
-        }
-#endif
         return NoError;
     });
     if (undoErr != NoError) {

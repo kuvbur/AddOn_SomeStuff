@@ -78,7 +78,7 @@
 ### Запись
 | Функция | Строка | Назначение |
 |---|---|---|
-| `ElementsWrite` | 473 | Запись словаря параметров для множества элементов |
+| `ElementsWrite` | 473 | Запись словаря параметров для множества элементов. На время записи создаёт `SuspendGroupsGuard` — запись в сгруппированный элемент не проходит (ACAPI_Element_ChangeMemo → APIERR_BADPARS), см. #222 |
 | `Write` | 478 | Запись ParamDictValue в один элемент |
 | `WriteInfo` | 483 | Запись в информацию о проекте |
 | `WriteClassification` / `WriteID` / `WriteAttribute` / `WriteCoord` / `WriteGDL` / `WriteProperty` | 488-513 | Запись в классификацию / ID / атрибуты / координаты / GDL / свойства |

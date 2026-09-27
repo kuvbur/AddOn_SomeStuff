@@ -208,6 +208,60 @@ typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
 // Служит для формирования уникального списка свойств и параметров
 typedef GS::HashTable<GS::UniString, bool> ParamDict;
 
+// RAII-обёртка для режима «приостановить группировку» ArchiCAD.
+// Запись в сгруппированный элемент (GDL-параметры через ACAPI_Element_ChangeMemo)
+// возвращает APIERR_BADPARS, поэтому на время записи группировка отключается,
+// а исходное состояние возвращается в деструкторе.
+// Флаг enabled означает «переключение сделали мы» и выставляется только после успеха,
+// поэтому любой ранний выход оставляет деструктор бездействующим.
+// Если режим уже включён (suspGrp == true) — группировка отключена и guard ничего не делает.
+// AC22: APIEnv_IsSuspendGroupOnID не существует — guard ничего не делает.
+struct SuspendGroupsGuard {
+    SuspendGroupsGuard (bool enabled = true) : enabled (false) {
+        if (!enabled)
+            return;
+    #ifdef ServerMainVers_2300
+        bool suspGrp = false;
+        #ifdef ServerMainVers_2700
+        if (ACAPI_View_IsSuspendGroupOn (&suspGrp) != NoError)
+            return;
+        #else
+        if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp) != NoError)
+            return;
+        #endif
+        // Режим приостановки уже включён - группировка отключена, запись и так пройдёт
+        if (suspGrp)
+            return;
+        // Переключатель: массив GUID игнорируется (DevKit: ACAPI_Element_Tool ({}, APITool_SuspendGroups, nullptr))
+        #ifdef ServerMainVers_2700
+        if (ACAPI_Grouping_Tool ({}, APITool_SuspendGroups, nullptr) != NoError)
+        #else
+        if (ACAPI_Element_Tool ({}, APITool_SuspendGroups, nullptr) != NoError)
+        #endif
+            return;           // включить не удалось - восстанавливать нечего
+        this->enabled = true; // переключили мы - деструктор вернёт режим обратно
+    #endif
+    }
+
+    ~SuspendGroupsGuard () {
+        if (!enabled)
+            return;
+    #ifdef ServerMainVers_2300
+        #ifdef ServerMainVers_2700
+        ACAPI_Grouping_Tool ({}, APITool_SuspendGroups, nullptr);
+        #else
+        ACAPI_Element_Tool ({}, APITool_SuspendGroups, nullptr);
+        #endif
+    #endif
+    }
+
+    SuspendGroupsGuard (const SuspendGroupsGuard &) = delete;
+    SuspendGroupsGuard &operator= (const SuspendGroupsGuard &) = delete;
+
+  private:
+    bool enabled;
+};
+
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 

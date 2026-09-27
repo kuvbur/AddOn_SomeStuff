@@ -98,38 +98,10 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
     #endif
-
+    SuspendGroupsGuard suspGuard; // отключаем режим группировки на время записи.
     #if defined(TESTING)
     DBprnt ("Write start");
     #endif
-
-    #ifdef ServerMainVers_2300
-    bool suspGrp = false;
-        #ifdef ServerMainVers_2700
-    err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
-    if (err != NoError) {
-        msg_rep ("ReNumSelected", "ACAPI_View_IsSuspendGroupOn", err, APINULLGuid);
-        err = NoError;
-    }
-    if (!suspGrp)
-        err = ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
-        #else
-    err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
-    if (err != NoError) {
-        msg_rep ("ReNumSelected", "APIEnv_IsSuspendGroupOnID", err, APINULLGuid);
-        err = NoError;
-    }
-    if (!suspGrp)
-        err = ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
-        #endif
-    #endif
-    if (err != NoError) {
-        msg_rep ("ReNumSelected", "APITool_SuspendGroups", err, APINULLGuid);
-        err = NoError;
-    }
-    // Запоминаем: режим Suspend Groups включили МЫ (он был выключен до записи),
-    // чтобы после записи вернуть состояние пользователя.
-    const bool weSuspendedGroups = !suspGrp;
     err = ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
         ParamHelpers::ElementsWrite (paramToWriteelem);
         return NoError;
@@ -146,19 +118,6 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     #if defined(TESTING)
     DBprnt ("Write end");
     #endif
-    // Восстанавливаем режим Suspend Groups: APITool_SuspendGroups — тумблер
-    // On/Off (док. AC25 ACAPI_Element_Tool), поэтому перед выключением
-    // перечитываем состояние на случай ручного переключения пользователем.
-    if (weSuspendedGroups) {
-        bool suspNow = true;
-    #ifdef ServerMainVers_2700
-        if (ACAPI_View_IsSuspendGroupOn (&suspNow) == NoError && suspNow)
-            ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
-    #else
-        if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspNow, nullptr) == NoError && suspNow)
-            ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
-    #endif
-    }
     SyncArray (syncSettings, guidArray);
     finish = clock ();
     duration = (double)(finish - start) / CLOCKS_PER_SEC;
