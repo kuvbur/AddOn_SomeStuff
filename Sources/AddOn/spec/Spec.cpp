@@ -835,6 +835,7 @@ namespace Spec {
                 runResult->elementsToModify += elements.GetSize ();
             runResult->elementsToDelete = elements_delete.GetSize ();
         }
+        SuspendGroupsGuard suspGuard;
 #ifdef ServerMainVers_2300
         if (!error_element.IsEmpty ()) {
             if (showUserInterface) {
@@ -1013,20 +1014,11 @@ namespace Spec {
                 runResult->elementsToCreate = createdCount;
             if (createdCount == 0 && elements_mod.IsEmpty () && elements_delete.IsEmpty ())
                 return APIERR_GENERAL;
+            }
         } else {
             start = clock ();
         }
         ACAPI_CallUndoableCommand ("Writing properties to created spec elements", [&] () -> GSErrCode {
-            bool suspGrp = false;
-#ifdef ServerMainVers_2300
-    #ifdef ServerMainVers_2700
-            err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
-            if (!suspGrp)
-                ACAPI_Grouping_Tool (elements_delete, APITool_SuspendGroups, nullptr);
-    #else
-        err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
-        if (!suspGrp) ACAPI_Element_Tool (elements_delete, APITool_SuspendGroups, nullptr);
-    #endif
             if (!elements_delete.IsEmpty ()) {
                 err = ACAPI_Element_Delete (elements_delete);
                 msg_rep ("Spec",
@@ -1034,20 +1026,7 @@ namespace Spec {
                          err,
                          APINULLGuid);
             }
-#endif // !AC_22
             ParamHelpers::ElementsWrite (paramOut);
-#ifdef ServerMainVers_2300
-            if (!suspGrp) {
-                bool suspNow = false;
-    #ifdef ServerMainVers_2700
-                if (ACAPI_View_IsSuspendGroupOn (&suspNow) == NoError && suspNow)
-                    ACAPI_Grouping_Tool (elements_delete, APITool_SuspendGroups, nullptr);
-    #else
-                if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspNow, nullptr) == NoError && suspNow)
-                    ACAPI_Element_Tool (elements_delete, APITool_SuspendGroups, nullptr);
-    #endif
-            }
-#endif
             return NoError;
         });
         if (has_v2) {
