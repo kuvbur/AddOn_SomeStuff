@@ -1,15 +1,16 @@
 # JSON Commands Architecture — ArchiCAD Add-On SomeStuff
 
-> Обновлено: 2026-09-24 — после восстановления инфраструктуры JSON-команд (#205) и добавления команды Spec (#206).
+> Обновлено: 2026-09-27 — добавлена команда SyncAll (#213); ранее после восстановления инфраструктуры JSON-команд (#205), команды Spec (#206, #207/#208).
 
 ## Текущая структура файлов
 
 ```
 Sources/AddOn/json_commands/
 ├── CommandBase.hpp/cpp          # Базовый класс CommandBase (+ заготовки ReadOnly/Modify)
-├── JsonCommandRegistrar.hpp/cpp # Регистрация команд в ArchiCAD (RoomBook, Spec)
+├── JsonCommandRegistrar.hpp/cpp # Регистрация команд в ArchiCAD (RoomBook, Spec, SyncAll)
 ├── RoomBookCommand.hpp/cpp      # Запуск построения отделки (изменяет модель)
 ├── SpecCommand.hpp/cpp          # Запуск построения спецификаций (изменяет модель)
+├── SyncAllCommand.hpp/cpp       # Запуск полной синхронизации (изменяет модель)
 ├── HealthCommand.hpp/cpp        # Health check + версия аддона (в дереве, НЕ регистрируется)
 └── How JSON Commands work.md    # Этот файл
 ```
@@ -27,7 +28,7 @@ API.ExecuteAddOnCommand
     ↓
 CommandBase::Execute  (главный поток)
     ↓
-Roombook::RoomBook()  /  Spec::SpecAll(syncSettings)
+Roombook::RoomBook()  /  Spec::SpecAll(syncSettings)  /  SyncAndMonAll(syncSettings)
     ↓
 GS::ObjectState → {"status":"returned","elapsedSeconds":...}
 ```
@@ -99,7 +100,36 @@ Spec::SpecAll (syncSettings);                     // spec/Spec.cpp — един�
 
 ---
 
-### 3. `Health` (CommandBase) — в коде, НЕ зарегистрирован
+### 3. `SyncAll` (CommandBase) — issue #213
+
+**Назначение:** запускает полную синхронизацию:
+
+```cpp
+SyncSettings syncSettings;
+LoadSyncSettingsFromPreferences (syncSettings, true);  // перечитать локальный JSON-конфиг
+PROPERTYCACHE ().Update ();                            // кэш свойств питает SyncByType/SyncData
+SyncAndMonAll (syncSettings);                          // Sync.cpp — та же функция, что у пункта меню SyncAll
+```
+
+**Входные параметры:** нет.
+
+**Ответ:**
+```json
+{ "status": "returned", "elapsedSeconds": 4.1818899 }
+```
+
+**Семантика:**
+- `SyncAndMonAll` объявлена как `void`, поэтому доказуемы только факт возврата и длительность вызова. Успех синхронизации, доступность undo, корректность модели и признак раннего выхода по `ResetProperty()` не заявляются: наружу их передать нечем.
+- Пункт меню `SyncAll_CommandID` дополнительно вызывает `DimRoundAll`, пишет настройки и обновляет меню — команда этого не делает (решение автора, #213).
+- Настройки перечитываются с `forceReload = true`: у внешнего вызова нет интерфейса, которым обычно включают флаги обхода. Состав обхода определяют `wallS/widoS/objS/cwallS`; флаг `syncAll` в логике не читается (только сериализация).
+- Прогресс-окно и фазы `SyncAndMonAll` не подавляются — правок `Sync.cpp` в #213 нет.
+- Изменение модели выполняет сама `SyncAndMonAll` внутри своего `ACAPI_CallUndoableCommand`; команда undo отдельно не открывает.
+
+**Runtime (AC25, test_25.pln, порт 19723):** `{"succeeded":true,"result":{"addOnCommandResponse":{"status":"returned","elapsedSeconds":4.1818899}}}` — dispatch и возврат подтверждены; корректность синхронизации и отмена — not verified. AC26–29 — not verified.
+
+---
+
+### 4. `Health` (CommandBase) — в коде, НЕ зарегистрирован
 
 **Назначение:** проверка доступности аддона + версия.
 
@@ -137,6 +167,11 @@ void RegisterJsonCommands () {
     const GSErrCode specErr = ACAPI_Install_AddOnCommandHandler (specCommand.Pass ());
     if (specErr != NoError)
         DBprnt ("Failed to register SpecCommand, error: " + GS::ValueToUniString (specErr));
+
+    GS::Owner<SyncAllCommand> syncAllCommand = GS::NewOwned<SyncAllCommand> ();
+    const GSErrCode syncAllErr = ACAPI_Install_AddOnCommandHandler (syncAllCommand.Pass ());
+    if (syncAllErr != NoError)
+        DBprnt ("Failed to register SyncAllCommand, error: " + GS::ValueToUniString (syncAllErr));
 }
 ```
 
@@ -208,5 +243,6 @@ response_data = result.get("addOnCommandResponse", {})
 
 1. ✅ `RoomBook` — endpoint подтверждён runtime (AC25, 15.085 c, порт 19723)
 2. ✅ `Spec` — реализована и собрана (AC25, #206); endpoint-вызов — ожидает проверки на запущенном Archicad
-3. ⏳ `Health` — включить в регистратор при появлении внешнего потребителя
-4. ⏳ ParseProperty / Renum-команды, MCP-сервер — отдельные задачи
+3. ✅ `SyncAll` — реализована (#213); endpoint подтверждён runtime (AC25, 4.182 c, порт 19723)
+4. ⏳ `Health` — включить в регистратор при появлении внешнего потребителя
+5. ⏳ ParseProperty / Renum-команды, MCP-сервер — отдельные задачи

@@ -8,6 +8,7 @@
 
     #include "json_commands/RoomBookCommand.hpp"
     #include "json_commands/SpecCommand.hpp"
+    #include "json_commands/SyncAllCommand.hpp"
 
 // -----------------------------------------------------------------------------
 // Регистрирует доступные JSON-команды аддона в Archicad.
@@ -22,6 +23,11 @@ void RegisterJsonCommands () {
     const GSErrCode specErr = ACAPI_Install_AddOnCommandHandler (specCommand.Pass ());
     if (specErr != NoError)
         DBprnt ("Failed to register SpecCommand, error: " + GS::ValueToUniString (specErr));
+
+    GS::Owner<SyncAllCommand> syncAllCommand = GS::NewOwned<SyncAllCommand> ();
+    const GSErrCode syncAllErr = ACAPI_Install_AddOnCommandHandler (syncAllCommand.Pass ());
+    if (syncAllErr != NoError)
+        DBprnt ("Failed to register SyncAllCommand, error: " + GS::ValueToUniString (syncAllErr));
 }
 
 #else

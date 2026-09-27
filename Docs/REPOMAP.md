@@ -1,6 +1,6 @@
 # REPOMAP — Карта репозитория
 
-> Обновлено 2026-09-25 (рабочее дерево `llm_test`, HEAD `13c1948`): добавлены `json_commands/` и `dialogs/OtherDbDialog.*`; статистика пересобрана.
+> Обновлено 2026-09-25 (рабочее дерево `llm_test`, HEAD `13c1948`): добавлены `json_commands/` и `dialogs/OtherDbDialog.*`; статистика пересобрана. Точечно 2026-09-27 (#213): добавлена `json_commands/SyncAllCommand.*`, статистика и `compile_commands.json` пересобраны для AC25.
 
 ## Корень
 `D:/SomeStuff_addon` — git repo. Основной разработочный код — ветка `llm_test`; документация ведётся на `docs/codebase-map` (AGENTS.md §17).
@@ -27,9 +27,9 @@ D:/SomeStuff_addon/
 │   │   ├── SyncSettings.*      # Settings (SyncSettings.dat)
 │   │   ├── OtherDbDialog.*     # Choose DB/story for linked elements (#210)
 │   │   ├── CommandHelpers.*, DG4rule.*
-│   ├── json_commands/          # ArchiCAD JSON commands, AC25+ (#205/#206/#207/#208)
+│   ├── json_commands/          # ArchiCAD JSON commands, AC25+ (#205/#206/#207/#208/#213)
 │   │   ├── CommandBase.*, JsonCommandRegistrar.*
-│   │   ├── RoomBookCommand.*, SpecCommand.*, HealthCommand.*
+│   │   ├── RoomBookCommand.*, SpecCommand.*, SyncAllCommand.*, HealthCommand.*
 │   │   └── How JSON Commands work.md
 │   ├── spec/                   # Spec engine
 │   ├── table/                  # Table renderer, navigator
@@ -59,7 +59,7 @@ D:/SomeStuff_addon/
 │   └── _generated/
 │       ├── symbols.json         # Extracted symbols (8549 entries, regex fallback)
 │       └── callgraph.json       # Callgraph edges (155, clangd MCP + grep-fallback)
-├── compile_commands.json       # LSP compile commands (31 записей, AC25)
+├── compile_commands.json       # LSP compile commands (32 записи, AC25)
 ├── config.json                 # Build config
 ├── CMakeLists.txt              # CMake entry
 ├── package.json                # npm package
@@ -75,17 +75,19 @@ D:/SomeStuff_addon/
 | Rules | Спецификации, авто-классификация, MEP | spec/, ClassificationFunction, MEPv1 |
 | Automation | Выравнивание, сброс, ревизии | pk/ (AutomateFunction, ResetProperty, Revision) |
 | UI | Dialogs, palette, HTML interface | dialogs/ (BrowserPalette, SyncSettings, OtherDbDialog, CommandHelpers, DG4rule) |
-| JSON commands | HTTP/JSON API AC25+ | json_commands/ (CommandBase, JsonCommandRegistrar, RoomBook, Spec, Health) |
+| JSON commands | HTTP/JSON API AC25+ | json_commands/ (CommandBase, JsonCommandRegistrar, RoomBook, Spec, SyncAll, Health) |
 | Tables | Table rendering, navigation | table/TableRenderer, table/TablesNavigator |
 | Tests | TESTING-тесты | TestFunc |
 | Third-party | Embedded libraries | third_party/qrcodegen |
 
-## Статистика (из compile_commands.json, 2026-09-25)
-- Всего записей: 31 (1 cmake_pch + 30 source-единиц)
-- `.cpp`: 30 (включая `json_commands/` ×5 и `dialogs/OtherDbDialog.cpp`)
+## Статистика (из compile_commands.json, 2026-09-27, AC25)
+- Всего записей: 32 (1 cmake_pch + 31 source-единиц)
+- `.cpp`: 31 (включая `json_commands/` ×6 и `dialogs/OtherDbDialog.cpp`)
 - **include paths**: 1464 `/I` флага, 61 уникальный путь, 0 отсутствующих (проверено 2026-09-22, `Docs/_progress.md`)
 
-## Изменения с предыдущей ревизии карты (2026-09-22 → 2026-09-25)
+## Изменения с предыдущей ревизии карты (2026-09-25 → 2026-09-27)
+- Добавлена команда `SomeStuffCommand.SyncAll` (#213): `json_commands/SyncAllCommand.*` — обёртка над `SyncAndMonAll` без правок `Sync.cpp`; статистика и `compile_commands.json` пересобраны для AC25 (28–29+ не пересобирались).
+- (2026-09-22 → 2026-09-25)
 - Добавлен `json_commands/` (#205/#206/#207/#208): JSON-команды `SomeStuffCommand.RoomBook` и `SomeStuffCommand.Spec` (AC25+); `HealthCommand` — шаблон, не регистрируется.
 - `OtherDbDialog` вынесен из `Sync.cpp` в `dialogs/OtherDbDialog.*` (#210).
 - `Spec.cpp` — non-interactive `SpecAll` с `placementPoint`/`ruleNames` и `SpecRunResult` (#207/#208).

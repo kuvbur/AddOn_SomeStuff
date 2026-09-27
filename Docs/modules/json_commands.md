@@ -1,17 +1,20 @@
 # json_commands — JSON-команды аддона (AC25–29)
 
 > Карточка создана 2026-09-25 по коду ветки `llm_test` (HEAD `13c1948`). Модуль восстановлен в #205 (RoomBook) и #207/#208 (Spec); AC22–24 не поддерживаются — весь код под `#if defined(ServerMainVers_2500)`. Номера строк — определения в `.cpp`, 1-based (проверены grep/read). Своя справка по API: `Sources/AddOn/json_commands/How JSON Commands work.md` [из файла].
+>
+> Обновлено 2026-09-27 (#213): добавлена команда `SyncAll`; строка `Health`-решения сместилась в `How JSON Commands work.md` (:132 заголовок, :149 решение) [по коду].
 
 ## Назначение
 
-Подсистема HTTP/JSON-команд ArchiCAD (`API_AddOnCommand`): внешний агент (по HTTP-порту экземпляра Archicad) может вызвать модульные операции аддона — построение отделки (RoomBook) и non-interactive построение спецификации (Spec). [по коду]
+Подсистема HTTP/JSON-команд ArchiCAD (`API_AddOnCommand`): внешний агент (по HTTP-порту экземпляра Archicad) может вызвать модульные операции аддона — построение отделки (RoomBook), non-interactive построение спецификации (Spec) и полную синхронизацию (SyncAll). [по коду]
 
 ## Файлы
 
 - `CommandBase.cpp/hpp` — базовые классы команд, общие хелперы ответов
 - `RoomBookCommand.cpp/hpp` — команда `SomeStuffCommand.RoomBook` (#205)
 - `SpecCommand.cpp/hpp` — команда `SomeStuffCommand.Spec` (#207/#208)
-- `HealthCommand.cpp/hpp` — read-only шаблон `SomeStuffCommand.Health` (в регистратор НЕ включён, см. #205 / How JSON Commands work.md:119)
+- `SyncAllCommand.cpp/hpp` — команда `SomeStuffCommand.SyncAll` (#213)
+- `HealthCommand.cpp/hpp` — read-only шаблон `SomeStuffCommand.Health` (в регистратор НЕ включён, см. #205 / How JSON Commands work.md:149)
 - `JsonCommandRegistrar.cpp/hpp` — `RegisterJsonCommands()`, вызывается из `Initialize` (SomeStuff_Main.cpp:569)
 - `How JSON Commands work.md` — внутренняя справка [из файла]
 
@@ -24,6 +27,7 @@
 | `ModifyCommand` | CommandBase.hpp:77 | Подкласс с поддержкой undo; в актуальном коде не используется — команды-изменения наследуют `CommandBase` напрямую [по коду] |
 | `RoomBookCommand` | RoomBookCommand.hpp:7 | Команда без параметров, free-form ответ [по коду] |
 | `SpecCommand` | SpecCommand.hpp:7 | Команда со схемой параметров (обязательный `placementPoint`) [по коду] |
+| `SyncAllCommand` | SyncAllCommand.hpp:7 | Команда без параметров, free-form ответ (`SyncAll`) [по коду] |
 | `HealthCommand` | HealthCommand.hpp:7 | Команда статуса/версии, read-only [по коду] |
 | `CommonSchema` | CommandBase.hpp:15 | `Used`/`NotUsed` — режим общей схемы ответа; все актуальные команды используют `NotUsed` [по коду] |
 
@@ -31,7 +35,7 @@
 
 | Функция/метод | .cpp:строка | Назначение |
 |---------------|-------------|-----------|
-| `RegisterJsonCommands()` | JsonCommandRegistrar.cpp:15 | Регистрирует `RoomBookCommand` и `SpecCommand` через `ACAPI_Install_AddOnCommandHandler`; ошибка — `DBprnt`. Вне AC25 — пустая (JsonCommandRegistrar.cpp:32) [по коду] |
+| `RegisterJsonCommands()` | JsonCommandRegistrar.cpp:16 | Регистрирует `RoomBookCommand`, `SpecCommand` и `SyncAllCommand` через `ACAPI_Install_AddOnCommandHandler`; ошибка — `DBprnt`. Вне AC25 — пустая (JsonCommandRegistrar.cpp:38) [по коду] |
 | `CommandBase::GetNamespace` | CommandBase.cpp:18 | Возвращает `SomeStuffCommand` [из комментария] |
 | `CommandBase::GetExecutionPolicy` | CommandBase.cpp:23 | `ScheduleForExecutionOnMainThread` — модифицирующие команды только в главном потоке [из комментария] |
 | `RoomBookCommand::GetName` | RoomBookCommand.cpp:19 | Имя команды `RoomBook` [по коду] |
@@ -39,6 +43,8 @@
 | `SpecCommand::GetName` | SpecCommand.cpp:20 | Имя команды `Spec` [по коду] |
 | `SpecCommand::GetInputParametersSchema` | SpecCommand.cpp:25 | JSON-схема: `placementPoint{x,y}` обязательна, `ruleNames[]` опциональна (minItems 1) [по коду] |
 | `SpecCommand::Execute` | SpecCommand.cpp:57 | Без `placementPoint` — ошибка `APIERR_BADPARS`; иначе `LoadSyncSettingsFromPreferences` → `Spec::SpecAll(syncSettings, ruleNames?, &placementPoint, &runResult)`; ответ: `status` completed/failed, `resultCode`, счётчики `elementsToCreate/Modify/Delete`, `elapsedSeconds` [по коду] |
+| `SyncAllCommand::GetName` | SyncAllCommand.cpp:21 | Имя команды `SyncAll` [по коду] |
+| `SyncAllCommand::Execute` | SyncAllCommand.cpp:36 | Параметров нет; `LoadSyncSettingsFromPreferences(syncSettings, true)` → `PROPERTYCACHE().Update()` → `SyncAndMonAll(syncSettings)`; ответ `{status:"returned", elapsedSeconds}` — `void`-функция не сообщает ошибку/отмену/признак раннего выхода по `ResetProperty()` [по коду; #213] |
 | `HealthCommand::Execute` | HealthCommand.cpp:34 | Ответ `{status:"ok", version: <из ID_ADDON_STRINGS VersionId>, addon:"SomeStuff"}` [по коду] |
 | `CreateErrorResponse` / `CreateSuccessResponse` | CommandBase.cpp:50 / 60 | Свободные хелперы ответов (`error{code}`, `message` / `success:true`) [по коду] |
 | `GetGuidFromObjectState` / `CreateGuidObjectState` (2 перегрузки) | объявлены в CommandBase.hpp:99-109 | Хелперы GUID-обёрток; определения не найдены в .cpp — [назначение не установлено: потенциально мёртвый код, не проверено] |
@@ -46,12 +52,21 @@
 ## Карточки
 
 ### `RegisterJsonCommands() -> void`
-- Расположение: `Sources/AddOn/json_commands/JsonCommandRegistrar.cpp:15`
-- Назначение: установка обработчиков двух JSON-команд. [из комментария]
+- Расположение: `Sources/AddOn/json_commands/JsonCommandRegistrar.cpp:16`
+- Назначение: установка обработчиков трёх JSON-команд. [из комментария]
 - Контракт: вызывается один раз из `Initialize` (SomeStuff_Main.cpp:569), до `BrowserPalette::RegisterPaletteControlCallBack`. `#include "ACAPinc.h"` обязан предшествовать проверке версии (макрос даёт этот заголовок) — иначе пустая единица трансляции и ошибка на линковке [из How JSON Commands work.md:17-18].
 - Побочные эффекты: регистрация HTTP-эндпоинтов на порту экземпляра Archicad; `DBprnt` при ошибке установки.
-- Вызывает: `ACAPI_Install_AddOnCommandHandler` (×2, SDK), `DBprnt` (CommonFunction).
+- Вызывает: `ACAPI_Install_AddOnCommandHandler` (×3, SDK), `DBprnt` (CommonFunction).
 - Вызывается из: `Initialize` (SomeStuff_Main.cpp:569). [grep]
+
+### `SyncAllCommand::Execute(parameters, processControl) -> GS::ObjectState`
+- Расположение: `Sources/AddOn/json_commands/SyncAllCommand.cpp:36`
+- Назначение: запускает полную синхронизацию тем же `SyncAndMonAll`, что и пункт меню `SyncAll_CommandID` (без `DimRoundAll`, записи настроек и обновления меню). [по коду; #213]
+- Контракт: параметров нет (`GetInputParametersSchema` — `NoValue`); `processControl` игнорируется — отмена не поддерживается. Ответ `{status:"returned", elapsedSeconds}` означает только возврат из `SyncAndMonAll` (`void`). Настройки перечитываются через `LoadSyncSettingsFromPreferences(syncSettings, true)`; состав обхода определяют флаги `wallS/widoS/objS/cwallS` из локального JSON-конфига. [по коду; #213]
+- Побочные эффекты: `PROPERTYCACHE().Update()` (как в `MenuCommandHandler` перед вызовом команды меню); модификация БД внутри `ACAPI_CallUndoableCommand` самой `SyncAndMonAll`; append-записи в Report через `msg_rep` (окно не показывается — `ACAPI_WriteReport(msg, false)`). Ранний выход при `ResetProperty() == true` наружу не сигнализируется. [по коду]
+- Вызывает: `LoadSyncSettingsFromPreferences` (dialogs/SyncSettings.cpp), `PROPERTYCACHE().Update()` (Propertycache.hpp), `SyncAndMonAll` (Sync.cpp:193). [grep]
+- Вызывается из: диспетчеризации Archicad по имени команды (внешний HTTP-вызов); в коде вызовов нет. [по коду]
+- Runtime: AC25, test_25.pln, порт 19723 — `{"succeeded":true,"result":{"addOnCommandResponse":{"status":"returned","elapsedSeconds":4.1818899}}}`; корректность синхронизации и отмена — not verified. AC26–29 — not verified.
 
 ### `RoomBookCommand::Execute(parameters, processControl) -> GS::ObjectState`
 - Расположение: `Sources/AddOn/json_commands/RoomBookCommand.cpp:34`
@@ -72,12 +87,13 @@
 ## Зависимости
 
 - `ACAPinc.h`, `api_headers/APIEnvir.h`, `ObjectState.hpp`, `OnExit.hpp` (CommandBase) [по include]
-- `Roombook.hpp` (RoomBookCommand), `dialogs/SyncSettings.hpp`, `spec/Spec.hpp` (SpecCommand), `CommonFunction.hpp`, `Constants.hpp`, `api_headers/ResourceIds.hpp` (HealthCommand/Registrator) [по include]
+- `Roombook.hpp` (RoomBookCommand), `dialogs/SyncSettings.hpp`, `spec/Spec.hpp` (SpecCommand), `dialogs/SyncSettings.hpp`, `Propertycache.hpp`, `Sync.hpp` (SyncAllCommand), `CommonFunction.hpp`, `Constants.hpp`, `api_headers/ResourceIds.hpp` (HealthCommand/Registrator) [по include]
 
 ## Инварианты и ограничения
 
 - Все `.cpp` под `#if defined(ServerMainVers_2500)`; на AC22–24 `RegisterJsonCommands()` — пустая функция, модуль не компилируется. [по коду]
 - Каждый JSON API HTTP-порт соответствует конкретному запущенному экземпляру Archicad — выбор «куда» делает вызывающий через порт, параметром не передаётся. [IDEA.md Decisions #205]
 - Не реинтродуцировать JSON-команды «в ствол» через BrowserPalette-мост: мост и JSON-команды — разные каналы (мост = инлайн-функции `RegisterACAPIJavaScriptObject`), см. ARCHITECTURE.md §JS Bridge. [по коду]
-- `HealthCommand` намеренно не регистрируется — остаётся шаблоном read-only команды (решение #205). [из How JSON Commands work.md:119]
+- `HealthCommand` намеренно не регистрируется — остаётся шаблоном read-only команды (решение #205). [из How JSON Commands work.md:149]
+- `SyncAllCommand` вызывает `SyncAndMonAll` as-is: прогресс-окно и фазы не подавляются и `Sync.cpp` не правится — осознанное решение #213, а не недоделка; не «оптимизировать» его без отдельной задачи. [по коду; #213]
 - Конфликт имен: `CreateErrorResponse`/`CreateSuccessResponse` существуют и как свободные (CommandBase.cpp:50/60), и как protected-методы `ReadOnlyCommand`/`ModifyCommand` — дублирование API; актуальные команды используют свободные. [по коду]
