@@ -27,3 +27,6 @@
 - AC27 (`#170`): legacy-вызовы SDK обёрнуты `#ifdef ServerMainVers_2700` (новое ACAPI-имя) / `#else` (старое): `ACAPI_Database (APIDb_…ID)` → `ACAPI_Database_*`/`ACAPI_Window_*`/`ACAPI_Drawing_*`/`ACAPI_View_*`, `ACAPI_Navigator (APINavigator_…ID)` → `ACAPI_Navigator_*`, `ACAPI_Register/Install_NavigatorAddOnViewPointData*` → `ACAPI_AddOnIntegration_*`. Имена взяты из DevKit-27 `Support/Inc/ACAPI_MigrationHeader.hpp`; сам заголовок в проект не подключается (AGENTS §6). [по коду DevKit + сборка AC27]
 - AC27: константы `API_NavgatorViewSettings*ID` переименованы в `API_NavigatorViewSettings*ID` (в SDK исправлена опечатка) — выбор веткой `#ifdef ServerMainVers_2700`. [по коду DevKit]
 - AC27: `ACAPI_AttributeIndex` в вызовах рисования, `API_PenType` → `const GS::Array<API_Pen>*` в `ACAPI_Drawing_StartDrawingData`. [по коду DevKit]
+## Версии (AC28)
+- AC28: `__ACENV_CALL` удалён из SDK — сигнатуры обработчиков навигатора (`ScheduleWindowHandlerProc`, `MergeViewPointData`, `SaveOldFormatViewPointData`, `ConvertNewFormatViewPointData`) обёрнуты `#ifdef ServerMainVers_2800` (`GSErrCode` без макроса) / `#else`. [по коду DevKit-28 + сборка]
+

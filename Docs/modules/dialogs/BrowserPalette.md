@@ -43,3 +43,8 @@
 - `FilterElementsByType` получает тип элемента через `GetElemTypeID(head)` (CommonFunction), а не через `head.typeID`: в AC26 поле переименовано в `API_Elem_Head::type` (`API_ElemType`). [по коду DevKit + сборка AC26]
 - AC27 (`#170`): JS-мост переехал из DGLib в модуль `JavascriptEngine` — `DG::JSBase/JSFunction/JSObject/JSArray/JSValue` стали `JS::Base/Function/Object/Array/Value`; в `BrowserPalette.hpp` под `#ifdef AC_27` объявлены псевдонимы в `namespace DG`, поэтому тела функций моста не менялись. [по коду DevKit + сборка AC27]
 - AC27: `DGModule.hpp` больше не включает `DGBrowser.hpp` — браузерный контрол подключается явно (`BrowserPalette.hpp`). [по коду DevKit + сборка AC27]
+## Версии (AC28)
+- AC28: `__ACENV_CALL` удалён из SDK (`APICalls.h` в 27, в 28 макроса нет) — объявления/определения `PaletteControlCallBack` и `SelectionChangeHandler` обёрнуты `#ifdef ServerMainVers_2800` (без макроса) / `#else`. [по коду DevKit-28 + сборка]
+- AC28: `GS::HashTable::CurrentPair::value` стал ссылкой `Value&` (в ≤27 — `Value*`) — в блоке разбора классификаций это `classPair.value.item`, `&sysPair.value` под `#ifdef ServerMainVers_2800`. [по коду DevKit-28 + сборка]
+- Псевдонимы `DG::JS* → JS::*` (AC27 перенёс JS-мост в модуль JavascriptEngine) теперь под `#ifdef ServerMainVers_2700`, а не под `AC_27`: в AC28 определён `AC_28`, и ветка `AC_27` не срабатывала — сборка AC28 падала на `"JSObject": не является членом "DG"`. [по коду DevKit-28 + сборка]
+

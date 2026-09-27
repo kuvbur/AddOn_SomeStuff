@@ -57,3 +57,7 @@
 - AC27: `ACAPI_Attribute_GetNum` принимает `UInt32&` (счётчик), поэтому self-test `FindFirstFillIndex` разведён по версиям. [по коду DevKit]
 - AC27: шрифт перестал быть атрибутом — `API_FontID`/`API_Attribute::font` удалены, код символа берётся из `ACAPI_Font_GetFont (API_FontType)`. [по коду DevKit]
 - AC27: `ACAPI_Database (APIDb_Start/StopDrawingDataID, …)` → `ACAPI_Drawing_Start/StopDrawingData` (в DevKit-обёртке параметр pens был `API_PenType**` — заменён на `const GS::Array<API_Pen>*`). [по коду DevKit + сборка AC27]
+## Версии
+- AC28 (#170): `API_ElementMemo::textContent` стал `GS::UniString*` (был `GSHandle`), у `API_TextType` больше нет `charCode` — кодировку несёт сам `UniString`, поэтому обходной путь «брать код из гарнитуры» для окна ведомости в AC28 не нужен (в 27 он остаётся). [по коду DevKit-28 + сборка]
+- AC27 (#170): `API_AttributeIndex` — класс, создаётся `ACAPI_CreateAttributeIndex` → локальный `AttrIndex (short)`; `ACAPI_Attribute_GetNum` берёт `UInt32&`; шрифт — `ACAPI_Font_GetFont (API_FontType)` вместо `API_FontID`/`API_Attribute::font`; `ACAPI_Database (APIDb_Start/StopDrawingDataID)` → `ACAPI_Drawing_Start/StopDrawingData`. [по коду DevKit-27 + сборка]
+

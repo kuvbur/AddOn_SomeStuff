@@ -64,3 +64,6 @@
 
 ## Инварианты
 - Observer'ы устанавливаются при инициализации и снимаются при деинициализации [по коду]
+## Версии (AC28)
+- AC28: `__ACENV_CALL` удалён из SDK — обработчики главного модуля (`Initialize`, `FreeData`, `ProjectEventHandlerProc`, `ElementEventHandlerProc`, `SelectionChangeHandlerProc`, `ReservationChangeHandler`) объявлены/определены в ветке `#ifdef ServerMainVers_2800` без макроса. [по коду репозитория + сборка AC28]
+

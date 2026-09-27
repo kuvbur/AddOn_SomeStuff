@@ -281,7 +281,11 @@ namespace TablesNavigator {
             return NoError;
         }
 
+#ifdef ServerMainVers_2800
+        GSErrCode ScheduleWindowHandlerProc (const API_Guid &userRefId, API_NotifyWindowEventID notifID) {
+#else
         GSErrCode __ACENV_CALL ScheduleWindowHandlerProc (const API_Guid &userRefId, API_NotifyWindowEventID notifID) {
+#endif
             switch (notifID) {
             case APINotifyWindow_Activate: {
                 bool contentChanged = true;
@@ -399,7 +403,11 @@ namespace TablesNavigator {
             return NoError;
         }
 
+#ifdef ServerMainVers_2800
+        GSErrCode
+#else
         GSErrCode __ACENV_CALL
+#endif
         MergeViewPointData (const GS::Array<API_NavigatorAddOnViewPointData> &sourceVPDataArray) {
             (void)sourceVPDataArray;
 
@@ -408,7 +416,11 @@ namespace TablesNavigator {
             return NoError;
         }
 
+#ifdef ServerMainVers_2800
+        GSErrCode
+#else
         GSErrCode __ACENV_CALL
+#endif
         SaveOldFormatViewPointData (API_FTypeID planFileType,
                                     const GS::Array<API_NavigatorAddOnViewPointData> &currentFormatVPDataArray,
                                     GS::Array<API_NavigatorAddOnViewPointData> &oldFormatVPDataArray) {
@@ -417,7 +429,11 @@ namespace TablesNavigator {
             return NoError;
         }
 
+#ifdef ServerMainVers_2800
+        GSErrCode
+#else
         GSErrCode __ACENV_CALL
+#endif
         ConvertNewFormatViewPointData (API_FTypeID planFileType,
                                        const GS::Array<API_NavigatorAddOnViewPointData> &oldFormatVPDataArray,
                                        GS::Array<API_NavigatorAddOnViewPointData> &currentFormatVPDataArray) {

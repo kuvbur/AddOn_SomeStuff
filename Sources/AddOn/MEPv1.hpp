@@ -45,12 +45,13 @@
         #include "GSUnID.hpp"
 
         #ifdef ServerMainVers_2700
+            // AC28 убрал контейнеры таблиц настроек образца AC27 — там только новые имена.
             #ifndef ServerMainVers_2800
                 #include "ACAPI/MEPCableCarrierPreferenceTableContainer.hpp"
+                #include "ACAPI/MEPDuctPreferenceTableContainer.hpp"
+                #include "ACAPI/MEPPipePreferenceTableContainer.hpp"
+                #include "ACAPI/MEPPreferenceTableBase.hpp"
             #endif
-            #include "ACAPI/MEPDuctPreferenceTableContainer.hpp"
-            #include "ACAPI/MEPPipePreferenceTableContainer.hpp"
-            #include "ACAPI/MEPPreferenceTableBase.hpp"
         #endif
         #ifdef ServerMainVers_2800
             #include "ACAPI/MEPCableCarrierSegmentPreferenceTable.hpp"

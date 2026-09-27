@@ -1087,10 +1087,17 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                         GS::UniString displayName;
                         bool found = false;
                         for (const auto &sysPair : cache.systemdict) {
+#ifdef ServerMainVers_2800
+                            // AC28: CurrentPair::value — ссылка (Value&), а не указатель как в ≤27.
+                            for (const auto &classPair : sysPair.value) {
+                                if (classPair.value.item.guid == pair.second) {
+                                    ClassificationFunc::GetFullName (classPair.value.item, sysPair.value, displayName);
+#else
                             for (const auto &classPair : *sysPair.value) {
                                 if (classPair.value->item.guid == pair.second) {
                                     ClassificationFunc::GetFullName (
                                         classPair.value->item, *sysPair.value, displayName);
+#endif
                                     classificationDisplayNames.Put (key, displayName);
                                     found = true;
                                     break;
@@ -1183,11 +1190,19 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             if (optionsCache.IsEmpty ()) {
                 auto &systemdict = cache.systemdict;
                 for (const auto &sysPair : systemdict) {
+#ifdef ServerMainVers_2800
+                    const ClassificationFunc::ClassificationDict *classDict = &sysPair.value;
+#else
                     const ClassificationFunc::ClassificationDict *classDict = sysPair.value;
+#endif
                     if (classDict == nullptr)
                         continue;
                     for (const auto &classPair : *classDict) {
+#ifdef ServerMainVers_2800
+                        const ClassificationFunc::ClassificationValues *cv = &classPair.value;
+#else
                         const ClassificationFunc::ClassificationValues *cv = classPair.value;
+#endif
                         if (cv == nullptr)
                             continue;
                         GS::UniString fullName;
@@ -1318,9 +1333,17 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 bool found = false;
 
                 for (const auto &sysPair : cache.systemdict) {
+#ifdef ServerMainVers_2800
+                    const ClassificationFunc::ClassificationDict *classDict = &sysPair.value;
+#else
                     const ClassificationFunc::ClassificationDict *classDict = sysPair.value;
+#endif
                     for (const auto &classPair : *classDict) {
+#ifdef ServerMainVers_2800
+                        const ClassificationFunc::ClassificationValues *cv = &classPair.value;
+#else
                         const ClassificationFunc::ClassificationValues *cv = classPair.value;
+#endif
                         GS::UniString fullName;
                         ClassificationFunc::GetFullName (cv->item, *classDict, fullName);
                         if (fullName == classificationValue) {
@@ -1595,7 +1618,11 @@ GSErrCode BrowserPalette::ManualGetSelection () {
 // Статический обработчик изменения выделения.
 // Вызывается из глобального обработчика SelectionChangeHandlerProc.
 // -----------------------------------------------------------------------------
+#ifdef ServerMainVers_2800
+GSErrCode BrowserPalette::SelectionChangeHandler (const API_Neig * /*selElemNeig*/) {
+#else
 GSErrCode __ACENV_CALL BrowserPalette::SelectionChangeHandler (const API_Neig * /*selElemNeig*/) {
+#endif
     DBprnt ("BrowserPalette::SelectionChangeHandler ()");
     // Программная подсветка/зум транслируются как смена выделения — игнорируем,
     // чтобы не сбрасывать пользовательское выделение.
@@ -1667,9 +1694,13 @@ void BrowserPalette::PanelCloseRequested (const DG::PanelCloseRequestEvent &, bo
     *accepted = true;
 }
 
+#ifdef ServerMainVers_2800
+GSErrCode BrowserPalette::PaletteControlCallBack (Int32, API_PaletteMessageID messageID, GS::IntPtr param) {
+#else
 GSErrCode __ACENV_CALL BrowserPalette::PaletteControlCallBack (Int32,
                                                                API_PaletteMessageID messageID,
                                                                GS::IntPtr param) {
+#endif
     switch (messageID) {
     case APIPalMsg_OpenPalette:
         if (!HasInstance ())

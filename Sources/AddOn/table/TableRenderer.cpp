@@ -871,11 +871,19 @@ namespace TableRenderer {
         BNZeroMemory (&element, sizeof (API_Element));
         BNZeroMemory (&memo, sizeof (API_ElementMemo));
 
+#ifdef ServerMainVers_2800
+        // AC28: memo.textContent стал GS::UniString*, GSHandle и API_TextType::charCode удалены —
+        // кодировку несёт сам UniString, обходной путь с charCode не нужен.
+        memo.textContent = new GS::UniString (line);
+        if (memo.textContent == nullptr)
+            return APIERR_MEMFULL;
+#else
         memo.textContent = BMhAllClear ((line.GetLength () + 1) * sizeof (GS::uchar_t));
         if (memo.textContent == nullptr)
             return APIERR_MEMFULL;
 
         GS::ucscpy (reinterpret_cast<GS::uchar_t *> (*memo.textContent), line.ToUStr ());
+#endif
 
         SetElemTypeID (element, API_TextID); // Задание типа с учётом версии AC
 
@@ -904,7 +912,10 @@ namespace TableRenderer {
         // ведомости это уже сброшенная база окна — тогда код не соответствует гарнитуре и
         // кириллица выводится чужими глифами (наблюдалось в окне MyDraw 2026-09-18).
         // Берём код из самой гарнитуры.
-#ifdef ServerMainVers_2700
+#ifdef ServerMainVers_2800
+        // AC28: у API_TextType больше нет charCode — кодировку несёт GS::UniString в memo,
+        // поэтому подменять код гарнитуры не нужно (см. комментарий выше про окно ведомости).
+#elif defined(ServerMainVers_2700)
         // AC27: шрифт больше не атрибут (API_FontID и API_Attribute::font удалены) —
         // берём его через ACAPI_Font_GetFont; head.index имеет тип Int32.
         API_FontType fontType = {};
@@ -926,11 +937,16 @@ namespace TableRenderer {
         static short lastLoggedFontIndex = -1;
         if (lastLoggedFontIndex != layout.fontIndex) {
             lastLoggedFontIndex = layout.fontIndex;
+    #ifdef ServerMainVers_2800
+            DBprnt (GS::UniString::Printf ("font=%d size=%.2f", static_cast<int> (layout.fontIndex), layout.fontSizeMm),
+                    "TableRenderer text params");
+    #else
             DBprnt (GS::UniString::Printf ("font=%d charCode=%d size=%.2f",
                                            static_cast<int> (layout.fontIndex),
                                            static_cast<int> (element.text.charCode),
                                            layout.fontSizeMm),
                     "TableRenderer text params");
+    #endif
         }
 #endif
 

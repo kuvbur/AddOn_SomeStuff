@@ -33,3 +33,6 @@
 ## Инварианты
 - rawname-константы `{@mep:...}` — 15 штук [из комментария, MEPv1.hpp:84-100]
 - Ветки ServerMainVers_2700/2800/2900 — API MEP существенно меняется [по коду]
+## Версии (AC28)
+- AC28 убрал контейнеры таблиц настроек образца AC27 (`MEPCableCarrierPreferenceTableContainer.hpp`, `MEPDuctPreferenceTableContainer.hpp`, `MEPPipePreferenceTableContainer.hpp`, `MEPPreferenceTableBase.hpp` — их нет в `Support/Modules/MEPAPI/ACAPI`), вместо них новые `*Segment*`/`*Branch*`/`*Elbow*`-таблицы. В блоке `#ifdef ServerMainVers_2700` старые include остались только под `#ifndef ServerMainVers_2800` (ветка `ServerMainVers_2700` активна и в 28/29). [по коду DevKit-28 + сборка]
+

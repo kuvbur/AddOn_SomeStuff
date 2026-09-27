@@ -16,8 +16,8 @@
 #include "DGBrowser.hpp"
 #include "Sync.hpp"
 
-#ifdef AC_27
-// AC27 перенёс JS-мост из DGLib в модуль JavascriptEngine:
+#ifdef ServerMainVers_2700
+// AC27 перенёс JS-мост из DGLib в модуль JavascriptEngine (AC27/28/29):
 // DG::JSBase/JSFunction/JSObject/JSArray/JSValue стали JS::Base/Function/Object/Array/Value.
 // Псевдонимы сохраняют код моста без правки всех мест использования.
 namespace DG {
@@ -71,9 +71,13 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
     virtual void PanelResized (const DG::PanelResizeEvent &ev) override;
     virtual void PanelCloseRequested (const DG::PanelCloseRequestEvent &ev, bool *accepted) override;
 
+#ifdef ServerMainVers_2800
+    static GSErrCode PaletteControlCallBack (Int32 paletteId, API_PaletteMessageID messageID, GS::IntPtr param);
+#else
     static GSErrCode __ACENV_CALL PaletteControlCallBack (Int32 paletteId,
                                                           API_PaletteMessageID messageID,
                                                           GS::IntPtr param);
+#endif
 
     static GS::Ref<BrowserPalette> instance;
 
@@ -127,7 +131,11 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
     GSErrCode ManualGetSelection ();
 
     static GSErrCode RegisterPaletteControlCallBack ();
+#ifdef ServerMainVers_2800
+    static GSErrCode SelectionChangeHandler (const API_Neig *);
+#else
     static GSErrCode __ACENV_CALL SelectionChangeHandler (const API_Neig *);
+#endif
 };
 
 #endif // BROWSERPALETTE_HPP
