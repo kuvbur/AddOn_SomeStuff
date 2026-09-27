@@ -125,7 +125,7 @@ IN_PROGRESS — пункт 1 выполнен (AC25 build + проверенна
 
 ### Last Completed
 
-2026-09-27 — пункт 1: `version`/`description`/`copyright` в `config.json` (версия числом `1.78`, без `v`), `parse_version` + `ReadConfigJson` в `CMakeCommon.cmake`, экспорт `ADDON_VERSION` двумя каналами, хардкод `v1.78` убран. AC25 build успешен, версия `1.78 2026-09-27-15` подтверждена в `RINT/AddOn.grc` и в `.apx`, compile DB регенерирован.
+2026-09-27 — пункт 1: `version`/`description`/`copyright` в `config.json` (версия числом `1.78`, без `v`), `parse_version` + `ReadConfigJson` в `CMakeCommon.cmake`, экспорт `ADDON_VERSION` двумя каналами, хардкод `v1.78` убран. AC25 build успешен, версия `1.78 2026-09-27-15` подтверждена в `RINT/AddOn.grc` и в `.apx`, compile DB регенерирован. Регрессия `7dd2310`: сборка падала на другой машине (`charmap` 0x8f) — `config.json` читался без кодировки; добавлено кириллическое `description` в `3c9e14c` и вскрыло скрытый баг.
 
 ### Next Step
 
@@ -133,7 +133,7 @@ IN_PROGRESS — пункт 1 выполнен (AC25 build + проверенна
 
 ### Last Checkpoint
 
-`3c9e14c` — `[#214] Версия аддона из config.json вместо хардкода v1.78` (config.json, CMakeLists.txt, Tools/CMakeCommon.cmake, IDEA.md).
+`7dd2310` — `[#214] BuildAddOn.py: явная кодировка UTF-8 при чтении config.json` (предыдущий: `3c9e14c` — версия из config.json).
 
 ### Plan
 
@@ -170,6 +170,7 @@ IN_PROGRESS — пункт 1 выполнен (AC25 build + проверенна
 - #157 — пресеты фильтров реализованы (issue остался открытым по недосмотру; кандидат на закрытие после проверки палитры).
 
 
+- **`open()` в `Tools/*.py` без `encoding` = кодировка локали ОС** — на Windows может быть cp1251/cp1252, и не-ASCII в `config.json`/`.grc` роняет сборку. Именно так вскрылся баг после добавления кириллицы в `config.json` (у нас локаль UTF-8, у коллеги — нет).
 - **CMake `string(REPLACE)` требует 4 аргумента** (match, replace, output, **input**) — с тремя `requires at least four arguments`. Проверено на `"%Y"`.
 - **Вложенный путь JSON в списке CMake разъезжается**: `set (a copyright\;name)` даёт 2 элемента, а не 1 — вложенные поля читать отдельными вызовами `string(JSON ... GET "${json}" copyright name)`.
 ## Грабли
