@@ -987,7 +987,29 @@ namespace Spec {
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
         }
-        if (elements_new.IsEmpty () && elements_mod.IsEmpty () && elements_delete.IsEmpty ()) {
+        // Какое-то действие требуется: создать, изменить или удалить.
+        bool has_action = false;
+        for (const ElementDict &ed : elements_new) {
+            if (!ed.IsEmpty ())
+                has_action = true;
+        }
+        for (const ElementDict &ed : elements_mod) {
+            if (!ed.IsEmpty ())
+                has_action = true;
+        }
+        // Совпадение с уже существующими объектами без изменений — это штатный no-op,
+        // а не «правило ничего не дало». Раньше такой случай попадал в APIERR_GENERAL.
+        bool rule_produced_rows = false;
+        for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
+#ifdef ServerMainVers_2800
+            const SpecRule &r = cIt->value;
+#else
+            const SpecRule &r = *cIt->value;
+#endif
+            if (r.is_Valid)
+                rule_produced_rows = true;
+        }
+        if (!has_action && !rule_produced_rows) {
             msg_rep ("Spec", "Elements list empty", NoError, APINULLGuid);
             GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecEmptyListdId, ACAPI_GetOwnResModule ());
             if (has_v2)
