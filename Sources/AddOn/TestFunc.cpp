@@ -544,6 +544,137 @@ namespace TestFunc {
     // одним параметром и всегда отбрасывается проверкой числа параметров - поэтому
     // тесты проверяют ЧИСЛО принятых групп, а не общее число частей.
     // Формат имён подтверждён существующим набором парсера: GDL:X -> {@gdl:x}.
+    // Раскрытие группы после выноса в Spec::ExpandGroup (). Три независимых
+    // исхода: разворот параметров-массивов ("[N]") в min_row групп, отбраковка
+    // группы при несовпадении числа параметров с выходной схемой, размножение по
+    // слоям для материалов и listdata.
+    // Константы из Constants.hpp: max_group_mat = 50, max_group_lib = 100,
+    // ARRAY_UNIC = 1, поэтому @arr_индекс имеет вид "@arr_1_1_1_1_1}".
+    void TestSpecExpandGroup () {
+        DBprnt ("SpecRegression expand group", "start");
+
+        const GS::UniString P ("{@gdl:p}"), U ("{@gdl:u}"), F ("{@gdl:f}"), Q ("{@gdl:q}");
+
+        // Обычная группа без массивов: ровно одна группа, n_layer не задан.
+        {
+            Spec::SpecRule rule = {};
+            rule.out_paramrawname.Push (P);
+            rule.out_sum_paramrawname.Push (Q);
+            Spec::GroupSpec group = {};
+            group.out_paramrawname.Push (P);
+            group.unic_paramrawname.Push (U);
+            group.flag_paramrawname = F;
+            group.sum_paramrawname.Push (Q);
+
+            Spec::ExpandGroup (group, 0, rule);
+
+            DBtest (rule.groups.GetSize (), 1, "plain group count");
+            DBtest (group.is_Valid, true, "plain group valid");
+            if (rule.groups.GetSize () == 1) {
+                DBtest (rule.groups[0].out_paramrawname[0], P, "plain group out");
+                DBtest (rule.groups[0].flag_paramrawname, F, "plain group flag");
+            }
+        }
+
+        // Несовпадение числа параметров для выхода: группа отбраковывается,
+        // в rule.groups ничего не попадает, но сам парсер продолжает работу.
+        {
+            Spec::SpecRule rule = {};
+            rule.out_paramrawname.Push (P);
+            rule.out_paramrawname.Push (P); // ожидаем два, а в группе один
+            rule.out_sum_paramrawname.Push (Q);
+            Spec::GroupSpec group = {};
+            group.out_paramrawname.Push (P);
+            group.unic_paramrawname.Push (U);
+            group.sum_paramrawname.Push (Q);
+
+            Spec::ExpandGroup (group, 0, rule);
+
+            DBtest (rule.groups.GetSize (), 0, "out mismatch adds nothing");
+            DBtest (group.is_Valid, false, "out mismatch invalidates group");
+        }
+
+        // Несовпадение числа параметров количеств - тот же исход.
+        {
+            Spec::SpecRule rule = {};
+            rule.out_paramrawname.Push (P);
+            rule.out_sum_paramrawname.Push (Q);
+            rule.out_sum_paramrawname.Push (Q); // ожидаем два, а в группе ни одного
+            Spec::GroupSpec group = {};
+            group.out_paramrawname.Push (P);
+            group.unic_paramrawname.Push (U);
+
+            Spec::ExpandGroup (group, 0, rule);
+
+            DBtest (rule.groups.GetSize (), 0, "sum mismatch adds nothing");
+            DBtest (group.is_Valid, false, "sum mismatch invalidates group");
+        }
+
+        // Материалы: группа размножается на max_group_mat слоёв с номерами 0..49.
+        {
+            Spec::SpecRule rule = {};
+            rule.out_paramrawname.Push (P);
+            rule.out_sum_paramrawname.Push (Q);
+            Spec::GroupSpec group = {};
+            group.out_paramrawname.Push (P);
+            group.unic_paramrawname.Push (U);
+            group.sum_paramrawname.Push (Q);
+            group.fromMaterial = true;
+
+            Spec::ExpandGroup (group, 0, rule);
+
+            DBtest (rule.groups.GetSize (), 50, "material group count");
+            if (rule.groups.GetSize () == 50) {
+                DBtest (rule.groups[0].n_layer, 0, "material first layer");
+                DBtest (rule.groups[49].n_layer, 49, "material last layer");
+            }
+        }
+
+        // Данные ведомостей: max_group_lib слоёв с номерами 0..99.
+        {
+            Spec::SpecRule rule = {};
+            rule.out_paramrawname.Push (P);
+            rule.out_sum_paramrawname.Push (Q);
+            Spec::GroupSpec group = {};
+            group.out_paramrawname.Push (P);
+            group.unic_paramrawname.Push (U);
+            group.sum_paramrawname.Push (Q);
+            group.fromLibData = true;
+
+            Spec::ExpandGroup (group, 0, rule);
+
+            DBtest (rule.groups.GetSize (), 100, "libdata group count");
+            if (rule.groups.GetSize () == 100) {
+                DBtest (rule.groups[99].n_layer, 99, "libdata last layer");
+            }
+        }
+
+        // Разворот массива: min_row = 2 даёт две группы, по одной на строку массива.
+        // Порядок задан кодом: сперва срезается суффикс "[N]" ("{@gdl:p[7]}" ->
+        // "{@gdl:p}"), затем ReplaceAll подставляет вместо "} хвост
+        // "@arr_строка_строка_1_1_ARRAY_UNIC}". Скобка в имени одна, поэтому в
+        // результате она оказывается в конце: "{@gdl:p@arr_1_1_1_1_1}".
+        {
+            Spec::SpecRule rule = {};
+            rule.out_paramrawname.Push (P);
+            rule.out_sum_paramrawname.Push (Q);
+            Spec::GroupSpec group = {};
+            group.out_paramrawname.Push (P + "[7]");
+            group.unic_paramrawname.Push (U);
+            group.sum_paramrawname.Push (Q);
+
+            Spec::ExpandGroup (group, 2, rule);
+
+            DBtest (rule.groups.GetSize (), 2, "array group count");
+            if (rule.groups.GetSize () == 2) {
+                DBtest (rule.groups[0].out_paramrawname[0], "{@gdl:p@arr_1_1_1_1_1}", "array row 1");
+                DBtest (rule.groups[1].out_paramrawname[0], "{@gdl:p@arr_2_2_1_1_1}", "array row 2");
+            }
+        }
+
+        DBprnt ("SpecRegression expand group", "end");
+    }
+
     void TestSpecGroups () {
         DBprnt ("SpecRegression groups", "start");
 
@@ -1121,6 +1252,7 @@ namespace TestFunc {
         TestSpecReadPlan ();
         TestSpecGrouping ();
         TestSpecReconcile ();
+        TestSpecExpandGroup ();
         TestSpecGroups ();
         TestSpecOutputSchema ();
         TestSpecPolicy ();

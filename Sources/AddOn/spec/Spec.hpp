@@ -163,6 +163,7 @@ namespace Spec {
     // всё правило. Суффикс "[N]" номера строки срезается и отбрасывается
     // (разворачивание массива делает разбор группы). Возвращает false и сбрасывает
     // rule.parseValid, только если частей не две; при успехе флаг не трогается.
+    void ExpandGroup (GroupSpec &group, Int32 min_row, SpecRule &rule);
     bool ParseGroups (const GS::UniString &readPart, GS::Array<GS::UniString> &scratch, SpecRule &rule);
     bool ParseOutputSchema (const GS::UniString &writePart, GS::Array<GS::UniString> &scratch, SpecRule &rule);
 

@@ -1999,6 +1999,100 @@ namespace Spec {
 
     // -----------------------------------------------------------------------------
     // --------------------------------------------------------------------
+    // Раскрытие группы в итоговые группы правила:
+    //   min_row > 0 - параметры-массивы "[N]" разворачиваются в min_row отдельных
+    //                 групп, каждой строке массива достаётся свой @arr_индекс;
+    //   иначе      - группа сверяется с выходной схемой и размножается по слоям:
+    //                 материалы - max_group_mat групп, listdata - max_group_lib,
+    //                 обычная группа - одна.
+    // Параметры:
+    //   group   - [IN/OUT] разобранная группа; заполняется n_layer/is_Valid
+    //   min_row - число строк массива, 0 если массивов нет
+    //   rule    - [IN/OUT] правило; готовые группы добавляются в rule.groups
+    // --------------------------------------------------------------------
+    void ExpandGroup (GroupSpec &group, Int32 min_row, SpecRule &rule) {
+        if (min_row > 0) {
+            // создаём группы для параметров с массивами
+            for (Int32 jj = 1; jj <= min_row; jj++) {
+                GroupSpec group_add = {};
+                for (GS::UniString rawName : group.out_paramrawname) {
+                    if (rawName.Contains ("[") && rawName.Contains ("]")) {
+                        GS::UniString n_row_txt = rawName.GetSubstring ('[', ']', 0);
+                        rawName.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
+                        rawName.ReplaceAll (BRACEEND,
+                                            GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", jj, jj, 1, 1, ARRAY_UNIC) +
+                                                BRACEEND);
+                    }
+                    group_add.out_paramrawname.Push (rawName);
+                }
+                for (GS::UniString rawName : group.unic_paramrawname) {
+                    if (rawName.Contains ("[") && rawName.Contains ("]")) {
+                        GS::UniString n_row_txt = rawName.GetSubstring ('[', ']', 0);
+                        rawName.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
+                        rawName.ReplaceAll (BRACEEND,
+                                            GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", jj, jj, 1, 1, ARRAY_UNIC) +
+                                                BRACEEND);
+                    }
+                    group_add.unic_paramrawname.Push (rawName);
+                }
+                GS::UniString rawName = group.flag_paramrawname;
+                if (rawName.Contains ("[") && rawName.Contains ("]")) {
+                    GS::UniString n_row_txt = rawName.GetSubstring ('[', ']', 0);
+                    rawName.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
+                    rawName.ReplaceAll (
+                        BRACEEND, GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", jj, jj, 1, 1, ARRAY_UNIC) + BRACEEND);
+                }
+                group_add.flag_paramrawname = rawName;
+                for (GS::UniString rawName : group.sum_paramrawname) {
+                    if (rawName.Contains ("[") && rawName.Contains ("]")) {
+                        GS::UniString n_row_txt = rawName.GetSubstring ('[', ']', 0);
+                        rawName.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
+                        rawName.ReplaceAll (BRACEEND,
+                                            GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", jj, jj, 1, 1, ARRAY_UNIC) +
+                                                BRACEEND);
+                    }
+                    group_add.sum_paramrawname.Push (rawName);
+                }
+                rule.groups.Push (group_add);
+            }
+        } else {
+            if (group.out_paramrawname.GetSize () != rule.out_paramrawname.GetSize ()) {
+                group.is_Valid = false;
+                msg_rep ("Spec",
+                         "group.out_paramrawname.GetSize () != rule.out_paramrawname.GetSize ()",
+                         APIERR_BADINDEX,
+                         APINULLGuid);
+            }
+            if (group.sum_paramrawname.GetSize () != rule.out_sum_paramrawname.GetSize ()) {
+                group.is_Valid = false;
+                msg_rep ("Spec",
+                         "group.sum_paramrawname.GetSize () != rule.out_sum_paramrawname.GetSize ()",
+                         APIERR_BADINDEX,
+                         APINULLGuid);
+            }
+            if (group.is_Valid) {
+                if (group.fromMaterial) {
+                    // Создаём необходимое количество групп
+                    for (UInt32 n_layer = 0; n_layer < max_group_mat; n_layer++) {
+                        group.n_layer = n_layer;
+                        rule.groups.PushNew (group);
+                    }
+                } else {
+                    if (group.fromLibData) {
+                        // Создаём необходимое количество групп
+                        for (UInt32 n_layer = 0; n_layer < max_group_lib; n_layer++) {
+                            group.n_layer = n_layer;
+                            rule.groups.PushNew (group);
+                        }
+                    } else {
+                        rule.groups.Push (group);
+                    }
+                }
+            }
+        }
+    }
+
+    // --------------------------------------------------------------------
     // Разбор группы g(): уникальные параметры, параметры для чтения, флаг,
     // параметры количеств + раскрытие параметров-массивов в отдельные группы
     // Параметры:
@@ -2163,86 +2257,8 @@ namespace Spec {
                     msg_rep ("Spec", "Check if the number of quantity parameters matches", NoError, APINULLGuid);
                 }
             }
-            if (min_row > 0) {
-                // создаём группы для параметров с массивами
-                for (Int32 jj = 1; jj <= min_row; jj++) {
-                    GroupSpec group_add = {};
-                    for (GS::UniString rawName : group.out_paramrawname) {
-                        if (rawName.Contains ("[") && rawName.Contains ("]")) {
-                            GS::UniString n_row_txt = rawName.GetSubstring ('[', ']', 0);
-                            rawName.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
-                            rawName.ReplaceAll (
-                                BRACEEND,
-                                GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", jj, jj, 1, 1, ARRAY_UNIC) + BRACEEND);
-                        }
-                        group_add.out_paramrawname.Push (rawName);
-                    }
-                    for (GS::UniString rawName : group.unic_paramrawname) {
-                        if (rawName.Contains ("[") && rawName.Contains ("]")) {
-                            GS::UniString n_row_txt = rawName.GetSubstring ('[', ']', 0);
-                            rawName.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
-                            rawName.ReplaceAll (
-                                BRACEEND,
-                                GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", jj, jj, 1, 1, ARRAY_UNIC) + BRACEEND);
-                        }
-                        group_add.unic_paramrawname.Push (rawName);
-                    }
-                    GS::UniString rawName = group.flag_paramrawname;
-                    if (rawName.Contains ("[") && rawName.Contains ("]")) {
-                        GS::UniString n_row_txt = rawName.GetSubstring ('[', ']', 0);
-                        rawName.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
-                        rawName.ReplaceAll (BRACEEND,
-                                            GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", jj, jj, 1, 1, ARRAY_UNIC) +
-                                                BRACEEND);
-                    }
-                    group_add.flag_paramrawname = rawName;
-                    for (GS::UniString rawName : group.sum_paramrawname) {
-                        if (rawName.Contains ("[") && rawName.Contains ("]")) {
-                            GS::UniString n_row_txt = rawName.GetSubstring ('[', ']', 0);
-                            rawName.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
-                            rawName.ReplaceAll (
-                                BRACEEND,
-                                GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", jj, jj, 1, 1, ARRAY_UNIC) + BRACEEND);
-                        }
-                        group_add.sum_paramrawname.Push (rawName);
-                    }
-                    rule.groups.Push (group_add);
-                }
-            } else {
-                if (group.out_paramrawname.GetSize () != rule.out_paramrawname.GetSize ()) {
-                    group.is_Valid = false;
-                    msg_rep ("Spec",
-                             "group.out_paramrawname.GetSize () != rule.out_paramrawname.GetSize ()",
-                             APIERR_BADINDEX,
-                             APINULLGuid);
-                }
-                if (group.sum_paramrawname.GetSize () != rule.out_sum_paramrawname.GetSize ()) {
-                    group.is_Valid = false;
-                    msg_rep ("Spec",
-                             "group.sum_paramrawname.GetSize () != rule.out_sum_paramrawname.GetSize ()",
-                             APIERR_BADINDEX,
-                             APINULLGuid);
-                }
-                if (group.is_Valid) {
-                    if (group.fromMaterial) {
-                        // Создаём необходимое количество групп
-                        for (UInt32 n_layer = 0; n_layer < max_group_mat; n_layer++) {
-                            group.n_layer = n_layer;
-                            rule.groups.PushNew (group);
-                        }
-                    } else {
-                        if (group.fromLibData) {
-                            // Создаём необходимое количество групп
-                            for (UInt32 n_layer = 0; n_layer < max_group_lib; n_layer++) {
-                                group.n_layer = n_layer;
-                                rule.groups.PushNew (group);
-                            }
-                        } else {
-                            rule.groups.Push (group);
-                        }
-                    }
-                }
-            }
+            // Раскрытие группы - вынесено в ExpandGroup ()
+            ExpandGroup (group, min_row, rule);
         }
         return true;
     }
