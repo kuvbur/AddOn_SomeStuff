@@ -3,7 +3,7 @@
 > Обновлено 2026-09-25 (рабочее дерево `llm_test`, HEAD `13c1948`): добавлены `json_commands/` и `dialogs/OtherDbDialog.*`; статистика пересобрана. Точечно 2026-09-27 (#213): добавлена `json_commands/SyncAllCommand.*`, статистика и `compile_commands.json` пересобраны для AC25.
 
 ## Корень
-`D:/SomeStuff_addon` — git repo. Основной разработочный код — ветка `llm_test`; документация ведётся на `docs/codebase-map` (AGENTS.md §17).
+`D:/SomeStuff_addon` — git repo. Код и документация ведутся в одной ветке `llm_test`: бывшая `docs/codebase-map` влита в неё squash-коммитом `a4a83b0` (2026-09-22) (AGENTS.md §17).
 
 ## Структура
 

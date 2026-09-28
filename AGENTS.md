@@ -280,7 +280,9 @@ deliberate choice, not an oversight.
 
 ## 17. Documentation
 
-Maintained on branch `docs/codebase-map`, built by scripts
+Maintained in the working branch (`llm_test`; the former
+`docs/codebase-map` was squashed into it as `a4a83b0`, so no
+separate doc branch exists), built by scripts
 (`Docs/tools/generate_symbols.py` + clangd MCP):
 
 - `Docs/ARCHITECTURE.md` — module overview, layers, Mermaid dependency graph.
@@ -302,6 +304,12 @@ Maintained on branch `docs/codebase-map`, built by scripts
 
 Rule: when code changes, update the matching `Docs/modules/<module>.md`
 and `_generated/`.
+
+Landmine — the doc branch is merged, don't re-derive it: `git
+merge-base --is-ancestor docs/codebase-map llm_test` reports `NO`
+because the squash rewrote every hash. Check the *content*
+instead (`git log --oneline -1 llm_test -- Docs/`, or that a card
+mentions recent work) before concluding the docs live elsewhere.
 
 Workflow role (§3-5): read the module card and `DISCREPANCIES.md` BEFORE
 raw-source digging and live clangd/LightRAG queries in a familiar area —
