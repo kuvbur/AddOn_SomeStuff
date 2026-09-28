@@ -1998,98 +1998,23 @@ namespace Spec {
     }
 
     // -----------------------------------------------------------------------------
-    // Разбирает ВЫХОДНУЮ СХЕМУ правила - часть описания после "s@@".
-    // Формат: s (Pn1, Pn2, Pn3; Qn1, Qn2), где
-    //   часть 0 (до точки с запятой) - свойства элемента-результата;
-    //   часть 1 (после)              - свойства для записи количеств.
-    // Требование РОВНО двух частей: одна или три части - невалидное описание, и
-    // парсер обязан отвергнуть всё правило (parseValid = false), а не молча
-    // взять первые две.
-    // Внутри части имена чистятся от служебных символов ("proc", "@", фигурные
-    // скобки, пробелы), после чего суффикс "[N]" (номер строки массива) срезается
-    // и отбрасывается: в выходной схеме он не несёт смысла, разворачивание массива
-    // делает группа. Пустые имена пропускаются, поэтому ",," не даёт пустых слотов.
-    // Возвращает false, если частей не две; тогда и только тогда сбрасывается
-    // rule.parseValid, а out_* остаются пустыми. При успехе флаг НЕ трогается:
-    // дальше парсер продолжает разбор групп и вправе сбросить его сам.
-    // -----------------------------------------------------------------------------
-    bool ParseOutputSchema (const GS::UniString &writePart, GS::Array<GS::UniString> &scratch, SpecRule &rule) {
-        GS::Array<GS::UniString> rulestring_write = {}; // Свойства для записи из группы s()
-        const UInt32 nrule_write = StringSplt (writePart, SEMICOLON, rulestring_write, true, &scratch);
-        if (nrule_write != 2) {
-            rule.parseValid = false;
-            return false;
-        }
-        for (UInt32 part = 0; part < nrule_write; part++) {
-            GS::Array<GS::UniString> rulestring_param = {};
-            const UInt32 nrule_param = StringSplt (rulestring_write[part], COMMA, rulestring_param, true, &scratch);
-            if (nrule_param > 0) {
-                for (UInt32 i = 0; i < nrule_param; i++) {
-                    FormatString formatstring;
-                    GS::UniString name = rulestring_param[i];
-                    name.Trim (CHARPROC);
-                    name.Trim ('@');
-                    name.Trim (CHARBRACESTART);
-                    name.Trim (CHARBRACEEND);
-                    name.Trim ();
-                    if (!name.IsEmpty ()) {
-                        if (name.Contains ("[") && name.Contains ("]")) {
-                            GS::UniString n_row_txt = name.GetSubstring ('[', ']', 0);
-                            name.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
-                        }
-                        FormatString formatstring;
-                        GS::UniString rawName = ParamHelpers::NameToRawName (name, formatstring);
-                        if (part == 0)
-                            rule.out_paramrawname.Push (rawName);
-                        if (part == 1)
-                            rule.out_sum_paramrawname.Push (rawName);
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    // -----------------------------------------------------------------------------
-    // Разбирает строку описания правила и превращает её в структуру SpecRule.
-    // Это наиболее сложная часть модуля, потому что здесь нужно распознать критерий, группы и поля записи.
-    // -----------------------------------------------------------------------------
-    SpecRule GetRuleFromDescription (const GS::UniString &normalizedDescription) {
-        // Рабочая копия: парсер правит её на месте (обрезает по скобкам, снимает
-        // закрывающую скобку), но вызывающая строка остаётся нетронутой.
-        GS::UniString description = normalizedDescription;
-        // Сначала извлекается критерий — имя избранного элемента или другой ключевой текст.
-        SpecRule rule = {};
-        GS::Array<GS::UniString> partstring = {};
-        GS::Array<GS::UniString> local_scratch;
-        ApplyRulePolicy (description, rule);
-        if (StringSplt (description, BRACEEND, partstring, "pec_rule") > 0) {
-            description = partstring[0] + BRACEEND;
-        }
-        GS::UniString criteria = description.GetSubstring (CHARBRACESTART, CHARBSEMICOLON, 0);
-        description.ReplaceAll (BRACESTART + criteria + SEMICOLON, BRACESTART);
-        description = description.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
-        description.Trim (')');
-        description.Trim ();
-        if (criteria.Contains ("\""))
-            criteria = criteria.GetSubstring (CHARDQUT, CHARDQUT, 0);
-        criteria.Trim ();
-        rule.favorite_name = criteria;
-        GS::Array<GS::UniString> paramss = {};
-        // Разбивка на группы и итог
-        GS::Array<GS::UniString> rulestring_summ = {}; // Массив из имени избранного, групп g() и s()
-        if (StringSplt (description, "s@@", rulestring_summ, true, &local_scratch) < 2) {
-            rule.parseValid = false;
-            return rule;
-        }
-        if (!ParseOutputSchema (rulestring_summ[1], local_scratch, rule))
-            return rule;
+    // --------------------------------------------------------------------
+    // Разбор группы g(): уникальные параметры, параметры для чтения, флаг,
+    // параметры количеств + раскрытие параметров-массивов в отдельные группы
+    // Параметры:
+    //   readPart - часть описания ДО "s@@": имя избранного и группы g()
+    //   scratch  - [IN/OUT] буфер StringSplt, состояние переносится между вызовами
+    //   rule     - [IN/OUT] правило; группы добавляются в rule.groups
+    // Возвращает: false, если групп не оказалось ни одной или разбор невозможен;
+    //             в этом случае parseValid уже сброшен внутри
+    // --------------------------------------------------------------------
+    bool ParseGroups (const GS::UniString &readPart, GS::Array<GS::UniString> &scratch, SpecRule &rule) {
         // Разбивка на группы
         GS::Array<GS::UniString> rulestring_group = {}; // Массив с строками групп
-        UInt32 nrule_group = StringSplt (rulestring_summ[0], "g@@", rulestring_group, false, &local_scratch);
+        UInt32 nrule_group = StringSplt (readPart, "g@@", rulestring_group, false, &scratch);
         if (nrule_group < 1) {
             rule.parseValid = false;
-            return rule;
+            return false;
         }
 
         for (GS::UniString &rulestring_one_group : rulestring_group) {
@@ -2115,10 +2040,10 @@ namespace Spec {
             if (hasLibData (rulestring_one_group))
                 group.fromLibData = true;
             // Разбивка группы на параметры
-            UInt32 nrule_read = StringSplt (rulestring_one_group, SEMICOLON, rulestring_read, false, &local_scratch);
+            UInt32 nrule_read = StringSplt (rulestring_one_group, SEMICOLON, rulestring_read, false, &scratch);
             if (nrule_read <= 1) {
                 rule.parseValid = false;
-                return rule;
+                return false;
             }
             // g(U1,U2,U3; P1,P2,P3; F1; Q1,Q2) =>
             // U1,U2,U3 - уникальные параметры, part = 0
@@ -2129,7 +2054,7 @@ namespace Spec {
             bool isUnicSameAsOut = false; // Совпадают ли уникальные параметры с параметрами для записи
             for (UInt32 part = 0; part < nrule_read; part++) {
                 GS::Array<GS::UniString> rulestring_param = {}; // Массив параметров
-                UInt32 nrule_param = StringSplt (rulestring_read[part], COMMA, rulestring_param, false, &local_scratch);
+                UInt32 nrule_param = StringSplt (rulestring_read[part], COMMA, rulestring_param, false, &scratch);
                 if (nrule_param < 1)
                     continue;
                 if (part == 0 && nrule_param == 1) {
@@ -2319,6 +2244,98 @@ namespace Spec {
                 }
             }
         }
+        return true;
+    }
+
+    // Разбирает ВЫХОДНУЮ СХЕМУ правила - часть описания после "s@@".
+    // Формат: s (Pn1, Pn2, Pn3; Qn1, Qn2), где
+    //   часть 0 (до точки с запятой) - свойства элемента-результата;
+    //   часть 1 (после)              - свойства для записи количеств.
+    // Требование РОВНО двух частей: одна или три части - невалидное описание, и
+    // парсер обязан отвергнуть всё правило (parseValid = false), а не молча
+    // взять первые две.
+    // Внутри части имена чистятся от служебных символов ("proc", "@", фигурные
+    // скобки, пробелы), после чего суффикс "[N]" (номер строки массива) срезается
+    // и отбрасывается: в выходной схеме он не несёт смысла, разворачивание массива
+    // делает группа. Пустые имена пропускаются, поэтому ",," не даёт пустых слотов.
+    // Возвращает false, если частей не две; тогда и только тогда сбрасывается
+    // rule.parseValid, а out_* остаются пустыми. При успехе флаг НЕ трогается:
+    // дальше парсер продолжает разбор групп и вправе сбросить его сам.
+    // -----------------------------------------------------------------------------
+    bool ParseOutputSchema (const GS::UniString &writePart, GS::Array<GS::UniString> &scratch, SpecRule &rule) {
+        GS::Array<GS::UniString> rulestring_write = {}; // Свойства для записи из группы s()
+        const UInt32 nrule_write = StringSplt (writePart, SEMICOLON, rulestring_write, true, &scratch);
+        if (nrule_write != 2) {
+            rule.parseValid = false;
+            return false;
+        }
+        for (UInt32 part = 0; part < nrule_write; part++) {
+            GS::Array<GS::UniString> rulestring_param = {};
+            const UInt32 nrule_param = StringSplt (rulestring_write[part], COMMA, rulestring_param, true, &scratch);
+            if (nrule_param > 0) {
+                for (UInt32 i = 0; i < nrule_param; i++) {
+                    FormatString formatstring;
+                    GS::UniString name = rulestring_param[i];
+                    name.Trim (CHARPROC);
+                    name.Trim ('@');
+                    name.Trim (CHARBRACESTART);
+                    name.Trim (CHARBRACEEND);
+                    name.Trim ();
+                    if (!name.IsEmpty ()) {
+                        if (name.Contains ("[") && name.Contains ("]")) {
+                            GS::UniString n_row_txt = name.GetSubstring ('[', ']', 0);
+                            name.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
+                        }
+                        FormatString formatstring;
+                        GS::UniString rawName = ParamHelpers::NameToRawName (name, formatstring);
+                        if (part == 0)
+                            rule.out_paramrawname.Push (rawName);
+                        if (part == 1)
+                            rule.out_sum_paramrawname.Push (rawName);
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Разбирает строку описания правила и превращает её в структуру SpecRule.
+    // Это наиболее сложная часть модуля, потому что здесь нужно распознать критерий, группы и поля записи.
+    // -----------------------------------------------------------------------------
+    SpecRule GetRuleFromDescription (const GS::UniString &normalizedDescription) {
+        // Рабочая копия: парсер правит её на месте (обрезает по скобкам, снимает
+        // закрывающую скобку), но вызывающая строка остаётся нетронутой.
+        GS::UniString description = normalizedDescription;
+        // Сначала извлекается критерий — имя избранного элемента или другой ключевой текст.
+        SpecRule rule = {};
+        GS::Array<GS::UniString> partstring = {};
+        GS::Array<GS::UniString> local_scratch;
+        ApplyRulePolicy (description, rule);
+        if (StringSplt (description, BRACEEND, partstring, "pec_rule") > 0) {
+            description = partstring[0] + BRACEEND;
+        }
+        GS::UniString criteria = description.GetSubstring (CHARBRACESTART, CHARBSEMICOLON, 0);
+        description.ReplaceAll (BRACESTART + criteria + SEMICOLON, BRACESTART);
+        description = description.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+        description.Trim (')');
+        description.Trim ();
+        if (criteria.Contains ("\""))
+            criteria = criteria.GetSubstring (CHARDQUT, CHARDQUT, 0);
+        criteria.Trim ();
+        rule.favorite_name = criteria;
+        GS::Array<GS::UniString> paramss = {};
+        // Разбивка на группы и итог
+        GS::Array<GS::UniString> rulestring_summ = {}; // Массив из имени избранного, групп g() и s()
+        if (StringSplt (description, "s@@", rulestring_summ, true, &local_scratch) < 2) {
+            rule.parseValid = false;
+            return rule;
+        }
+        if (!ParseOutputSchema (rulestring_summ[1], local_scratch, rule))
+            return rule;
+        // Разбор групп g() - вынесено в ParseGroups ()
+        if (!ParseGroups (rulestring_summ[0], local_scratch, rule))
+            return rule;
         if (rule.groups.IsEmpty ())
             rule.parseValid = false;
         if (rule.out_paramrawname.IsEmpty ())

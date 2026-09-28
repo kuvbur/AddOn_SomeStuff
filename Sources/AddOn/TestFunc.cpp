@@ -539,6 +539,99 @@ namespace TestFunc {
     // части после "s@@" - это контракт из R4.1.
     // Формат имён подтверждён существующим набором парсера: GDL:X -> {@gdl:x},
     // Property:Total -> {@property:total}.
+    // Разбор группы g() после выноса в Spec::ParseGroups (). Ключевая особенность
+    // контракта: часть ДО первого "g@@" (имя избранного) разбирается как группа с
+    // одним параметром и всегда отбрасывается проверкой числа параметров - поэтому
+    // тесты проверяют ЧИСЛО принятых групп, а не общее число частей.
+    // Формат имён подтверждён существующим набором парсера: GDL:X -> {@gdl:x}.
+    void TestSpecGroups () {
+        DBprnt ("SpecRegression groups", "start");
+
+        struct GroupCase {
+            const char *readPart;
+            UInt32 nOut;   // сколько имён ждём в выходной схеме s()
+            UInt32 nSum;   // сколько имён ждём в части количеств s()
+            UInt32 groups; // сколько групп должно быть принято
+            bool ok;       // завершился ли разбор (false = отказ внутри разбора)
+            const char *label;
+        };
+
+        const GroupCase cases[] = {
+            // Канон из TestSpecAddRule: 1 уникальный, 1 на выход, флаг, 1 количество.
+            {"Fav;g@@u;p;f;q", 1, 1, 1, true, "canonical four parts"},
+            // Суммы не хватает - дополняется "1", группа принимается.
+            {"Fav;g@@u;p;f", 1, 1, 1, true, "sum padded with one"},
+            // part трактуется ПО ИНДЕКСУ, а не по смыслу: здесь 3 части, значит
+            // q попадает в flag, а не в sum. Это поведение зафиксировано.
+            {"Fav;g@@u;p;q", 1, 1, 1, true, "third part is flag not sum"},
+            // Число параметров для выхода не совпало со схемой -> группа отброшена.
+            {"Fav;g@@u;p;w;z", 2, 1, 0, true, "out count mismatch dropped"},
+            // Нет точки с запятой внутри группы -> разбор невозможен.
+            {"Fav;g@@u", 1, 1, 0, false, "single part rejected"},
+            // Две настоящие группы, обе валидны.
+            {"Fav;g@@u1;p;f;q1@@g@@u2;p;f;q2", 1, 1, 2, true, "two groups"},
+            // Ни одной части с ";" - отказ на первой же группе.
+            {"Fav", 1, 1, 0, false, "no group marker rejected"},
+        };
+
+        for (const GroupCase &test : cases) {
+            const GS::UniString label (test.label);
+            Spec::SpecRule rule = {};
+            // out_sum задаёт ожидаемое число параметров количеств; out_paramrawname
+            // проверяется отдельно, здесь достаточно корректного размера массивов.
+            for (UInt32 i = 0; i < test.nOut; i++)
+                rule.out_paramrawname.Push ("{@gdl:o}");
+            for (UInt32 i = 0; i < test.nSum; i++)
+                rule.out_sum_paramrawname.Push ("{@gdl:s}");
+
+            GS::Array<GS::UniString> scratch;
+            const GS::UniString readPart (test.readPart);
+            const bool ok = Spec::ParseGroups (readPart, scratch, rule);
+
+            // ok - разбор выполнен, а не "группы приняты": группа с неверным числом
+            // параметров отбрасывается, но разбор продолжается. Признак принятия -
+            // число групп, его и проверяем отдельно.
+            DBtest (ok, test.ok, label + " parse completed");
+            DBtest (rule.groups.GetSize (), test.groups, label + " group count");
+        }
+
+        // Проверка состава группы на каноне: уникальный/выход/флаг/количество.
+        {
+            Spec::SpecRule rule = {};
+            rule.out_paramrawname.Push ("{@gdl:o}");
+            rule.out_sum_paramrawname.Push ("{@gdl:s}");
+            GS::Array<GS::UniString> scratch;
+            const GS::UniString readPart ("Fav;g@@u;p;f;q");
+            const bool ok = Spec::ParseGroups (readPart, scratch, rule);
+            DBtest (ok, true, "canonical accepted");
+            DBtest (rule.groups.GetSize (), 1, "canonical group count");
+            if (rule.groups.GetSize () == 1) {
+                const Spec::GroupSpec &g = rule.groups[0];
+                DBtest (g.unic_paramrawname.GetSize (), 1, "canonical unic count");
+                DBtest (g.unic_paramrawname[0], GS::UniString ("{@gdl:u}"), "canonical unic name");
+                DBtest (g.out_paramrawname.GetSize (), 1, "canonical out count");
+                DBtest (g.out_paramrawname[0], GS::UniString ("{@gdl:p}"), "canonical out name");
+                DBtest (g.flag_paramrawname, GS::UniString ("{@gdl:f}"), "canonical flag name");
+                DBtest (g.sum_paramrawname.GetSize (), 1, "canonical sum count");
+                DBtest (g.sum_paramrawname[0], GS::UniString ("{@gdl:q}"), "canonical sum name");
+            }
+        }
+
+        // Часть до первого "g@@" (имя избранного) НЕ становится рабочей группой:
+        // у неё нет точки с запятой, поэтому разбор прерывается на первой части.
+        {
+            Spec::SpecRule rule = {};
+            rule.out_paramrawname.Push ("{@gdl:o}");
+            rule.out_sum_paramrawname.Push ("{@gdl:s}");
+            GS::Array<GS::UniString> scratch;
+            const GS::UniString readPart ("Fav");
+            const bool ok = Spec::ParseGroups (readPart, scratch, rule);
+            DBtest (ok, false, "favorite name alone rejected");
+        }
+
+        DBprnt ("SpecRegression groups", "end");
+    }
+
     void TestSpecOutputSchema () {
         DBprnt ("SpecRegression output schema", "start");
 
@@ -1028,6 +1121,7 @@ namespace TestFunc {
         TestSpecReadPlan ();
         TestSpecGrouping ();
         TestSpecReconcile ();
+        TestSpecGroups ();
         TestSpecOutputSchema ();
         TestSpecPolicy ();
         TestSpecNormalize ();
