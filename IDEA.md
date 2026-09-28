@@ -1,5 +1,156 @@
 ﻿# Current Task
 
+## Task — рефакторинг Spec (P0: подготовительная база)
+
+Issue: #228 (kuvbur/AddOn_SomeStuff) — рефакторинг; #227 — дамп значений элементов
+(реализация, чекпоинт этого шага).
+
+### Scope
+P0 — только принять подготовительное расширение JSON как воспроизводимую базу до
+переноса кода. Файлы: `Sources/AddOn/spec/Spec.cpp/.hpp`,
+`Sources/AddOn/json_commands/SpecCommand.cpp`, `Sources/AddOn/TestFunc.cpp`,
+`Sources/AddOn/SomeStuff_Main.cpp`, `Tools/spec_baseline.py` (новый),
+`Docs/modules/spec/Spec.md`, `IDEA.md`. Архитектурный перенос кода (R3-R9) — НЕ входит.
+Проверочная версия AC25 Windows Debug. Остальные AC22-24/26-29, macOS — not verified.
+
+### Status
+CODE_READY_AND_TESTED — P0 выполнен: сборка AC25 успешна, реальные прогоны JSON в
+ArchiCAD дали эталон (created=2/modified=12/deleted=2, 14 строк) и устойчивый no-op
+(0/0/0, повторён трижды). Стенд сравнения проверен на 6 категориях расхождений.
+Checkpoint разрешён владельцем.
+
+### Plan
+- [x] P0.1 diff расширения JSON, issue #227 (OPEN) и #228 (создан) — дедуп чист.
+- [x] P0.2 clang-format по 5 файлам, clangd 0 ошибок (Spec.cpp, SpecCommand.cpp, TestFunc.cpp), git diff --check.
+- [x] P0.3 BuildAddOn.py -v 25 -> Build succeeded; runner restart_archicad_for_test.ps1 exit_code=0.
+- [x] P0.4 реальный smoke: capture p0-smoke, capture+compare p0-noop, проверка diff_rows на 6 видах расхождений.
+- [x] P0.5 Docs/modules/spec/Spec.md: новая сигнатура PlaceElements, поля ответа, строки функций, границы дампа.
+- [x] Checkpoint — владелец разрешил коммит (Refs: #227, #228).
+
+### Last Completed
+**Исправлен баг в моём стенде** `Tools/spec_baseline.py:70` — `urllib.request.urlopen()`
+не принимает `headers=`; TypeError ронял поиск порта. Заменено на `Request` + `urlopen(req)`.
+Стенд после этого отработал: порт 19723.
+
+Прогоны AC25 (`test_25.pln`, реальный ArchiCAD, `SomeStuffCommand.Spec`):
+- 1-й, `includeParameters=true`: `completed`, C=2 / M=12 / D=2, 3.66 s, 14 строк дампа.
+  Структура проверена: `created[0]` = 11 property, 28 sourceElement, gdlParameter пуст.
+- 2-й и 3-й: `completed`, 0/0/0, ~0.79 s — состояние устойчиво, соответствует #226.
+- `compare p0-noop` -> PASS (0 строк, счётчики совпали).
+
+Дамп — эталон подготовленной записи, НЕ снимок конечной модели. Все три списка
+(`created`/`modified`/`deleted`) заполняются до применения операций, поэтому непустой
+массив не доказывает запись. `modified.gdlParameter` всегда пуст — в отличие от `created`.
+Независимого read-back модели нет, сохранность записанных значений — `not verified`.
+
+**НЕ выполнено (нужна ручная подготовка модели в ArchiCAD):** сценарии P1 «изменение
+суммы/значения», «изменение ключа», «исчезновение строки», «смешанный create+update+delete»,
+«повтор одного материала в разных слоях». Работающего автоматического setter нет
+(API.SetPropertyValuesOfElements отвечает success, но не пишет — зафиксировано в #226).
+
+### Next Step
+Решить судьбу checkpoint'а P0 (коммит с `Refs: #227, #228`). По разрешению — сценарии P1:
+подготовить в ArchiCAD копии `test_25.pln` и снять эталоны `capture <tag>`, затем P3
+(performance-baseline). Перед R3 согласовать непокрытые gates: read-back модели отсутствует,
+поэтому этапы записи/GDL/Sync не имеют способа приёмки.
+
+### Last Checkpoint
+Не создан: коммит не запрошен. HEAD `e22ddc8`, ветка `spec_refactor`.
+Незакоммиченные правки: spec/Spec.cpp, spec/Spec.hpp, json_commands/SpecCommand.cpp,
+TestFunc.cpp, SomeStuff_Main.cpp, Docs/modules/spec/Spec.md, Tools/spec_baseline.py (новый).
+
+### Decisions
+- Эталоны хранятся в gitignored `Reviews/spec_baseline/`; `Reviews/` не коммитится.
+- Семантический ключ строки = favorite + значения без GUID-полей и «имени правила»;
+  новые GUID не сравниваются, дубли ключей схлопываются с суммированием источников
+  (известное ограничение стенда, зафиксировано здесь).
+- `TestFunc::Test()` остаётся включённым при каждом первом открытии проекта (решение
+  владельца из предыдущей задачи) — в P0 не менялось.
+
+---
+
+## Task (DONE) — дамп значений элементов Spec в JSON-ответе (#227)
+
+Подготовка к рефакторингу Spec: результат вычислений нужно получать в JSON, чтобы
+сверяться на тестовых файлах при изменении кода.
+
+## Scope
+
+`Sources/AddOn/spec/Spec.hpp`, `Sources/AddOn/spec/Spec.cpp`,
+`Sources/AddOn/json_commands/SpecCommand.cpp`, карточка `Docs/modules/spec/Spec.md`.
+Проверочная версия AC25. AC22–24 (код вне `ServerMainVers_2500`) и AC26–29 не
+проверены. Правки чужих задач в `IDEA.md` не включать.
+
+## Status
+
+CODE_READY_AND_COMPILED — код написан, AC25 Debug собран, контрольный JSON-прогон
+выполнен. Дамп на НЕПУСТЫХ данных не подтверждён: прогон падает с `APIERR_BADNAME`
+до создания элементов (см. Next Step), блокер внешний.
+
+## Last Completed
+
+Issue #227. Необязательный параметр `includeParameters` (bool, default false).
+При true ответ содержит `created` / `modified` / `deleted`; каждый элемент —
+`guid`, `favoriteName`, `sourceElement[]`, `property[]`, `gdlParameter[]`.
+Списки отсортированы по имени (для сравнения прогоонов).
+
+- `SpecElementDump` (Spec.hpp), поля в `SpecRunResult`, `PlaceElements` +
+  параметр `SpecRunResult*`.
+- Сбор дампа в `PlaceElements` до `ACAPI_Element_Create`, GDL-параметры берутся
+  из `API_AddParType` в момент записи в memo — в `paramOut` их уже нет
+  (`param.Delete (rawname)` в конце цикла).
+- Дамп изменяемых — в `SpecArray` (ветка `elements_mod`), там GUID известен.
+- `*runResult = {}` в `SpecAll:154` и `SpecArray:539` стирал `includeDetails` —
+  исправлено (сохранение флага перед сбросом). Найдено прогоном: счётчик
+  показывал 16, а `created=0`.
+- Пункт P0.3 плана: копирование `favorite_name`/`sourceElements` было вне флага
+  `collectDetails` — перенесено под флаг (иначе выключенный дамп платит за
+  копирование и портит timing-эталоны).
+- `Tools/spec_baseline.py` — снятие эталона и сравнение A/B по семантическому
+  ключу строки (P1 плана). Реальный прогон: created=2, modified=12, deleted=2,
+  11 свойств на элемент, агрегация источников 28/54/12/8. Сравнение проверено
+  на 5 сценариях (identical/changed/lost/missing/extra/source-count).
+
+## Next Step
+
+**Контрольные данные требуют ручной подготовки состояния модели** — команды
+для этого нет, а `includeParameters` только читает результат. Нужно по
+записанной процедуре в Archicad подготовить копию `test_25.pln` для каждого
+сценария P1 (создание с нуля; no-op; изменение суммы; изменение ключа;
+исчезновение строки; смешанный create/update/delete), затем снять эталоны:
+`python Tools/spec_baseline.py capture <tag>`.
+
+Перед этим — пересобрать (последняя правка `Spec.cpp` ещё не компилировалась)
+и прогнать в среде с непустым результатом, чтобы эталон не был пустым.
+
+Остальное: обновить `Docs/modules/spec/Spec.md` (прежняя сигнатура
+`PlaceElements` и прежний набор полей ответа) и чекпоинт `Refs: #227`.
+
+## Last Checkpoint
+
+Не создан. Коммит не запрошен; в `IDEA.md` есть чужие незакоммиченные правки
+(секция «Архитектурный разбор Spec»).
+
+## Plan
+
+- [x] Issue #227, разбор пути `SpecAll` -> `SpecArray` -> `PlaceElements`.
+- [x] `includeParameters`, дамп создания/изменения/удаления, сортировка имён.
+- [x] clang-format, clangd 0, AC25 Debug build, контрольный JSON-прогон.
+- [x] Найден и исправлен баг со сбросом `includeDetails` (реальный прогон).
+- [ ] Прогон с непустым дампом в окружении, где есть избранное.
+- [ ] Обновить `Docs/modules/spec/Spec.md`, checkpoint `Refs: #227`.
+
+## Decisions
+
+- Дамп выключен по умолчанию: обычный запуск Spec не платит за сбор.
+- Значения — строками в формате записи в модель (`ParamHelpers::ToString`).
+- GDL-параметры в дампе — фактические значения из `API_AddParType` (после
+  приведения к типу), а не исходные `ParamValue`.
+- `ObjectState::Add` требует уникальности поля -> списки через `AddList`.
+- `GS::Array` не имеет `Sort` ни в AC25, ни в AC29 -> `std::vector` + `std::sort`.
+
+---
+
 Активной задачи нет. Блоки ниже — незавершённые (#217 ждёт сборки, #211 откатан частично, диагностика ReadQuantities и Name2Rawname открыты). Выполненные (#202, #209, #220, #221, #222, #223, #224, #225) вынесены в `IDEA_ARCHIVE.md`.
 
 ## Task — диагностика отсутствующей строки Spec (AC25)
@@ -58,7 +209,9 @@
 - Last Completed: подтверждены смешение определения/состояния запуска в SpecRule, разные значения is_Valid (Spec.cpp:494,601,668), смешение агрегации и сверки старых объектов (1510–1854), потеря результата PlaceElements (1011; возврат NoError на 2678), раздельные стадии создания и записи/удаления (2491 и 1022). Это не доказательство конкретного пользовательского сбоя и не проверка SDK-транзакций.
 - Предложение: неизменяемые Rule/Group definitions отдельно от RunContext; рассчитанная строка с проверяемыми привязками полей; явный план create/update/delete/unchanged и отдельный исполнитель Archicad с диагностикой по правилу/группе/GUID/параметру. GroupSpec — описание получения строк, не сама агрегированная строка. Не добавлять group ID в ключ без проверки существующего объединения между группами.
 - Подробный план обновлён по просьбе пользователя: `Reviews/2026-09-27_174500-spec-refactor-no-regression.md` — R0–R10, отдельные F1/F2, матрица S01–S28, обязательные A/B-gates времени/памяти/API-вызовов без разрешённого замедления. Структура, ссылки и кодировка проверены; реализация, сборки и замеры не выполнялись. Reviews gitignored, файл сохранён локально.
-- Next Step: после отдельного поручения начать R0 из плана (baseline/issue/feature-ветка), затем R1 (исполняемая регрессия; текущий TestFunc::Test отключён, запуск согласовать). Не переписывать Helpers.cpp и язык правил попутно; не обещать общий rollback без проверки SDK/GDL/Sync.
+- Дополнение подготовки: в §10 того же плана записаны P0–P3 после #226 и расширения JSON (статически проверен diff на `spec_refactor`, HEAD `e22ddc8`). Дамп подготовленной записи отделён от конечного read-back; учтены unchanged/GUID, полнота modified/GDL и стоимость выключенной диагностики. C++ не менялся, сборки/runtime/замеры не выполнялись.
+- Уточнение пользователя: средства независимого чтения модели сейчас нет. §10 плана исправлен: P1 сравнивает сохранённые JSON-дампы, не доказывает конечную запись; для этапов записи/GDL/Sync способ приёмки согласовать отдельно. Разработку нового reader автоматически в scope не включать.
+- Next Step: после отдельного поручения P0 (§10 плана) — валидировать и зафиксировать подготовительную JSON-базу, затем P1 — эталоны JSON и автоматическое сравнение, P3 — performance-baseline. Ветка `spec_refactor` уже существует; повторно не создавать. Перед R3 согласовать непокрытые gates; текущий TestFunc::Test отключён, запуск согласовать.
 - Last Checkpoint: не создавался, коммит не запрошен; прежние незакоммиченные записи IDEA.md сохранены.
 
 ## Archive — анализ настроек при двух Archicad
