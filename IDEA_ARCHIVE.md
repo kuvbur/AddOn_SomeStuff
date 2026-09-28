@@ -946,3 +946,68 @@ DONE — checkpoint `66666f1` (совместно с чужым WIP по реш�
 - [x] clang-format, clangd, сборка AC25, runtime read-back и ревью diff без тестирования производительности.
 - [x] Изолировать чужой WIP, собрать изолированное дерево, сравнить с чистым HEAD и восстановить WIP побайтово.
 - [/] Согласовать с пользователем способ приёмки #223; не закрывать #223 без подтверждения, создавать checkpoint только с согласованным уровнем доказательств.
+
+## #202 — File-правила: числовые аргументы только как полное число
+
+Закрыт чекпоинтами `6c9fc4d` (код+тесты), `d0ba980` (карточки Docs),
+`310f5ef` (§17 AGENTS.md: ветка документации слита в `llm_test`).
+
+### Scope
+
+`Sources/AddOn/Sync.cpp` (ветка `File:` в `SyncString`), тесты в
+`Sources/AddOn/TestFunc.cpp::TestSyncString`, карточки
+`Docs/modules/Sync.md` / `TestFunc.md`, одна запись в `symbols.json`.
+
+### Status
+
+DONE_WITH_GAPS — код исправлен, собран, issue закрыт. Тесты в ArchiCAD не
+выполнялись: общий TESTING-набор отключён коммитом `927d2d3` (решение
+автора), включать обратно без разрешения нельзя.
+
+### Last Completed
+
+Причина оказалась двойной, а не только `std::stoi`. Первое: в пяти
+числовых позициях `File:` `std::stoi` читал только префикс, поэтому `2junk`
+становился `2`. Второе, главное: `syncdirection = SYNC_NO` внутри ветки
+`File:` правило **не отбраковывал** — `synctypefind` уже `true`, функция
+доходила до `return true`. Проверка `if (syncdirection == SYNC_NO) return false`
+в `SyncString` стоит до ветки `File:` и новых отказов не видит.
+
+Правка: `ParseFileNumber` (`Sync.cpp:90`) принимает токен, целиком
+состоящий из числа; результат пишется в `fileNumberValid` (`Sync.cpp:1619`),
+на границе ветки `:1724` — `return false`. Первая версия отказа ловила
+`syncdirection == SYNC_NO` и затягивала в ранний выход чужие отказы
+(`:1716`/`:1719`) — по замечанию пользователя сужено до своего флага.
+
+Тесты `TestSyncString`: полное число валидно и даёт `composite_pen`,
+`array_column_end/start`, `array_row_end/start`; мусор после числа
+отклоняется в каждой из пяти позиций. Имена файла и ячеек — в кавычках:
+`GetSubstring` берёт первую пару скобок, вложенные `{...}` обрезали правило.
+
+`Docs/_generated/symbols.json`: добавлена одна запись `ParseFileNumber`
+вручную. Полная регенерация `generate_symbols.py` откачена: regex fallback
+переписал 6396 из 8599 записей псевдо-символами (`if`/`for`/тип возврата)
+и обнулил `callgraph.json` (69754 байт → 2). `callgraph.json` не менялся:
+сигнатуры и связи прежние, функция `static` и вне графа.
+
+### Next Step
+
+Нет. Опционально: тесты #202 в ArchiCAD, когда пользователь вернёт общий
+TESTING-набор.
+
+### Last Checkpoint
+
+`6c9fc4d` — `[#202] File-правила: числовые аргументы только как полное число`
+(`Refs: #202`). Затем `d0ba980` (Docs), `310f5ef` (AGENTS.md §17).
+
+### Validation
+
+- Verified: порядок выполнения в `SyncString` (проверка на 1576 строго
+  раньше ветки `File:` на 1611) — чтением исходника; грамматика `File:` по
+  `wiki/ru/Property-Commands-List-ru.md:233`; содержимое `Docs/` в `llm_test`
+  против `docs/codebase-map` через `git rev-parse`/`git diff`; номера строк
+  `ParseFileNumber`=90, `fileNumberValid`=1619, проверка=1724 — grep.
+- Compiled: да, AC25 Debug, `Tools/restart_archicad_for_test.ps1` —
+  сборка и линковка успешны.
+- Tested: нет — набор тестов отключён `927d2d3`, панель «Отладка» не
+  создаётся без debug-сессии.
