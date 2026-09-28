@@ -33985,6 +33985,13 @@
     "line": 88
   },
   {
+    "name": "ParseFileNumber",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 90
+  },
+  {
     "name": "DBprnt",
     "kind": "Constructor",
     "file": "Sources/AddOn/Sync.cpp",
