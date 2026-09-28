@@ -5,6 +5,40 @@
 
 ---
 
+## #221 — проверка диапазона при приведении double к Int32 (закрытие 2026-09-28, issue #221 CLOSED)
+
+Итог: `DoubleToInt32` (`CommonFunction.cpp:955`, hpp:428) и `DoubleToInt32RoundUp` (:990, hpp:437) с насыщением на границах диапазона и сообщением через `msg_rep` (`APIERR_BADVALUE`); `NaN` → 0. Заменено 22 приведения `double` → `Int32` из данных проекта (Spec, Helpers, CommonFunction, Dimensions, Roombook). Типы и числовая семантика не менялись. Коммиты: `309606a` (код), `bc0eb5d` (документация). Issue-комментарий: https://github.com/kuvbur/AddOn_SomeStuff/issues/221#issuecomment-5868042086
+
+**Не проверено:** runtime. `Tools/restart_archicad_for_test.ps1` отказался работать (`exit_code=20`, `reason=multiple_archicad_processes` — два процесса ArchiCAD, один с проектом `[PK1 - BIMcloud Basic]`); по решению пользователя ArchiCAD не закрывался. Сообщение о насыщении на живом значении вне диапазона не наблюдалось. AC22–24/26–29 не собирались, проверена только AC25.
+
+Ниже — блок задачи в исходном виде.
+
+### Scope
+Только проверка диапазона при приведении `double` к целым: `Sources/AddOn/CommonFunction.hpp/.cpp` (хелперы `DoubleToInt32`/`DoubleToInt32RoundUp` и их вызовы в `ceil_mod_classic`, `DoubleM2IntMM`, `DelimTextLine`, `API_AttributeIndexFindByName`), `Sources/AddOn/Helpers.cpp` (`ReadID`, `NumToString`, `ConvertToParamValue` ×3, `ConvertToParamValue(API_Property)` ×3, `ConvertStringToParamValue`, `ConvertDoubleToParamValue`, `ConvertToParamValue(API_IFCProperty)` ×2, `ConvertByFormatString`), `Sources/AddOn/Dimensions.cpp::DimParse`, `Sources/AddOn/Roombook.cpp` (3 места подсчёта пробелов), `Sources/AddOn/spec/Spec.cpp` (`GetParamValue`, номер строки, `show_type`), карточка `Docs/modules/CommonFunction.md`. Типы данных и числовая семантика не меняются. Незакоммиченные правки `Sync.cpp`/`TestFunc.cpp` (задача Name2Rawname) сохранить и в checkpoint не включать.
+
+https://github.com/kuvbur/AddOn_SomeStuff/issues/221
+
+### Status
+DONE (код) / NOT TESTED — код готов, `clang-format` выполнен, clangd по `CommonFunction.cpp` показывает только предсуществующие unused-переменные (строки 139/153/714/1167/1735), в новом коде ошибок нет; сборка AC25 успешна (`AI_BUILD_RESULT status=success`). Runtime-проверка не выполнялась по решению пользователя.
+
+### Last Completed
+2026-09-28 — добавлены `DoubleToInt32` (насыщение: NaN → 0 с сообщением, выше `INT32_MAX` → `INT32_MAX`, ниже `INT32_MIN` → `INT32_MIN`, каждое через `msg_rep` с `APIERR_BADVALUE`) и `DoubleToInt32RoundUp` для мест, где после каста шло округление вверх `+= 1` — без него насыщение давало бы переполнение. Заменено 22 приведения `double` → `Int32` из данных проекта (свойства, GDL-параметры, IFC, материалы слоёв, ID, размеры, ширины текста). Не тронуты касты, где диапазон гарантирован кодом выше: нормализованный угол направления (`Helpers.cpp:3598`, `dir %= 8`) и индексы атрибутов `API_AttributeIndex` (`Helpers.cpp:8859/9551/9091/9094`, `CommonFunction.cpp:2565`). Ключевое место issue — `Spec.cpp::GetParamValue:1472` — теперь `DoubleToInt32 (x, "Spec::GetParamValue", "intValue материала слоя " + val, elemguid)`. Документация: карточки `CommonFunction.md`/`Helpers.md`/`spec.Spec.md`/`Dimensions.md`/`Roombook.md`, `symbols.json` (две записи вручную), `_progress.md`.
+
+### Next Step
+Задача закрыта. Если понадобится фактическое подтверждение сообщения о насыщении — запустить `Tools/restart_archicad_for_test.ps1` при одном открытом ArchiCAD и создать значение вне диапазона Int32 (строка в строковом свойстве или в слое материала).
+
+### Last Checkpoint
+`309606a` — `[#221] Проверка диапазона при приведении double к Int32` (только файлы #221). `bc0eb5d` — `[docs] Актуализация после #221` (карточки `CommonFunction`/`Helpers`/`spec.Spec`/`Dimensions`/`Roombook`, `symbols.json` вручную, `_progress.md`).
+
+### Plan
+- [x] Собрать все места небезопасного приведения `double` → `Int32` из данных проекта (grep по `Sources/AddOn`).
+- [x] Добавить `DoubleToInt32`/`DoubleToInt32RoundUp` в `CommonFunction` с сообщением через `msg_rep`.
+- [x] Заменить приведения, не меняя типов и числовой семантики; `clang-format`, clangd, сборка AC25.
+- [x] Обновить карточки `Docs/`, `symbols.json` вручную, `_progress.md`; закрыть issue #221 с указанием непроведённой runtime-проверки.
+- [x] Runtime пропущен по решению пользователя (ArchiCAD с проектом PK1 не закрывать).
+
+---
+
 ## #170 — совместимость сборок AC25–AC29 (закрытие 2026-09-27, issue #170 CLOSED)
 
 Итог: `python Tools/BuildAddOn.py --configFile config.json --acVersion <V>` — success для AC25/26/27/28/29,
