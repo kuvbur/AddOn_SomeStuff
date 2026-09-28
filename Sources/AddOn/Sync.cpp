@@ -3035,7 +3035,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
             ParsedPropertyCommand cmd;
             cmd.commandType = cmdPrefix.commandType;
             cmd.fullCommand = description.GetSubstring (startPos, description.GetLength () - startPos);
-            cmd.parameters=EMPTYSTRING;
+            cmd.parameters = EMPTYSTRING;
             cmd.isValid = false;
             cmd.errorMessage = "Не найдена закрывающая скобка }";
             commands.Push (std::move (cmd));
@@ -3051,7 +3051,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
         cmd.fullCommand = cmdPrefix.prefix + parameters + BRACEEND;
         cmd.parameters = parameters;
         cmd.isValid = true;
-        cmd.errorMessage=EMPTYSTRING;
+        cmd.errorMessage = EMPTYSTRING;
 
         // Дополнительная валидация для Sync команд
         if (cmdPrefix.commandType == "Sync") {
@@ -3097,7 +3097,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
         if (braceEnd != MaxUSize) {
             remainingText = description.GetSubstring (braceEnd + 1, description.GetLength () - (braceEnd + 1));
         } else {
-            remainingText=EMPTYSTRING;
+            remainingText = EMPTYSTRING;
         }
     }
 
