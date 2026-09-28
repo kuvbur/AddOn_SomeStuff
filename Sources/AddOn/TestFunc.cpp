@@ -2082,6 +2082,63 @@ namespace TestFunc {
         DBtest (param.fromMaterial,
                 "SyncString Sync_from Material:Layers + API_ObjectID (no type check) -> fromMaterial");
 
+        // #202: числовые аргументы правила File: принимаются только как полное число.
+        // Раньше std::stoi молча отбрасывал хвост, поэтому "2junk" читался как 2,
+        // описание свойства выглядело рабочим, а данные брались не из того столбца.
+        // Имена файла и ячеек берём в кавычки: GetSubstring ищет первую пару скобок,
+        // поэтому вложенные {...} обрезают правило.
+        const GS::UniString ruleFileOk = "Sync_from{File:lookup;\"data.txt\",2,\"col_end\"}";
+        param = ParamValue ();
+        syncdirection = SYNC_NO;
+        DBtest (
+            SyncString (elementType, ruleFileOk, syncdirection, param, ignorevals, stringformat, true, false, false),
+            "SyncString File full number -> true");
+        DBtest (param.fromFile, "SyncString File full number -> fromFile");
+        DBtest (param.composite_pen == 2, "SyncString File full number -> composite_pen 2");
+
+        param = ParamValue ();
+        syncdirection = SYNC_NO;
+        DBtest (!SyncString (elementType,
+                             "Sync_from{File:lookup;\"data.txt\",2junk,\"col_end\"}",
+                             syncdirection,
+                             param,
+                             ignorevals,
+                             stringformat,
+                             true,
+                             false,
+                             false),
+                "SyncString File junk after number -> false");
+
+        // Все пять числовых позиций: col_out, конец столбцов, начало столбцов,
+        // конец строк, начало строк
+        const GS::UniString ruleFileAll = "Sync_from{File:lookup;\"data.txt\",2,\"ce\",3,\"cs\",4,\"re\",5,\"rs\",6}";
+        param = ParamValue ();
+        syncdirection = SYNC_NO;
+        DBtest (
+            SyncString (elementType, ruleFileAll, syncdirection, param, ignorevals, stringformat, true, false, false),
+            "SyncString File all five numbers -> true");
+        DBtest (param.composite_pen == 2, "SyncString File all five numbers -> composite_pen 2");
+        DBtest (param.val.array_column_end == 3, "SyncString File all five numbers -> array_column_end 3");
+        DBtest (param.val.array_column_start == 4, "SyncString File all five numbers -> array_column_start 4");
+        DBtest (param.val.array_row_end == 5, "SyncString File all five numbers -> array_row_end 5");
+        DBtest (param.val.array_row_start == 6, "SyncString File all five numbers -> array_row_start 6");
+
+        // Мусор после числа в каждой из пяти позиций - правило должно отбраковываться
+        static const char *junkRules[] = {
+            "Sync_from{File:lookup;\"data.txt\",2junk,\"ce\",3,\"cs\",4,\"re\",5,\"rs\",6}",
+            "Sync_from{File:lookup;\"data.txt\",2,\"ce\",3junk,\"cs\",4,\"re\",5,\"rs\",6}",
+            "Sync_from{File:lookup;\"data.txt\",2,\"ce\",3,\"cs\",4junk,\"re\",5,\"rs\",6}",
+            "Sync_from{File:lookup;\"data.txt\",2,\"ce\",3,\"cs\",4,\"re\",5junk,\"rs\",6}",
+            "Sync_from{File:lookup;\"data.txt\",2,\"ce\",3,\"cs\",4,\"re\",5,\"rs\",6junk}"};
+        for (int junk = 0; junk < 5; junk++) {
+            param = ParamValue ();
+            syncdirection = SYNC_NO;
+            DBtest (
+                !SyncString (
+                    elementType, junkRules[junk], syncdirection, param, ignorevals, stringformat, true, false, false),
+                GS::UniString::Printf ("SyncString File junk in number #%d -> false", junk + 1));
+        }
+
         DBprnt ("TEST", "TestSyncString : done");
         return;
     }

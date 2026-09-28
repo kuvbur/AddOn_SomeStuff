@@ -82,6 +82,34 @@ void ClearSyncThrottleCache () {
 }
 
 // -----------------------------------------------------------------------------
+// Разбирает числовой аргумент правила File: (номер столбца/строки или pen)
+// Принимаем только токен, целиком состоящий из числа: std::stoi молча отбрасывает
+// хвост, из-за чего "2junk" читался как 2, а описание свойства выглядело рабочим
+// и данные брались не из того столбца/строки
+// -----------------------------------------------------------------------------
+static bool ParseFileNumber (const GS::UniString &token, short &value) {
+    GS::UniString trimmed = token;
+    trimmed.Trim ();
+    if (trimmed.IsEmpty ())
+        return false;
+    std::string str (trimmed.ToCStr ().Get ());
+    if (str.empty ())
+        return false;
+    std::size_t pos = 0;
+    int parsed = 0;
+    try {
+        parsed = std::stoi (str, &pos);
+    } catch (const std::exception &) {
+        return false;
+    }
+    // Всё после числа должно быть пробелами - иначе правило некорректно
+    if (pos != str.find_last_not_of (" \t\r\n") + 1)
+        return false;
+    value = static_cast<short> (parsed);
+    return true;
+}
+
+// -----------------------------------------------------------------------------
 // Подключение мониторинга
 // -----------------------------------------------------------------------------
 void MonAll (SyncSettings &syncSettings) {
@@ -1587,6 +1615,8 @@ bool SyncString (const API_ElemTypeID &elementType,
             param.typeinx = FILETYPEINX;
             param.fromFile = true;
             syncdirection = SYNC_FROM;
+            // #202: числовые аргументы принимаются только как полное число
+            bool fileNumberValid = true;
             GS::Array<GS::UniString> params;
             GS::Array<GS::UniString> local_scratch;
             GS::UniString rule = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
@@ -1608,13 +1638,10 @@ bool SyncString (const API_ElemTypeID &elementType,
                         if (!param.val.uniStringValue.Contains (CHARBRACEEND))
                             param.val.uniStringValue = param.val.uniStringValue + CHARBRACEEND;
                     }
-                    short col_out;
-                    try {
-                        col_out = std::stoi (params_2[1].ToCStr ().Get ());
-                    } catch (const std::exception &) {
-                        syncdirection = SYNC_NO;
-                        col_out = 0;
-                    }
+                    short col_out = 0;
+                    // #202: неполный разбор числа принимал "2junk" как 2
+                    if (!ParseFileNumber (params_2[1], col_out))
+                        fileNumberValid = false;
                     param.composite_pen = col_out;
                     // имя свойства для поиска (1)
                     param.rawName_col_end = params_2[2];
@@ -1626,13 +1653,10 @@ bool SyncString (const API_ElemTypeID &elementType,
                     rulestring_one.ReplaceAll (params_2[1], EMPTYSTRING);
                     rulestring_one.ReplaceAll (params_2[2], EMPTYSTRING);
                     if (nparam > 3) {
-                        short col_find;
-                        try {
-                            col_find = std::stoi (params_2[3].ToCStr ().Get ());
-                        } catch (const std::exception &) {
-                            syncdirection = SYNC_NO;
-                            col_find = 0;
-                        }
+                        short col_find = 0;
+                        // #202: неполный разбор числа принимал "2junk" как 2
+                        if (!ParseFileNumber (params_2[3], col_find))
+                            fileNumberValid = false;
                         if (col_find > 0)
                             param.val.array_column_end = col_find;
                         if (param.val.array_column_end == 0)
@@ -1640,13 +1664,10 @@ bool SyncString (const API_ElemTypeID &elementType,
                         rulestring_one.ReplaceAll (params_2[3], EMPTYSTRING);
                     }
                     if (nparam > 5) {
-                        short col_find;
-                        try {
-                            col_find = std::stoi (params_2[5].ToCStr ().Get ());
-                        } catch (const std::exception &) {
-                            syncdirection = SYNC_NO;
-                            col_find = 0;
-                        }
+                        short col_find = 0;
+                        // #202: неполный разбор числа принимал "2junk" как 2
+                        if (!ParseFileNumber (params_2[5], col_find))
+                            fileNumberValid = false;
                         if (col_find > 0 && !params_2[4].IsEmpty ()) {
                             param.rawName_col_start = params_2[4];
                             if (!param.rawName_col_start.Contains (CHARBRACESTART))
@@ -1659,13 +1680,10 @@ bool SyncString (const API_ElemTypeID &elementType,
                         }
                     }
                     if (nparam > 7) {
-                        short col_find;
-                        try {
-                            col_find = std::stoi (params_2[7].ToCStr ().Get ());
-                        } catch (const std::exception &) {
-                            syncdirection = SYNC_NO;
-                            col_find = 0;
-                        }
+                        short col_find = 0;
+                        // #202: неполный разбор числа принимал "2junk" как 2
+                        if (!ParseFileNumber (params_2[7], col_find))
+                            fileNumberValid = false;
                         if (col_find > 0 && !params_2[6].IsEmpty ()) {
                             param.rawName_row_end = params_2[6];
                             if (!param.rawName_row_end.Contains (CHARBRACESTART))
@@ -1678,13 +1696,10 @@ bool SyncString (const API_ElemTypeID &elementType,
                         }
                     }
                     if (nparam > 9 && !params_2[8].IsEmpty ()) {
-                        short col_find;
-                        try {
-                            col_find = std::stoi (params_2[9].ToCStr ().Get ());
-                        } catch (const std::exception &) {
-                            syncdirection = SYNC_NO;
-                            col_find = 0;
-                        }
+                        short col_find = 0;
+                        // #202: неполный разбор числа принимал "2junk" как 2
+                        if (!ParseFileNumber (params_2[9], col_find))
+                            fileNumberValid = false;
                         if (col_find > 0) {
                             param.rawName_row_start = params_2[8];
                             if (!param.rawName_row_start.Contains (CHARBRACESTART))
@@ -1703,6 +1718,11 @@ bool SyncString (const API_ElemTypeID &elementType,
             } else {
                 syncdirection = SYNC_NO;
             }
+            // #202: числовой аргумент разобран не полностью (например "2junk") -
+            // правило отбраковываем. Проверка именно здесь: synctypefind уже true,
+            // поэтому установка syncdirection = SYNC_NO сама по себе правило не отбрасывала
+            if (!fileNumberValid)
+                return false;
         }
     }
 
