@@ -1,6 +1,6 @@
 # Helpers — Ядро: чтение/запись параметров и свойств
 
-> Хеш коммита: 1e67983 (2026-09-22). **Полное покрытие объявлений** Helpers.hpp (808 строк); строки — hpp. Номера определений .cpp не фиксированы. Карточки горячих функций — с данными callgraph.
+> Хеш базового коммита: 9d96d96 (2026-09-28); карточка `WriteProperty` обновлена для #223. **Полное покрытие объявлений** Helpers.hpp (808 строк); строки — hpp. Номера определений .cpp не фиксированы. Карточки горячих функций — с данными callgraph.
 
 ## Назначение
 Ядро add-on: чтение из свойств/GDL/IFC/атрибутов/координат/морфов в единый ParamValue и запись обратно; большинство модулей зависят от него. [по коду include-графа]
@@ -82,6 +82,8 @@
 | `Write` | 478 | Запись ParamDictValue в один элемент |
 | `WriteInfo` | 483 | Запись в информацию о проекте |
 | `WriteClassification` / `WriteID` / `WriteAttribute` / `WriteCoord` / `WriteGDL` / `WriteProperty` | 488-513 | Запись в классификацию / ID / атрибуты / координаты / GDL / свойства |
+
+`WriteProperty` (`Helpers.cpp:5326`): если свойство ещё не загружено, уже известное определение добавляется в общую выборку `ACAPI_Element_GetPropertyValues`; поиск определения по имени нужен только при пустом GUID. Оба пути после загрузки проходят через существующий пакетный `ACAPI_Element_SetProperties`. [по коду Helpers.cpp:5347-5412; read-back AC25 #223]
 
 ### Преобразования ParamValue [из комментариев]
 `NameToRawName` (267) — имя → rawname (скобки); `GetRawnamePrefixByTypeInx`/`GetTypeInxByRawnamePrefix` (275/277) — префикс источника; `SetParamValueSourseByName` (282) — источник по rawName; `SetArrayByRawname` (284); `ReplaceParamInExpression` (299) — подстановка значений; `GetParamValueForElements` (301); `ReplaceProcToBrace` (306); `ParseParamNameMaterial` (311) — имена в %% ; `ParseParamName` (316) — имена в {}; `AddValueToParamDictValue` (321); `needAdd` (328); `AddParamValue2ParamDict` (333) и `AddParamValue2ParamDictElement` ×2 (339/347); `CheckIgnoreVal` (352); `CompareParamValue` (357); `AddParamDictValue2ParamDictElement` (367); `AddProperty` (374); `AddBool/Length/Double/StringValueToParamDictValue` (379-414); `CompareParamDictValue` ×2 (427/432); `CompareParamDictElement` (643); `Array2ParamValue` (543); конвертации `ConvertToParamValue` — GDL (:544/548/568), свойство (:578), определение (:585), IFC (:606), строка (:590), int (:595), double (:600); `ConvertBoolToParamValue` (558); `ConvertAttributeToParamValue` (563); `SetrawNameFromProperty` (573); `ConvertToParamValue_CheckAttrib` (580); `ConvertByFormatString` (609); `GetUnitsPrefix` (681); `SetUnitsAndQty2ParamValueComposite` (683); `ToString` ×4 — ParamValue (753/758), API_Variant/Property (253-256); `isEng`-независимые единицы.

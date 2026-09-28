@@ -1012,8 +1012,10 @@ namespace Spec {
             const UInt32 createdCount = paramOut.GetSize () - previousCount;
             if (runResult != nullptr)
                 runResult->elementsToCreate = createdCount;
-            if (createdCount == 0 && elements_mod.IsEmpty () && elements_delete.IsEmpty ())
+            if (createdCount == 0 && elements_mod.IsEmpty () && elements_delete.IsEmpty ()) {
+                msg_rep ("Spec", "Elements not created", APIERR_GENERAL, APINULLGuid);
                 return APIERR_GENERAL;
+            }
         } else {
             start = clock ();
         }
@@ -2046,7 +2048,7 @@ namespace Spec {
                     name.Trim (CHARBRACEEND);
                     name.Trim ();
                     if (part == 1 && name.IsEqual ("-")) {
-                        name=EMPTYSTRING;
+                        name = EMPTYSTRING;
                         continue;
                     }
                     if (name.IsEmpty ())
@@ -2463,7 +2465,6 @@ namespace Spec {
     //      - группирует элементы, если в группе больше одного
     //   3. Запускает GDL-скрипты параметров (RunGDLParScript)
     // Возвращает: код ошибки (NoError при успехе)
-    // Примечание: выполняется внутри ACAPI_CallUndoableCommand
     // --------------------------------------------------------------------
     GSErrCode PlaceElements (GS::Array<ElementDict> &elementstocreate,
                              ParamDictValue &paramToWrite,
@@ -2487,17 +2488,23 @@ namespace Spec {
             find_stor = true;
             BMKillHandle ((GSHandle *)&storyInfo.data);
         }
-        ACAPI_CallUndoableCommand ("Create Spec element", [&] () -> GSErrCode {
+        err = ACAPI_CallUndoableCommand ("Create Spec element", [&] () -> GSErrCode {
             int n_elem = 0;
-            for (UInt32 i = 0; i < elementstocreate.GetSize (); i++) {
-                GS::Array<API_Guid> group = {};
-                for (auto &cIt : elementstocreate[i]) {
+            API_Element element = {};
+            GS::Array<API_Guid> group;
+            for (auto &groups : elementstocreate) {
+                if (group.IsEmpty ()) {
+                    group.SetCapacity (groups.GetSize ());
+                } else {
+                    group.Clear ();
+                }
+                for (auto &cIt : groups) {
 #ifdef ServerMainVers_2800
                     Element el = cIt.value;
 #else
                 Element el = *cIt.value;
 #endif
-                    API_Element element = {};
+                    BNZeroMemory (&element, sizeof (API_Element));
                     API_ElementMemo memo = {};
                     err = GetElementForPlace (el.favorite_name, element, memo);
                     if (err != NoError) {

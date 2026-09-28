@@ -37,6 +37,14 @@
 
 ## Карточки
 
+### `Spec::GetParamValue(...) -> bool` (#220, локальная правка)
+- Расположение: `Sources/AddOn/spec/Spec.cpp:1389`.
+- Контракт: читает обычное значение через `GetParamValueForElements`; материал выбирается по `pvalue.fromMaterial`, а не по аргументу `fromMaterial` (аргумент сохранён для совместимости). Для материалов и list-data отрицательный `n_layer` возвращает `false`. При отказе `pvalue.isValid == false`; остальные поля при отказе не являются результатом. [по коду]
+- Отсутствующий элемент/ключ и пустой состав — ошибка. Положительный индекс за концом непустого состава — успешная пустая строка с нулевыми числовыми полями, `boolValue=false`, `canCalculate=false`, `isValid=true`. Для отсутствующих list-data или невычисленной формулы сохранён такой же успешный пустой результат. [по коду]
+- Доступ к вложенным словарям — `GetPtr` с проверкой `nullptr`; результат формулы ищется после изменения локального словаря, указатель через его заполнение не удерживается. Входные словари не изменяются. [по коду]
+- Вызывает: `hasLibData`, `ParamHelpers::ParseParamName`, `ListData::AddLibdataToParamValueDict`, `ParamHelpers::ReadFormula`, `ParamHelpers::GetParamValueForElements`, `UniStringToDouble`, `is_equal`, диагностические `DBprnt`/`msg_rep`. Вызывается из `GetElementsForRule` и `TestFunc::TestSpecGetParamValue`. [по исходникам]
+- Проверка: целевой runtime-набор AC25 в `TestFunc.cpp`; полный набор тестов и другие AC-версии этой проверкой не покрываются.
+
 ### `Spec::SpecAll(const SyncSettings &syncSettings, const GS::Array<GS::UniString> *ruleNames = nullptr, const Point2D *placementPoint = nullptr, SpecRunResult *runResult = nullptr) -> GSErrCode`
 - Расположение: `Sources/AddOn/spec/Spec.cpp:140`
 - Назначение: создаёт спецификацию из текущего выбора, всех видимых элементов или правил по умолчанию. [из комментария]

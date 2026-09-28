@@ -5372,6 +5372,8 @@ void ParamHelpers::WriteProperty (const API_Guid &elemGuid, ParamDictValue &para
                 DBprnt ("    WriteProperty err", "param.definition.guid == APINULLGuid " + param.rawName);
 #endif
             }
+        } else {
+            propertyDefinitions.Push (param.definition);
         }
     }
     if (!propertyDefinitions.IsEmpty ()) {
@@ -5970,7 +5972,7 @@ bool ParamHelpers::ReadClassification (const API_Guid &elemGuid, ParamDictValue 
                 elementsystem.Put (param.name, systemguid);
             }
         } else {
-            param.val.uniStringValue; // Если система не найдена - обнулим значение
+            param.val.uniStringValue = EMPTYSTRING; // Если система не найдена - обнулим значение
             msg_rep ("System not found", param.name, NoError, APINULLGuid);
         }
     }
@@ -7579,19 +7581,11 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
                 GS::UniString part = outstring.GetSubstring (CHARFORMULASTART, CHARFORMULAEND, 0);
                 stringformat = EMPTYSTRING;
                 FormatStringFunc::GetFormatStringFromFormula (outstring, part, stringformat);
-                if (nlayers > 0 && !part.IsEmpty () && outstring.Count (part) == 1) {
-                    GS::UniString expanded;
-                    expanded.SetCapacity (part.GetLength () + nlayers * 12);
-                    for (Int32 i = nlayers - 1; i >= 0; --i)
-                        expanded.Append (GS::UniString::Printf ("&%d&", i));
-                    outstring.ReplaceAll (part, expanded);
-                } else {
-                    for (Int32 i = 0; i < nlayers; ++i) {
-                        if (i == nlayers - 1) {
-                            outstring.ReplaceAll (part, GS::UniString::Printf ("&%d&", i));
-                        } else {
-                            outstring.ReplaceAll (part, part + GS::UniString::Printf ("&%d&", i));
-                        }
+                for (Int32 i = 0; i < nlayers; ++i) {
+                    if (i == nlayers - 1) {
+                        outstring.ReplaceAll (part, GS::UniString::Printf ("&%d&", i));
+                    } else {
+                        outstring.ReplaceAll (part, part + GS::UniString::Printf ("&%d&", i));
                     }
                 }
             }
@@ -8381,6 +8375,10 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue &pvalue, const AP
         pvalue.fromAttribDefinition = true;
         return;
     }
+    if (description.Contains ("{@property:buildingmaterialproperties}")) {
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
     if (description.Contains ("some_stuff")) {
         if (description.Contains ("some_stuff_th")) {
             // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
@@ -9063,11 +9061,6 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage &profileDescri
         }
     }
     bool hasData = false;
-    GS::HashTable<API_AttributeIndex, bool> readMaterials;
-    auto readMaterialOnce = [&] (const API_AttributeIndex &index) {
-        if (!readMaterials.ContainsKey (index) && ParamHelpers::GetAttributeValues (index, params, paramsAdd))
-            readMaterials.Put (index, true);
-    };
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     Point2D startp = {-10000, 0};
     while (!profileDescriptionIt1.IsEOI ()) {
@@ -9158,7 +9151,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage &profileDescri
                                 layer.width = width;
                             layer.length = length;
                             layer.structype = structype;
-                            readMaterialOnce (constrinxL);
+                            ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
                             composite_all.Push (std::move (layer));
                         } else {
     #if defined(TESTING)
@@ -9195,7 +9188,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage &profileDescri
                             layer.area_fill = area_fill;
                             layer.structype = structype;
                             comp->composite.Push (std::move (layer));
-                            readMaterialOnce (constrinxL);
+                            ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
                             hasData = true;
                         }
                     }
