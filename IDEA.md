@@ -6,7 +6,7 @@
 
 - Scope: текущий test_25 в пользовательской VS Debug x64-сессии; JSON Spec и брейкпоинты, без правки C++, пересборки, перезапуска или изменения переменных отладчиком. Ожидается один созданный элемент.
 - Status: FIXED_AND_VERIFIED — причина найдена, правка внесена и подтверждена A/B-тестом.
-- Issue: #226 (kuvbur/AddOn_SomeStuff) — создан, коммит с Refs: #226, закрыт по итогам проверки.
+- Issue: #226 (kuvbur/AddOn_SomeStuff) — ЗАКРЫТ 2026-09-28 (коммит 279d2be, Refs: #226).
 
 - Правка (Spec.cpp:990, замена условия «всё пусто» -> ошибка):
   - было: `if (elements_new.IsEmpty () && elements_mod.IsEmpty () && elements_delete.IsEmpty ())` -> APIERR_GENERAL;
@@ -46,8 +46,9 @@
   ошибки из PlaceElements» (:1011 не проверяет возврат, ошибка глотается) — по вашему
   указанию отложен.
 
-- Last Checkpoint: нет. `git status` = `M IDEA.md` + `M Sources/AddOn/spec/Spec.cpp`
-  (23 вставки, 1 удаление). Точки свои сняты, отладчик живой.
+- Last Checkpoint: 279d2be — правка Spec.cpp + этот IDEA.md в master. Issue #226 закрыт
+  после Tools/restart_archicad_for_test.ps1 (exit_code=0) и прогона Spec на сборке
+  из коммита (1-й: создано 16, 2-й: completed 0/0/0).
 
 ## Archive — архитектурный разбор Spec (2026-09-28)
 
