@@ -1469,7 +1469,7 @@ namespace Spec {
         pvalue.val.uniStringValue = val;
         pvalue.val.doubleValue = x;
         pvalue.val.rawDoubleValue = x;
-        pvalue.val.intValue = (GS::Int32)x;
+        pvalue.val.intValue = DoubleToInt32 (x, "Spec::GetParamValue", "intValue материала слоя " + val, elemguid);
         if (pvalue.val.canCalculate) {
             pvalue.val.boolValue = !is_equal (x, 0);
         } else {
@@ -2059,7 +2059,7 @@ namespace Spec {
                         Int32 n_row = 10;
                         if (UniStringToDouble (n_row_txt, doubleValue) && doubleValue >= 1 &&
                             doubleValue <= max_group_mat) {
-                            n_row = (GS::Int32)doubleValue;
+                            n_row = DoubleToInt32 (doubleValue, "Spec", "номер строки " + n_row_txt);
                         }
                         if (min_row == 0)
                             min_row = n_row;
@@ -2406,7 +2406,7 @@ namespace Spec {
                 flag_find_dy = true;
             }
             if (name.IsEqual ("show_type")) {
-                show_type = (Int32)actParam.value.real;
+                show_type = DoubleToInt32 (actParam.value.real, "Spec", "параметр show_type");
                 flag_find_type = true;
             }
             if (flag_find_dx && flag_find_dy && flag_find_type)

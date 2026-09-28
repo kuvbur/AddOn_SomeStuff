@@ -1,6 +1,32 @@
 ﻿# Current Task
 
-Активной задачи нет. Блоки ниже — незавершённые (#217 ждёт сборки, #211 откатан частично, диагностика ReadQuantities и Name2Rawname открыты). Выполненные (#209, #220, #222, #223, #224) вынесены в `IDEA_ARCHIVE.md`.
+Активной задачи нет. Блоки ниже — незавершённые (#221 — код готов, ждёт приёмки, #217 ждёт сборки, #211 откатан частично, диагностика ReadQuantities и Name2Rawname открыты). Выполненные (#209, #220, #222, #223, #224) вынесены в `IDEA_ARCHIVE.md`.
+
+## Parallel Task — #221 проверка диапазона при double → Int32
+
+### Scope
+Только проверка диапазона при приведении `double` к целым: `Sources/AddOn/CommonFunction.hpp/.cpp` (хелперы `DoubleToInt32`/`DoubleToInt32RoundUp` и их вызовы в `ceil_mod_classic`, `DoubleM2IntMM`, `DelimTextLine`, `API_AttributeIndexFindByName`), `Sources/AddOn/Helpers.cpp` (`ReadID`, `NumToString`, `ConvertToParamValue` ×3, `ConvertToParamValue(API_Property)` ×3, `ConvertStringToParamValue`, `ConvertDoubleToParamValue`, `ConvertToParamValue(API_IFCProperty)` ×2, `ConvertByFormatString`), `Sources/AddOn/Dimensions.cpp::DimParse`, `Sources/AddOn/Roombook.cpp` (3 места подсчёта пробелов), `Sources/AddOn/spec/Spec.cpp` (`GetParamValue`, номер строки, `show_type`), карточка `Docs/modules/CommonFunction.md`. Типы данных и числовая семантика не меняются. Незакоммиченные правки `Sync.cpp`/`TestFunc.cpp` (задача Name2Rawname) сохранить и в checkpoint не включать.
+
+https://github.com/kuvbur/AddOn_SomeStuff/issues/221
+
+### Status
+WAITING_FOR_TEST — код готов, `clang-format` выполнен, clangd по `CommonFunction.cpp` показывает только предсуществующие unused-переменные (строки 139/153/714/1167/1735), в моём коде ошибок нет; сборка AC25 успешна (`AI_BUILD_RESULT status=success`). Runtime-проверка сообщений `msg_rep` при выходе за границы не выполнялась.
+
+### Last Completed
+2026-09-28 — добавлены `DoubleToInt32` (насыщение: NaN → 0 с сообщением, выше `INT32_MAX` → `INT32_MAX`, ниже `INT32_MIN` → `INT32_MIN`, каждое через `msg_rep` с `APIERR_BADVALUE`) и `DoubleToInt32RoundUp` для мест, где после каста шло округление вверх `+= 1` — без него насыщение давало бы переполнение. Заменено 22 приведения `double` → `Int32` из данных проекта (свойства, GDL-параметры, IFC, материалы слоёв, ID, размеры, ширины текста). Не тронуты касты, где диапазон гарантирован кодом выше: нормализованный угол направления (`Helpers.cpp:3598`, `dir %= 8`) и индексы атрибутов `API_AttributeIndex` (`Helpers.cpp:8859/9551/9091/9094`, `CommonFunction.cpp:2565`). Ключевое место issue — `Spec.cpp::GetParamValue:1472` — теперь `DoubleToInt32 (x, "Spec::GetParamValue", "intValue материала слоя " + val, elemguid)`.
+
+### Next Step
+Runtime: собрать значение материала/свойства вне диапазона Int32 (например, длинное число в строковом свойстве или в слое материала) и убедиться в отчёте `!! ERROR !!` от `msg_rep` и в присвоении границы вместо мусора. По §11.1 перед закрытием issue — `Tools/restart_archicad_for_test.ps1`. Не закрывать #221 без runtime-подтверждения хотя бы одного сообщения.
+
+### Last Checkpoint
+Создаётся этим блоком: `[#221] Проверка диапазона при приведении double к Int32` (только файлы #221; `Sync.cpp`/`TestFunc.cpp` — чужие правки, не включены).
+
+### Plan
+- [x] Собрать все места небезопасного приведения `double` → `Int32` из данных проекта (grep по `Sources/AddOn`).
+- [x] Добавить `DoubleToInt32`/`DoubleToInt32RoundUp` в `CommonFunction` с сообщением через `msg_rep`.
+- [x] Заменить приведения, не меняя типов и числовой семантики; `clang-format`, clangd, сборка AC25.
+- [/] Runtime-проверка сообщения о выходе за границы и насыщения; затем `restart_archicad_for_test.ps1` и закрытие #221.
+
 
 ## Parallel Task — диагностика ReadQuantities при SpecAll (AC25)
 

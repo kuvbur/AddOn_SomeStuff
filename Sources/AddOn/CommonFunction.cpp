@@ -948,6 +948,56 @@ bool is_equal (double x, double y) {
 }
 
 // --------------------------------------------------------------------
+// Приводит double к Int32 с насыщением на границах диапазона.
+// Тип результата не меняется: значение за пределами диапазона Int32 не отбрасывается,
+// а заменяется ближайшей границей, о выходе за границы выводится сообщение через msg_rep.
+// --------------------------------------------------------------------
+Int32 DoubleToInt32 (double value,
+                     const GS::UniString &modulename,
+                     const GS::UniString &info,
+                     const API_Guid &elemGuid) {
+    const double max_int = static_cast<double> (std::numeric_limits<Int32>::max ());
+    const double min_int = static_cast<double> (std::numeric_limits<Int32>::min ());
+    if (std::isnan (value)) {
+        msg_rep (modulename, info + " - значение NaN заменено на 0", APIERR_BADVALUE, elemGuid);
+        return 0;
+    }
+    GS::UniString valtext = GS::UniString::Printf ("%g", value);
+    if (value > max_int) {
+        msg_rep (modulename,
+                 info + " - значение " + valtext + " больше максимума Int32, присвоено " +
+                     GS::UniString::Printf ("%d", std::numeric_limits<Int32>::max ()),
+                 APIERR_BADVALUE,
+                 elemGuid);
+        return std::numeric_limits<Int32>::max ();
+    }
+    if (value < min_int) {
+        msg_rep (modulename,
+                 info + " - значение " + valtext + " меньше минимума Int32, присвоено " +
+                     GS::UniString::Printf ("%d", std::numeric_limits<Int32>::min ()),
+                 APIERR_BADVALUE,
+                 elemGuid);
+        return std::numeric_limits<Int32>::min ();
+    }
+    return static_cast<Int32> (value);
+}
+
+// --------------------------------------------------------------------
+// То же, что DoubleToInt32, но с округлением вверх дробной части.
+// Применяется там, где целое значение используется для округления размера
+// вверх, поэтому инкремент выполняется с той же проверкой диапазона.
+// --------------------------------------------------------------------
+Int32 DoubleToInt32RoundUp (double value,
+                            const GS::UniString &modulename,
+                            const GS::UniString &info,
+                            const API_Guid &elemGuid) {
+    Int32 result = DoubleToInt32 (value, modulename, info, elemGuid);
+    if (result < value && result < std::numeric_limits<Int32>::max ())
+        result += 1;
+    return result;
+}
+
+// --------------------------------------------------------------------
 // Переводит строку в число с поддержкой локали и разделителей, которые могут отличаться
 // от привычной точки (например, запятая в европейских форматах).
 // --------------------------------------------------------------------
@@ -1034,13 +1084,15 @@ Int32 ceil_mod_classic (Int32 n, Int32 k) {
     double n_real = n / 1.0;
     double k_real = k / 1.0;
     double param_real = round (n_real / k_real) * k;
-    return (GS::Int32)param_real;
+    return DoubleToInt32 (param_real, "ceil_mod_classic", "результат округления до кратного");
 }
 
 // --------------------------------------------------------------------
 // Перевод метров, заданных типом double в мм Int32
 // --------------------------------------------------------------------
-Int32 DoubleM2IntMM (double value) { return static_cast<Int32> (std::round (value * 1000.0)); }
+Int32 DoubleM2IntMM (double value) {
+    return DoubleToInt32 (std::round (value * 1000.0), "DoubleM2IntMM", "перевод метров в миллиметры");
+}
 
 // -----------------------------------------------------------------------------
 // Заменяет escape-последовательность \n на реальный перевод строки.
@@ -1188,7 +1240,8 @@ GS::Array<GS::UniString> DelimTextLine (short font,
 
     auto padLineWithSpaces = [&] (GS::UniString &text, double currentWidth) {
         if (width_space > 0.001 && currentWidth < width) {
-            Int32 addspace = static_cast<Int32> ((width - currentWidth) / width_space);
+            Int32 addspace =
+                DoubleToInt32 ((width - currentWidth) / width_space, "DelimTextLine", "число пробелов по ширине");
             if (std::fabs (addspace * width_space - width + currentWidth) > 0.01) {
                 addspace -= 1;
             }
@@ -2508,10 +2561,11 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &typ
     }
     double inx = 0;
     if (UniStringToDouble (name, inx)) {
+        const Int32 attribinx_value = DoubleToInt32 (inx, "API_AttributeIndexFindByName", "индекс атрибута " + name);
 #ifdef ServerMainVers_2700
-        attribinx = ACAPI_CreateAttributeIndex ((Int32)inx);
+        attribinx = ACAPI_CreateAttributeIndex (attribinx_value);
 #else
-        attribinx = (Int32)inx;
+        attribinx = attribinx_value;
 #endif
         attrib.header.typeID = type;
         attrib.header.index = attribinx;

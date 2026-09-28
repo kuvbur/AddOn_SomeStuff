@@ -1027,7 +1027,7 @@ namespace Roombook
         if (c.width_narow_space < 0.001) {
             c.width_narow_space = 0.5;
         }
-        addspace = (Int32)(c.width_area / c.width_narow_space);
+        addspace = DoubleToInt32 (c.width_area / c.width_narow_space, "Roombook", "число пробелов по ширине");
         if (fabs (addspace * c.width_narow_space - c.width_area) > c.width_narow_space)
             addspace -= 1;
         c.space_line = EMPTYSTRING;
@@ -1036,7 +1036,8 @@ namespace Roombook
         }
         c.width_area = GetTextWidth (c.font, c.fontsize, c.space_line);
         double width_delim = GetTextWidth (c.font, c.fontsize, delim);
-        addspace = (Int32)((c.width_mat + c.width_area) / width_delim);
+        addspace =
+            DoubleToInt32 ((c.width_mat + c.width_area) / width_delim, "Roombook", "число разделителей по ширине");
         if (fabs (addspace * width_delim - c.width_mat - c.width_area) > c.width_narow_space)
             addspace -= 1;
         c.delim_line = EMPTYSTRING;
@@ -1246,7 +1247,8 @@ namespace Roombook
                     GS::UniString area_sring = GS::UniString::Printf ("%.2f", area);
                     double w_area = GetTextWidth (c.font, c.fontsize, area_sring);
                     if (w_area < c.width_area) {
-                        Int32 addspace = (Int32)((c.width_area - w_area) / c.width_narow_space);
+                        Int32 addspace =
+                            DoubleToInt32 ((c.width_area - w_area) / c.width_narow_space, "Roombook", "число пробелов");
                         if (fabs (addspace * c.width_narow_space - c.width_area + w_area) > 0.01)
                             addspace -= 1;
                         if (addspace > 1) {

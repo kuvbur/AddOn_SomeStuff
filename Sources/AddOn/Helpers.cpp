@@ -299,7 +299,8 @@ namespace FormatStringFunc {
         double outvar = var * stringformat.koeff;
         outvar = round_nzero (outvar, stringformat.n_zero);
         if (stringformat.krat > 0) {
-            outvar = ceil_mod ((GS::Int32)outvar, stringformat.krat);
+            outvar = ceil_mod (DoubleToInt32 (outvar, "NumToString", "значение для округления до кратного"),
+                               stringformat.krat);
         }
         int precision = (stringformat.n_zero >= 0 && stringformat.n_zero < 18) ? stringformat.n_zero : 6;
         char buf[128];
@@ -6098,7 +6099,8 @@ bool ParamHelpers::ReadID (const API_Elem_Head &elem_head, ParamDictValue &param
         id->type = API_PropertyStringValueType;
         id->val.boolValue = !infoString.IsEmpty ();
         if (UniStringToDouble (infoString, id->val.doubleValue)) {
-            id->val.intValue = (GS::Int32)id->val.doubleValue;
+            id->val.intValue =
+                DoubleToInt32 (id->val.doubleValue, "ReadID", "ID элемента " + infoString, elem_head.guid);
             id->val.canCalculate = true;
         } else {
             id->val.intValue = !infoString.IsEmpty ();
@@ -7896,9 +7898,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData &pvalue,
 
         if (UniStringToDouble (param_string, param_real)) {
             param_real = round (param_real * 100000.0) / 100000.0;
-            param_int = (GS::Int32)param_real;
-            if (param_int / 1 < param_real)
-                param_int += 1;
+            param_int = DoubleToInt32RoundUp (param_real, "ConvertToParamValue", "строка " + param_string);
             pvalue.canCalculate = true;
         } else {
             if (param_bool) {
@@ -7910,9 +7910,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData &pvalue,
         param_real = round (param_real * 100000) / 100000;
         if (preal - param_real > 0.00001)
             param_real += 0.00001;
-        param_int = (GS::Int32)param_real;
-        if (param_int / 1 < param_real)
-            param_int += 1;
+        param_int = DoubleToInt32RoundUp (param_real, "ConvertToParamValue", "параметр " + param_string);
     }
     if (fabs (param_real) > std::numeric_limits<double>::epsilon ())
         param_bool = true;
@@ -7957,9 +7955,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData &pvalue,
             param_real = round ((preal * 180.0 / PI) * 100000.0) / 100000.0;
             if (preal - param_real > 0.00001)
                 param_real += 0.00001;
-            param_int = (GS::Int32)param_real;
-            if (param_int / 1 < param_real)
-                param_int += 1;
+            param_int = DoubleToInt32RoundUp (param_real, "ConvertToParamValue", "угол");
             param_string = GS::UniString::Printf ("%.1f", param_real);
             pvalue.canCalculate = true;
             pvalue.type = API_PropertyRealValueType;
@@ -8270,9 +8266,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValue &pvalue, const API_Property &
                 pvalue.val.rawDoubleValue = round (pvalue.val.rawDoubleValue * 100000.0) / 100000.0;
             }
         }
-        pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
-        if (pvalue.val.intValue / 1 < pvalue.val.doubleValue)
-            pvalue.val.intValue += 1;
+        pvalue.val.intValue =
+            DoubleToInt32RoundUp (pvalue.val.doubleValue, "ConvertToParamValue", "свойство " + pvalue.rawName);
         if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ())
             pvalue.val.boolValue = true;
         pvalue.val.type = API_PropertyRealValueType;
@@ -8286,7 +8281,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValue &pvalue, const API_Property &
                     needRound = false;
                 if (needRound && property.definition.measureType != API_PropertyLengthMeasureType) {
                     pvalue.val.doubleValue = round_nzero (pvalue.val.doubleValue, formatstringch->n_zero);
-                    pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
+                    pvalue.val.intValue =
+                        DoubleToInt32 (pvalue.val.doubleValue, "ConvertToParamValue", "свойство после округления");
                     if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ())
                         pvalue.val.boolValue = true;
                 }
@@ -8319,9 +8315,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValue &pvalue, const API_Property &
         pvalue.val.type = API_PropertyStringValueType;
         pvalue.val.boolValue = !pvalue.val.uniStringValue.IsEmpty ();
         if (UniStringToDouble (pvalue.val.uniStringValue, pvalue.val.doubleValue)) {
-            pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
-            if (pvalue.val.intValue / 1 < pvalue.val.doubleValue)
-                pvalue.val.intValue += 1;
+            pvalue.val.intValue = DoubleToInt32RoundUp (
+                pvalue.val.doubleValue, "ConvertToParamValue", "строковое свойство " + pvalue.val.uniStringValue);
             pvalue.val.canCalculate = true;
         } else {
             if (pvalue.val.boolValue) {
@@ -8463,9 +8458,8 @@ bool ParamHelpers::ConvertStringToParamValue (ParamValue &pvalue,
     pvalue.val.uniStringValue = strvalue;
     pvalue.val.boolValue = !pvalue.val.uniStringValue.IsEmpty ();
     if (UniStringToDouble (pvalue.val.uniStringValue, pvalue.val.doubleValue)) {
-        pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
-        if (pvalue.val.intValue / 1 < pvalue.val.doubleValue)
-            pvalue.val.intValue += 1;
+        pvalue.val.intValue = DoubleToInt32RoundUp (
+            pvalue.val.doubleValue, "ConvertStringToParamValue", "строка " + pvalue.val.uniStringValue);
         pvalue.val.canCalculate = true;
     } else {
         if (pvalue.val.boolValue) {
@@ -8591,7 +8585,8 @@ bool ParamHelpers::ConvertDoubleToParamValue (ParamValue &pvalue,
     pvalue.val.type = API_PropertyRealValueType;
     pvalue.type = pvalue.val.type;
     pvalue.val.canCalculate = true;
-    pvalue.val.intValue = (GS::Int32)doubleValue;
+    pvalue.val.intValue =
+        DoubleToInt32 (doubleValue, "ConvertDoubleToParamValue", "double " + GS::UniString::Printf ("%g", doubleValue));
     pvalue.val.doubleValue = doubleValue;
     pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
     pvalue.val.hasrawDouble = true;
@@ -8624,9 +8619,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValue &pvalue, const API_IFCPropert
             pvalue.val.uniStringValue = property.singleValue.nominalValue.value.stringValue;
             pvalue.val.boolValue = !pvalue.val.uniStringValue.IsEmpty ();
             if (UniStringToDouble (pvalue.val.uniStringValue, pvalue.val.doubleValue)) {
-                pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
-                if (pvalue.val.intValue / 1 < pvalue.val.doubleValue)
-                    pvalue.val.intValue += 1;
+                pvalue.val.intValue = DoubleToInt32RoundUp (
+                    pvalue.val.doubleValue, "ConvertToParamValue(IFC)", "строка " + pvalue.val.uniStringValue);
                 pvalue.val.canCalculate = true;
             } else {
                 if (pvalue.val.boolValue) {
@@ -8643,9 +8637,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValue &pvalue, const API_IFCPropert
             pvalue.val.doubleValue = round (property.singleValue.nominalValue.value.doubleValue * 1000) / 1000;
             if (property.singleValue.nominalValue.value.doubleValue - pvalue.val.doubleValue > 0.001)
                 pvalue.val.doubleValue += 0.001;
-            pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
-            if (pvalue.val.intValue / 1 < pvalue.val.doubleValue)
-                pvalue.val.intValue += 1;
+            pvalue.val.intValue =
+                DoubleToInt32RoundUp (pvalue.val.doubleValue, "ConvertToParamValue(IFC)", "вещественное значение IFC");
             if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ())
                 pvalue.val.boolValue = true;
             pvalue.val.uniStringValue = GS::UniString::Printf ("%.3f", pvalue.val.doubleValue);
@@ -8727,7 +8720,8 @@ void ParamHelpers::ConvertByFormatString (ParamValue &pvalue) {
         if (koeff != 1)
             n_zero = n_zero + (GS::Int32)log10 (koeff);
         pvalue.val.doubleValue = round_nzero (pvalue.val.doubleValue, n_zero);
-        pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
+        pvalue.val.intValue =
+            DoubleToInt32 (pvalue.val.doubleValue, "ConvertByFormatString", "значение " + pvalue.rawName);
         if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ())
             pvalue.val.boolValue = true;
     }

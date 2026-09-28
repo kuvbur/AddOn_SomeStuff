@@ -25,6 +25,7 @@
 | `UnhideUnlockElementLayer` | 2448/2472/2496? | Снятие скрытия/блокировки слоя (3 перегрузки) [из комментария; строки 3-й не проверены] |
 | `DBprnt` / `DBtest` / `msg_rep` | — | Отладочный вывод / тест / сообщение об ошибке [из комментария; строки не проверены] |
 | `StringSplt`, `StringUnic`, `UniStringToDouble`, `round_nzero`, `is_equal`, `check_accuracy` | — | Строки и числа [из комментария; строки не проверены] |
+| `DoubleToInt32` / `DoubleToInt32RoundUp` | 955 / 991 | Приведение `double` к `Int32` с насыщением на границах диапазона (NaN → 0, вне диапазона → `INT32_MIN/MAX`), сообщение через `msg_rep` [CommonFunction.cpp, проверено grep] |
 
 ## Карточки
 

@@ -304,9 +304,11 @@ bool DimParse (const double &dimVal,
     double dimVal_r = round (dimVal * 1000.0);
     Int32 dimValmm_round = 0;
     if (dimrule.classic_round_mode) {
-        dimValmm_round = ceil_mod_classic ((GS::Int32)dimVal_r, round_value);
+        dimValmm_round =
+            ceil_mod_classic (DoubleToInt32 (dimVal_r, "DimParse", "размер для округления", elemGuid), round_value);
     } else {
-        dimValmm_round = ceil_mod ((GS::Int32)dimVal_r, round_value);
+        dimValmm_round =
+            ceil_mod (DoubleToInt32 (dimVal_r, "DimParse", "размер для округления", elemGuid), round_value);
     }
     double dx = fabs (dimVal_r - dimValmm_round * 1.0); // Разница в размерах в мм
     // Возвращаем вычисленный текст отдельно: content остаётся исходным для
