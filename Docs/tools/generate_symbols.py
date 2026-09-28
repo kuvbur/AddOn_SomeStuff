@@ -21,7 +21,7 @@ REPO_ROOT = os.path.abspath(
 )
 COMPILE_COMMANDS = os.path.join(REPO_ROOT, "compile_commands.json")
 DEFAULT_CLANGD = r"C:\Program Files\LLVM\bin\clangd"
-DEFAULT_OUTPUT = os.path.join(REPO_ROOT, "docs", "_generated")
+DEFAULT_OUTPUT = os.path.join(REPO_ROOT, "Docs", "_generated")
 
 
 def load_compile_commands(path):
@@ -220,11 +220,28 @@ def main():
     with open(symbols_path, "w", encoding="utf-8") as f:
         json.dump(consolidated, f, ensure_ascii=False, indent=2)
 
-    with open(callgraph_path, "w", encoding="utf-8") as f:
-        json.dump([], f, ensure_ascii=False, indent=2)
+    # callgraph.json собирается только через clangd MCP (процесс clangd
+    # недоступен из subprocess на Windows — см. Docs/_progress.md), то есть
+    # вручную. Скрипт не умеет его собирать, поэтому НИКОГДА не перезаписывает
+    # существующий файл: запуск ради symbols.json стирал бы 150+ рёбер.
+    existing = None
+    if os.path.exists(callgraph_path):
+        try:
+            with open(callgraph_path, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+        except (ValueError, OSError):
+            existing = None
+
+    if existing is None:
+        print(f"callgraph.json: нет или не читается — создан пустым ({callgraph_path}); "
+              f"рёбра собираются только clangd MCP", file=sys.stderr)
+        with open(callgraph_path, "w", encoding="utf-8") as f:
+            json.dump([], f, ensure_ascii=False, indent=2)
+    else:
+        n = len(existing.get("edges", [])) if isinstance(existing, dict) else len(existing)
+        print(f"callgraph.json: сохранён без изменений ({n} рёбер)")
 
     print(f"symbols.json: {len(consolidated)} symbols -> {symbols_path}")
-    print(f"callgraph.json: 0 edges -> {callgraph_path}")
 
 
 if __name__ == "__main__":
