@@ -58,10 +58,16 @@ static GSErrCode __ACENV_CALL ReservationChangeHandler (const GS::HashTable<API_
     // по APINotify_ReceiveChanges.
     for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs (); it != nullptr; ++it) {
 #ifdef ServerMainVers_2800
-        AttachObserver ((it->key), syncSettings);
+        const API_Guid &objectId = it->key;
 #else
-        AttachObserver (*(it->key), syncSettings);
+        // До AC28 ConstPairIterator отдаёт пару указателями
+        const API_Guid &objectId = *(it->key);
 #endif
+        // Проверяем возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован, его
+        // обработка включена)
+        if (!IsElementEditable (objectId, syncSettings, true))
+            continue;
+        AttachObserver (objectId, syncSettings);
     }
     return NoError;
 }
