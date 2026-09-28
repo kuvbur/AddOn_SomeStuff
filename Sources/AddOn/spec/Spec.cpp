@@ -1014,7 +1014,6 @@ namespace Spec {
                 runResult->elementsToCreate = createdCount;
             if (createdCount == 0 && elements_mod.IsEmpty () && elements_delete.IsEmpty ())
                 return APIERR_GENERAL;
-            }
         } else {
             start = clock ();
         }
