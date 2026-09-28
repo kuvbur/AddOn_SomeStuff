@@ -1,6 +1,6 @@
 # Helpers — Ядро: чтение/запись параметров и свойств
 
-> Хеш базового коммита: 9d96d96 (2026-09-28); карточка `WriteProperty` обновлена для #223. **Полное покрытие объявлений** Helpers.hpp (808 строк); строки — hpp. Номера определений .cpp не фиксированы. Карточки горячих функций — с данными callgraph.
+> Хеш базового коммита: 309606a (2026-09-28); разделы `WriteProperty` (#223) и «Приведение double к целым» (#221). **Полное покрытие объявлений** Helpers.hpp (808 строк); строки — hpp. Номера определений .cpp не фиксированы. Карточки горячих функций — с данными callgraph.
 
 ## Назначение
 Ядро add-on: чтение из свойств/GDL/IFC/атрибутов/координат/морфов в единый ParamValue и запись обратно; большинство модулей зависят от него. [по коду include-графа]
@@ -90,6 +90,11 @@
 
 ### Прочее
 `ACAPI_Attribute_GetAttributesByType` (612, inline, до AC27) — обёртка GetNum+Get.
+
+### Приведение double к целым — #221
+Все приведения `double` → `Int32` из данных проекта идут через `CommonFunction::DoubleToInt32` / `DoubleToInt32RoundUp` (насыщение на границах диапазона + сообщение через `msg_rep`): `ReadID`, `NumToString`, `ConvertToParamValue` (GDL/строка/угол), `ConvertToParamValue(API_Property)`, `ConvertStringToParamValue`, `ConvertDoubleToParamValue`, `ConvertToParamValue(API_IFCProperty)`, `ConvertByFormatString`. [по коду, Helpers.cpp]
+
+Не охвачены и остаются прямыми кастами там, где диапазон гарантирован кодом выше, а не данными: нормализованный угол направления (`CoordNorthAngle`, `dir %= 8` сразу после приведения) и индексы `API_AttributeIndex` (`ComponentsCompositeStructure`, `GetAttributeValues`). [по коду Helpers.cpp]
 
 ## Операторы сравнения [по коду, hpp:761-789]
 `operator+` (ParamValueData), `operator==`/`!=` (ParamValue), `operator==` (API_Variant, SingleVariant, ListVariant, SingleEnumerationVariant, MultipleEnumerationVariant <AC25, PropertyGroup, PropertyDefinition, Property), `Equals` (PropertyDefaultValue, PropertyValue).

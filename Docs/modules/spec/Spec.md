@@ -1,6 +1,6 @@
 # spec/Spec — Движок спецификаций
 
-> Хеш состояния: незакоммиченная правка #207 (base `07b97e0`, 2026-09-24). Номера строк — определения в `.cpp` (1-based, проверены source; функции внутри namespace Spec).
+> Хеш состояния: `309606a` (2026-09-28) — раздел `GetParamValue` дополнен правкой #221. Номера строк — определения в `.cpp` (1-based, проверены source; функции внутри namespace Spec).
 
 ## Назначение
 Генерация спецификаций по правилам: разбор описаний, выбор элементов, группировка, создание/обновление элементов. [из комментария, Spec.hpp:8-9]
@@ -42,7 +42,8 @@
 - Контракт: читает обычное значение через `GetParamValueForElements`; материал выбирается по `pvalue.fromMaterial`, а не по аргументу `fromMaterial` (аргумент сохранён для совместимости). Для материалов и list-data отрицательный `n_layer` возвращает `false`. При отказе `pvalue.isValid == false`; остальные поля при отказе не являются результатом. [по коду]
 - Отсутствующий элемент/ключ и пустой состав — ошибка. Положительный индекс за концом непустого состава — успешная пустая строка с нулевыми числовыми полями, `boolValue=false`, `canCalculate=false`, `isValid=true`. Для отсутствующих list-data или невычисленной формулы сохранён такой же успешный пустой результат. [по коду]
 - Доступ к вложенным словарям — `GetPtr` с проверкой `nullptr`; результат формулы ищется после изменения локального словаря, указатель через его заполнение не удерживается. Входные словари не изменяются. [по коду]
-- Вызывает: `hasLibData`, `ParamHelpers::ParseParamName`, `ListData::AddLibdataToParamValueDict`, `ParamHelpers::ReadFormula`, `ParamHelpers::GetParamValueForElements`, `UniStringToDouble`, `is_equal`, диагностические `DBprnt`/`msg_rep`. Вызывается из `GetElementsForRule` и `TestFunc::TestSpecGetParamValue`. [по исходникам]
+- С 2026-09-28 (#221) `pvalue.val.intValue` для материала слоя заполняется через `CommonFunction::DoubleToInt32 (Spec.cpp:1472)`: значение вне диапазона Int32 (включая NaN) заменяется границей диапазона с сообщением `msg_rep`, тип поля и строковое значение не меняются. [по коду Spec.cpp:1466-1479]
+- Вызывает: `hasLibData`, `ParamHelpers::ParseParamName`, `ListData::AddLibdataToParamValueDict`, `ParamHelpers::ReadFormula`, `ParamHelpers::GetParamValueForElements`, `UniStringToDouble`, `is_equal`, `DoubleToInt32`, диагностические `DBprnt`/`msg_rep`. Вызывается из `GetElementsForRule` и `TestFunc::TestSpecGetParamValue`. [по исходникам]
 - Проверка: целевой runtime-набор AC25 в `TestFunc.cpp`; полный набор тестов и другие AC-версии этой проверкой не покрываются.
 
 ### `Spec::SpecAll(const SyncSettings &syncSettings, const GS::Array<GS::UniString> *ruleNames = nullptr, const Point2D *placementPoint = nullptr, SpecRunResult *runResult = nullptr) -> GSErrCode`

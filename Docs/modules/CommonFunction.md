@@ -40,6 +40,21 @@
 - Назначение: вычисление выражений в `< >`; что не может вычислить — заменит на пустоту. [из комментария]
 - Побочные эффекты: мутирует входную строку. [из комментария]
 
+### `DoubleToInt32(double value, const GS::UniString &modulename, const GS::UniString &info = EMPTYSTRING, const API_Guid &elemGuid = APINULLGuid) -> Int32` (#221)
+- Расположение: `Sources/AddOn/CommonFunction.cpp:955`, объявление — `CommonFunction.hpp:428`
+- Назначение: приведение `double` к `Int32` с насыщением на границах диапазона. [по коду]
+- Контракт: `NaN` → `0`; `value > INT32_MAX` → `INT32_MAX`; `value < INT32_MIN` → `INT32_MIN`; внутри диапазона — усечение к нулю, как при обычном C-касте. Каждый выход за границы (включая `NaN`) выводится через `msg_rep` с `APIERR_BADVALUE`; тип результата не меняется. [по коду]
+- Побочные эффекты: запись в отчёт ArchiCAD (`msg_rep`); `elemGuid` добавляется в текст сообщения при ненулевом значении. [по коду]
+
+### `DoubleToInt32RoundUp(double value, ...) -> Int32` (#221)
+- Расположение: `Sources/AddOn/CommonFunction.cpp:990`, объявление — `CommonFunction.hpp:437`
+- Назначение: то же, что `DoubleToInt32`, но с округлением дробной части вверх — для мест, где прежде каст сопровождался `if (intValue / 1 < doubleValue) intValue += 1`. [по коду]
+- Контракт: инкремент выполняется только если результат строго меньше значения **и** меньше `INT32_MAX` — без второй проверки насыщение до `INT32_MAX` переполнило бы переменную. [по коду]
+- Побочные эффекты: те же, что у `DoubleToInt32`. [по коду]
+
+Вызывается из: `Helpers.cpp` (`ReadID`, `NumToString`, `ConvertToParamValue` ×3, `ConvertToParamValue(API_Property)` ×3, `ConvertStringToParamValue`, `ConvertDoubleToParamValue`, `ConvertToParamValue(API_IFCProperty)` ×2, `ConvertByFormatString`), `Dimensions.cpp::DimParse`, `Roombook.cpp` ×3, `spec/Spec.cpp` ×3, а также внутри `CommonFunction.cpp` — `ceil_mod_classic` (:1079), `DoubleM2IntMM` (:1093), `DelimTextLine` (:1244), `API_AttributeIndexFindByName` (:2564). [проверено grep по `Sources/AddOn`]
+
+
 ## Зависимости
 - `api_headers/*` (APICommon22-29), `Constants.hpp`, `third_party/alphanum.h`, `third_party/exprtk.h`, `DG.h`, `Point2D.hpp` [по include]
 

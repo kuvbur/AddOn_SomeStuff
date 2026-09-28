@@ -1323,6 +1323,20 @@
     "line": 949
   },
   {
+    "name": "DoubleToInt32",
+    "kind": "Method",
+    "file": "Sources/AddOn/CommonFunction.cpp",
+    "module": "CommonFunction",
+    "line": 955
+  },
+  {
+    "name": "DoubleToInt32RoundUp",
+    "kind": "Method",
+    "file": "Sources/AddOn/CommonFunction.cpp",
+    "module": "CommonFunction",
+    "line": 990
+  },
+  {
     "name": "if",
     "kind": "Constructor",
     "file": "Sources/AddOn/CommonFunction.cpp",
