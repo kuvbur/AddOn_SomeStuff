@@ -1998,6 +1998,59 @@ namespace Spec {
     }
 
     // -----------------------------------------------------------------------------
+    // Разбирает ВЫХОДНУЮ СХЕМУ правила - часть описания после "s@@".
+    // Формат: s (Pn1, Pn2, Pn3; Qn1, Qn2), где
+    //   часть 0 (до точки с запятой) - свойства элемента-результата;
+    //   часть 1 (после)              - свойства для записи количеств.
+    // Требование РОВНО двух частей: одна или три части - невалидное описание, и
+    // парсер обязан отвергнуть всё правило (parseValid = false), а не молча
+    // взять первые две.
+    // Внутри части имена чистятся от служебных символов ("proc", "@", фигурные
+    // скобки, пробелы), после чего суффикс "[N]" (номер строки массива) срезается
+    // и отбрасывается: в выходной схеме он не несёт смысла, разворачивание массива
+    // делает группа. Пустые имена пропускаются, поэтому ",," не даёт пустых слотов.
+    // Возвращает false, если частей не две; тогда и только тогда сбрасывается
+    // rule.parseValid, а out_* остаются пустыми. При успехе флаг НЕ трогается:
+    // дальше парсер продолжает разбор групп и вправе сбросить его сам.
+    // -----------------------------------------------------------------------------
+    bool ParseOutputSchema (const GS::UniString &writePart, GS::Array<GS::UniString> &scratch, SpecRule &rule) {
+        GS::Array<GS::UniString> rulestring_write = {}; // Свойства для записи из группы s()
+        const UInt32 nrule_write = StringSplt (writePart, SEMICOLON, rulestring_write, true, &scratch);
+        if (nrule_write != 2) {
+            rule.parseValid = false;
+            return false;
+        }
+        for (UInt32 part = 0; part < nrule_write; part++) {
+            GS::Array<GS::UniString> rulestring_param = {};
+            const UInt32 nrule_param = StringSplt (rulestring_write[part], COMMA, rulestring_param, true, &scratch);
+            if (nrule_param > 0) {
+                for (UInt32 i = 0; i < nrule_param; i++) {
+                    FormatString formatstring;
+                    GS::UniString name = rulestring_param[i];
+                    name.Trim (CHARPROC);
+                    name.Trim ('@');
+                    name.Trim (CHARBRACESTART);
+                    name.Trim (CHARBRACEEND);
+                    name.Trim ();
+                    if (!name.IsEmpty ()) {
+                        if (name.Contains ("[") && name.Contains ("]")) {
+                            GS::UniString n_row_txt = name.GetSubstring ('[', ']', 0);
+                            name.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
+                        }
+                        FormatString formatstring;
+                        GS::UniString rawName = ParamHelpers::NameToRawName (name, formatstring);
+                        if (part == 0)
+                            rule.out_paramrawname.Push (rawName);
+                        if (part == 1)
+                            rule.out_sum_paramrawname.Push (rawName);
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    // -----------------------------------------------------------------------------
     // Разбирает строку описания правила и превращает её в структуру SpecRule.
     // Это наиболее сложная часть модуля, потому что здесь нужно распознать критерий, группы и поля записи.
     // -----------------------------------------------------------------------------
@@ -2029,45 +2082,8 @@ namespace Spec {
             rule.parseValid = false;
             return rule;
         }
-        // Параметры для записи
-        // До точки с запятой - уникальные параметры , после - параметры для суммы
-        GS::Array<GS::UniString> rulestring_write = {}; // Свойства для записи из группы s()
-        UInt32 nrule_write = StringSplt (rulestring_summ[1], SEMICOLON, rulestring_write, true, &local_scratch);
-        if (nrule_write != 2) {
-            rule.parseValid = false;
+        if (!ParseOutputSchema (rulestring_summ[1], local_scratch, rule))
             return rule;
-        }
-        // Обработка группы s()
-        // s (Pn1, Pn2, Pn3; Qn1, Qn2) =>
-        // Pn1, Pn2, Pn3 - имена параметров для записи свойств для передачи (P1,P2,P3) part == 0
-        // Qn1, Qn2 - имена параметров для записи количества Q1,Q2, part == 1
-        for (UInt32 part = 0; part < nrule_write; part++) {
-            GS::Array<GS::UniString> rulestring_param = {};
-            UInt32 nrule_param = StringSplt (rulestring_write[part], COMMA, rulestring_param, true, &local_scratch);
-            if (nrule_param > 0) {
-                for (UInt32 i = 0; i < nrule_param; i++) {
-                    FormatString formatstring;
-                    GS::UniString name = rulestring_param[i];
-                    name.Trim (CHARPROC);
-                    name.Trim ('@');
-                    name.Trim (CHARBRACESTART);
-                    name.Trim (CHARBRACEEND);
-                    name.Trim ();
-                    if (!name.IsEmpty ()) {
-                        if (name.Contains ("[") && name.Contains ("]")) {
-                            GS::UniString n_row_txt = name.GetSubstring ('[', ']', 0);
-                            name.ReplaceFirst ("[" + n_row_txt + "]", EMPTYSTRING);
-                        }
-                        FormatString formatstring;
-                        GS::UniString rawName = ParamHelpers::NameToRawName (name, formatstring);
-                        if (part == 0)
-                            rule.out_paramrawname.Push (rawName);
-                        if (part == 1)
-                            rule.out_sum_paramrawname.Push (rawName);
-                    }
-                }
-            }
-        }
         // Разбивка на группы
         GS::Array<GS::UniString> rulestring_group = {}; // Массив с строками групп
         UInt32 nrule_group = StringSplt (rulestring_summ[0], "g@@", rulestring_group, false, &local_scratch);

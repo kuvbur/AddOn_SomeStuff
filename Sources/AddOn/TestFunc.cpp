@@ -533,6 +533,75 @@ namespace TestFunc {
     // разбора групп - раньше политика была первым блоком парсера, и её нельзя было
     // проверить, не разбирая всё описание целиком.
     // Ожидания получены воспроизведением ветвления, а не подгонкой под вывод.
+    // R4.2: выходная схема s() вынесена в ParseOutputSchema. Проверяем её отдельно:
+    // требование ровно двух частей, срезание суффикса "[N]", пропуск пустых имён
+    // и раздельное заполнение out_/out_sum_. Имена берутся в уже нормализованной
+    // части после "s@@" - это контракт из R4.1.
+    // Формат имён подтверждён существующим набором парсера: GDL:X -> {@gdl:x},
+    // Property:Total -> {@property:total}.
+    void TestSpecOutputSchema () {
+        DBprnt ("SpecRegression output schema", "start");
+
+        struct SchemaCase {
+            const char *writePart;
+            bool ok;
+            GS::Array<GS::UniString> out;
+            GS::Array<GS::UniString> sum;
+            const char *label;
+        };
+
+        const SchemaCase cases[] = {
+            {"x;y", true, {"{@gdl:x}"}, {"{@gdl:y}"}, "single pair"},
+            {"GDL:X;Property:Total", true, {"{@gdl:x}"}, {"{@property:total}"}, "typed names"},
+            {"x,y;q,w", true, {"{@gdl:x}", "{@gdl:y}"}, {"{@gdl:q}", "{@gdl:w}"}, "two and two"},
+            {"x[3];y[2]", true, {"{@gdl:x}"}, {"{@gdl:y}"}, "array suffix cut"},
+            // filter_empty=true убирает пустые части ДО подсчёта, поэтому "x,,y"
+            // даёт два имени, а не пустой слот посередине.
+            {"x,,y;w", true, {"{@gdl:x}", "{@gdl:y}"}, {"{@gdl:w}"}, "empty name skipped"},
+            // Пустая часть исчезает ДО проверки "ровно две", поэтому "x;" и ";y"
+            // дают одну часть и отвергаются - пустой слот недопустим.
+            {";y", false, {}, {}, "empty output part rejected"},
+            {"x;", false, {}, {}, "empty sum part rejected"},
+            {"x", false, {}, {}, "one part rejected"},
+            {"x;y;z", false, {}, {}, "three parts rejected"},
+            {"", false, {}, {}, "empty rejected"},
+            // Хвостая запятая внутри части НЕ отвергает правило: часть непуста,
+            // пустое имя уходит из неё, и схема остаётся из одного слота.
+            {"x,;y", true, {"{@gdl:x}"}, {"{@gdl:y}"}, "trailing comma tolerated"},
+        };
+        for (const SchemaCase &test : cases) {
+            Spec::SpecRule rule = {};
+            GS::Array<GS::UniString> scratch;
+            const bool result = Spec::ParseOutputSchema (test.writePart, scratch, rule);
+            const GS::UniString label = GS::UniString ("Spec schema ") + test.label;
+            DBtest (result, test.ok, label + " accepted");
+            // parseValid обязан совпадать с принятием: отказ = невалидное правило.
+            DBtest (rule.parseValid, test.ok, label + " parse flag");
+            DBtest (rule.out_paramrawname == test.out, label + " output names");
+            DBtest (rule.out_sum_paramrawname == test.sum, label + " sum names");
+        }
+        // Схема заполняет ТОЛЬКО выходные поля и не трогает уже разобранные части.
+        {
+            Spec::SpecRule rule = {};
+            rule.favorite_name = "Fav";
+            rule.isKM = true;
+            GS::Array<GS::UniString> scratch;
+            const bool result = Spec::ParseOutputSchema ("x;y", scratch, rule);
+            DBtest (result, true, "Spec schema accepted plain");
+            DBtest (rule.favorite_name, GS::UniString ("Fav"), "Spec schema favorite intact");
+            DBtest (rule.isKM, true, "Spec schema KM flag intact");
+        }
+        // Вызывается из парсера: описание без части s@@ обязано дать parseValid=false.
+        {
+            GS::UniString description = "Spec_rule{Fav;g@@u;p;f;q}";
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
+            DBtest (rule.parseValid, false, "Spec schema wired missing s@@");
+            DBtest (rule.out_paramrawname.IsEmpty () && rule.out_sum_paramrawname.IsEmpty (),
+                    "Spec schema wired no output");
+        }
+        DBprnt ("SpecRegression output schema", "end");
+    }
+
     void TestSpecPolicy () {
         DBprnt ("SpecRegression policy", "start");
 
@@ -959,6 +1028,7 @@ namespace TestFunc {
         TestSpecReadPlan ();
         TestSpecGrouping ();
         TestSpecReconcile ();
+        TestSpecOutputSchema ();
         TestSpecPolicy ();
         TestSpecNormalize ();
         TestSpecParser ();
