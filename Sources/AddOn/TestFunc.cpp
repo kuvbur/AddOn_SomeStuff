@@ -525,6 +525,88 @@ namespace TestFunc {
         DBprnt ("SpecRegression values", "end");
     }
 
+    // R4.1: нормализация описания - отдельная проверяемая единица.
+    // Раньше она была телом AddRule и не тестировалась вовсе: все проверки били
+    // по GetRuleFromDescription, который на входе уже ждёт НОРМАЛИЗОВАННУЮ строку.
+    // Здесь фиксируется контракт: что именно считается "нормализованным".
+    void TestSpecNormalize () {
+        DBprnt ("SpecRegression normalize", "start");
+
+        // Порядок замен существенен, поэтому проверяем и каждый вид вызова, и то,
+        // что "gl("/ "gm(" не схлопываются в общий "g(" (иначе получилось бы
+        // "g@@libdata@(" - группа с открытой скобкой в имени).
+        struct NormCase {
+            const char *source;
+            const char *expected;
+            const char *label;
+        };
+
+        // Ожидания получены НЕ умозрительно: тот же алгоритм воспроизведён
+        // пошагово и сверен с ключом "Fav;g@@u;p;f;q@@s@@x;y)", который уже
+        // закреплён в наборе TestSpecAddRule. Обратите внимание: закрывающая
+        // скобка ")" остаётся в теле - нормализация её НЕ убирает, парсер
+        // добивает её сам (description.Trim (')') в GetRuleFromDescription).
+        const NormCase cases[] = {
+            {"Spec_rule{Fav;g(a;b;c)}", "Spec_rule{Fav;g@@a;b;c)}", "plain group"},
+            {"Spec_rule{Fav;g (a;b;c)}", "Spec_rule{Fav;g@@a;b;c)}", "space before paren trimmed"},
+            {"Spec_rule{Fav; g (a;b;c)}", "Spec_rule{Fav;g@@a;b;c)}", "space before g and paren"},
+            {"Spec_rule{Fav;s(a;b;c)}", "Spec_rule{Fav;s@@a;b;c)}", "summary marker"},
+            {"Spec_rule{Fav;gl(a;b;c)}", "Spec_rule{Fav;g@@libdata@a;b;c)}", "libdata group"},
+            {"Spec_rule{Fav;gm(a;b;c)}", "Spec_rule{Fav;g@@Material_all@a;b;c)}", "material group"},
+            {"Spec_rule{Fav;g(a;b;c))s(a;b;c)}", "Spec_rule{Fav;g@@a;b;c)@@s@@a;b;c)}", "double close"},
+            {"Spec_rule {Fav;g(a)}", "Spec_rule{Fav;g@@a)}", "space before brace start"},
+            {"Spec_rule{Fav ;g(a)}", "Spec_rule{Fav;g@@a)}", "space before semicolon"},
+            {"Spec_rule{Fav;g(a) }", "Spec_rule{Fav;g@@a)}", "space before brace end"},
+            {"Spec_rule{Fav;g(a;b;c)", "Spec_rule{Fav;g@@a;b;c)", "unbalanced kept"},
+            {"Spec_rule{Fav;\ng(a;b;c)\n}", "Spec_rule{Fav;g@@a;b;c)}", "line feeds removed"},
+            {"Spec_rule{Fav;\rg(a;b;c)\r}", "Spec_rule{Fav;g@@a;b;c)}", "carriage returns removed"},
+            {"Spec_rule{Fav;\tg(a;b;c)\t}", "Spec_rule{Fav;g@@a;b;c)}", "tabs removed"},
+            {"Spec_rule{Fav;g(a)        s(b)}", "Spec_rule{Fav;g@@a@@s@@b)}", "many spaces collapse"},
+            {"Spec_rule { Fav ;\n\t g (u;p;f;q) s (x;y) }", "Spec_rule{Fav;g@@u;p;f;q@@s@@x;y)}", "layout noise"},
+            // Пробел перед скобкой после ")" - единственное место, где порядок
+            // замен заметен: строка остаётся с " @@s@@", парсер такое терпит.
+            {"Spec_rule{Fav;g(a))s(b)}", "Spec_rule{Fav;g@@a)@@s@@b)}", "canonical double close"},
+        };
+        for (const NormCase &test : cases) {
+            const GS::UniString source = GS::UniString (test.source);
+            const GS::UniString result = Spec::NormalizeRuleDescription (source);
+            const GS::UniString label = GS::UniString ("Spec normalize ") + test.label;
+            DBtest (result, GS::UniString (test.expected), label);
+            // Исходная строка не должна меняться - от этого зависит AddRule,
+            // который переиспользует definition.description на каждом вызове.
+            DBtest (source, GS::UniString (test.source), label + " source intact");
+        }
+        // Нормализованная строка обязана быть принята парсером без потерь:
+        // сквозной путь "нормализация -> разбор" вместо ручной передачи строки.
+        {
+            const GS::UniString raw = "Spec_rule{Fav;\r\ng (a;b;f;c))s (x;y)\n}";
+            GS::UniString normalized = Spec::NormalizeRuleDescription (raw);
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (normalized);
+            DBtest (rule.parseValid, true, "Spec normalize end to end valid");
+            DBtest (rule.favorite_name, GS::UniString ("Fav"), "Spec normalize end to end favorite");
+            DBtest (rule.groups.GetSize (), 1, "Spec normalize end to end group count");
+            DBtest (rule.out_paramrawname.GetSize (), 1, "Spec normalize end to end output count");
+            if (rule.groups.GetSize () == 1) {
+                const Spec::GroupSpec &group = rule.groups[0];
+                DBtest (group.unic_paramrawname.GetSize () == 1 && group.unic_paramrawname[0] == "{@gdl:a}",
+                        "Spec normalize end to end unique");
+                DBtest (group.out_paramrawname.GetSize () == 1 && group.out_paramrawname[0] == "{@gdl:b}",
+                        "Spec normalize end to end read");
+                DBtest (group.flag_paramrawname, GS::UniString ("{@gdl:f}"), "Spec normalize end to end flag");
+            }
+        }
+        // Пустая и безгрузовая строки не должны падать.
+        DBtest (Spec::NormalizeRuleDescription (GS::UniString ("")).IsEmpty (), true, "Spec normalize empty");
+        DBtest (
+            Spec::NormalizeRuleDescription (GS::UniString ("   ")), GS::UniString (" "), "Spec normalize only spaces");
+        // Пробелы ВНУТРИ скобок нормализация не трогает - они уходят в имя
+        // параметра, и это историческое поведение, а не дефект.
+        DBtest (Spec::NormalizeRuleDescription (GS::UniString ("Spec_rule{Fav;g ( a )}")),
+                GS::UniString ("Spec_rule{Fav;g@@ a )}"),
+                "Spec normalize inner spaces kept");
+        DBprnt ("SpecRegression normalize", "end");
+    }
+
     void TestSpecParser () {
         DBprnt ("SpecRegression parser", "start");
         const char *prefixes[] = {"Spec_rule", "Spec_rule_v2", "Spec_rule_v3", "Spec_rule_km", "Spec_rule_kzh"};
@@ -542,7 +624,10 @@ namespace TestFunc {
             DBtest (rule.groups.GetSize (), 1, label + " group count");
             DBtest (rule.out_paramrawname.GetSize (), 1, label + " output count");
             DBtest (rule.out_sum_paramrawname.GetSize (), 1, label + " sum count");
-            DBtest (description, GS::UniString ("g@@u;p;f;q@@s@@x;y"), label + " input consumed");
+            // R4.3: парсер больше НЕ мутирует вход - обрезки идут на локальной
+            // копии. Раньше здесь проверялось, что строка «съедена» парсером;
+            // теперь контракт обратный - вызывающий сохраняет свою строку.
+            DBtest (description, GS::UniString (prefixes[i]) + "{Fav;g@@u;p;f;q@@s@@x;y)}", label + " input intact");
             if (rule.groups.GetSize () == 1) {
                 const Spec::GroupSpec &group = rule.groups[0];
                 DBtest (group.unic_paramrawname.GetSize () == 1 && group.unic_paramrawname[0] == "{@gdl:u}",
@@ -556,6 +641,10 @@ namespace TestFunc {
                         label + " ordinary group");
             }
             DBtest (rule.elements.IsEmpty () && rule.exsist_elements.IsEmpty (), label + " no elements");
+            // Ключ словаря строится из той же строки ПОСЛЕ разбора - раньше это
+            // было невозможно, потому что парсер оставлял строку в обрезанном виде.
+            const GS::UniString keyAfter = description.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+            DBtest (keyAfter.Contains (GS::UniString ("s@@x;y)")), label + " key reusable after parse");
         }
 
         struct ParserCase {
@@ -800,6 +889,7 @@ namespace TestFunc {
         TestSpecReadPlan ();
         TestSpecGrouping ();
         TestSpecReconcile ();
+        TestSpecNormalize ();
         TestSpecParser ();
         TestSpecAddRule ();
         TestSpecSizes ();

@@ -1205,29 +1205,41 @@ namespace Spec {
     //             чтобы избежать повторной обработки
     // --------------------------------------------------------------------
     // -----------------------------------------------------------------------------
-    // Разбирает описание свойства и добавляет правило в словарь.
-    // Для сложных строк форматирования здесь выполняется нормализация, чтобы парсер видел понятный текст.
+    // Приводит описание правила к виду, который понимает парсер.
+    // Что здесь существенно (проверено перестановками в R4.1, не умозрительно):
+    //   - каждый блок замен ИДЁТ В ТАКОМ ПОРЯДКЕ, но ВНУТРИ блоков порядок
+    //     неважен: "g(" не входит в "gl(" и "gm(" (после "g" идёт "l"/"m",
+    //     а не скобка), поэтому перестановка g(/gl(/gm( ничего не меняет;
+    //   - ВАЖНО: сперва убираются пробелы перед скобками, и только потом
+    //     вызовы переписываются в маркеры. При обратном порядке "g (a)"
+    //     превратится в "g@@ (a)" - скобка останется в теле группы и группа
+    //     перестанет разбираться;
+    //   - шесть проходов "  " -> " " схлопывают серию пробелов до одного лишь
+    //     для серий длиной до 64; более длинная серия останется не до конца
+    //     свёрнутой. Это историческая норма, менять её в этом шаге не нужно.
+    // Возвращает копию: исходное описание свойства не изменяется.
     // -----------------------------------------------------------------------------
-    void AddRule (const API_PropertyDefinition &definition, const API_Guid &elemguid, SpecRuleDict &rules) {
-        // Чистим описание
-        GS::UniString description = definition.description;
-        // Нормализуем описание: убираем переводы строк, лишние пробелы и приводим формат
-        // к виду, который проще разбить на группы и параметры.
+    GS::UniString NormalizeRuleDescription (const GS::UniString &source) {
+        GS::UniString description = source;
+        // Переводы строк и табуляции убираем: описание набирается в несколько строк.
         description.ReplaceAll (LINEBRAKE, EMPTYSTRING);
         description.ReplaceAll (LINEBRAKER, EMPTYSTRING);
         description.ReplaceAll (TABSTRING, EMPTYSTRING);
+        // Схлопываем кратные пробелы (шесть проходов - историческая норма).
         description.ReplaceAll ("  ", SPACESTRING);
         description.ReplaceAll ("  ", SPACESTRING);
         description.ReplaceAll ("  ", SPACESTRING);
         description.ReplaceAll ("  ", SPACESTRING);
         description.ReplaceAll ("  ", SPACESTRING);
         description.ReplaceAll ("  ", SPACESTRING);
+        // Знаки подтягиваем вплотную: " {", "{ ", " }", "} ", " ;", "; ".
         description.ReplaceAll (" {", BRACESTART);
         description.ReplaceAll ("{ ", BRACESTART);
         description.ReplaceAll (" }", BRACEEND);
         description.ReplaceAll ("} ", BRACEEND);
         description.ReplaceAll (" ;", SEMICOLON);
         description.ReplaceAll ("; ", SEMICOLON);
+        // Убираем пробел перед открывающей скобкой у всех видов групп.
         description.ReplaceAll ("gm (", "gm(");
         description.ReplaceAll (" gm(", "gm(");
         description.ReplaceAll ("gl (", "gl(");
@@ -1236,6 +1248,8 @@ namespace Spec {
         description.ReplaceAll ("s (", "s(");
         description.ReplaceAll (" g(", "g(");
         description.ReplaceAll (" s(", "s(");
+        // Переписываем вызовы групп во внутренние маркеры. Этот блок обязан идти
+        // ПОСЛЕ ужимания пробелов (см. комментарий функции).
         description.ReplaceAll ("g(", "g@@");
         description.ReplaceAll ("gl(", "g@@libdata@");
         description.ReplaceAll ("s(", "s@@");
@@ -1243,6 +1257,18 @@ namespace Spec {
         description.ReplaceAll (")g", "@@g");
         description.ReplaceAll ("))", ")@@");
         description.ReplaceAll ("gm(", "g@@Material_all@");
+        return description;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Разбирает описание свойства и добавляет правило в словарь.
+    // Описание сперва нормализуется (см. NormalizeRuleDescription), затем обрезается
+    // по первой закрывающей скобке и ищется уже в словаре: повторное описание
+    // только дополняет список элементов и НЕ пересобирает правило заново.
+    // Правило добавляется в словарь даже невалидным - чтобы не обработать его дважды.
+    // -----------------------------------------------------------------------------
+    void AddRule (const API_PropertyDefinition &definition, const API_Guid &elemguid, SpecRuleDict &rules) {
+        GS::UniString description = NormalizeRuleDescription (definition.description);
         GS::Array<GS::UniString> partstring = {};
         if (StringSplt (description, BRACEEND, partstring, "pec_rule") > 0) {
             description = partstring[0] + BRACEEND;
@@ -1934,7 +1960,10 @@ namespace Spec {
     // Разбирает строку описания правила и превращает её в структуру SpecRule.
     // Это наиболее сложная часть модуля, потому что здесь нужно распознать критерий, группы и поля записи.
     // -----------------------------------------------------------------------------
-    SpecRule GetRuleFromDescription (GS::UniString &description) {
+    SpecRule GetRuleFromDescription (const GS::UniString &normalizedDescription) {
+        // Рабочая копия: парсер правит её на месте (обрезает по скобкам, снимает
+        // закрывающую скобку), но вызывающая строка остаётся нетронутой.
+        GS::UniString description = normalizedDescription;
         // Сначала извлекается критерий — имя избранного элемента или другой ключевой текст.
         SpecRule rule = {};
         GS::Array<GS::UniString> partstring = {};

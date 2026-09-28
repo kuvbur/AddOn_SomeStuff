@@ -139,11 +139,21 @@ namespace Spec {
     // Получает правила из свойства выбранного элемента и добавляет их в словарь.
     GSErrCode GetRuleFromElement (const API_Guid &elemguid, SpecRuleDict &rules);
 
+    // Приводит описание свойства-правила к виду, который понимает GetRuleFromDescription:
+    // убирает переводы строк, схлопывает пробелы, подтягивает скобки/точки с запятой
+    // вплотную и переписывает вызовы g()/s()/gl()/gm() во внутренние маркеры.
+    // Порядок замен существенен (см. комментарий у определения). Исходную строку
+    // не изменяет — возвращает нормализованную копию.
+    GS::UniString NormalizeRuleDescription (const GS::UniString &source);
+
     // Разбирает описание свойства и добавляет правило в словарь.
     void AddRule (const API_PropertyDefinition &definition, const API_Guid &elemguid, SpecRuleDict &rules);
 
-    // Разбирает строку описания правила и превращает её в структуру SpecRule.
-    SpecRule GetRuleFromDescription (GS::UniString &description);
+    // Разбирает НОРМАЛИЗОВАННУЮ строку описания (результат NormalizeRuleDescription)
+    // и превращает её в структуру SpecRule. Вход не изменяется: внутренние обрезки
+    // выполняются на локальной копии, поэтому вызывающий может пользоваться
+    // своей строкой после вызова (например, построить из неё ключ словаря).
+    SpecRule GetRuleFromDescription (const GS::UniString &normalizedDescription);
 
     // Формирует набор свойств, которые нужно передать в элемент для размещения.
     GSErrCode GetElementForPlaceProperties (const GS::UniString &favorite_name,
