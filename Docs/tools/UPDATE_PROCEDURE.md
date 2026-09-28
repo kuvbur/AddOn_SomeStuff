@@ -11,16 +11,45 @@
 
 ## Порядок действий
 
-### 1. Регенерация детерминированных данных
+### 1. Регенерация symbols.json — только через clangd MCP
+
+**Не запускать `Docs/tools/generate_symbols.py` для symbols.json.** Его regex-фолбэк
+непригоден: он принимает `if`/`for`/`while` за имена функций и путает вызовы с
+определениями (проверено: 60.3% записей в старом файле — псевдосимволы), а
+многострочные сигнатуры (`bool DimParse (const double &v,` … `) {`) он не ловит
+вовсе. Скрипт теперь пригоден только как источник списка файлов из
+`compile_commands.json`; `callgraph.json` он не трогает.
+
+Сбор — по одному вызову `textDocument/documentSymbol` (clangd MCP) на каждый
+`.cpp` из `compile_commands.json`:
+
+1. Взять список `.cpp` из `compile_commands.json` (31 файл).
+2. Для каждого вызвать `get_document_symbols` с абсолютным путём.
+3. Обойти дерево рекурсивно; `Namespace`/`Class`/`Struct` не записывать, но
+   обходить их `children`; имя из `children` писать с префиксом
+   (`ParamHelpers::WriteProperty`). Поля класса — как `Class.field`.
+4. Строки clangd 0-based → записать `line + 1` (1-based, как в карточках).
+5. `module` = имя файла без расширения, либо имя подпапки для
+   `Sources/AddOn/<подпапка>/<файл>.cpp` (`pk`, `spec`, `table`, `dialogs`,
+   `json_commands`, `third_party`).
+6. Слить батчи, дедуп по `(name, file, line)`, записать в
+   `Docs/_generated/symbols.json` — UTF-8, `indent=2`, `ensure_ascii=False`,
+   LF, без BOM, **без завершающего перевода строки** (стиль HEAD).
+
+Проверка результата (обязательно перед коммитом):
 
 ```bash
-python Docs/tools/generate_symbols.py
+python - <<'EOF'
+import json
+d = json.load(open('Docs/_generated/symbols.json', encoding='utf-8'))
+print(len(d), 'symbols,', len({s['file'] for s in d}), 'files')
+bad = [s for s in d if s['name'].split('::')[-1] in {'if','for','while','switch','return'}]
+print('keyword names:', len(bad))          # должно быть 0
+EOF
 ```
 
-- `Docs/_generated/symbols.json` — все символы (regex fallback — надёжно на Windows)
-- `Docs/_generated/callgraph.json` — скрипт создаёт пустой файл; callHierarchy им **не собирается** (см. §2)
-
-Проверка: `python -c "import json; d=json.load(open('Docs/_generated/symbols.json')); print(len(d))"` — число символов не должно резко отличаться от ожидаемого (~8400 для текущей базы).
+Ожидаемое число — около **840** (собрано 2026-09-28, все 31 `.cpp`). Резкое
+отклонение означает, что часть файлов не обработана или попал мусор.
 
 ### 2. Callgraph — только через clangd MCP (не через subprocess)
 

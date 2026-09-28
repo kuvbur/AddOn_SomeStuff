@@ -287,8 +287,9 @@ deliberate choice, not an oversight.
 
 ## 17. Documentation
 
-Maintained in `master`, built by scripts
-(`Docs/tools/generate_symbols.py` + clangd MCP):
+Maintained in `master`. `_generated/` is collected via clangd MCP
+(`textDocument/documentSymbol` per file) — see
+`Docs/tools/UPDATE_PROCEDURE.md` §2:
 
 - `Docs/ARCHITECTURE.md` — module overview, layers, Mermaid dependency graph.
 - `Docs/REPOMAP.md` — repo map and stats.
