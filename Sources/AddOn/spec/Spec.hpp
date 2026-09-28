@@ -199,6 +199,7 @@ namespace Spec {
                               bool showUserInterface);
 
     // Выбирает из параметров групп имена свойств, которые нужно прочитать в начале обработки.
+    bool OutSlotsMatchSchema (const Element &element, UInt32 outSlots, UInt32 sumSlots);
     void GetParamToReadFromRule (SpecRule &rules, ParamDictElement &paramToRead, ParamDictValue &paramToWrite);
 
     // Создаёт или настраивает элемент, который будет размещён согласно правилу.

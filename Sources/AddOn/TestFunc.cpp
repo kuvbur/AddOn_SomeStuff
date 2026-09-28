@@ -550,6 +550,58 @@ namespace TestFunc {
     // слоям для материалов и listdata.
     // Константы из Constants.hpp: max_group_mat = 50, max_group_lib = 100,
     // ARRAY_UNIC = 1, поэтому @arr_индекс имеет вид "@arr_1_1_1_1_1}".
+    // Привязка выходных слотов элемента к схеме: Spec::OutSlotsMatchSchema ().
+    // Слоты заполняются позиционно, по порядку Push (), поэтому единственная
+    // доступная сверка - по числу набранных значений против размеров схемы,
+    // вычисленных один раз до цикла. Ожидания сверены воспроизведением функции.
+    void TestSpecOutSlots () {
+        DBprnt ("SpecRegression out slots", "start");
+
+        struct SlotCase {
+            UInt32 out;      // сколько значений попало в out_param
+            UInt32 sum;      // сколько значений попало в out_sum_param
+            UInt32 outSlots; // ожидаемое число слотов выхода
+            UInt32 sumSlots; // ожидаемое число слотов сумм
+            bool ok;
+            const char *label;
+        };
+
+        const SlotCase cases[] = {
+            {1, 1, 1, 1, true, "exact match"},
+            {2, 2, 2, 2, true, "two and two"},
+            {2, 1, 2, 1, true, "two out one sum"},
+            // Одна из сторон недобрана - привязка неполная, элемент не принимается.
+            {1, 1, 2, 1, false, "out incomplete"},
+            {2, 1, 2, 2, false, "sum incomplete"},
+            {1, 1, 1, 2, false, "sum short in schema"},
+            {2, 2, 1, 1, false, "schema smaller than element"},
+            // Схема пустая: IsEmpty срабатывает раньше сравнения размеров.
+            {0, 0, 0, 0, false, "empty schema"},
+        };
+
+        for (const SlotCase &test : cases) {
+            Spec::Element element = {};
+            for (UInt32 i = 0; i < test.out; i++) {
+                ParamValue pv = {};
+                element.out_param.Push (pv);
+            }
+            for (UInt32 i = 0; i < test.sum; i++) {
+                ParamValue pv = {};
+                element.out_sum_param.Push (pv);
+            }
+            const bool ok = Spec::OutSlotsMatchSchema (element, test.outSlots, test.sumSlots);
+            DBtest (ok, test.ok, GS::UniString (test.label));
+        }
+
+        // Пустой элемент при непустой схеме - тот же отказ, но по другой причине.
+        {
+            Spec::Element element = {};
+            DBtest (Spec::OutSlotsMatchSchema (element, 1, 1), false, "empty element");
+        }
+
+        DBprnt ("SpecRegression out slots", "end");
+    }
+
     void TestSpecExpandGroup () {
         DBprnt ("SpecRegression expand group", "start");
 
@@ -1252,6 +1304,7 @@ namespace TestFunc {
         TestSpecReadPlan ();
         TestSpecGrouping ();
         TestSpecReconcile ();
+        TestSpecOutSlots ();
         TestSpecExpandGroup ();
         TestSpecGroups ();
         TestSpecOutputSchema ();

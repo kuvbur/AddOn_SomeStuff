@@ -1582,6 +1582,19 @@ namespace Spec {
     // Возвращает: количество элементов для создания/модификации
     // Примечание: при stop_on_error = true и ошибке чтения возвращает 0
     // --------------------------------------------------------------------
+    // --------------------------------------------------------------------
+    // Привязка выходных слотов элемента к схеме правила
+    // Слоты заполняются позиционно, по порядку Push (), поэтому сверять их можно
+    // только по ЧИСЛУ набранных значений против размеров схемы. Размеры схемы не
+    // меняются во время исполнения, поэтому вычисляются один раз ДО внутреннего
+    // цикла, а не на каждом элементе.
+    // --------------------------------------------------------------------
+    bool OutSlotsMatchSchema (const Element &element, UInt32 outSlots, UInt32 sumSlots) {
+        if (element.out_sum_param.IsEmpty () || element.out_param.IsEmpty ())
+            return false;
+        return element.out_sum_param.GetSize () == sumSlots && element.out_param.GetSize () == outSlots;
+    }
+
     // -----------------------------------------------------------------------------
     // Формирует набор элементов для создания или обновления на основе одного правила.
     // Здесь важно не только собрать данные, но и правильно сгруппировать одинаковые элементы.
@@ -1601,6 +1614,10 @@ namespace Spec {
         FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
         GS::HashTable<GS::UniString, GS::UniString> out_param = {}; // Ключ - уникальные значения, значение - выходящие
                                                                     // параметры
+        // Число выходных слотов берётся из схемы правила ОДИН раз: оно не меняется
+        // во время исполнения, а сверять его приходится для каждого элемента.
+        const UInt32 out_slots = rule.out_paramrawname.GetSize ();
+        const UInt32 sum_slots = rule.out_sum_paramrawname.GetSize ();
         for (const API_Guid &elemguid : rule.elements) {
             if (rule.only_visible) {
                 if (!ACAPI_Element_Filter (
@@ -1728,9 +1745,7 @@ namespace Spec {
                     }
                     if (!out_param.ContainsKey (key_out))
                         out_param.Add (key_out, key);
-                    if (!element.out_sum_param.IsEmpty () && !element.out_param.IsEmpty () &&
-                        element.out_sum_param.GetSize () == rule.out_sum_paramrawname.GetSize () &&
-                        element.out_param.GetSize () == rule.out_paramrawname.GetSize ()) {
+                    if (OutSlotsMatchSchema (element, out_slots, sum_slots)) {
                         element.out_sum_paramrawname = rule.out_sum_paramrawname;
                         element.out_paramrawname = rule.out_paramrawname;
                         element.subguid_paramrawname = rule.destinationParamGuidName;
