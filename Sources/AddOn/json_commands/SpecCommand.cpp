@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <chrono>
+#include <vector>
 
 #include "ACAPinc.h"
 
@@ -31,6 +33,10 @@ GS::Optional<GS::UniString> SpecCommand::GetInputParametersSchema () const {
                 "items": { "type": "string" },
                 "minItems": 1
             },
+            "includeParameters": {
+                "description": "Include per-element property and GDL parameter values in the response",
+                "type": "boolean"
+            },
             "placementPoint": {
                 "type": "object",
                 "properties": {
@@ -52,6 +58,81 @@ GS::Optional<GS::UniString> SpecCommand::GetInputParametersSchema () const {
 GS::Optional<GS::UniString> SpecCommand::GetResponseSchema () const { return GS::NoValue; }
 
 // -----------------------------------------------------------------------------
+// Список GUID в объект ответа, чтобы не тянуть вручную API в SpecCommand.cpp.
+// Повторяющиеся поля добавляются через AddList: ObjectState::Add требует
+// уникального имени поля, поэтому список нельзя наполнять вызовами Add.
+// -----------------------------------------------------------------------------
+static GS::ObjectState GuidListToObjectState (const GS::Array<API_Guid> &guids) {
+    GS::ObjectState list;
+    const auto addGuid = list.AddList<GS::ObjectState> ("element");
+    for (UIndex i = 0; i < guids.GetSize (); ++i) {
+        GS::ObjectState guid;
+        guid.Add ("guid", APIGuidToString (guids[i]));
+        addGuid (guid);
+    }
+    return list;
+}
+
+// -----------------------------------------------------------------------------
+// Сериализует значения в список ответа под именем fieldName.
+// Имена выводятся отсортированными: словарь - хеш-таблица, порядок обхода
+// нестабилен между запусками, а результат используется для сравнения прогонов.
+// -----------------------------------------------------------------------------
+static void AddDumpedValues (GS::ObjectState &target,
+                             const char *fieldName,
+                             const GS::HashTable<GS::UniString, GS::UniString> &values) {
+    // GS::Array не имеет Sort ни в AC25, ни в AC29 - сортируем через std::vector,
+    // как уже сделано для элементов в Roombook.cpp.
+    std::vector<GS::UniString> names;
+    for (GS::HashTable<GS::UniString, GS::UniString>::ConstPairIterator cIt = values.EnumeratePairs (); cIt != NULL;
+         ++cIt) {
+    #ifdef ServerMainVers_2800
+        names.push_back (cIt->key);
+    #else
+        names.push_back (*cIt->key);
+    #endif
+    }
+    std::sort (names.begin (), names.end (), [] (const GS::UniString &a, const GS::UniString &b) { return a < b; });
+    // Поле добавляется даже при пустом словаре - тогда в JSON будет [] ,
+    // а не исчезающее свойство, и форма ответа не зависит от данных.
+    const auto addParameter = target.AddList<GS::ObjectState> (fieldName);
+    for (const GS::UniString &name : names) {
+        const GS::UniString *value = values.GetPtr (name);
+        if (value == nullptr)
+            continue;
+        GS::ObjectState entry;
+        entry.Add ("name", name);
+        entry.Add ("value", *value);
+        addParameter (entry);
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Добавляет в ответ массив дампов элементов под именем fieldName.
+// -----------------------------------------------------------------------------
+static void AddElementDumps (GS::ObjectState &response,
+                             const char *fieldName,
+                             const GS::Array<Spec::SpecElementDump> &dumps) {
+    GS::ObjectState list;
+    const auto addElement = list.AddList<GS::ObjectState> ("element");
+    for (const Spec::SpecElementDump &dump : dumps) {
+        GS::ObjectState element;
+        element.Add ("guid", APIGuidToString (dump.guid));
+        element.Add ("favoriteName", dump.favorite_name);
+        const auto addSource = element.AddList<GS::ObjectState> ("sourceElement");
+        for (const API_Guid &sourceGuid : dump.sourceElements) {
+            GS::ObjectState source;
+            source.Add ("guid", APIGuidToString (sourceGuid));
+            addSource (source);
+        }
+        AddDumpedValues (element, "property", dump.properties);
+        AddDumpedValues (element, "gdlParameter", dump.gdlParameters);
+        addElement (element);
+    }
+    response.Add (fieldName, list);
+}
+
+// -----------------------------------------------------------------------------
 // Загружает настройки, запускает non-interactive построение спецификации и возвращает его результат.
 // -----------------------------------------------------------------------------
 GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
@@ -66,10 +147,14 @@ GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
 
     GS::Array<GS::UniString> ruleNames;
     const bool hasRuleNames = parameters.Get ("ruleNames", ruleNames);
+    // По умолчанию выключено: обычный запуск Spec не должен платить за сбор дампа.
+    bool includeParameters = false;
+    parameters.Get ("includeParameters", includeParameters);
     const auto start = std::chrono::steady_clock::now ();
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings);
     Spec::SpecRunResult runResult;
+    runResult.includeDetails = includeParameters;
     const GSErrCode err =
         Spec::SpecAll (syncSettings, hasRuleNames ? &ruleNames : nullptr, &placementPoint, &runResult);
     const auto finish = std::chrono::steady_clock::now ();
@@ -82,6 +167,12 @@ GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
     response.Add ("elementsToModify", static_cast<GS::Int32> (runResult.elementsToModify));
     response.Add ("elementsToDelete", static_cast<GS::Int32> (runResult.elementsToDelete));
     response.Add ("elapsedSeconds", elapsedSeconds);
+    response.Add ("includeParameters", includeParameters);
+    if (includeParameters) {
+        AddElementDumps (response, "created", runResult.created);
+        AddElementDumps (response, "modified", runResult.modified);
+        response.Add ("deleted", GuidListToObjectState (runResult.deleted));
+    }
     return response;
 }
 

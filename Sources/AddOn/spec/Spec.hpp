@@ -65,10 +65,29 @@ namespace Spec {
 
     typedef GS::HashTable<GS::UniString, SpecRule> SpecRuleDict; // Словарь правил, ключ - имя правила
 
+    // Дамп одного созданного/изменённого элемента спецификации.
+    // Заполняется только при runResult->includeDetails (необязательный параметр
+    // includeParameters в JSON-команде) — в обычных запусках остаётся пустым.
+    struct SpecElementDump {
+        API_Guid guid = APINULLGuid;               // GUID созданного/изменяемого элемента
+        GS::UniString favorite_name = EMPTYSTRING; // Элемент из избранного, из которого сделан объект
+        GS::Array<API_Guid> sourceElements = {};   // Элементы-источники строки (агрегация по правилу)
+        // Значения в rawname-виде (с префиксом {@...}) -> строковое представление,
+        // каким оно пишется в модель. Порядок при выдаче наружу сортируется по имени.
+        GS::HashTable<GS::UniString, GS::UniString> properties = {};
+        GS::HashTable<GS::UniString, GS::UniString> gdlParameters = {};
+    };
+
     struct SpecRunResult {
         UInt32 elementsToCreate = 0;
         UInt32 elementsToModify = 0;
         UInt32 elementsToDelete = 0;
+        // Собирать ли подробности элементов. Выключено по умолчанию, чтобы обычный
+        // запуск Spec не платил за формирование дампа.
+        bool includeDetails = false;
+        GS::Array<SpecElementDump> created = {};
+        GS::Array<SpecElementDump> modified = {};
+        GS::Array<API_Guid> deleted = {};
     };
 
     // Ищет правила спецификации в свойствах элемента по умолчанию и собирает связанные с ними элементы.
@@ -143,10 +162,13 @@ namespace Spec {
     bool GetSizePlaceElement (const API_Element &elementt, const API_ElementMemo &memot, double &dx, double &dy);
 
     // Размещает сформированные элементы в модели и заполняет их параметры.
+    // При runResult != nullptr и runResult->includeDetails заполняет runResult->created
+    // (в т.ч. GDL-параметры, удалённые из param при записи в memo на :PlaceElements).
     GSErrCode PlaceElements (GS::Array<ElementDict> &elementstocreate,
                              ParamDictValue &paramToWrite,
                              ParamDictElement &paramOut,
-                             Point2D &startpos);
+                             Point2D &startpos,
+                             SpecRunResult *runResult);
 } // namespace Spec
 
 #endif

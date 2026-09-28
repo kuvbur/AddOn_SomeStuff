@@ -17,10 +17,11 @@
 namespace TestFunc {
 
     void TestStringSplt (); // forward declaration
+    void TestSpecRegression ();
 
     void Test () {
         DBprnt ("TEST", "start");
-        TestSpecGetParamValue ();
+        TestSpecRegression ();
         TestFormatString ();
         TestCalc ();
         TestFormula ();
@@ -141,6 +142,664 @@ namespace TestFunc {
         DBtest (read (libname, -1), false, "SpecGetParamValue populated lib negative index");
         DBtest (result.isValid, false, "SpecGetParamValue populated lib negative invalidates");
         DBprnt ("SpecGetParamValue", "end");
+    }
+
+    namespace {
+        // Синтетические GUID используются только как ключи словарей, не как элементы модели.
+        struct SpecFixture {
+            const API_Guid first = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
+            const API_Guid second = APIGuidFromString ("{22222222-2222-2222-2222-222222222222}");
+            const API_Guid old = APIGuidFromString ("{33333333-3333-3333-3333-333333333333}");
+            const API_Guid extra = APIGuidFromString ("{44444444-4444-4444-4444-444444444444}");
+            const GS::UniString key = "{@property:spec-key}";
+            const GS::UniString text = "{@property:spec-text}";
+            const GS::UniString quantity = "{@property:spec-quantity}";
+            const GS::UniString flag = "{@property:spec-flag}";
+            const GS::UniString outText = "{@property:spec-out-text}";
+            const GS::UniString outQuantity = "{@property:spec-out-quantity}";
+            Spec::SpecRule rule;
+            ParamDictElement values;
+            ParamDictCompositeElement composites;
+            ListData::LibElements libdata;
+            Spec::ElementDict created;
+            Spec::ElementDict modified;
+            GS::Array<API_Guid> deleted;
+            UnicGuid errors;
+
+            SpecFixture () {
+                rule.only_visible = false;
+                rule.stop_on_error = false;
+                rule.favorite_name = "Spec fixture";
+                rule.out_paramrawname.Push (outText);
+                rule.out_sum_paramrawname.Push (outQuantity);
+                Spec::GroupSpec group;
+                group.unic_paramrawname.Push (key);
+                group.out_paramrawname.Push (text);
+                group.sum_paramrawname.Push (quantity);
+                rule.groups.Push (group);
+            }
+
+            void Text (const API_Guid &guid, const GS::UniString &name, const GS::UniString &value) {
+                ParamValue param;
+                param.rawName = name;
+                ParamHelpers::ConvertStringToParamValue (param, name, value);
+                if (!values.ContainsKey (guid))
+                    values.Add (guid, ParamDictValue ());
+                values.Get (guid).Put (name, param);
+            }
+
+            void Number (const API_Guid &guid, const GS::UniString &name, Int32 value) {
+                ParamValue param;
+                param.rawName = name;
+                ParamHelpers::ConvertIntToParamValue (param, name, value);
+                if (!values.ContainsKey (guid))
+                    values.Add (guid, ParamDictValue ());
+                values.Get (guid).Put (name, param);
+            }
+
+            void Source (const API_Guid &guid, const GS::UniString &k, const GS::UniString &t, Int32 q) {
+                rule.elements.Push (guid);
+                Text (guid, key, k);
+                Text (guid, text, t);
+                Number (guid, quantity, q);
+            }
+
+            void Existing (const API_Guid &guid, const GS::UniString &t, Int32 q) {
+                rule.delete_old = true;
+                rule.exsist_elements.Push (guid);
+                Text (guid, outText, t);
+                Number (guid, outQuantity, q);
+            }
+
+            Int32 Run () {
+                created.Clear ();
+                modified.Clear ();
+                deleted.Clear ();
+                errors.Clear ();
+                return Spec::GetElementsForRule (
+                    rule, values, composites, libdata, created, modified, deleted, errors, false);
+            }
+
+            void Shape (Int32 result,
+                        Int32 expected,
+                        UInt32 ncreate,
+                        UInt32 nmodify,
+                        UInt32 ndelete,
+                        const GS::UniString &label) const {
+                DBtest (result, expected, label + " result");
+                DBtest (created.GetSize (), ncreate, label + " create");
+                DBtest (modified.GetSize (), nmodify, label + " modify");
+                DBtest (deleted.GetSize (), ndelete, label + " delete");
+            }
+        };
+    } // namespace
+
+    void TestSpecGrouping () {
+        DBprnt ("SpecRegression grouping", "start");
+        {
+            SpecFixture f;
+            f.Shape (f.Run (), 0, 0, 0, 0, "Spec empty");
+            f.Source (f.first, "A", "Alpha", 2);
+            f.rule.subguid_paramrawname = "fixture-link";
+            f.rule.subguid_rulename = "fixture-rule";
+            f.rule.subguid_rulevalue = "fixture-value";
+            f.Shape (f.Run (), 1, 1, 0, 0, "Spec single");
+            const Spec::Element *row = f.created.GetPtr ("@A");
+            DBtest (row != nullptr, "Spec single exact key");
+            if (row != nullptr) {
+                DBtest (row->out_param.GetSize (), 1, "Spec single text count");
+                DBtest (row->out_sum_param.GetSize (), 1, "Spec single sum count");
+                if (!row->out_param.IsEmpty ())
+                    DBtest (row->out_param[0].val.uniStringValue, GS::UniString ("Alpha"), "Spec single text");
+                if (!row->out_sum_param.IsEmpty ())
+                    DBtest (row->out_sum_param[0].val.intValue, 2, "Spec single sum");
+                DBtest (row->elements.GetSize (), 1, "Spec single source count");
+                DBtest (!row->elements.IsEmpty () && row->elements[0] == f.first, "Spec single source GUID");
+                DBtest (row->favorite_name, f.rule.favorite_name, "Spec favorite copied");
+                DBtest (row->subguid_paramrawname, f.rule.subguid_paramrawname, "Spec link copied");
+                DBtest (row->subguid_rulename, f.rule.subguid_rulename, "Spec rule name copied");
+                DBtest (row->subguid_rulevalue, f.rule.subguid_rulevalue, "Spec rule value copied");
+                DBtest (row->out_paramrawname[0], f.outText, "Spec text target copied");
+                DBtest (row->out_sum_paramrawname[0], f.outQuantity, "Spec sum target copied");
+                DBtest (row->exs_guid == APINULLGuid, "Spec new row no existing GUID");
+            }
+            DBtest (f.errors.IsEmpty (), "Spec valid no errors");
+            DBtest (f.values.Get (f.first).Get (f.quantity).val.intValue, 2, "Spec source quantity unchanged");
+            f.Source (f.second, "A", "Beta", 3);
+            f.Shape (f.Run (), 1, 1, 0, 0, "Spec merge");
+            row = f.created.GetPtr ("@A");
+            if (row != nullptr && row->out_sum_param.GetSize () == 1 && row->out_param.GetSize () == 1) {
+                DBtest (row->out_sum_param[0].val.intValue, 5, "Spec merged integer");
+                DBtest (row->out_sum_param[0].val.doubleValue, 5, "Spec merged real");
+                DBtest (row->out_sum_param[0].val.rawDoubleValue, 5, "Spec merged raw real");
+                DBtest (row->out_param[0].val.uniStringValue, GS::UniString ("Alpha"), "Spec first output wins");
+                DBtest (row->elements.GetSize (), 2, "Spec merged source count");
+                DBtest (row->elements.GetSize () == 2 && row->elements[0] == f.first && row->elements[1] == f.second,
+                        "Spec source order");
+            }
+            f.Text (f.second, f.key, "B");
+            f.Shape (f.Run (), 2, 2, 0, 0, "Spec separate keys");
+            DBtest (f.created.ContainsKey ("@A") && f.created.ContainsKey ("@B"), "Spec two exact keys");
+        }
+        {
+            SpecFixture f;
+            f.Source (f.first, "  A  B  ", "Alpha", 2);
+            f.Source (f.second, "A B", "Alpha", -2);
+            f.Shape (f.Run (), 1, 1, 0, 0, "Spec trim key");
+            const Spec::Element *row = f.created.GetPtr ("@A B");
+            DBtest (row != nullptr, "Spec normalized key");
+            if (row != nullptr && row->out_sum_param.GetSize () == 1)
+                DBtest (row->out_sum_param[0].val.intValue, 0, "Spec signed sum zero");
+            f.rule.groups[0].sum_paramrawname[0] = "1";
+            f.values.Get (f.first).Delete (f.quantity);
+            f.values.Get (f.second).Delete (f.quantity);
+            f.Shape (f.Run (), 1, 1, 0, 0, "Spec literal count");
+            row = f.created.GetPtr ("@A B");
+            if (row != nullptr && row->out_sum_param.GetSize () == 1)
+                DBtest (row->out_sum_param[0].val.intValue, 2, "Spec literal count value");
+            f.rule.groups[0].unic_paramrawname.Push (f.text);
+            f.Run ();
+            DBtest (f.created.ContainsKey ("@A B@Alpha"), "Spec composite key order");
+            f.rule.groups[0].unic_paramrawname.Clear ();
+            f.Run ();
+            DBtest (f.created.ContainsKey (EMPTYSTRING), "Spec empty unique list key");
+        }
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.rule.groups[0].flag_paramrawname = f.flag;
+            f.Shape (f.Run (), 1, 1, 0, 0, "Spec missing flag includes");
+            f.Number (f.first, f.flag, 0);
+            f.Shape (f.Run (), 0, 0, 0, 0, "Spec false flag skips");
+            f.Number (f.first, f.flag, 1);
+            f.Shape (f.Run (), 1, 1, 0, 0, "Spec true flag includes");
+            f.values.Get (f.first).Get (f.flag).isValid = false;
+            f.Shape (f.Run (), 1, 1, 0, 0, "Spec invalid flag includes");
+            f.rule.groups[0].is_Valid = false;
+            f.Shape (f.Run (), 0, 0, 0, 0, "Spec invalid group skips");
+            f.rule.groups.Clear ();
+            f.Shape (f.Run (), 0, 0, 0, 0, "Spec no groups");
+        }
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            const Spec::GroupSpec group = f.rule.groups[0];
+            f.rule.groups.Push (group);
+            f.Shape (f.Run (), 1, 1, 0, 0, "Spec groups share key");
+            const Spec::Element *row = f.created.GetPtr ("@A");
+            if (row != nullptr && row->out_sum_param.GetSize () == 1) {
+                DBtest (row->out_sum_param[0].val.intValue, 4, "Spec groups merge sums");
+                DBtest (row->elements.GetSize (), 2, "Spec group source multiplicity");
+            }
+            f.rule.groups[1].unic_paramrawname[0] = f.text;
+            f.Shape (f.Run (), 2, 2, 0, 0, "Spec groups different keys");
+            DBtest (f.created.ContainsKey ("@A") && f.created.ContainsKey ("@Alpha"), "Spec group keys");
+        }
+        // Каждый отказ проверяется на новой fixture; ошибки не маскируются остатками прошлого прогона.
+        for (Int32 missing = 0; missing < 3; ++missing) {
+            for (Int32 stop = 0; stop < 2; ++stop) {
+                SpecFixture f;
+                f.Source (f.first, "A", "Alpha", 2);
+                f.Source (f.second, "B", "Beta", 3);
+                f.rule.stop_on_error = stop != 0;
+                const GS::UniString name = missing == 0 ? f.key : (missing == 1 ? f.text : f.quantity);
+                f.values.Get (f.second).Delete (name);
+                const GS::UniString label = GS::UniString::Printf ("Spec missing %d stop %d", missing, stop);
+                f.Shape (f.Run (), stop != 0 ? 0 : 1, stop != 0 ? 0 : 1, 0, 0, label);
+                DBtest (f.errors.ContainsKey (f.second), stop != 0, label + " error GUID");
+                DBtest (!f.errors.ContainsKey (f.first), label + " valid source not blamed");
+            }
+        }
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.rule.out_paramrawname.Push ("{@property:extra-output}");
+            f.Shape (f.Run (), 0, 0, 0, 0, "Spec output arity mismatch");
+            f.rule.out_paramrawname.Pop ();
+            f.rule.out_sum_paramrawname.Push ("{@property:extra-sum}");
+            f.Shape (f.Run (), 0, 0, 0, 0, "Spec sum arity mismatch");
+        }
+        DBprnt ("SpecRegression grouping", "end");
+    }
+
+    void TestSpecReconcile () {
+        DBprnt ("SpecRegression reconcile", "start");
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Existing (f.old, "Alpha", 2);
+            f.Shape (f.Run (), 0, 0, 0, 0, "Spec unchanged");
+            f.Shape (f.Run (), 0, 0, 0, 0, "Spec unchanged repeat");
+            DBtest (f.rule.elements.GetSize (), 1, "Spec rule sources preserved");
+            DBtest (f.rule.exsist_elements.GetSize (), 1, "Spec existing list preserved");
+            f.Number (f.first, f.quantity, 3);
+            f.Shape (f.Run (), 1, 0, 1, 0, "Spec quantity changed");
+            const Spec::Element *row = f.modified.GetPtr ("@A");
+            DBtest (row != nullptr, "Spec update key");
+            if (row != nullptr && row->out_sum_param.GetSize () == 1) {
+                DBtest (row->exs_guid == f.old, "Spec update preserves target GUID");
+                DBtest (row->out_sum_param[0].val.intValue, 3, "Spec update new sum");
+                DBtest (row->elements.GetSize () == 1 && row->elements[0] == f.first, "Spec update source GUID");
+            }
+            f.values.Get (f.old).Delete (f.outQuantity);
+            f.Shape (f.Run (), 1, 0, 1, 0, "Spec absent old sum updates");
+            f.values.Get (f.old).Delete (f.outText);
+            f.Shape (f.Run (), 2, 1, 0, 1, "Spec absent old text replaces");
+            DBtest (f.deleted.GetSize () == 1 && f.deleted[0] == f.old, "Spec replacement deletes old GUID");
+        }
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Existing (f.old, "Other", 2);
+            f.Shape (f.Run (), 2, 1, 0, 1, "Spec changed output replaces");
+            f.rule.delete_old = false;
+            f.Shape (f.Run (), 1, 1, 0, 0, "Spec delete old disabled");
+            f.rule.delete_old = true;
+            f.rule.elements.Clear ();
+            f.Shape (f.Run (), 1, 0, 0, 1, "Spec disappeared row");
+        }
+        for (Int32 changed = 0; changed < 2; ++changed) {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Existing (f.old, "Alpha", changed != 0 ? 1 : 2);
+            f.Existing (f.extra, "Alpha", 2);
+            const GS::UniString label = GS::UniString::Printf ("Spec duplicate old changed %d", changed);
+            f.Shape (f.Run (), changed + 1, 0, changed, 1, label);
+            DBtest (f.deleted.GetSize () == 1 && f.deleted[0] == f.extra, label + " duplicate GUID");
+        }
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Source (f.second, "B", "Beta", 3);
+            f.Existing (f.old, "Alpha", 1);
+            f.Existing (f.extra, "Obsolete", 9);
+            f.Shape (f.Run (), 3, 1, 1, 1, "Spec mixed actions");
+            DBtest (f.created.ContainsKey ("@B"), "Spec mixed new key");
+            DBtest (f.modified.ContainsKey ("@A"), "Spec mixed update key");
+            DBtest (f.deleted.GetSize () == 1 && f.deleted[0] == f.extra, "Spec mixed delete GUID");
+            DBtest (f.values.Get (f.old).Get (f.outQuantity).val.intValue, 1, "Spec planning does not write values");
+        }
+        DBprnt ("SpecRegression reconcile", "end");
+    }
+
+    void TestSpecReadPlan () {
+        DBprnt ("SpecRegression read plan", "start");
+        SpecFixture f;
+        ParamDictElement read;
+        ParamDictValue write;
+        Spec::GetParamToReadFromRule (f.rule, read, write);
+        DBtest (read.IsEmpty (), "Spec read no sources");
+        DBtest (write.GetSize (), 2, "Spec write targets without sources");
+        DBtest (write.ContainsKey (f.outText) && write.ContainsKey (f.outQuantity), "Spec write target names");
+        f.rule.elements.Push (f.first);
+        f.rule.elements.Push (f.second);
+        f.rule.groups[0].flag_paramrawname = f.flag;
+        f.rule.groups[0].sum_paramrawname.Push ("1");
+        const Spec::GroupSpec duplicate = f.rule.groups[0];
+        f.rule.groups.Push (duplicate);
+        Spec::GetParamToReadFromRule (f.rule, read, write);
+        DBtest (read.GetSize (), 2, "Spec read source count");
+        for (const API_Guid &guid : f.rule.elements) {
+            const ParamDictValue *params = read.GetPtr (guid);
+            DBtest (params != nullptr, "Spec read source exists");
+            if (params != nullptr) {
+                DBtest (params->GetSize (), 4, "Spec read deduplicates names");
+                DBtest (params->ContainsKey (f.key), "Spec read unique name");
+                DBtest (params->ContainsKey (f.text), "Spec read output source");
+                DBtest (params->ContainsKey (f.quantity), "Spec read sum source");
+                DBtest (params->ContainsKey (f.flag), "Spec read flag");
+                DBtest (!params->ContainsKey ("1") && !params->ContainsKey ("{@gdl:1}"), "Spec count not read");
+            }
+        }
+        Spec::GetParamToReadFromRule (f.rule, read, write);
+        DBtest (read.GetSize (), 2, "Spec repeated read source count");
+        DBtest (write.GetSize (), 2, "Spec repeated write deduplicated");
+        for (Int32 mode = 0; mode < 3; ++mode) {
+            SpecFixture special;
+            special.rule.elements.Push (special.first);
+            special.rule.groups[0].flag_paramrawname = special.flag;
+            special.rule.groups[0].is_Valid = mode != 0;
+            special.rule.groups[0].fromMaterial = mode == 1;
+            special.rule.groups[0].fromLibData = mode == 2;
+            special.rule.groups[0].n_layer = 1;
+            ParamDictElement specialRead;
+            ParamDictValue specialWrite;
+            Spec::GetParamToReadFromRule (special.rule, specialRead, specialWrite);
+            if (mode == 0) {
+                const ParamDictValue *params = specialRead.GetPtr (special.first);
+                DBtest (params != nullptr && params->GetSize () == 1 && params->ContainsKey (special.flag),
+                        "Spec invalid group reads flag only");
+            } else {
+                DBtest (specialRead.IsEmpty (), "Spec nonzero material/lib layer skipped");
+            }
+            DBtest (specialWrite.GetSize (), 2, "Spec skipped group keeps write targets");
+        }
+        DBprnt ("SpecRegression read plan", "end");
+    }
+
+    void TestSpecValueEdges () {
+        DBprnt ("SpecRegression values", "start");
+        SpecFixture f;
+        f.Text (f.first, f.text, "Alpha");
+        ParamValue result;
+        DBtest (Spec::GetParamValue (f.first, f.text, f.values, result, true, -1, f.composites, f.libdata),
+                "Spec ordinary ignores material argument and layer");
+        DBtest (result.val.uniStringValue, GS::UniString ("Alpha"), "Spec ordinary original value");
+        f.values.Get (f.first).Get (f.text).fromMaterial = true;
+        ParamComposite composite;
+        ParamValueComposite layer;
+        const char *texts[] = {"0", "-2.5", "", "Material", "2147483648", "-2147483649"};
+        for (const char *text : texts) {
+            layer.val = text;
+            composite.composite.Push (layer);
+        }
+        ParamDictComposite byName;
+        byName.Add (f.text, composite);
+        f.composites.Add (f.first, byName);
+        const double numbers[] = {0, -2.5, 0, 0, 2147483648.0, -2147483649.0};
+        const double integers[] = {0, -2, 0, 0, 2147483647.0, -2147483648.0};
+        for (Int32 i = 0; i < 6; ++i) {
+            const GS::UniString label = GS::UniString::Printf ("Spec material edge %d", i);
+            DBtest (Spec::GetParamValue (f.first, f.text, f.values, result, false, i, f.composites, f.libdata), label);
+            DBtest (result.isValid, label + " valid");
+            DBtest (result.val.uniStringValue, GS::UniString (texts[i]), label + " text");
+            DBtest (result.val.doubleValue, numbers[i], label + " real");
+            DBtest (result.val.rawDoubleValue, numbers[i], label + " raw real");
+            DBtest (result.val.intValue, integers[i], label + " integer");
+            DBtest (result.val.boolValue, i != 0 && i != 2, label + " bool");
+            DBtest (result.val.canCalculate, i != 2 && i != 3, label + " calculable");
+        }
+        DBtest (Spec::GetParamValue (f.first, f.text, f.values, result, false, 100, f.composites, f.libdata),
+                "Spec past end after numeric result");
+        DBtest (result.val.doubleValue == 0 && result.val.rawDoubleValue == 0 && result.val.intValue == 0 &&
+                    !result.val.boolValue && !result.val.canCalculate && result.val.uniStringValue.IsEmpty (),
+                "Spec past end clears all result fields");
+        DBtest (f.values.Get (f.first).Get (f.text).val.uniStringValue,
+                GS::UniString ("Alpha"),
+                "Spec material source unchanged");
+        DBtest (f.composites.Get (f.first).Get (f.text).composite.GetSize (), 6, "Spec layers unchanged");
+        DBprnt ("SpecRegression values", "end");
+    }
+
+    void TestSpecParser () {
+        DBprnt ("SpecRegression parser", "start");
+        const char *prefixes[] = {"Spec_rule", "Spec_rule_v2", "Spec_rule_v3", "Spec_rule_km", "Spec_rule_kzh"};
+        for (Int32 i = 0; i < 5; ++i) {
+            GS::UniString description = GS::UniString (prefixes[i]) + "{Fav;g@@u;p;f;q@@s@@x;y)}";
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
+            const GS::UniString label = GS::UniString ("Spec parser ") + prefixes[i];
+            DBtest (rule.is_Valid, label + " valid");
+            DBtest (rule.favorite_name, GS::UniString ("Fav"), label + " favorite");
+            DBtest (rule.delete_old, i == 1 || i == 2, label + " delete old");
+            DBtest (rule.stop_on_error, i < 2, label + " stop");
+            DBtest (rule.only_visible, i != 2, label + " visible");
+            DBtest (rule.isKM, i == 3, label + " KM");
+            DBtest (rule.isKZH, i == 4, label + " KZH");
+            DBtest (rule.groups.GetSize (), 1, label + " group count");
+            DBtest (rule.out_paramrawname.GetSize (), 1, label + " output count");
+            DBtest (rule.out_sum_paramrawname.GetSize (), 1, label + " sum count");
+            DBtest (description, GS::UniString ("g@@u;p;f;q@@s@@x;y"), label + " input consumed");
+            if (rule.groups.GetSize () == 1) {
+                const Spec::GroupSpec &group = rule.groups[0];
+                DBtest (group.unic_paramrawname.GetSize () == 1 && group.unic_paramrawname[0] == "{@gdl:u}",
+                        label + " unique");
+                DBtest (group.out_paramrawname.GetSize () == 1 && group.out_paramrawname[0] == "{@gdl:p}",
+                        label + " read");
+                DBtest (group.sum_paramrawname.GetSize () == 1 && group.sum_paramrawname[0] == "{@gdl:q}",
+                        label + " sum source");
+                DBtest (group.flag_paramrawname, GS::UniString ("{@gdl:f}"), label + " flag");
+                DBtest (group.is_Valid && !group.fromMaterial && !group.fromLibData && group.n_layer == 0,
+                        label + " ordinary group");
+            }
+            DBtest (rule.elements.IsEmpty () && rule.exsist_elements.IsEmpty (), label + " no elements");
+        }
+
+        struct ParserCase {
+            const char *body;
+            bool valid;
+            UInt32 groups;
+            const char *label;
+        };
+
+        const ParserCase cases[] = {{"g@@u;p;f;q", false, 0, "no summary"},
+                                    {"g@@u;p;f;q@@s@@x", false, 0, "short summary"},
+                                    {"g@@u;p;f;q@@s@@x;y;z", false, 0, "long summary"},
+                                    {"g@@u@@s@@x;y", false, 0, "short group"},
+                                    {"g@@u;p1,p2;f;q@@s@@x;y", false, 0, "output mismatch"},
+                                    {"g@@u;p;f;q1,q2@@s@@x;y", false, 0, "sum mismatch"},
+                                    {"g@@u;p;f;q@@s@@%;y", false, 0, "empty output"},
+                                    {"g@@u;p;f;q@@s@@x;%", false, 0, "empty sum output"},
+                                    {"g@@u;p;f@@s@@x;y1,y2", true, 1, "implicit counts"},
+                                    {"g@@u;p;f;q@@s@@x;y1,y2", true, 1, "partial implicit count"},
+                                    {"g@@u;p,-;f;q@@s@@x;y", true, 1, "dash read skipped"},
+                                    {"g@@u;p;f;q;ignored@@s@@x;y", true, 1, "extra group field"},
+                                    {"g@@u1;p1;f1;q1@@g@@u2;p2;f2;q2@@s@@x;y", true, 2, "two groups"},
+                                    {"g@@u;p1,p2;f;q@@g@@u2;p2;f2;q2@@s@@x;y", true, 1, "invalid group dropped"},
+                                    {"u;p;f;q@@s@@x;y", true, 1, "group marker optional"},
+                                    {"g@@u;p;f;q@@s@@x;y@@s@@ignored", true, 1, "extra summary ignored"},
+                                    {"g@@u;p;f;q@@s@@x[3];y[2]", true, 1, "output array suffix removed"},
+                                    {"g@@u;p[2];f;q@@s@@x;y", true, 2, "array two rows"},
+                                    {"g@@u[3];p[2];f[4];q[5]@@s@@x;y", true, 2, "minimum array rows"},
+                                    {"g@@u;p[bad];f;q@@s@@x;y", true, 10, "array bad default"},
+                                    {"g@@u;p[0];f;q@@s@@x;y", true, 10, "array zero default"},
+                                    {"g@@u;p[-1];f;q@@s@@x;y", true, 10, "array negative default"},
+                                    {"g@@u;p[51];f;q@@s@@x;y", true, 10, "array too large default"},
+                                    {"g@@u;p[1];f;q@@s@@x;y", true, 1, "array lower bound"},
+                                    {"g@@u;p[50];f;q@@s@@x;y", true, 50, "array upper bound"},
+                                    {"g@@Material_all@u;p;f;q@@s@@x;y", true, 50, "material groups"},
+                                    {"g@@libdata@u;p;f;q@@s@@x;y", true, 100, "libdata groups"}};
+        for (const ParserCase &test : cases) {
+            GS::UniString description = GS::UniString ("Spec_rule{Fav;") + test.body + "}";
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
+            const GS::UniString label = GS::UniString ("Spec parser ") + test.label;
+            DBtest (rule.is_Valid, test.valid, label + " valid");
+            DBtest (rule.groups.GetSize (), test.groups, label + " groups");
+            if (test.groups == 50 && GS::UniString (test.label) == "material groups") {
+                for (UInt32 i = 0; i < rule.groups.GetSize (); ++i)
+                    DBtest (rule.groups[i].fromMaterial && !rule.groups[i].fromLibData &&
+                                rule.groups[i].n_layer == static_cast<Int32> (i),
+                            label + GS::UniString::Printf (" layer %u", i));
+            }
+            if (test.groups == 100) {
+                for (UInt32 i = 0; i < rule.groups.GetSize (); ++i)
+                    DBtest (rule.groups[i].fromLibData && !rule.groups[i].fromMaterial &&
+                                rule.groups[i].n_layer == static_cast<Int32> (i),
+                            label + GS::UniString::Printf (" layer %u", i));
+            }
+        }
+        const char *uniqueAliases[] = {"-", "\"-\"", "\"\""};
+        for (const char *alias : uniqueAliases) {
+            GS::UniString description = GS::UniString ("Spec_rule{Fav;g@@") + alias + ";p;f;q@@s@@x;y}";
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
+            DBtest (rule.is_Valid && rule.groups.GetSize () == 1, "Spec parser unique alias valid");
+            if (rule.groups.GetSize () == 1)
+                DBtest (rule.groups[0].unic_paramrawname.GetSize () == 1 &&
+                            rule.groups[0].unic_paramrawname[0] == "{@gdl:p}",
+                        "Spec parser unique copies output");
+        }
+        {
+            GS::UniString description =
+                "Spec_rule{\"  Избранное  \";g@@ID;GDL:Pa;Property:Flag;IFC:Qty@@s@@GDL:X;Property:Total}";
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
+            DBtest (rule.is_Valid, "Spec parser typed names valid");
+            DBtest (rule.favorite_name, GS::UniString ("Избранное"), "Spec parser quoted unicode favorite");
+            if (rule.groups.GetSize () == 1) {
+                const Spec::GroupSpec &group = rule.groups[0];
+                DBtest (group.unic_paramrawname.GetSize () == 1 && group.unic_paramrawname[0] == "{@id:id}",
+                        "Spec parser ID prefix");
+                DBtest (group.out_paramrawname.GetSize () == 1 && group.out_paramrawname[0] == "{@gdl:pa}",
+                        "Spec parser GDL prefix");
+                DBtest (group.flag_paramrawname, GS::UniString ("{@property:flag}"), "Spec parser property prefix");
+                DBtest (group.sum_paramrawname.GetSize () == 1 && group.sum_paramrawname[0] == "{@ifc:qty}",
+                        "Spec parser IFC prefix");
+            }
+            DBtest (rule.out_paramrawname.GetSize () == 1 && rule.out_paramrawname[0] == "{@gdl:x}",
+                    "Spec parser output prefix");
+            DBtest (rule.out_sum_paramrawname.GetSize () == 1 && rule.out_sum_paramrawname[0] == "{@property:total}",
+                    "Spec parser output sum prefix");
+        }
+        {
+            GS::UniString description = "Spec_rule{Fav;g@@u[3];p[2];f[4];q[5]@@s@@x;y}";
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
+            for (UInt32 i = 0; i < rule.groups.GetSize (); ++i) {
+                const Spec::GroupSpec &group = rule.groups[i];
+                const GS::UniString suffix = GS::UniString::Printf ("@arr_%u_%u_1_1_1}", i + 1, i + 1);
+                DBtest (group.unic_paramrawname.GetSize () == 1 && group.unic_paramrawname[0] == "{@gdl:u" + suffix,
+                        "Spec parser array unique substitution");
+                DBtest (group.out_paramrawname.GetSize () == 1 && group.out_paramrawname[0] == "{@gdl:p" + suffix,
+                        "Spec parser array output substitution");
+                DBtest (group.flag_paramrawname, "{@gdl:f" + suffix, "Spec parser array flag substitution");
+                DBtest (group.sum_paramrawname.GetSize () == 1 && group.sum_paramrawname[0] == "{@gdl:q" + suffix,
+                        "Spec parser array sum substitution");
+            }
+        }
+        {
+            GS::UniString description = "Spec_rule{Fav;g@@u;p;f1,f2@@s@@x;y1,y2}";
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
+            if (rule.groups.GetSize () == 1) {
+                DBtest (rule.groups[0].flag_paramrawname, GS::UniString ("{@gdl:f2}"), "Spec parser last flag");
+                DBtest (rule.groups[0].sum_paramrawname.GetSize () == 2 && rule.groups[0].sum_paramrawname[0] == "1" &&
+                            rule.groups[0].sum_paramrawname[1] == "1",
+                        "Spec parser literal counts");
+            }
+        }
+        DBprnt ("SpecRegression parser", "end");
+    }
+
+    void TestSpecAddRule () {
+        DBprnt ("SpecRegression add rule", "start");
+        SpecFixture f;
+        Spec::SpecRuleDict rules;
+        API_PropertyDefinition definition = {};
+        // Sync_name обходит кэш групп свойств: тест не зависит от открытой модели.
+        definition.groupGuid = f.extra;
+        definition.guid = f.old;
+        definition.name = "Sync_name_SpecFixture";
+        definition.description = "Spec_rule_v2{Fav;g(u;p;f;q)s(x;y)}";
+        const GS::UniString original = definition.description;
+        const GS::UniString key = "Fav;g@@u;p;f;q@@s@@x;y)";
+        Spec::AddRule (definition, APINULLGuid, rules);
+        DBtest (rules.GetSize (), 1, "Spec AddRule adds default");
+        DBtest (definition.description, original, "Spec AddRule input unchanged");
+        const Spec::SpecRule *rule = rules.GetPtr (key);
+        DBtest (rule != nullptr, "Spec AddRule normalized key");
+        if (rule == nullptr)
+            return;
+        DBtest (rule->is_Valid && rule->delete_old, "Spec AddRule v2 valid");
+        DBtest (rule->elements.IsEmpty (), "Spec AddRule null GUID not appended");
+        DBtest (rule->rule_name, definition.name, "Spec AddRule name");
+        DBtest (rule->subguid_paramrawname, definition.name, "Spec AddRule link");
+        DBtest (rule->subguid_rulevalue, definition.name, "Spec AddRule rule value");
+        DBtest (rule->subguid_rulename.IsEmpty (), "Spec AddRule subguid rule name default");
+        DBtest (rule->rule_definitions.guid == definition.guid, "Spec AddRule definition GUID");
+        Spec::AddRule (definition, f.first, rules);
+        Spec::AddRule (definition, f.second, rules);
+        Spec::AddRule (definition, f.first, rules);
+        Spec::AddRule (definition, APINULLGuid, rules);
+        rule = rules.GetPtr (key);
+        DBtest (rules.GetSize (), 1, "Spec AddRule reuses key");
+        DBtest (rule != nullptr && rule->elements.GetSize () == 3, "Spec AddRule preserves repeated GUID");
+        if (rule != nullptr && rule->elements.GetSize () == 3)
+            DBtest (rule->elements[0] == f.first && rule->elements[1] == f.second && rule->elements[2] == f.first,
+                    "Spec AddRule source order");
+        definition.name = "Sync_name_Other";
+        definition.guid = f.extra;
+        definition.description = "Spec_rule_v3{Fav;g(u;p;f;q)s(x;y)}";
+        Spec::AddRule (definition, f.extra, rules);
+        rule = rules.GetPtr (key);
+        DBtest (rules.GetSize (), 1, "Spec AddRule variant shares key");
+        DBtest (rule != nullptr && rule->stop_on_error && rule->only_visible, "Spec AddRule first variant wins");
+        DBtest (rule != nullptr && rule->rule_definitions.guid == f.old && rule->rule_name == "Sync_name_SpecFixture",
+                "Spec AddRule first metadata wins");
+        definition.description = "Spec_rule { Fav ;\n\t g (u;p;f;q) s (x;y) }";
+        Spec::AddRule (definition, APINULLGuid, rules);
+        DBtest (rules.GetSize (), 1, "Spec AddRule whitespace normalized");
+        definition.description = "Spec_rule{Bad;g(u;p;f;q)s(x)}";
+        Spec::AddRule (definition, f.first, rules);
+        Spec::AddRule (definition, f.second, rules);
+        DBtest (rules.GetSize (), 2, "Spec AddRule caches invalid once");
+        const Spec::SpecRule *invalid = rules.GetPtr ("Bad;g@@u;p;f;q@@s@@x)");
+        DBtest (invalid != nullptr && !invalid->is_Valid && invalid->elements.IsEmpty (),
+                "Spec AddRule invalid has no sources");
+        const char *groups[] = {"gm", "gl"};
+        for (Int32 i = 0; i < 2; ++i) {
+            Spec::SpecRuleDict expanded;
+            definition.description = GS::UniString ("Spec_rule{Fav;") + groups[i] + "(u;p;f;q)s(x;y)}";
+            Spec::AddRule (definition, APINULLGuid, expanded);
+            const GS::UniString expandedKey =
+                GS::UniString ("Fav;g@@") + (i == 0 ? "Material_all@" : "libdata@") + "u;p;f;q@@s@@x;y)";
+            const Spec::SpecRule *parsed = expanded.GetPtr (expandedKey);
+            DBtest (parsed != nullptr && parsed->is_Valid, "Spec AddRule expanded valid");
+            if (parsed != nullptr)
+                DBtest (parsed->groups.GetSize (), i == 0 ? 50 : 100, "Spec AddRule expanded groups");
+        }
+        DBprnt ("SpecRegression add rule", "end");
+    }
+
+    void TestSpecSizes () {
+        DBprnt ("SpecRegression sizes", "start");
+        API_Element element = {};
+        API_ElementMemo memo = {};
+        double dx = 17;
+        double dy = 19;
+        DBtest (!Spec::GetSizePlaceElement (element, memo, dx, dy), "Spec size null memo horizontal");
+        DBtest (dx == 17 && dy == 19, "Spec size null memo unchanged");
+        // Только плоские числовые параметры, вложенных handles нет.
+        memo.params =
+            reinterpret_cast<API_AddParType **> (BMAllocateHandle (5 * sizeof (API_AddParType), ALLOCATE_CLEAR, 0));
+        DBtest (memo.params != nullptr, "Spec size fixture allocation");
+        if (memo.params == nullptr)
+            return;
+        auto set = [&] (Int32 index, const char *name, double value) {
+            auto &target = (*memo.params)[index].name;
+            USize i = 0;
+            for (; name[i] != '\0' && i + 1 < sizeof (target); ++i)
+                target[i] = name[i];
+            target[i] = '\0';
+            (*memo.params)[index].value.real = value;
+        };
+        set (0, "A", 2);
+        set (1, "B", 3);
+        DBtest (!Spec::GetSizePlaceElement (element, memo, dx, dy), "Spec size AB horizontal");
+        DBtest (dx == 2 && dy == 3, "Spec size AB dimensions");
+        set (2, "somestuff_spec_hrow", 0.5);
+        DBtest (Spec::GetSizePlaceElement (element, memo, dx, dy), "Spec size height vertical");
+        DBtest (dx == 0 && dy == 0.5, "Spec size height dimensions");
+        set (3, "somestuff_spec_bcol", 1.5);
+        for (Int32 type = 0; type < 5; ++type) {
+            set (4, "show_type", type);
+            const bool vertical = Spec::GetSizePlaceElement (element, memo, dx, dy);
+            const GS::UniString label = GS::UniString::Printf ("Spec size show type %d", type);
+            DBtest (vertical, type != 2 && type != 3, label + " direction");
+            DBtest (dx, type == 2 || type == 3 ? 1.5 : 0, label + " dx");
+            DBtest (dy, 0.5, label + " dy");
+        }
+        set (2, "other-height", 7);
+        set (3, "other-width", 8);
+        set (4, "show_type", 1);
+        DBtest (Spec::GetSizePlaceElement (element, memo, dx, dy), "Spec size type one missing dimensions");
+        DBtest (dx == 0 && dy == 0, "Spec size missing dimensions default zero");
+        set (4, "other-type", 0);
+        set (1, "b", 3);
+        dx = 17;
+        dy = 19;
+        DBtest (!Spec::GetSizePlaceElement (element, memo, dx, dy), "Spec size partial AB");
+        DBtest (dx == 2 && dy == 19, "Spec size case sensitive B unchanged");
+        BMKillHandle (reinterpret_cast<GSHandle *> (&memo.params));
+        DBprnt ("SpecRegression sizes", "end");
+    }
+
+    void TestSpecRegression () {
+        DBprnt ("SpecRegression", "start");
+        TestSpecGetParamValue ();
+        TestSpecValueEdges ();
+        TestSpecReadPlan ();
+        TestSpecGrouping ();
+        TestSpecReconcile ();
+        TestSpecParser ();
+        TestSpecAddRule ();
+        TestSpecSizes ();
+        DBprnt ("SpecRegression", "end");
     }
 
     void TestStringSplt () {

@@ -13,6 +13,12 @@
 #include "Propertycache.hpp"
 
 namespace Spec {
+    // Вспомогательные функции дампа (определены в конце файла) — нужны
+    // раньше по тексту, в :PlaceElements.
+    static GS::UniString ParamValueToDumpString (const ParamValue &pvalue);
+    static void FillDumpFromParamDict (const ParamDictValue &param, SpecElementDump &dump);
+    static void FillDumpGDLParameter (const API_AddParType &actParam, SpecElementDump &dump);
+
     // --------------------------------------------------------------------
     // Получение правил из свойств элемента по умолчанию
     // Назначение: ищет правила спецификации в пользовательских свойствах объекта по умолчанию
@@ -145,8 +151,12 @@ namespace Spec {
                        const GS::Array<GS::UniString> *ruleNames,
                        const Point2D *placementPoint,
                        SpecRunResult *runResult) {
-        if (runResult != nullptr)
+        if (runResult != nullptr) {
+            // includeDetails задаётся вызывающим - сброс не должен его стирать.
+            const bool includeDetails = runResult->includeDetails;
             *runResult = {};
+            runResult->includeDetails = includeDetails;
+        }
         const bool showUserInterface = placementPoint == nullptr;
         GSErrCode err = NoError;
         API_DatabaseInfo homedatabaseInfo = {};
@@ -530,8 +540,13 @@ namespace Spec {
                          const Point2D *placementPoint,
                          SpecRunResult *runResult) {
         const bool showUserInterface = placementPoint == nullptr;
-        if (runResult != nullptr)
+        if (runResult != nullptr) {
+            // includeDetails задаётся вызывающим ДО вызова - полный сброс стёр бы
+            // его вместе со счётчиками, и дамп остался бы пустым.
+            const bool includeDetails = runResult->includeDetails;
             *runResult = {};
+            runResult->includeDetails = includeDetails;
+        }
         clock_t start, finish;
         double duration;
         start = clock ();
@@ -834,6 +849,8 @@ namespace Spec {
             for (const ElementDict &elements : elements_mod)
                 runResult->elementsToModify += elements.GetSize ();
             runResult->elementsToDelete = elements_delete.GetSize ();
+            if (runResult->includeDetails)
+                runResult->deleted = elements_delete;
         }
         SuspendGroupsGuard suspGuard;
 #ifdef ServerMainVers_2300
@@ -963,6 +980,16 @@ namespace Spec {
                         }
                     }
                     paramOut.Add (el.exs_guid, param);
+                    // Дамп изменяемого элемента: GUID уже известен (элемент создан
+                    // предыдущим запуском), в отличие от создаваемого.
+                    if (runResult != nullptr && runResult->includeDetails) {
+                        SpecElementDump dump = {};
+                        dump.guid = el.exs_guid;
+                        dump.favorite_name = el.favorite_name;
+                        dump.sourceElements = el.elements;
+                        FillDumpFromParamDict (param, dump);
+                        runResult->modified.Push (dump);
+                    }
                 }
             }
             if (showUserInterface) {
@@ -1030,7 +1057,7 @@ namespace Spec {
             }
             start = clock ();
             const UInt32 previousCount = paramOut.GetSize ();
-            PlaceElements (elements_new, paramToWrite, paramOut, startpos);
+            PlaceElements (elements_new, paramToWrite, paramOut, startpos, runResult);
             const UInt32 createdCount = paramOut.GetSize () - previousCount;
             if (runResult != nullptr)
                 runResult->elementsToCreate = createdCount;
@@ -2491,8 +2518,11 @@ namespace Spec {
     GSErrCode PlaceElements (GS::Array<ElementDict> &elementstocreate,
                              ParamDictValue &paramToWrite,
                              ParamDictElement &paramOut,
-                             Point2D &startpos) {
+                             Point2D &startpos,
+                             SpecRunResult *runResult) {
         GSErrCode err = NoError;
+        // Дамп собирается только по запросу (includeParameters в JSON-команде).
+        const bool collectDetails = runResult != nullptr && runResult->includeDetails;
         API_Coord pos = {startpos.x, startpos.y};
         GS::Array<API_Elem_Head> elemsheader = {};
         double dx = 0;
@@ -2598,6 +2628,18 @@ namespace Spec {
                     const GSSize nParams = (memo.params == nullptr)
                                                ? 0
                                                : BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
+                    // Дамп элемента: собирается до создания, чтобы в него попали
+                    // значения ровно те, что уходят в memo (GDL-параметры после
+                    // записи удаляются из param и в paramOut их уже нет).
+                    // Всё под флагом: при выключенном дампе (обычный запуск Spec)
+                    // не копируются даже favorite_name и sourceElements.
+                    SpecElementDump dump = {};
+                    if (collectDetails) {
+                        dump.guid = element.header.guid;
+                        dump.favorite_name = el.favorite_name;
+                        dump.sourceElements = el.elements;
+                        FillDumpFromParamDict (param, dump);
+                    }
                     for (GSIndex ii = 0; ii < nParams; ++ii) {
                         API_AddParType &actParam = (*memo.params)[ii];
                         GS::UniString name = GS::UniString (actParam.name);
@@ -2645,6 +2687,8 @@ namespace Spec {
                                 break;
                             }
                             param.Delete (rawname);
+                            if (collectDetails)
+                                FillDumpGDLParameter (actParam, dump);
                         }
                     }
                     element.object.pos = pos;
@@ -2661,6 +2705,11 @@ namespace Spec {
                             } else {
                                 pos.x += dx;
                             }
+                        }
+                        // GUID элемента известен только после успешного создания
+                        if (collectDetails) {
+                            dump.guid = element.header.guid;
+                            runResult->created.Push (dump);
                         }
                         paramOut.Add (element.header.guid, param);
                         group.Push (element.header.guid);
@@ -2698,6 +2747,70 @@ namespace Spec {
                 msg_rep ("Spec", "APIAny_RunGDLParScriptID", err, APINULLGuid);
         }
         return NoError;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Перевод значения параметра в строку для дампа.
+    // Повторяет формат ParamHelpers::ToString, но без DBBREAK в ветке неизвестного
+    // типа: дамп — диагностический вывод и не должен прерывать построение.
+    // -----------------------------------------------------------------------------
+    static GS::UniString ParamValueToDumpString (const ParamValue &pvalue) {
+        switch (pvalue.val.type) {
+        case API_PropertyIntegerValueType:
+            return FormatStringFunc::NumToString (pvalue.val.intValue, pvalue.val.formatstring);
+        case API_PropertyRealValueType:
+            return FormatStringFunc::NumToString (pvalue.val.doubleValue, pvalue.val.formatstring);
+        case API_PropertyStringValueType:
+            return pvalue.val.uniStringValue;
+        case API_PropertyBooleanValueType:
+            return GS::ValueToUniString (pvalue.val.boolValue);
+        case API_PropertyGuidValueType:
+            return APIGuidToString (pvalue.val.guidval);
+        default:
+            return EMPTYSTRING;
+        }
+    }
+
+    // -----------------------------------------------------------------------------
+    // Заполняет дамп элемента по словарю записываемых параметров.
+    // GDL-параметры (rawname с префиксом {@gdl:}) в properties не попадают — они
+    // пишутся в memo и в paramOut отсутствуют, их пишет :FillDumpGDLParameter.
+    // -----------------------------------------------------------------------------
+    static void FillDumpFromParamDict (const ParamDictValue &param, SpecElementDump &dump) {
+        for (ParamDictValue::ConstPairIterator cIt = param.EnumeratePairs (); cIt != NULL; ++cIt) {
+#ifdef ServerMainVers_2800
+            const GS::UniString rawname = cIt->key;
+            const ParamValue &pvalue = cIt->value;
+#else
+            const GS::UniString rawname = *cIt->key;
+            const ParamValue &pvalue = *cIt->value;
+#endif
+            if (!pvalue.isValid || rawname.BeginsWith (GDLNAMEPREFIX))
+                continue;
+            dump.properties.Add (rawname, ParamValueToDumpString (pvalue));
+        }
+    }
+
+    // -----------------------------------------------------------------------------
+    // Записывает в дамп фактическое значение GDL-параметра - то, что кладётся
+    // в API_AddParType перед ACAPI_Element_Create, а не то, что было в ParamValue:
+    // приведение к типу параметра может изменить значение.
+    // -----------------------------------------------------------------------------
+    static void FillDumpGDLParameter (const API_AddParType &actParam, SpecElementDump &dump) {
+        GS::UniString rawname = GDLNAMEPREFIX + GS::UniString (actParam.name).ToLowerCase () + BRACEEND;
+        GS::UniString value;
+        switch (actParam.typeID) {
+        case APIParT_CString:
+        case APIParT_Title:
+            value = GS::UniString (actParam.value.uStr);
+            break;
+        default:
+            // Остальные типы хранятся в объединении как double, включая
+            // целочисленные и логические (проверено по коду записи в memo).
+            value = GS::UniString::Printf ("%g", actParam.value.real);
+            break;
+        }
+        dump.gdlParameters.Add (rawname, value);
     }
 
 } // namespace Spec

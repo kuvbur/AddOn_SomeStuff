@@ -1,6 +1,6 @@
 # spec/Spec — Движок спецификаций
 
-> Хеш состояния: `309606a` (2026-09-28) — раздел `GetParamValue` дополнен правкой #221. Номера строк — определения в `.cpp` (1-based, проверены source; функции внутри namespace Spec).
+> Хеш состояния: рабочее дерево ветки `spec_refactor` поверх `e22ddc8` (2026-09-28) — #227: дамп значений элементов (`includeParameters`). Последний закоммиченный хеш: `309606a`, раздел `GetParamValue` дополнен правкой #221. Номера строк — определения в `.cpp` (1-based, проверены source; функции внутри namespace Spec).
 
 ## Назначение
 Генерация спецификаций по правилам: разбор описаний, выбор элементов, группировка, создание/обновление элементов. [из комментария, Spec.hpp:8-9]
@@ -17,23 +17,25 @@
 | `SpecRule` | rule_name, groups, out_paramrawname, subguid_paramrawname/rulename/rulevalue, elements, exsist_elements, rule_definitions, favorite_name, flags (isKM, isKZH, delete_old, stop_on_error, only_visible) [из комментария, Spec.hpp:27-47] |
 | `Element` / `ElementDict` | Временный контейнер создаваемого элемента / словарь по сцепке уникальных параметров [из комментария] |
 | `SpecRuleDict` | HashTable<string, SpecRule> [из комментария] |
+| `SpecElementDump` | Дамп одного созданного/изменяемого элемента: `guid`, `favorite_name`, `sourceElements`, `properties`, `gdlParameters` (#227, Spec.hpp) |
 
 ## Публичный API
 
 | Функция | .cpp строка | Назначение |
 |---------|-------------|------------|
-| `SpecAll` | 140 | Создание спецификации из выбора/видимых/правил по умолчанию [из комментария] — карточка |
-| `SpecFilter` | ~346 | Исключение неподходящих типов/БД [из комментария; строка не проверена] |
-| `GetRuleFromDefaultElem` | 36 | Правила из свойств элемента по умолчанию [из комментария] |
-| `GetRuleFromElement` | — | Правила из выбранного элемента [из комментария; строка не проверена] |
-| `AddRule` | 1114 | Разбор описания и добавление правила в словарь [из комментария] |
-| `GetRuleFromDescription` | 1833 | Разбор строки описания в SpecRule [из комментария] |
-| `GetParamValue` | — | Чтение одного значения параметра [из комментария; строка не проверена] |
-| `GetElementsForRule` | 1463 | Формирование элементов для одного правила [из комментария] |
-| `GetParamToReadFromRule` | — | Параметры для предварительного чтения [из комментария; строка не проверена] |
-| `GetElementForPlace` | 2297 | Создание/настройка элемента для размещения [из комментария] |
-| `GetSizePlaceElement` | — | Размер элемента по сетке [из комментария; строка не проверена] |
-| `PlaceElements` | 2427 | Размещение сформированных элементов и заполнение параметров [из комментария] — карточка |
+| `SpecAll` | 150 | Создание спецификации из выбора/видимых/правил по умолчанию [из комментария] — карточка |
+| `SpecFilter` | 222, 366 | Исключение неподходящих типов/БД (две перегрузки) [из комментария] |
+| `GetRuleFromDefaultElem` | 42 | Правила из свойств элемента по умолчанию [из комментария] |
+| `GetRuleFromElement` | 1140 | Правила из выбранного элемента [из комментария] |
+| `AddRule` | 1207 | Разбор описания и добавление правила в словарь [из комментария] |
+| `GetRuleFromDescription` | 1930 | Разбор строки описания в SpecRule [из комментария] |
+| `GetParamValue` | 1416 | Чтение одного значения параметра [из комментария] |
+| `GetElementsForRule` | 1559 | Формирование элементов для одного правила [из комментария] |
+| `GetParamToReadFromRule` | 1294 | Параметры для предварительного чтения [из комментария] |
+| `GetElementForPlace` | 2391 | Создание/настройка элемента для размещения [из комментария] |
+| `GetSizePlaceElement` | 2436 | Размер элемента по сетке [из комментария] |
+| `PlaceElements` | 2518 | Размещение сформированных элементов и заполнение параметров [из комментария] — карточка |
+| `ParamValueToDumpString` / `FillDumpFromParamDict` / `FillDumpGDLParameter` | 2757, 2779, 2799 | Сборка дампа значений элемента для #227 [по коду] |
 
 ## Карточки
 
@@ -52,16 +54,26 @@
 - Контракт: если выделение пусто и `GetRuleFromDefaultElem` обнаружил включённые элементы (`has_elementspec`), передаёт заполненные `rules` в `SpecArray` даже при пустом `guidArray`; возвращает `NoError` только когда нет ни выделения, ни включённых элементов default-правила. Для non-interactive запуска `placementPoint` задаёт начальную точку без диалога и окна прогресса; при `ruleNames == nullptr` обрабатываются все валидные правила. `runResult->elementsToCreate` после размещения равен приросту `paramOut` (число реально созданных элементов, без уже запланированных изменений); остальные счётчики отражают сформированные списки. [по коду; AC25 Debug #207 и runtime #208/#209]
 - Если требуемое значение свойства строительного материала не прочитано, строка не формируется: пустое наименование не подставляется вместо исходных данных. `ParamHelpers::GetAttributeValues` для отсутствующего у исходного элемента свойства с `fromPropertyDefinition` пробует получить значение у строительного материала. [по коду; AC25 runtime #209]
 - Побочные эффекты: **создаёт/обновляет/удаляет элементы спецификации** (PlaceElements-цепочка); читает выделение и свойства. [по коду]
-- Вызывает: `GetRuleFromDefaultElem` (:165), `SpecFilter` (:157/176), `SpecArray` (:184), `GetSelectedElements` (Helpers.cpp:695). [по коду]
-- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:441) и `SomeStuffCommand.Spec` (`json_commands/SpecCommand.cpp`; JSON API AC25–29). Menu-path сохраняет `SpecDG` и `ClickAPoint`; JSON-команда требует `placementPoint {x, y}`, необязательно принимает `ruleNames` и возвращает `status`, `resultCode`, `elementsToCreate`, `elementsToModify`, `elementsToDelete`, `elapsedSeconds`. AC25 runtime: после вызова с точкой число объектов выросло с 548 до 582, в последних 34 объектах свойство «Спецификации материалов/Наименование в объект» заполнено. [по коду и AC25 runtime #208/#209]
+- Вызывает: `GetRuleFromDefaultElem` (:185), `SpecFilter` (:177/:196), `SpecArray` (:204), `GetSelectedElements` (Helpers.cpp:695). [по коду]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:441) и `SomeStuffCommand.Spec` (`json_commands/SpecCommand.cpp`; JSON API AC25–29). Menu-path сохраняет `SpecDG` и `ClickAPoint`; JSON-команда требует `placementPoint {x, y}`, необязательно принимает `ruleNames` и `includeParameters` (default false, #227) и возвращает `status`, `resultCode`, `elementsToCreate`, `elementsToModify`, `elementsToDelete`, `elapsedSeconds`, `includeParameters`; при `includeParameters=true` дополнительно `created`, `modified`, `deleted`. AC25 runtime: после вызова с точкой число объектов выросло с 548 до 582, в последних 34 объектах свойство «Спецификации материалов/Наименование в объект» заполнено. [по коду и AC25 runtime #208/#209]
 
-### `Spec::PlaceElements(GS::Array<ElementDict> &elementstocreate, ParamDictValue &paramToWrite, ParamDictElement &paramOut, Point2D &startpos) -> GSErrCode`
-- Расположение: `Sources/AddOn/spec/Spec.cpp:2427`
+### `Spec::PlaceElements(GS::Array<ElementDict> &elementstocreate, ParamDictValue &paramToWrite, ParamDictElement &paramOut, Point2D &startpos, SpecRunResult *runResult = nullptr) -> GSErrCode` (#227)
+- Расположение: `Sources/AddOn/spec/Spec.cpp:2518`
 - Назначение: размещает сформированные элементы в модели и заполняет их параметры. [из комментария]
-- Контракт: не проверено.
+- Контракт: **создание** и **запись/удаление** находятся в разных undo-вызовах; возврат `PlaceElements` на вызывающей стороне не проверяется (`Spec.cpp:1060`), а сама функция заканчивается `NoError`. Изменение этой политики ошибок — отдельный вопрос F2, не входит в #227. [по коду]
+- #227: при `runResult != nullptr && runResult->includeDetails` заполняет `runResult->created`. Дамп собирается ДО `ACAPI_Element_Create` (Spec.cpp:2631–2642), потому что GDL-параметры после записи в memo удаляются из `param` (`param.Delete (rawname)`, :2690) и в `paramOut` их уже нет. GUID проставляется в дамп только после успешного создания (:2709). `favorite_name`/`sourceElements` копируются только под флагом — выключенный дамп не платит за копирование. [по коду]
+- GDL-параметры в дампе берутся из фактического `API_AddParType` в момент записи в memo, а не из исходного `ParamValue`: приведение к типу параметра может изменить значение. [по коду]
 - Побочные эффекты: **создание элементов в проекте** (из избранного `favorite_name`), запись параметров/GUID (`subguid`); изменение сетки размещения (startpos). [по коду]
 - Вызывает: `GetElementForPlace` (:2461), `UnhideUnlockElementLayer` (CommonFunction.cpp:2472), `StringUnic` (CommonFunction.cpp:1473); создание элементов — `ACAPI_Element_Create` в `ACAPI_CallUndoableCommand` (:2449). [из callgraph.json]
-- Вызывается из: `SpecArray` (Spec.cpp:950). [из callgraph.json]
+- Вызывается из: `SpecArray` (Spec.cpp:1060). [по коду]
+
+### #227 — дамп значений элементов в JSON-ответе
+- Необязательный параметр `includeParameters` (bool, default false). При true ответ содержит `created` / `modified` / `deleted`; каждый элемент — `guid`, `favoriteName`, `sourceElement[]`, `property[]`, `gdlParameter[]`. Списки отсортированы по имени (`GS::Array` не имеет `Sort` ни в AC25, ни в AC29 -> `std::vector` + `std::sort`). [по коду `SpecCommand.cpp:60-133`]
+- `created` собирается в `PlaceElements`, `modified` — в `SpecArray` (ветка `elements_mod`, там GUID известен), `deleted` — список GUID из `elements_delete` (`Spec.cpp:852`). Все три заполняются ДО применения операций: непустой массив не доказывает, что запись/удаление состоялись. [по коду]
+- Грабли: `*runResult = {}` в `SpecAll:157` и `SpecArray:547` стирал `includeDetails`, заданный вызывающим. Исправлено сохранением флага перед сбросом; найдено прогоном (счётчик показывал 16 при `created=0`). [по коду]
+- `modified` заполняется только через `FillDumpFromParamDict`, который исключает GDL-имена, поэтому `modified.gdlParameter` всегда пуст — в отличие от `created`. Одинаковая форма JSON не означает одинаковую полноту данных. [по коду]
+- Значения сериализуются строками в формате записи в модель; GDL-числа через `%g`. Равенство текстов не доказывает равенство типов и полной числовой точности. [по коду]
+- Стенд A/B: `Tools/spec_baseline.py capture|compare <tag>`, каталог `Reviews/spec_baseline/` (gitignored). Сравнение по семантическому ключу строки (favorite + значения без GUID-полей и «имени правила»), новые GUID не сравниваются. Граница: эталон подготовленной записи, а не снимок конечной модели. [по коду]
 
 ## Зависимости
 - `Helpers.hpp`, `Propertycache.hpp`, `CommonFunction.hpp` [по include]
