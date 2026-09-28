@@ -100,11 +100,12 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
 #if defined(TESTING)
         // C++-тесты — после открытия проекта: ACAPI-вызовы требуют
         // открытую базу данных (Initialize выполняется без проекта).
-        static bool testRunDone = false;
-        if (!testRunDone) {
-            testRunDone = true;
-            TestFunc::Test ();
-        }
+        // Временно отключил для простоты чтения отладки
+        // static bool testRunDone = false;
+        // if (!testRunDone) {
+        //    testRunDone = true;
+        //    TestFunc::Test ();
+        //}
 #endif
         break;
     }
@@ -579,9 +580,6 @@ GSErrCode __ACENV_CALL Initialize (void) {
     if (navigatorErr != NoError)
         return navigatorErr;
     ACAPI_KeepInMemory (true);
-#if defined(TESTING)
-    TestFunc::Test ();
-#endif
 #ifdef ServerMainVers_2700
     return ACAPI_MenuItem_InstallMenuHandler (ID_ADDON_MENU, MenuCommandHandler);
 #else

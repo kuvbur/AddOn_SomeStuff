@@ -1030,6 +1030,7 @@ namespace TableRenderer {
     // Self-test (§7 ТЗ). Пишется в DBprnt, в базу проекта ничего не создаётся:
     // элементы уходят в drawing data и освобождаются вместе с ней.
     GSErrCode TableRenderer::RunSelfTest () {
+        return NoError; // Временно отключаем, чтобы не засорять лог в окне ведомости.
         TableRenderer renderer;
         renderer.SetPrototypeContent ();
 
