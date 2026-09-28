@@ -78,7 +78,7 @@ namespace Spec {
     #else
             SpecRule &rule = *cIt->value;
     #endif
-            if (!rule.is_Valid)
+            if (!rule.parseValid)
                 continue;
             for (const auto &classificationItemGuid : rule.rule_definitions.availability) {
                 GS::Array<API_Guid> elemGuids = {};
@@ -458,7 +458,7 @@ namespace Spec {
     // Алгоритм:
     //   1. Формирует данные для диалога (RuleSelectData) из словаря правил
     //   2. Показывает диалог (RuleSelectDialog)
-    //   3. Если пользователь нажал OK - обновляет состояние правил (rule.is_Valid)
+    //   3. Если пользователь нажал OK - обновляет выбор правил (rule.selected)
     // Возвращает: true, если пользователь выбрал хотя бы одно правило и нажал OK
     // Примечание: если пользователь отменил диалог - возвращает false
     // --------------------------------------------------------------------
@@ -475,7 +475,7 @@ namespace Spec {
 #else
             const SpecRule &rule = *cIt->value;
 #endif
-            if (!rule.is_Valid)
+            if (!rule.parseValid || !rule.selected)
                 continue;
             if (rules.rules.ContainsKey (rule.rule_name))
                 continue;
@@ -497,12 +497,12 @@ namespace Spec {
 #else
             SpecRule &rule = *cIt->value;
 #endif
-            if (!rule.is_Valid)
+            if (!rule.parseValid || !rule.selected)
                 continue;
             if (!rules.rules.ContainsKey (rule.rule_name))
                 continue;
-            rule.is_Valid = rules.rules.Get (rule.rule_name);
-            if (rule.is_Valid)
+            rule.selected = rules.rules.Get (rule.rule_name);
+            if (rule.selected)
                 has_true_state = true;
         }
         return has_true_state;
@@ -611,10 +611,10 @@ namespace Spec {
 #else
                 SpecRule &rule = *cIt->value;
 #endif
-                if (!rule.is_Valid)
+                if (!rule.parseValid || !rule.destinationReady)
                     continue;
-                rule.is_Valid = ruleNames->Contains (rule.rule_name);
-                hasSelectedRule = hasSelectedRule || rule.is_Valid;
+                rule.selected = ruleNames->Contains (rule.rule_name);
+                hasSelectedRule = hasSelectedRule || rule.selected;
             }
             if (!hasSelectedRule) {
                 msg_rep ("Spec", "Requested rules not found", APIERR_BADPARS, APINULLGuid);
@@ -629,7 +629,7 @@ namespace Spec {
             SpecRule &rule = *cIt->value;
 #endif
             // Читаем только параметры групп
-            if (!rule.is_Valid) {
+            if (!rule.IsRunnableForRun ()) {
                 continue;
             }
             GetParamToReadFromRule (rule, paramToRead, paramToWrite);
@@ -667,7 +667,7 @@ namespace Spec {
 #else
             SpecRule &rule = *cIt->value;
 #endif
-            if (!rule.is_Valid)
+            if (!rule.parseValid || !rule.selected)
                 continue;
             GS::HashTable<GS::UniString, GS::UniString> *pRuleFavorite = paramdict_favorite.GetPtr (rule.favorite_name);
             if (pRuleFavorite == nullptr) {
@@ -680,19 +680,19 @@ namespace Spec {
                 continue;
             for (const auto &rawname : rule.out_paramrawname) {
                 if (!pRuleFavorite->ContainsKey (rawname)) {
-                    rule.is_Valid = false;
+                    rule.destinationReady = false;
                     if (!error_name.ContainsKey (rawname))
                         error_name.Add (rawname, true);
                 }
             }
             for (const auto &rawname : rule.out_sum_paramrawname) {
                 if (!pRuleFavorite->ContainsKey (rawname)) {
-                    rule.is_Valid = false;
+                    rule.destinationReady = false;
                     if (!error_name.ContainsKey (rawname))
                         error_name.Add (rawname, true);
                 }
             }
-            if (!rule.is_Valid)
+            if (!rule.destinationReady)
                 continue;
             bool flag_find = false;
             GS::HashTable<GS::UniString, GS::UniString> &rule_favorite_name = *pRuleFavorite;
@@ -718,7 +718,11 @@ namespace Spec {
                     }
                     rule.subguid_rulename = rawname;
                 }
-                // Ищем свойство, в которое нужно будет записать GUID
+                // Ищем свойство, в которое нужно будет записать GUID.
+                // Сопоставление идёт по НЕИЗМЕНЯЕМОМУ маркеру subguid_paramrawname
+                // (из описания правила); найденное имя свойства пишется в
+                // destinationParamGuidName - больше маркер не подменяется результатом,
+                // поэтому повторный проход по тому же правилу ищет то же самое.
                 if (!rule.subguid_paramrawname.IsEmpty ()) {
                     if (description.Contains (rule.subguid_paramrawname.ToLowerCase ()) &&
                         description.Contains ("sync_guid")) {
@@ -732,7 +736,7 @@ namespace Spec {
                             }
                             paramToWrite.Add (rawname, chpvalue);
                         }
-                        rule.subguid_paramrawname = rawname;
+                        rule.destinationParamGuidName = rawname;
                         flag_find = true;
                     }
                 }
@@ -776,7 +780,7 @@ namespace Spec {
                 if (!paramDict.ContainsKey (rawname))
                     ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
             }
-            ParamHelpers::AddValueToParamDictValue (paramDict, rule.subguid_paramrawname);
+            ParamHelpers::AddValueToParamDictValue (paramDict, rule.destinationParamGuidName);
             // Добавляем параметры для каждого элемента
             for (const API_Guid elemguid : rule.exsist_elements) {
                 ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
@@ -823,7 +827,7 @@ namespace Spec {
 #else
             SpecRule &rule = *cIt->value;
 #endif
-            if (!rule.is_Valid)
+            if (!rule.IsRunnableForRun ())
                 continue;
             ElementDict elements_n = {}; // Словарь создаваемых элементов для правила
             ElementDict elements_m = {};
@@ -1033,7 +1037,7 @@ namespace Spec {
 #else
             const SpecRule &r = *cIt->value;
 #endif
-            if (r.is_Valid)
+            if (r.IsRunnableForRun ())
                 rule_produced_rows = true;
         }
         if (!has_action && !rule_produced_rows) {
@@ -1197,7 +1201,7 @@ namespace Spec {
     //   3. Извлекает ключ - текст в фигурных скобках {....}
     //   4. Если правило с таким ключом уже существует - добавляет элемент в существующее правило
     //   5. Иначе вызывает GetRuleFromDescription для парсинга и создания нового правила
-    // Примечание: правило добавляется в словарь даже если оно невалидно (is_Valid=false),
+    // Примечание: правило добавляется в словарь даже если разбор не удался (parseValid=false),
     //             чтобы избежать повторной обработки
     // --------------------------------------------------------------------
     // -----------------------------------------------------------------------------
@@ -1245,12 +1249,12 @@ namespace Spec {
         }
         GS::UniString key = description.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
         if (rules.ContainsKey (key)) {
-            if (rules.Get (key).is_Valid && elemguid != APINULLGuid)
+            if (rules.Get (key).parseValid && elemguid != APINULLGuid)
                 rules.Get (key).elements.Push (elemguid);
         } else {
             // Добавление группы и элемента
             SpecRule rule = GetRuleFromDescription (description);
-            if (rule.is_Valid) {
+            if (rule.parseValid) {
                 GS::UniString fname;
                 GetPropertyFullName (definition, fname);
                 rule.subguid_paramrawname = fname;
@@ -1261,7 +1265,7 @@ namespace Spec {
                     rule.elements.Push (elemguid);
             }
             rules.Add (key, rule); // Добавляем в любом случае, чтоб потом дважды не обрабатывать
-            if (rule.is_Valid) {
+            if (rule.parseValid) {
                 msg_rep ("Spec", "Find correct rule: " + definition.name, NoError, APINULLGuid);
             } else {
                 msg_rep ("Spec", "Rule is not valid: " + definition.name, APIERR_GENERAL, APINULLGuid);
@@ -1703,7 +1707,7 @@ namespace Spec {
                         element.out_param.GetSize () == rule.out_paramrawname.GetSize ()) {
                         element.out_sum_paramrawname = rule.out_sum_paramrawname;
                         element.out_paramrawname = rule.out_paramrawname;
-                        element.subguid_paramrawname = rule.subguid_paramrawname;
+                        element.subguid_paramrawname = rule.destinationParamGuidName;
                         element.subguid_rulevalue = rule.subguid_rulevalue;
                         element.subguid_rulename = rule.subguid_rulename;
                         element.favorite_name = rule.favorite_name;
@@ -1869,7 +1873,10 @@ namespace Spec {
                 }
             }
 
-            GS::UniString rawname = rule.subguid_paramrawname;
+            // Читаем GUID-связь ИМЕННО РАЗРЕШЁННОГО свойства. Раньше здесь читалось
+            // подменённое поле subguid_paramrawname, к тому моменту уже хранившее
+            // найденное имя; после разделения маркер и результат — разные поля.
+            GS::UniString rawname = rule.destinationParamGuidName;
             if (!rawname.IsEmpty ()) {
                 ParamValue pvalue = {};
                 if (!GetParamValue (
@@ -1976,7 +1983,7 @@ namespace Spec {
         // Разбивка на группы и итог
         GS::Array<GS::UniString> rulestring_summ = {}; // Массив из имени избранного, групп g() и s()
         if (StringSplt (description, "s@@", rulestring_summ, true, &local_scratch) < 2) {
-            rule.is_Valid = false;
+            rule.parseValid = false;
             return rule;
         }
         // Параметры для записи
@@ -1984,7 +1991,7 @@ namespace Spec {
         GS::Array<GS::UniString> rulestring_write = {}; // Свойства для записи из группы s()
         UInt32 nrule_write = StringSplt (rulestring_summ[1], SEMICOLON, rulestring_write, true, &local_scratch);
         if (nrule_write != 2) {
-            rule.is_Valid = false;
+            rule.parseValid = false;
             return rule;
         }
         // Обработка группы s()
@@ -2022,7 +2029,7 @@ namespace Spec {
         GS::Array<GS::UniString> rulestring_group = {}; // Массив с строками групп
         UInt32 nrule_group = StringSplt (rulestring_summ[0], "g@@", rulestring_group, false, &local_scratch);
         if (nrule_group < 1) {
-            rule.is_Valid = false;
+            rule.parseValid = false;
             return rule;
         }
 
@@ -2051,7 +2058,7 @@ namespace Spec {
             // Разбивка группы на параметры
             UInt32 nrule_read = StringSplt (rulestring_one_group, SEMICOLON, rulestring_read, false, &local_scratch);
             if (nrule_read <= 1) {
-                rule.is_Valid = false;
+                rule.parseValid = false;
                 return rule;
             }
             // g(U1,U2,U3; P1,P2,P3; F1; Q1,Q2) =>
@@ -2254,11 +2261,11 @@ namespace Spec {
             }
         }
         if (rule.groups.IsEmpty ())
-            rule.is_Valid = false;
+            rule.parseValid = false;
         if (rule.out_paramrawname.IsEmpty ())
-            rule.is_Valid = false;
+            rule.parseValid = false;
         if (rule.out_sum_paramrawname.IsEmpty ())
-            rule.is_Valid = false;
+            rule.parseValid = false;
         return rule;
     }
 

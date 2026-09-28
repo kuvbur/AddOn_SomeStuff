@@ -240,7 +240,11 @@ namespace TestFunc {
             SpecFixture f;
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec empty");
             f.Source (f.first, "A", "Alpha", 2);
-            f.rule.subguid_paramrawname = "fixture-link";
+            // Маркер из описания правила и разрешённое свойство избранного - разные
+            // поля после R3.3. В Element копируется разрешённое (destinationParamGuidName),
+            // маркер остаётся в правиле и в строку не попадает.
+            f.rule.subguid_paramrawname = "fixture-link-marker";
+            f.rule.destinationParamGuidName = "fixture-link";
             f.rule.subguid_rulename = "fixture-rule";
             f.rule.subguid_rulevalue = "fixture-value";
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec single");
@@ -256,7 +260,7 @@ namespace TestFunc {
                 DBtest (row->elements.GetSize (), 1, "Spec single source count");
                 DBtest (!row->elements.IsEmpty () && row->elements[0] == f.first, "Spec single source GUID");
                 DBtest (row->favorite_name, f.rule.favorite_name, "Spec favorite copied");
-                DBtest (row->subguid_paramrawname, f.rule.subguid_paramrawname, "Spec link copied");
+                DBtest (row->subguid_paramrawname, f.rule.destinationParamGuidName, "Spec link copied");
                 DBtest (row->subguid_rulename, f.rule.subguid_rulename, "Spec rule name copied");
                 DBtest (row->subguid_rulevalue, f.rule.subguid_rulevalue, "Spec rule value copied");
                 DBtest (row->out_paramrawname[0], f.outText, "Spec text target copied");
@@ -528,7 +532,7 @@ namespace TestFunc {
             GS::UniString description = GS::UniString (prefixes[i]) + "{Fav;g@@u;p;f;q@@s@@x;y)}";
             const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
             const GS::UniString label = GS::UniString ("Spec parser ") + prefixes[i];
-            DBtest (rule.is_Valid, label + " valid");
+            DBtest (rule.parseValid, label + " valid");
             DBtest (rule.favorite_name, GS::UniString ("Fav"), label + " favorite");
             DBtest (rule.delete_old, i == 1 || i == 2, label + " delete old");
             DBtest (rule.stop_on_error, i < 2, label + " stop");
@@ -592,7 +596,7 @@ namespace TestFunc {
             GS::UniString description = GS::UniString ("Spec_rule{Fav;") + test.body + "}";
             const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
             const GS::UniString label = GS::UniString ("Spec parser ") + test.label;
-            DBtest (rule.is_Valid, test.valid, label + " valid");
+            DBtest (rule.parseValid, test.valid, label + " valid");
             DBtest (rule.groups.GetSize (), test.groups, label + " groups");
             if (test.groups == 50 && GS::UniString (test.label) == "material groups") {
                 for (UInt32 i = 0; i < rule.groups.GetSize (); ++i)
@@ -611,7 +615,7 @@ namespace TestFunc {
         for (const char *alias : uniqueAliases) {
             GS::UniString description = GS::UniString ("Spec_rule{Fav;g@@") + alias + ";p;f;q@@s@@x;y}";
             const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
-            DBtest (rule.is_Valid && rule.groups.GetSize () == 1, "Spec parser unique alias valid");
+            DBtest (rule.parseValid && rule.groups.GetSize () == 1, "Spec parser unique alias valid");
             if (rule.groups.GetSize () == 1)
                 DBtest (rule.groups[0].unic_paramrawname.GetSize () == 1 &&
                             rule.groups[0].unic_paramrawname[0] == "{@gdl:p}",
@@ -621,7 +625,7 @@ namespace TestFunc {
             GS::UniString description =
                 "Spec_rule{\"  Избранное  \";g@@ID;GDL:Pa;Property:Flag;IFC:Qty@@s@@GDL:X;Property:Total}";
             const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
-            DBtest (rule.is_Valid, "Spec parser typed names valid");
+            DBtest (rule.parseValid, "Spec parser typed names valid");
             DBtest (rule.favorite_name, GS::UniString ("Избранное"), "Spec parser quoted unicode favorite");
             if (rule.groups.GetSize () == 1) {
                 const Spec::GroupSpec &group = rule.groups[0];
@@ -685,7 +689,7 @@ namespace TestFunc {
         DBtest (rule != nullptr, "Spec AddRule normalized key");
         if (rule == nullptr)
             return;
-        DBtest (rule->is_Valid && rule->delete_old, "Spec AddRule v2 valid");
+        DBtest (rule->parseValid && rule->delete_old, "Spec AddRule v2 valid");
         DBtest (rule->elements.IsEmpty (), "Spec AddRule null GUID not appended");
         DBtest (rule->rule_name, definition.name, "Spec AddRule name");
         DBtest (rule->subguid_paramrawname, definition.name, "Spec AddRule link");
@@ -719,7 +723,7 @@ namespace TestFunc {
         Spec::AddRule (definition, f.second, rules);
         DBtest (rules.GetSize (), 2, "Spec AddRule caches invalid once");
         const Spec::SpecRule *invalid = rules.GetPtr ("Bad;g@@u;p;f;q@@s@@x)");
-        DBtest (invalid != nullptr && !invalid->is_Valid && invalid->elements.IsEmpty (),
+        DBtest (invalid != nullptr && !invalid->parseValid && invalid->elements.IsEmpty (),
                 "Spec AddRule invalid has no sources");
         const char *groups[] = {"gm", "gl"};
         for (Int32 i = 0; i < 2; ++i) {
@@ -729,7 +733,7 @@ namespace TestFunc {
             const GS::UniString expandedKey =
                 GS::UniString ("Fav;g@@") + (i == 0 ? "Material_all@" : "libdata@") + "u;p;f;q@@s@@x;y)";
             const Spec::SpecRule *parsed = expanded.GetPtr (expandedKey);
-            DBtest (parsed != nullptr && parsed->is_Valid, "Spec AddRule expanded valid");
+            DBtest (parsed != nullptr && parsed->parseValid, "Spec AddRule expanded valid");
             if (parsed != nullptr)
                 DBtest (parsed->groups.GetSize (), i == 0 ? 50 : 100, "Spec AddRule expanded groups");
         }

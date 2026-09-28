@@ -24,13 +24,25 @@ namespace Spec {
 
     // Полное описание одного правила спецификации.
     // Содержит критерий, группы, параметры для чтения/записи и информацию о существующих элементах.
+    //
+    // Готовность правила к запуску разнесена на три независимых признака (было
+    // одним флагом is_Valid с четырьмя разными смыслами — см. выписку
+    // Reviews/2026-09-28_r3-state-inventory.md):
+    //   parseValid        - описание правила разобрано без ошибок (GetRuleFromDescription);
+    //                       неизменно после разбора, снимается только парсером;
+    //   selected          - правило выбрано пользователем (SpecDG) или перечислено в ruleNames;
+    //   destinationReady  - у элемента избранного есть все выходные свойства и суммы.
+    // Каждый признак пишется своей стадией и не затирает остальные.
     struct SpecRule {
         GS::UniString rule_name = EMPTYSTRING;              // Имя свойства-правила для отображения во всплывающем окне
         GS::Array<GroupSpec> groups = {};                   // Массив с группами подэлементов
         GS::Array<GS::UniString> out_paramrawname = {};     // Массив имён параметров новых элементов
         GS::Array<GS::UniString> out_sum_paramrawname = {}; // Массив имён параметров сумм новых элементов
-        GS::UniString subguid_paramrawname =
-            ""; // Имя свойства для записи GUID созданных элементов (в описании должно содержатся Sync_GUID+Имя правила)
+        // Маркер GUID-связи из описания правила (вида Sync_GUID+Имя правила). НЕизменяем:
+        // разрешённое свойство избранного пишется в destinationParamGuidName.
+        GS::UniString subguid_paramrawname = "";
+        // Имя свойства избранного, найденное по маркеру выше (заполняется в SpecArray).
+        GS::UniString destinationParamGuidName = EMPTYSTRING;
         GS::UniString subguid_rulename = EMPTYSTRING; // Имя свойства с правилом, на основании которого созданы элементы
         GS::UniString subguid_rulevalue = EMPTYSTRING;
         GS::Array<API_Guid> elements = {};        // Элементы, которые обрабатываются правилом
@@ -38,12 +50,18 @@ namespace Spec {
         API_PropertyDefinition rule_definitions =
             {}; // Определение свойства с правилом для поиска элементов, в которых оно доступно
         GS::UniString favorite_name = EMPTYSTRING; // Имя элемента в избранном
-        bool is_Valid = true;
+        bool parseValid = true;                    // Разбор описания правила удался
+        bool selected = true;                      // Правило выбрано для текущего запуска
+        bool destinationReady = true;              // Избранное содержит все выходные свойства
         bool delete_old = false;
         bool stop_on_error = true;
         bool only_visible = true;
         bool isKM = false;  // Правило для КМ (техничка)
         bool isKZH = false; // Правило для КЖ (ведомость расхода стали)
+
+        // Совместимый адаптер: правило участвует в текущем запуске, если разобрано,
+        // выбрано и его назначение готово. Заменяет прежние чтения is_Valid.
+        bool IsRunnableForRun () const { return parseValid && selected && destinationReady; }
     };
 
     // Временный контейнер для одного элемента, который будет создан или обновлён по правилу.

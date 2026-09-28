@@ -14,10 +14,10 @@
 | Тип | Описание |
 |-----|----------|
 | `GroupSpec` | unic_paramrawname, out_paramrawname, sum_paramrawname, flag_paramrawname, fromMaterial, fromLibData, n_layer [из комментария, Spec.hpp:13-23] |
-| `SpecRule` | rule_name, groups, out_paramrawname, subguid_paramrawname/rulename/rulevalue, elements, exsist_elements, rule_definitions, favorite_name, flags (isKM, isKZH, delete_old, stop_on_error, only_visible) [из комментария, Spec.hpp:27-47] |
+| `SpecRule` | rule_name, groups, out_paramrawname, subguid_paramrawname (маркер), destinationParamGuidName (разрешённое свойство), subguid_rulename/rulevalue, elements, exsist_elements, rule_definitions, favorite_name, флаги политики [см. карточку ниже] |
 | `Element` / `ElementDict` | Временный контейнер создаваемого элемента / словарь по сцепке уникальных параметров [из комментария] |
 | `SpecRuleDict` | HashTable<string, SpecRule> [из комментария] |
-| `SpecElementDump` | Дамп одного созданного/изменяемого элемента: `guid`, `favorite_name`, `sourceElements`, `properties`, `gdlParameters` (#227, Spec.hpp) |
+| `SpecElementDump` | Дамп одного созданного/изменённого элемента: `guid`, `favorite_name`, `sourceElements`, `properties`, `gdlParameters` (#227, Spec.hpp) |
 
 ## Публичный API
 
@@ -38,6 +38,21 @@
 | `ParamValueToDumpString` / `FillDumpFromParamDict` / `FillDumpGDLParameter` | 2757, 2779, 2799 | Сборка дампа значений элемента для #227 [по коду] |
 
 ## Карточки
+
+### R3 — `SpecRule`: разведение определения и состояния запуска (#228)
+- Расположение: `Sources/AddOn/spec/Spec.hpp:25-68`, вызовы в `Spec.cpp`.
+- Что изменилось: прежний единый `is_Valid` разнесён на три признака, каждый пишется своей стадией и не затирает остальные:
+  - `parseValid` — описание правила разобрано (`GetRuleFromDescription`, `Spec.cpp:1986/1994/2032/2061/2264/2266/2268`); неизменно после разбора;
+  - `selected` — правило выбрано: диалогом `SpecDG` (`:504`) или списком `ruleNames` (`:616`);
+  - `destinationReady` — у избранного есть все выходные свойства и суммы (`:683`, `:690`).
+- Совместимый адаптер `IsRunnableForRun ()` = `parseValid && selected && destinationReady` заменяет прежние чтения `is_Valid` в `SpecArray` (`:632`, `:830`, `:1040`). Внешнее поведение не изменилось: `SpecDG` по-прежнему вызывается на `:815`, уже после сверки с избранного, поэтому пользователю показывается меньше правил, чем в словаре — это свойство сохранено, а не исправлено. [по коду; A/B — см. ниже]
+- `GroupSpec::is_Valid` НЕ переименован: это отдельный флаг с другим смыслом (`Spec.cpp:1308/1587/2229/2236/2242`). Одноимённость сохранена намеренно — переименование в этом шаге не требовалось контрактом. [по коду]
+- **R3.3 — маркер и разрешённое свойство разведены.** Прежде `subguid_paramrawname` хранил и маркер из описания правила (`:1260`), и найденное имя свойства избранного (`:739` — перезапись), а `description.Contains (rule.subguid_paramrawname...)` на `:727` и сверка существующих объектов на `:1876` читали поле ПОСЛЕ перезаписи. Теперь маркер неизменяем, найденное свойство пишется в `destinationParamGuidName` (`:739`, `:783`, `:1710`, `:1876`). Инвариант «маркер == найденное имя» больше не подразумевается; раньше он держался только тем, что словарь правил создаётся заново на каждый запуск. [по коду]
+- Побочные эффекты: не менялись — те же запросы к модели в том же порядке, тот же момент диалога, те же границы undo. [по коду]
+- Проверка: clang-format, clangd 0 по `Spec.cpp`/`Spec.hpp`/`TestFunc.cpp` (ошибки в `TestFunc.cpp:877+` предсуществующие: clangd считает `-Wunused-` ошибкой, MSVC прощает), AC25 Debug — `Build succeeded!`, runner exit 0.
+- **Тесты (AC25, реальный прогон, панель VS «Отладка»):** `SpecRegression values / read plan / grouping / reconcile / parser / add rule / sizes` — все `end`-маркеры на месте, `ERROR IN TEST` одна: `ConvertToParamValue(Property) : doubleValue (отрицательное)` — предсуществующая, из прошлой задачи.
+- **A/B против эталона P0:** 3 прогона `SomeStuffCommand.Spec` на свежей модели (рестарт ArchiCAD) — каждый `completed`, C=2 / M=12 / D=2, 14 строк, `diff_rows` против `compare-p0-smoke.json` дал **0 расхождений** по значениям, gdl и числу источников. Первое же наблюдение дало регрессию в тесте (`Spec link copied`): тест сравнивал `Element::subguid_paramrawname` с маркером правила, что после R3.3 неверно по замыслу — фикстура разделена на `subguid_paramrawname` (маркер) и `destinationParamGuidName` (разрешённое), проверка переведена на второе.
+- Не покрыто `not verified`: create-from-scratch, update, delete_old и сохранность значений в конечной модели (независимого read-back нет). A/B выполнен на повторяемом сценарии «свежая модель из рестарта», который воспроизводит 2/12/2. [по коду]
 
 ### `Spec::GetParamValue(...) -> bool` (#220, локальная правка)
 - Расположение: `Sources/AddOn/spec/Spec.cpp:1389`.
