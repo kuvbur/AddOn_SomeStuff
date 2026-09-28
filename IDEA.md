@@ -27,7 +27,33 @@ Checkpoint разрешён владельцем.
 - [x] P0.5 Docs/modules/spec/Spec.md: новая сигнатура PlaceElements, поля ответа, строки функций, границы дампа.
 - [x] Checkpoint — владелец разрешил коммит (Refs: #227, #228).
 
-### Last Completed
+### Last Completed (P3)
+
+**Фактически проверено, что автоматизировать сценарии P1 нечем:**
+- `API.Undo` / `API.Redo` в JSON-порту AC25 отсутствуют — реальный вызов вернул
+  `{"succeeded": false, "error": {"code": 2002, "message": "Command 'API.Undo' not found"}}`.
+- В аддоне регистрированы только `Spec`, `RoomBook`, `Health` — команды управления
+  моделью (удалить spec-объекты, задать свойство) не существуют.
+- `API.SetPropertyValuesOfElements` отвечает success, но не пишет (#226).
+
+Следствие: сценарии «создание с нуля», «изменение суммы/значения», «изменение ключа»,
+«исчезновение строки», «смешанный create+update+delete» не могут быть сняты
+автоматически ни сейчас, ни после рефакторинга, пока не появится отдельное средство
+чтения/изменения модели. Это ограничение стенда, а не отложенная работа.
+
+**Baseline (AC25 Debug, тёплый процесс, `test_25.pln` в сошедшемся состоянии):**
+- `includeParameters=false`: median 0.8363 s, min 0.8228, max 0.8600, spread 4.44 %, stdev 0.0117 s.
+- `includeParameters=true`: median 0.8202 s, min 0.8015, max 0.8391, spread 4.59 %, stdev 0.0130 s.
+- Все 20 прогонов: `completed`, C=0/M=0/D=0.
+- Обе серии почти равны, потому что на no-op `PlaceElements` не вызывается: **эти цифры
+  не доказывают, что выключенный дамп бесплатен на рабочем пути**. Сценарий create —
+  единственный, где платится за сбор дампа, и он недоступен стенду.
+- Разброс ~4.5 % означает: сравнение «быстрее на 5 %» на этом стенде неотличимо от шума.
+
+Артефакты: `Tools/spec_benchmark.py`, `Reviews/spec-refactor-baseline/`
+(`manifest.md`, `runs-base-a.csv`, `timing-base-a.json`) — локально, gitignored.
+
+### Last Completed (P0)
 **Исправлен баг в моём стенде** `Tools/spec_baseline.py:70` — `urllib.request.urlopen()`
 не принимает `headers=`; TypeError ронял поиск порта. Заменено на `Request` + `urlopen(req)`.
 Стенд после этого отработал: порт 19723.
