@@ -12,7 +12,7 @@ https://github.com/kuvbur/AddOn_SomeStuff/issues/211
 
 ## Status
 
-FIXED_AND_VERIFIED — правка внесена, дефект закрыт. 4 прогона: `elementsToCreate: 2`, `status: completed`, `INCOMPLETE` не появляется. Ждёт checkpoint.
+FIXED_AND_COMMITTED — правка (`ConvertToParamValue_CheckAttrib`, признак материала по `description`) и осознанный откат оптимизаций #211 (`readMaterialOnce`, генерация `&N&`) вошли в коммит `66666f1` вместе с #223 и чужой работой по Spec.cpp. Issue #209 остаётся OPEN: коммит не содержит `Refs: #209`.
 
 ## Last Completed
 
@@ -46,13 +46,11 @@ FIXED_AND_VERIFIED — правка внесена, дефект закрыт. 4
 
 ## Next Step
 
-Оформить checkpoint с `Refs: #209`. В дереве смешаны правки: моя вставка в `Helpers.cpp` (~8370), откат `ccf9cae` в том же файле (`readMaterialOnce`, генерация `&N&`) и правка пользователя в `Helpers.cpp:5967` (`param.val.uniStringValue = EMPTYSTRING`) плюс отключение `TestFunc::Test` в `SomeStuff_Main.cpp`. Нужен разбор: либо отдельные коммиты по файлам/фрагментам, либо решение пользователя. `Docs/modules/Helpers.md` не обновлялся — при следующем обновлении документации отметить возвращённую ветку и её назначение (признак материала по `description`, а не по `rawName`).
-
-Отдельно к задаче: `WriteProperty err` — `!ConvertToProperty {@property:спецификации материалов/собственный этаж}` (1 на прогон) и `ReadQuantities err` (30 на прогон, были и до правки). Оформить отдельные issue при следующем цикле.
+Issue #209 закрыть с комментарием, указав `66666f1` (правка уже в истории; сам issue открыт, так как коммит не ссылался на него). Затем перенести блок #209 в `IDEA_ARCHIVE.md`. `Docs/modules/Helpers.md` — карточка обновлена в `66666f1`; проверить, что в ней описан возвращённый признак материала по `description`.
 
 ## Last Checkpoint
 
-Нет — дерево смешано (см. Next Step), выборочный checkpoint без разбора невозможен.
+`66666f1` — [#223] содержит и правку #209 (признак материала по `description`, `Helpers.cpp:8378`), и осознанный откат оптимизаций #211. `9d96d96` — [#220]. `1c89817`/`5d2c86b` — [#222]. `ede1fff` — [#224]. `a396613` — состояние задачи #223.
 
 ## Plan
 
@@ -64,7 +62,8 @@ FIXED_AND_VERIFIED — правка внесена, дефект закрыт. 4
 - [x] История git: рабочая ветка `description.Contains ("{@property:buildingmaterialproperties}")` была удалена коммитом `91cff91` (2026-07-12) → регрессия.
 - [x] Вернуть удалённую ветку; функциональное сравнение с `91cff91^` — 2 косметических отличия, побочных поломок нет.
 - [x] Сборка + 4 прогона Spec на `test_25.pln`: `elementsToCreate: 2`, `status: completed`, `INCOMPLETE` = 0.
-- [/] Checkpoint с `Refs: #209` — требует разбора смешанных правок в дереве.
+- [x] Checkpoint `66666f1` — правка и откат #211 вошли в коммит по решению пользователя («откат осознанный»).
+- [/] Закрыть issue #209 с указанием `66666f1` и перенести блок в архив.
 
 ## Decisions
 
@@ -73,32 +72,6 @@ FIXED_AND_VERIFIED — правка внесена, дефект закрыт. 4
 - Оптимизации, меняющие семантику (дедупликация вызовов, смена шаблона подстановки), неприемлемы без отдельного регрессионного теста на мультислойной конструкции — даже если формально ускоряют.
 - `ParamComposite::isValid` — мёртвое поле; при необходимости семантики «состав прочитан» следует завести отдельное поле, реально заполняемое в `Components*`.
 
-## Parallel Task — #220 GetParamValue (AC25)
-
-### Scope
-`Sources/AddOn/spec/Spec.cpp::GetParamValue`: TODO GetPtr и проверка граничных состояний; регрессионные тесты в TestFunc, карточка Spec. Чужие правки сохранить. Публичную сигнатуру и поведение успешного пустого результата не менять. Проверочная версия AC25 (Windows).
-
-### Status
-DONE_AND_TESTED_AC25 — #220 закрыт по правке; 43 проверки `TestSpecGetParamValue` в runtime AC25: 43 OK / 0 ERROR. Создан #221 (отдельная находка, вне объёма). Checkpoint не сделан: пользователь не запрашивал, дерево содержит чужие правки.
-
-### Last Completed
-`GetParamValue` (`Spec.cpp:1389-1501`): TODO выполнен — 4 двойных `ContainsKey`+`Get` заменены на `GetPtr` с проверкой nullptr; `pvalue.isValid = false` на входе и повторно перед выбором слоя материала; `n_layer < 0` отсекается до `composite[n_layer]` и до `ListData::AddLibdataToParamValueDict`; у всех трёх путей «успешного пустого результата» добавлен `canCalculate = false`, ветке «слой за концом» возвращён `isValid = true` (было потеряно при правке `uniStringValue = EMPTYSTRING`). `GetPtr` сверен по `Build/DevKit/APIDevKit-25/Support/Modules/GSRoot/HashTable.hpp:756` (const-форма возвращает nullptr при отсутствии ключа); LightRAG на два запроса по GSRoot отдал `No relevant context found`, использованы установленные заголовки. Снятые из дерева изменения (`msg_rep` при 0 элементах, рефакторинг `PlaceElements`, `pcelem.isValid` — мёртвое поле по решению #209) не трогались.
-
-RED→GREEN: `TestSpecGetParamValue` (`TestFunc.cpp:55-142`), 43 DBtest. До правки 24 OK / 11 ERROR (остаточный `isValid`, `canCalculate` у пустого результата, отрицательный индекс). После правки 43 OK / 0 ERROR в панели VS «Отладка» от 21:53:45. Запуск шёл отдельной строкой из `SomeStuff_Main.cpp` (общий набор у пользователя отключён); временный вызов удалён, добавлен в `TestFunc::Test`.
-
-2026-09-27 позже: `BuildAddOn.py -c config.json -v 25` — успешно (канонический путь §9, `AI_BUILD_RESULT status=success`, apx 22:43:44). Первая попытка упала на `C4018`/`C2228` в `Helpers.cpp:6905-6910` — временная трассировка `t209` из #209, снята пользователем между прогонами; вторая — на `MSB4018` по заблокированному `.tlog` (см. Грабли). Формат `Docs/_generated/symbols.json` приведён к стилю HEAD: LF, без BOM, без завершающего LF, 8599 записей; расхождение с `git` — `LF will be replaced by CRLF` из-за `* text=auto`, норма для репозитория. `symbols.json` пересобран **только** по `Spec.cpp` и `TestFunc.cpp`; записи `Helpers.cpp`/`TableRenderer.cpp` остались от HEAD и не соответствуют текущему дереву — обновит владелец #209 при своём чекпойнте.
-
-### Next Step
-Checkpoint по запросу пользователя (в дереве смешаны правки `Helpers.cpp` — #209, `SomeStuff_Main.cpp` — отключение набора, `Spec.cpp` — правка #220). #221 (double→Int32 без проверки диапазона, статическая находка) ждёт решения пользователя.
-
-### Last Checkpoint
-Нет — пользователь не запрашивал commit; смешанное дерево.
-
-### Plan
-- [x] Проверить текущую функцию и контракты, создать https://github.com/kuvbur/AddOn_SomeStuff/issues/220.
-- [x] Регрессионные проверки (RED 11 ошибок) и минимальные исправления.
-- [x] clang-format, clangd 0, сборка AC25, runtime 43 OK / 0 ERROR, карточки Spec.md и TestFunc.md, точечное обновление `symbols.json` для двух файлов (callgraph не тронут, генератор его обнуляет).
-- [ ] Checkpoint по решению пользователя; #221 отдельно.
 
 ## Parallel Task — диагностика ReadQuantities при SpecAll (AC25)
 
@@ -146,46 +119,6 @@ BLOCKED_FOR_CHECKPOINT — `Name2Rawname` исправлена и локальн
 - [x] Исправить условие, проверить clang-format/clangd/AC25 build, обновить карточки Sync/TestFunc.
 - [/] Исследовать ошибки полного TESTING-набора и подтверждение сценария `subproperty`, прежде чем делать checkpoint.
 
-## Parallel Task — #222 WriteGDL APIERR_BADPARS при группировке
-
-https://github.com/kuvbur/AddOn_SomeStuff/issues/222
-
-### Scope
-`Sources/AddOn/CommonFunction.hpp` (`SuspendGroupsGuard`), `Sources/AddOn/Helpers.cpp` (`ElementsWrite` + порядок вызовов в `WriteGDL`), замена ручного кода `SuspendGroups` в `ReNum.cpp`/`Roombook.cpp`/`Summ.cpp`/`Sync.cpp`, карточки `CommonFunction.md`/`Helpers.md`. AC25 — проверочная версия. Правки других задач в дереве не трогать.
-
-### Status
-DONE_TESTED_AC25 — #222 закрыт по правке. Подтверждено пользователем в ArchiCAD: запись работает, `APIERR_BADPARS` ушёл. Сборка AC25–29 успешна; AC22–24 не проверены (нет DevKit).
-
-### Last Completed
-2026-09-27 — причина установлена. Регрессия `2a48348` (2026-09-12, ревью): восстановление тумблера `SuspendGroups` добавлено **после** `ElementsWrite` (`Spec.cpp:1042-1051`). До этого коммита режим suspend включался перед записью и **никогда не выключался** (v1.77: `Sources/AddOn/Spec.cpp:714/717` — только включение), поэтому запись всегда шла с приостановленной группировкой. После `2a48348` режим восстанавливается → на последующих прогонах `suspGrp == true` → `if (!suspGrp)` ложно → `APITool_SuspendGroups` не включается → запись идёт при активной группировке. Симптом ограничен элементами SpecAll: только этот путь создаёт элемент (`Spec.cpp:2651`) и группирует его (`:2673-2684`) в том же тике, до `ElementsWrite` (`:1040`).
-
-Правки: `SuspendGroupsGuard` в `CommonFunction.hpp:211-260` (по образцу `ProcessWindowGuard`; если режим включён — выключает, в деструкторе восстанавливает; копирование запрещено; `APITool_SuspendGroups` — переключатель, массив GUID игнорируется — DevKit `ACAPI_Element_Tool ({}, APITool_SuspendGroups, nullptr)`); создание guard в `ElementsWrite` (`Helpers.cpp:4594`). Дополнительно возвращён порядок v1.77: `CloseParameters` перед `ACAPI_Element_ChangeMemo` (`Helpers.cpp:5290-5298`).
-
-**Снято в ходе разбора** (были ложные гипотезы, все проверены по истории и сняты): порядок вызовов как причина `BADPARS` (Tapir пишет при открытом сеансе — но через `ACAPI_Element_Change`, а не `ChangeMemo`; экстраполяция была ошибкой); `CHTruncate`/`BNZeroMemory`/`ChangeMemo`/`GetGDLParametersHead` — побайтово неизменны с v1.77 по 23 ревизиям; блок `APIParT_CString` менялся (`c0bd9e3`/`eda305a`/`cf81d31`/`11add7a`), но все правки чинят утечку `new[]` и переполнение, а не регрессия; удалённый `ccf9cae` вызов `ACAPI_Element_GetHeader` — дублирующий, эквивалентен `element.header`; навесная стена исключена пользователем (ошибка на обычном объекте).
-
-### Next Step
-Прогнать `Tools/restart_archicad_for_test.ps1` на `test_25.pln` и прочитать панель «Отладка» VS: пропал ли `WriteGDL … APIERR_BADPARS`. Если остался — следующий кандидат назван: сам `ACAPI_Element_ChangeMemo` вне документированного контракта (DevKit 25: только `APIMemoMask_Polygon`, рекомендован `ACAPI_Element_Change`; Tapir и `Roombook.cpp:4980`, `pk/Revision.cpp:1078` используют его). Третий кандидат — двойная запись GDL в `PlaceElements` (пишет в memo при создании `:2598-2649`, остаток уходит в `paramOut` и пишется снова).
-
-Отдельно, вне объёма: замена `ACAPI_Element_ChangeMemo` на `ACAPI_Element_Change` — не минимальный диф (у навесной стены `elemGuidt` = `symbolID`, а `Element_Change` меняет сам элемент).
-
-### Last Checkpoint
-Создаётся этим коммитом, `Refs: #222`. В коммит вошли только правки #222; смешанные правки других задач (#209, #220, отключение набора в `SomeStuff_Main.cpp`, формат `Sync.cpp`/`Spec.cpp`, `TestFunc.*`, `TableRenderer.cpp`, `_generated/symbols.json`) оставлены в дереве.
-
-### Plan
-- [x] Сравнить `WriteGDL` с v1.77 и по 23 ревизиям — регрессии внутри функции нет.
-- [x] Сверить запись GDL у Tapir (LightRAG cpprag :9621) — использует `ACAPI_Element_Change`, а не `ChangeMemo`.
-- [x] Локализовать путь: только элементы SpecAll, созданные и сгруппированные в одном тике.
-- [x] Найти регрессию `2a48348` (восстановление `SuspendGroups` после `ElementsWrite`).
-- [x] `SuspendGroupsGuard` + подключение в `ElementsWrite`; порядок v1.77 в `WriteGDL`; clang-format, LSP 0, сборка AC25.
-- [x] Runtime-прогон AC25: подтверждено пользователем — запись работает, `APIERR_BADPARS` ушёл.
-- [x] Checkpoint с `Refs: #222` (только правки #222, разбор смешанного дерева).
-
-### Decisions
-- Семантика флага: `suspGrp == true` означает «приостановка группировки включена», то есть группировка **отключена** и запись проходит — guard ничего не делает. Переключать надо только при `suspGrp == false` (группировка активна). Флаг `enabled` внутри guard означает «переключение сделали мы», инициализируется `false` и выставляется `true` только после успеха — иначе любой ранний выход приводил бы к выключению режима, который мы не включали.
-- Гейт версии — `ServerMainVers_2300` (в AC22 `APIEnv_IsSuspendGroupOnID` не существует), внутри AC27+ против AC23–26. Гейт `ServerMainVers_2700` без внешнего `#ifdef ServerMainVers_2300` не компилировался бы на AC22.
-- `APITool_SuspendGroups` вызывается с пустым массивом GUID: контракт DevKit — переключатель, массив игнорируется; в прежнем коде передавался `elements_delete`/`rereadelem`/`guidArray`, что на результат не влияло.
-- Guard ставится в `ElementsWrite`, а не в `WriteGDL`: он покрывает все типы записи (свойства, ID, классификация, атрибуты, координаты) единообразно и освобождается на выходе из функции. Из-за него ручной код в `ReNum.cpp`/`Roombook.cpp`/`Summ.cpp`/`Sync.cpp` удалён — двойного переключения нет.
-- `Spec.cpp:1021-1054` оставлен как есть: там `ElementsWrite` уже обёрнут собственным (несимметричным) переключением, а guard внутри `ElementsWrite` перекрывает его корректно. Чистка `Spec.cpp` — отдельная задача.
 
 ## Parallel Task — #211 performance Helpers.cpp
 
@@ -193,13 +126,13 @@ DONE_TESTED_AC25 — #222 закрыт по правке. Подтвержден
 Только узкие места `Sources/AddOn/Helpers.cpp` из ревью производительности (профиль/материалы, поиск CSV, перечисления, повторный заголовок, формулы), связанные проверки и карточка `Docs/modules/Helpers.md`. Незакоммиченные правки #209 сохранить, не включать в checkpoint #211. Проверочная версия AC25; остальные версии 22–29 не проверены.
 
 ### Status
-WAITING_FOR_TEST — по просьбе пользователя checkpoint #211 до проверки поведения: clang-format, clangd (0 диагностик), AC25 BuildAddOn.py и запуск тестового PLN успешны; JSON-тесты пропущены, C++ output/результаты и ускорение не проверены. #209 не включать в коммит.
+PARTIALLY_REVERTED — часть оптимизаций из `ccf9cae` откачена по решению пользователя и зафиксирована в `66666f1`: удалён кэш `readMaterialOnce` (`ComponentsProfileStructure`) и снята защита `outstring.Count (part) == 1` в `ReadMaterial`. Issue #211 остаётся OPEN. Возврат этих оптимизаций — при возврате к задаче; проверка на мультислойной конструкции не проводилась.
 
 ### Last Completed
 Правки пяти участков (профиль/материалы, CSV, перечисления, заголовок элемента, формулы); clang-format, clangd 0, сборка AC25 и запуск тестового PLN через runner успешны. Производительность и выходные значения в Archicad не замерены; #209 сохранён.
 
 ### Next Step
-Сверить на тестовом PLN выход формул/CSV/перечислений и материалов профиля до/после, собрать C++-тесты из VS «Отладка» и замерить время; обновить generated docs отдельной задачей (текущий генератор обнуляет callgraph). Issue #211 остаётся открытым до проверки.
+#211: решить судьбу откатанной части (вернуть оптимизации `ccf9cae` с регрессионной проверкой на мультислойной конструкции или закрыть как отменённую). До этого — замерить, даёт ли возврат `readMaterialOnce` и защиты `outstring.Count (part) == 1` измеримое ускорение; сейчас не замерено.
 
 ### Last Checkpoint
 `ccf9cae` — `[#211] Сократить повторную работу Helpers` (только правки #211; изменения #209 в Helpers.cpp остались незакоммиченными).
@@ -210,68 +143,7 @@ WAITING_FOR_TEST — по просьбе пользователя checkpoint #21
 - [/] Проверить diff, clang-format, clangd и AC25 build (выполнено); runtime сравнение и профилирование ожидаются.
 - [x] Актуализировать карточку и выполнить checkpoint `ccf9cae` без #209 по запросу; generated docs обновить отдельно.
 
-## Parallel Task — #224 синтаксис Spec.cpp (AC25)
 
-### Scope
-Только убрать лишнюю закрывающую `}` перед `else` в `Sources/AddOn/spec/Spec.cpp:1017-1018` в базовом HEAD; не включать добавленный другим WIP `msg_rep` и остальные незакоммиченные правки. Отдельный issue https://github.com/kuvbur/AddOn_SomeStuff/issues/224; пользователь разрешил отдельный минимальный checkpoint перед #223.
-
-### Status
-DONE — checkpoint `ede1fff`; чужие правки восстановлены из stash `d5b18a75...` побайтово (Spec.cpp отличается от снимка только удалённой строкой #224).
-
-### Last Completed
-Правка изолирована одним hunком, чужой WIP сохранён stash `d5b18a754bb9707248eaa5720b0d69580502732a`. На изолированном дереве: `BuildAddOn.py -v 25` → `AI_BUILD_RESULT status=success`, `restart_archicad_for_test.ps1` → `AI_RESULT status=success exit_code=0 build=True archicad=running` (JSON-скрипт отсутствует, `JSON_TESTS_SKIPPED` — не пропущенные, а отсутствующие тесты). Commit `ede1fff` содержит только удаление строки. `git blame` уточнил источник: скобка добавлена в `1c89817` (#222); HEAD до него был корректен. Issue #224 создан и проверен GitHub.
-
-### Next Step
-Возобновить #223: заново stage только Helpers.cpp и документацию, изолировать WIP, собрать AC25 и выполнить runner с read-back по разнице GUID на свежом тестовом PLN; замеры производительности не проводить.
-
-### Last Checkpoint
-`ede1fff` — [#224] Spec: убрать лишнюю скобку перед else (AC25 собран, runner exit 0).
-
-### Plan
-- [x] Подтвердить ошибку базового Spec.cpp изолированной сборкой и создать issue #224.
-- [x] Подготовить минимальный индекс без чужого WIP.
-- [x] Проверить сборку AC25 на точном дереве #224 и сделать отдельный checkpoint.
-- [x] Восстановить чужие изменения и передать управление #223.
-
-## Parallel Task — диагностика GUID родителей в SpecAll (AC25)
-
-### Scope
-Исправить потерю `{@property:спецификации материалов/связанные элементы}` у созданных объектов SpecAll (AC25) в `Helpers.cpp::WriteProperty`: восстановить путь уже известного определения свойства, не меняя остальные ветки и чужие правки. Функциональная проверка — сборка и read-back; тестирование производительности исключено по запросу пользователя. Основание: `zadacha_spec_guid.md` в Hermes scratch; issue #223.
-
-### Status
-DONE — checkpoint `66666f1` (совместно с чужым WIP по решению пользователя); read-back подтвердил непустое свойство у 34 из 34 созданных элементов. Откат части #211 в Helpers.cpp сделан осознанно, отдельное issue не заводилось.
-
-### Исходная диагностика
-Два вызова SpecAll завершились `status=completed`, `elementsToCreate=34`, `resultCode=0` на дереве, содержащем чужой незакоммиченный WIP (см. «Последняя проверка»: на чистом дереве этот же вызов не создаёт элементов). Для свойства `Спецификации материалов/Связанные элементы` (GUID определения `D6A4FC26-C303-452C-83AD-35BB29998CFC`) в `Spec.cpp:2529-2536` сформирована строка четырёх GUID и `paramTo.isValid=true`, `paramTo.definition.guid.time_low=3601136678`, но `paramTo.property.definition.guid.time_low=0`. На `Helpers.cpp:5360` у того же параметра и нового элемента (`FBB23CC3-792F-4EB0-9131-016B08C475B1`, второй прогон `13FD3928-7F20-4902-91C8-FB740B3DC4F5`) шаг через условие `if (param.definition.guid == APINULLGuid)` перескочил к :5376: размер `propertyDefinitions=0`, `property2write=0` для него. Это определение заполнено (из `Propertycache.cpp:251-265,767-885`, `Helpers.cpp:8425-8444`), но свойство ещё не загружено; `WriteProperty` игнорирует именно такую комбинацию. Read-back обоих новых элементов через официальный JSON API AC25 (`GetPropertyIds` → `GetPropertyValuesOfElements`) вернул `type=string,status=normal,value=""`. Прежняя гипотеза о сбое обратного поиска имени на :5391-5399 для GUID опровергнута: он не достигается. Git blame: условие :5360 добавлено в `a6feb208` (2026-07-07), но дата первого проявления не установлена. VS Debug остановлен, свои точки удалены, 4 чужие сохранены. Тестовый PLN изменён только в памяти запущенного под VS экземпляра; экземпляр завершён без правки файлов репозитория. LightRAG ответа не дал (local/naive/hybrid); контракт read-back подтверждён DevKit 25 и wheel `archicad==25.3000`.
-
-### Last Completed
-После правки в `Helpers.cpp:5375-5376` `clang-format -i` и clangd (0 ошибок/предупреждений), сборка `BuildAddOn.py -v 25` и `restart_archicad_for_test.ps1` завершились успешно. В запущенном `test_25.pln` загружен `Build/SomeStuff/25/Debug/SomeStuff.apx`; вызов Spec создал 34 объекта. Read-back `GetPropertyValuesOfElements` после вызова: 582 объекта всего, ровно 34 со строкой GUID, 0 с пустой строкой; у последних 34 объектов значения непустые (проверен синтаксис GUID), 548 — `notAvailable`. Повторная попытка Spec в уже изменённом контексте вернула ошибку, не создав новых объектов; причина повторного вызова и её связь с исправлением не установлены. Свойства остальных объектов проверены только на отсутствие пустых `normal`-значений. Чужой WIP временно сохранён в stash `41c05e9d4a0b9cb86fb0551b616ab1ce1c52c86f` (`--keep-index`), ранее существовавшие stash не тронуты. В индексе только #223: две строки `Helpers.cpp`, карточка `Helpers.md`, корректировка определения `WriteProperty` в `symbols.json` и блок IDEA.md; рабочее дерево совпадает с индексом. Изолированный build (только #223 поверх HEAD) упал на `Spec.cpp:1018`/C2059: HEAD имеет лишнюю `}` перед `else`; чужой WIP исправляет её. Stash `41c05e9d...` восстановлен в рабочем дереве, сравнение с содержимым stash для исходников и чужих документов совпало; сборка AC25 с восстановленным WIP прошла (`AI_BUILD_RESULT status=success`). Изолированный runtime, второй независимый Spec и checkpoint #223 не выполнялись.
-
-### Last Completed
-Изолированная проверка №223: индекс содержит только две строки `Helpers.cpp`, карточку `Helpers.md`, строку `_progress.md`, адресную правку `symbols.json` и блок IDEA.md; чужие правки трижды изолированы stash и восстановлены побайтово (снимок `issue224_backup`, все файлы совпали по sha256, кроме строки #224 в `Spec.cpp` и моих правок IDEA.md). На изолированном дереве `BuildAddOn.py -v 25` → success, `restart_archicad_for_test.ps1` → `AI_RESULT status=success exit_code=0`. Read-back `spec223_verify.py` (снимок GUID объектов до/после, порт 19723): на HEAD+№223 Spec вернул `status=failed`, `resultCode=-2130313215`, `elementsToCreate=0`, объектов 548 до и после; контрольный прогон на чистом HEAD (`ede1fff`) дал тот же отказ при 548 объектах. С чужим WIP в дереве тот же скрипт ранее давал 34 новых объекта и 34 непустых значения. Вывод: рабочее создание элементов обеспечивает чужой WIP, а не правка №223; изолированного подтверждения функционального эффекта нет. VS MCP в этой сессии недоступен, панель «Отладка» не читалась; вызовы повторялись после полной перезагрузки проекта и готовности PROPERTY CACHE.
-
-### История регрессии
-`02ca59e` (2026-02-24) изменил `WriteProperty` для спецификации: при пустом `param.property` сначала получалось недостающее определение из кэша, затем `if (param.definition.guid != APINULLGuid) propertyDefinitions.Push (param.definition)`. Непосредственно до `a6feb208` (2026-07-07, родитель `41b9fff`) эта ветка сохранялась (`Helpers.cpp:4146-4160` в той ревизии). `a6feb208` заменил её на добавление определения **только** внутри `if (param.definition.guid == APINULLGuid)`; если определение уже известно, но само свойство не загружено, параметр не добавляется. Коммит — предок HEAD (`git merge-base --is-ancestor`), текущая ветка сохранила условие (`Helpers.cpp:5347-5376`). Уже до него `Spec.cpp` получал `chpvalue` из кэша для `sync_guid` и помещал в `paramToWrite` (`a6feb208^:Sources/AddOn/Spec.cpp:503-517`). История доказывает изменение маршрута данных и объясняет нынешний пропуск; старый бинарник на прежнем PLN не запускался, дата первого проявления в работающей сборке не подтверждена.
-
-### Next Step
-Задача закрыта. Побочно: осознанный откат оптимизаций #211 в `Helpers.cpp` (`readMaterialOnce` в `ComponentsProfileStructure`, защита `outstring.Count (part) == 1` в `ReadMaterial`) не заведён отдельным issue по решению пользователя — при возврате к #211 учесть.
-
-### Last Completed
-Полный прогон SpecAll на AC25 после исправления скобки в чужом WIP (`Spec.cpp:1015-1018`, баланс скобок файла `+1`): `BuildAddOn.py -v 25` → success; `restart_archicad_for_test.ps1` → `status=success`, ARCHICAD PID 10816, порт 19723; Spec → `status=completed`, `resultCode=0`, `elementsToCreate=34`, `elapsedSeconds=2.51`; объекты Object 548 → 582; read-back свойства `{@property:спецификации материалов/связанные элементы}` (определение `D6A4FC26-C303-452C-83AD-35BB29998CFC`): непустое GUID-строка у **34 из 34**, `empty_string=0`, `not_available=0`. Правка #223 (`Helpers.cpp:5375-5377`) присутствует в дереве и в индексе. Отдельно зафиксировано: повторный вызов Spec на уже изменённой модели возвращает `status=failed`/`-2130313215` — причина не установлена.
-
-### Last Checkpoint
-`66666f1` — [#223] + чужой WIP (по решению пользователя); `ede1fff` — [#224].
-
-### Plan
-- [x] Сверить задачу, текущий путь и SDK AC25 без предположения, что 11→8 означает потерю GUID.
-- [x] Выполнить SpecAll и read-back нового объекта через официальный JSON API AC25.
-- [x] Установить ветку потери в отладчике, повторить вторым прогоном, очистить свои точки и подготовить отчёт.
-- [x] Сопоставить `WriteProperty` в `02ca59e`, `a6feb208^`, `a6feb208` и HEAD; установить регрессионное условие без запуска старой сборки.
-- [x] Найти/dedup и проверить issue #223; согласовать AC25 и исключить тестирование производительности.
-- [x] Исправить ветку заранее известного определения свойства и проверить регрессию (на дереве с чужим WIP).
-- [x] clang-format, clangd, сборка AC25, runtime read-back и ревью diff без тестирования производительности.
-- [x] Изолировать чужой WIP, собрать изолированное дерево, сравнить с чистым HEAD и восстановить WIP побайтово.
-- [/] Согласовать с пользователем способ приёмки #223; не закрывать #223 без подтверждения, создавать checkpoint только с согласованным уровнем доказательств.
 
 ## WAITING_FOR_TEST — проверки за пользователем
 
