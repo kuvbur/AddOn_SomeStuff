@@ -132,6 +132,13 @@ changes or touch unrelated ones. Never: `clean -fdx`, `commit --amend`,
 status/diff first. Never stage: `Build/`, `compile_commands.json`,
 `Build/LspCompileCommands/`, `Build/DevKit/`.
 
+Branching: `master` is the trunk. Per-module work (Roombook, Spec,
+Summ, …) goes in its own feature branch cut from `master`, short-lived
+and rebased on fresh `master` before merging. Documentation updates and
+small fixes go straight to `master`. `Helpers.cpp` is shared by ~26
+translation units — take it under lock (one branch at a time) and keep
+such changes out of parallel module branches.
+
 Checkpoint = `git add <intended files only>` + `git commit`. Message:
 
 ```text
@@ -280,9 +287,7 @@ deliberate choice, not an oversight.
 
 ## 17. Documentation
 
-Maintained in the working branch (`llm_test`; the former
-`docs/codebase-map` was squashed into it as `a4a83b0`, so no
-separate doc branch exists), built by scripts
+Maintained in `master`, built by scripts
 (`Docs/tools/generate_symbols.py` + clangd MCP):
 
 - `Docs/ARCHITECTURE.md` — module overview, layers, Mermaid dependency graph.
@@ -305,11 +310,11 @@ separate doc branch exists), built by scripts
 Rule: when code changes, update the matching `Docs/modules/<module>.md`
 and `_generated/`.
 
-Landmine — the doc branch is merged, don't re-derive it: `git
-merge-base --is-ancestor docs/codebase-map llm_test` reports `NO`
-because the squash rewrote every hash. Check the *content*
-instead (`git log --oneline -1 llm_test -- Docs/`, or that a card
-mentions recent work) before concluding the docs live elsewhere.
+Landmine — docs live in `master` only, there is no separate doc
+branch, and don't name one when looking for missing docs: if a
+`Docs/` change isn't in `master`, verify the *content*
+(`git log --oneline -1 master -- Docs/`, or whether a card mentions
+recent work) instead of hunting for another branch.
 
 Workflow role (§3-5): read the module card and `DISCREPANCIES.md` BEFORE
 raw-source digging and live clangd/LightRAG queries in a familiar area —
