@@ -1957,18 +1957,17 @@ namespace Spec {
     // Формат: Spec_rule{КРИТЕРИЙ ;g(U1,U2,U3; P1,P2,P3; F; Q1,Q2) s(Pn1,Pn2,Pn3; Qn1,Qn2)}
     // --------------------------------------------------------------------
     // -----------------------------------------------------------------------------
-    // Разбирает строку описания правила и превращает её в структуру SpecRule.
-    // Это наиболее сложная часть модуля, потому что здесь нужно распознать критерий, группы и поля записи.
+    // Определяет ПОЛИТИКУ правила по имени префикса описания.
+    // Имя проверяется в нижнем регистре и по МЕСТУ "pec_rule", а не по префиксу
+    // целиком: сравнение с "pec_rule_km" описывает вхождение в любой части строки,
+    // поэтому правило вида "Spec_rule_my_km_data" тоже получит политику KM.
+    // Порядок ветвления значим: v2 проверяется раньше v3, а v3 раньше KM/KZH, и
+    // первый совпавший вариант выигрывает. Политика KM/KZH затем перекрывает
+    // значения v2/v3 (delete_old=false, stop_on_error=false, only_visible=true).
+    // Всё остальное - разбор групп и полей - делает GetRuleFromDescription.
     // -----------------------------------------------------------------------------
-    SpecRule GetRuleFromDescription (const GS::UniString &normalizedDescription) {
-        // Рабочая копия: парсер правит её на месте (обрезает по скобкам, снимает
-        // закрывающую скобку), но вызывающая строка остаётся нетронутой.
-        GS::UniString description = normalizedDescription;
-        // Сначала извлекается критерий — имя избранного элемента или другой ключевой текст.
-        SpecRule rule = {};
-        GS::Array<GS::UniString> partstring = {};
-        GS::UniString ldescription = description.ToLowerCase ();
-        GS::Array<GS::UniString> local_scratch;
+    void ApplyRulePolicy (const GS::UniString &description, SpecRule &rule) {
+        const GS::UniString ldescription = description.ToLowerCase ();
         if (ldescription.Contains ("pec_rule_v2")) {
             rule.delete_old = true;
         } else {
@@ -1996,6 +1995,21 @@ namespace Spec {
             rule.stop_on_error = false;
             rule.only_visible = true;
         }
+    }
+
+    // -----------------------------------------------------------------------------
+    // Разбирает строку описания правила и превращает её в структуру SpecRule.
+    // Это наиболее сложная часть модуля, потому что здесь нужно распознать критерий, группы и поля записи.
+    // -----------------------------------------------------------------------------
+    SpecRule GetRuleFromDescription (const GS::UniString &normalizedDescription) {
+        // Рабочая копия: парсер правит её на месте (обрезает по скобкам, снимает
+        // закрывающую скобку), но вызывающая строка остаётся нетронутой.
+        GS::UniString description = normalizedDescription;
+        // Сначала извлекается критерий — имя избранного элемента или другой ключевой текст.
+        SpecRule rule = {};
+        GS::Array<GS::UniString> partstring = {};
+        GS::Array<GS::UniString> local_scratch;
+        ApplyRulePolicy (description, rule);
         if (StringSplt (description, BRACEEND, partstring, "pec_rule") > 0) {
             description = partstring[0] + BRACEEND;
         }

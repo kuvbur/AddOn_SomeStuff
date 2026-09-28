@@ -529,6 +529,76 @@ namespace TestFunc {
     // Раньше она была телом AddRule и не тестировалась вовсе: все проверки били
     // по GetRuleFromDescription, который на входе уже ждёт НОРМАЛИЗОВАННУЮ строку.
     // Здесь фиксируется контракт: что именно считается "нормализованным".
+    // R4.2: политика правила вынесена в ApplyRulePolicy. Проверяем её отдельно от
+    // разбора групп - раньше политика была первым блоком парсера, и её нельзя было
+    // проверить, не разбирая всё описание целиком.
+    // Ожидания получены воспроизведением ветвления, а не подгонкой под вывод.
+    void TestSpecPolicy () {
+        DBprnt ("SpecRegression policy", "start");
+
+        struct PolicyCase {
+            const char *prefix;
+            bool delete_old;
+            bool stop_on_error;
+            bool only_visible;
+            bool isKM;
+            bool isKZH;
+            const char *label;
+        };
+
+        // Значения по умолчанию в SpecRule: delete_old=false, stop_on_error=true,
+        // only_visible=true, isKM=false, isKZH=false. Политика их перекрывает.
+        const PolicyCase cases[] = {
+            {"Spec_rule", false, true, true, false, false, "base defaults"},
+            {"Spec_rule_v2", true, true, true, false, false, "v2 delete old"},
+            {"Spec_rule_v3", true, false, false, false, false, "v3 delete old and no stop"},
+            {"Spec_rule_km", false, false, true, true, false, "KM"},
+            {"Spec_rule_kzh", false, false, true, false, true, "KZH"},
+            // Порядок ветвления значим: v3 проверяется раньше KM, поэтому строка с
+            // обоими маркерами получает политику v3, а не KM.
+            {"Spec_rule_v3_km", true, false, false, false, false, "v3 wins over km"},
+            {"Spec_rule_km_v2", false, false, true, true, false, "KM then overwritten policy"},
+            // Сравнение идёт по МЕСТУ "pec_rule", а не по префиксу целиком,
+            // поэтому вхождение в любой части строки тоже даёт политику.
+            {"XXpec_rule_v2XX", true, true, true, false, false, "substring match"},
+            {"Spec_rule_V2", true, true, true, false, false, "case insensitive"},
+            {"Spec_rule_KZH", false, false, true, false, true, "case insensitive KZH"},
+        };
+        for (const PolicyCase &test : cases) {
+            Spec::SpecRule rule = {};
+            Spec::ApplyRulePolicy (test.prefix, rule);
+            const GS::UniString label = GS::UniString ("Spec policy ") + test.label;
+            DBtest (rule.delete_old, test.delete_old, label + " delete old");
+            DBtest (rule.stop_on_error, test.stop_on_error, label + " stop on error");
+            DBtest (rule.only_visible, test.only_visible, label + " only visible");
+            DBtest (rule.isKM, test.isKM, label + " KM");
+            DBtest (rule.isKZH, test.isKZH, label + " KZH");
+        }
+        // Политика не трогает разобранные части правила: функция работает по
+        // описанию, но обязана оставить уже разобранное содержимое как есть.
+        {
+            Spec::SpecRule rule = {};
+            rule.favorite_name = "Fav";
+            rule.out_paramrawname.Push ("{@gdl:x}");
+            Spec::ApplyRulePolicy ("Spec_rule_v3", rule);
+            DBtest (rule.favorite_name, GS::UniString ("Fav"), "Spec policy keeps favorite");
+            DBtest (rule.out_paramrawname.GetSize (), 1, "Spec policy keeps output");
+            DBtest (rule.parseValid, true, "Spec policy keeps parse flag");
+        }
+        // Политика вызывается из парсера: тот же префикс через полный разбор даёт
+        // те же признаки (проверка, что вызов не потерян при выделении).
+        // Строка обязана быть НОРМАЛИЗОВАНА - это контракт GetRuleFromDescription,
+        // закреплённый в R4.1; сырой "g(u;p;f;q)s(x;y)" парсер не принимает.
+        {
+            GS::UniString description = "Spec_rule_km{Fav;g@@u;p;f;q@@s@@x;y)}";
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
+            DBtest (rule.parseValid, true, "Spec policy wired valid");
+            DBtest (rule.isKM && !rule.isKZH, "Spec policy wired KM");
+            DBtest (!rule.delete_old && !rule.stop_on_error && rule.only_visible, "Spec policy wired policy fields");
+        }
+        DBprnt ("SpecRegression policy", "end");
+    }
+
     void TestSpecNormalize () {
         DBprnt ("SpecRegression normalize", "start");
 
@@ -889,6 +959,7 @@ namespace TestFunc {
         TestSpecReadPlan ();
         TestSpecGrouping ();
         TestSpecReconcile ();
+        TestSpecPolicy ();
         TestSpecNormalize ();
         TestSpecParser ();
         TestSpecAddRule ();
