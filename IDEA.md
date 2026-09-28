@@ -1,35 +1,6 @@
 ﻿# Current Task
 
-Активная задача — #225 (фильтр `IsElementEditable` в `ReservationChangeHandler`), код готов, ждёт поведенческой проверки. Блоки ниже — незавершённые (#217 ждёт сборки, #211 откатан частично, диагностика ReadQuantities и Name2Rawname открыты). Выполненные (#202, #209, #220, #221, #222, #223, #224) вынесены в `IDEA_ARCHIVE.md`.
-
-## Parallel Task — #225 фильтр IsElementEditable в ReservationChangeHandler
-
-https://github.com/kuvbur/AddOn_SomeStuff/issues/225
-
-### Scope
-Только `Sources/AddOn/SomeStuff_Main.cpp::ReservationChangeHandler` — определение `objectId` из итератора `reserved` и фильтр `IsElementEditable` перед `AttachObserver`. Правки `Helpers.cpp`, `Sync.cpp` и прочих блоков IDEA.md не трогать.
-
-### Status
-IN_PROGRESS — код готов, `clang-format` выполнен, сборка AC25 и AC28 успешна. Поведение в Teamwork-сессии не наблюдалось.
-
-### Last Completed
-2026-09-28 — issue #225 создан (дублей по `ReservationChangeHandler`/`AttachObserver` не нашлось). `objectId` определяется один раз с сохранением версионного различия `ConstPairIterator` (с AC28 `it->key` — ссылка, раньше `*it->key`); вызов `AttachObserver` больше не дублируется в `#ifdef`. Сборки: `BuildAddOn.py -v 25` и `-v 28` — `AI_BUILD_RESULT status=success`.
-
-### Next Step
-Проверить в ArchiCAD в Teamwork-проекте: резервирование элемента вне настроек синхронизации (например, чужой тип) не должно давать подписку. При подтверждении — checkpoint. Ошибка clangd `Unused variable 'err'` в `Do_ElementMonitor` (`:295`) предсуществующая и вне scope.
-
-### Last Checkpoint
-Не создан: поведение не подтверждено в ArchiCAD.
-
-### Plan
-- [x] Issue #225, проверить версии AC и версионное различие итератора.
-- [x] Дописать `objectId` + фильтр, `clang-format`.
-- [x] LSP и сборка AC25 + AC28.
-- [/] Поведенческая проверка в Teamwork; затем checkpoint и обновление `Docs/modules/SomeStuff_Main.md` (карточка существует ли — проверить).
-
-### Decisions
-- Фильтр `IsElementEditable(objectId, syncSettings, true)` — тот же, что в `ElementEventHandlerProc`; `true` = проверять `CheckElementType`, чтобы не подписывать observer на несинхронизируемые типы.
-- Локальная ссылка `const API_Guid &objectId` вместо двух `#ifdef` в вызове: устраняет дублирование и оставляет одно место для версионной развилки.
+Активной задачи нет. Блоки ниже — незавершённые (#217 ждёт сборки, #211 откатан частично, диагностика ReadQuantities и Name2Rawname открыты). Выполненные (#202, #209, #220, #221, #222, #223, #224, #225) вынесены в `IDEA_ARCHIVE.md`.
 
 ## Parallel Task — диагностика ReadQuantities при SpecAll (AC25)
 

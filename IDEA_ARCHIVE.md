@@ -5,6 +5,56 @@
 
 ---
 
+## #225 — фильтр IsElementEditable перед AttachObserver в ReservationChangeHandler (закрытие 2026-09-28, issue #225 CLOSED)
+
+### Задача
+
+В `ReservationChangeHandler` (`Sources/AddOn/SomeStuff_Main.cpp`) для каждого зарезервированного
+элемента безусловно вызывался `AttachObserver`. Требовался фильтр `IsElementEditable` перед
+подпиской — по аналогии с `ElementEventHandlerProc`, где такой предикат уже стоит.
+
+### Scope
+
+Только `ReservationChangeHandler`: определение `objectId` из итератора `reserved` и фильтр
+перед `AttachObserver`. Правки `Helpers.cpp`, `Sync.cpp` и прочих блоков `IDEA.md` не трогались.
+
+### Решение
+
+`objectId` определяется один раз с сохранением версионного различия `ConstPairIterator`:
+с `ServerMainVers_2800` `it->key` — ссылка, раньше — указатель (`*it->key`). Из-за этого
+дублирующий `#ifdef` в вызове `AttachObserver` отпал — вызов стал один. Записи БД не
+добавлялись: док DevKit-25 (APIReservationChangeHandlerProc) запрещает её в reservation
+handler, рефреш кэша остался в `ProjectEventHandlerProc` по `APINotify_ReceiveChanges`.
+
+Фильтр `IsElementEditable (objectId, syncSettings, true)`: `true` = проверять `CheckElementType`,
+чтобы не подписывать observer на несинхронизируемые типы, элементы в hotlink-модуле, чужие и
+нередактируемые.
+
+### Checkpoint
+
+`7bcf37a` — `[#225] ReservationChangeHandler: фильтр IsElementEditable перед AttachObserver`
+(`Refs: #225`).
+
+### Validation
+
+- Verified: сигнатуры `IsElementEditable` (`Helpers.hpp:140`, `Helpers.cpp:593`) и
+  `AttachObserver` (`Helpers.hpp:127`, `Helpers.cpp:508`) — по исходникам проекта; версионное
+  различие `ConstPairIterator` подтверждено соседним кодом `BrowserPalette.cpp:510-515` и
+  успешной компиляцией обеих веток.
+- Compiled: да — `BuildAddOn.py -v 25` и `-v 28` (покрывают обе ветки `#ifdef`),
+  `AI_BUILD_RESULT status=success`; затем `Tools/restart_archicad_for_test.ps1` —
+  `AI_RESULT status=success`, ArchiCAD запущена на `test_25.pln` (build+load подтверждён).
+- Tested: нет — реальная подписка в Teamwork-сессии не наблюдалась; панель «Отладка» VS
+  при запуске через runner не создаётся. Для проверки нужен Teamwork-проект и резервирование
+  элемента вне настроек синхронизации. Версии 22/23/24/26/27/29 не собирались.
+
+### Грабли
+
+- Предсуществующая ошибка clangd `Unused variable 'err'` в `Do_ElementMonitor`
+  (`SomeStuff_Main.cpp:295`) — вне scope, MSVC её пропускает, обе сборки зелёные.
+- Карточка `Docs/modules/SomeStuff_Main.md` не содержит секции по `ReservationChangeHandler` —
+  §17-обновление не потребовалось.
+
 ## #221 — проверка диапазона при приведении double к Int32 (закрытие 2026-09-28, issue #221 CLOSED)
 
 Итог: `DoubleToInt32` (`CommonFunction.cpp:955`, hpp:428) и `DoubleToInt32RoundUp` (:990, hpp:437) с насыщением на границах диапазона и сообщением через `msg_rep` (`APIERR_BADVALUE`); `NaN` → 0. Заменено 22 приведения `double` → `Int32` из данных проекта (Spec, Helpers, CommonFunction, Dimensions, Roombook). Типы и числовая семантика не менялись. Коммиты: `309606a` (код), `bc0eb5d` (документация). Issue-комментарий: https://github.com/kuvbur/AddOn_SomeStuff/issues/221#issuecomment-5868042086
