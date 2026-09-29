@@ -1294,7 +1294,16 @@ namespace Spec {
             if (rule.parseValid) {
                 msg_rep ("Spec", "Find correct rule: " + definition.name, NoError, APINULLGuid);
             } else {
-                msg_rep ("Spec", "Rule is not valid: " + definition.name, APIERR_GENERAL, APINULLGuid);
+                // Исходное описание печатается ЗДЕСЬ, а не берётся из парсера:
+                // парсер работает на нормализованной копии и наружу её не отдаёт
+                // (R4.4), а правило может быть отвергнуто и в AddRule-канале.
+                // Текст причины — константа ParseErrorText, описание не копируется
+                // повторно, сообщение собирается только для невалидного правила.
+                msg_rep ("Spec",
+                         "Rule is not valid: " + definition.name + " (" + ParseErrorText (rule.parseError) +
+                             "): " + definition.description,
+                         APIERR_GENERAL,
+                         APINULLGuid);
             }
         }
     }
@@ -1972,6 +1981,35 @@ namespace Spec {
     // Формат: Spec_rule{КРИТЕРИЙ ;g(U1,U2,U3; P1,P2,P3; F; Q1,Q2) s(Pn1,Pn2,Pn3; Qn1,Qn2)}
     // --------------------------------------------------------------------
     // -----------------------------------------------------------------------------
+    // Причина отказа в разборе описания правила.
+    // Заполняется в тех же точках, где сбрасывается parseValid, поэтому набор
+    // значений и число точек сброса обязаны совпадать (закреплено тестом).
+    // Текст — константа, а не собранная строка: при разборе большой модели
+    // описание правила не должно копироваться ради сообщения.
+    // -----------------------------------------------------------------------------
+    GS::UniString ParseErrorText (ParseError error) {
+        switch (error) {
+        case ParseError::NoGroupMarker:
+            return "no group marker g@@ in description";
+        case ParseError::GroupNotSplit:
+            return "group body has no semicolon, cannot split into parts";
+        case ParseError::OutputPartCount:
+            return "output schema must have exactly two parts";
+        case ParseError::NoSummary:
+            return "no summary part s@@ or fewer than two parts";
+        case ParseError::NoGroupsAccepted:
+            return "no group was accepted by the output schema";
+        case ParseError::EmptyOutputSchema:
+            return "output schema is empty";
+        case ParseError::EmptySumSchema:
+            return "sum schema is empty";
+        case ParseError::None:
+        default:
+            return "no parse error";
+        }
+    }
+
+    // -----------------------------------------------------------------------------
     // Определяет ПОЛИТИКУ правила по имени префикса описания.
     // Имя проверяется в нижнем регистре и по МЕСТУ "pec_rule", а не по префиксу
     // целиком: сравнение с "pec_rule_km" описывает вхождение в любой части строки,
@@ -2123,6 +2161,7 @@ namespace Spec {
         UInt32 nrule_group = StringSplt (readPart, "g@@", rulestring_group, false, &scratch);
         if (nrule_group < 1) {
             rule.parseValid = false;
+            rule.parseError = ParseError::NoGroupMarker;
             return false;
         }
 
@@ -2152,6 +2191,7 @@ namespace Spec {
             UInt32 nrule_read = StringSplt (rulestring_one_group, SEMICOLON, rulestring_read, false, &scratch);
             if (nrule_read <= 1) {
                 rule.parseValid = false;
+                rule.parseError = ParseError::GroupNotSplit;
                 return false;
             }
             // g(U1,U2,U3; P1,P2,P3; F1; Q1,Q2) =>
@@ -2298,6 +2338,7 @@ namespace Spec {
         const UInt32 nrule_write = StringSplt (writePart, SEMICOLON, rulestring_write, true, &scratch);
         if (nrule_write != 2) {
             rule.parseValid = false;
+            rule.parseError = ParseError::OutputPartCount;
             return false;
         }
         for (UInt32 part = 0; part < nrule_write; part++) {
@@ -2360,6 +2401,7 @@ namespace Spec {
         GS::Array<GS::UniString> rulestring_summ = {}; // Массив из имени избранного, групп g() и s()
         if (StringSplt (description, "s@@", rulestring_summ, true, &local_scratch) < 2) {
             rule.parseValid = false;
+            rule.parseError = ParseError::NoSummary;
             return rule;
         }
         if (!ParseOutputSchema (rulestring_summ[1], local_scratch, rule))
@@ -2367,12 +2409,22 @@ namespace Spec {
         // Разбор групп g() - вынесено в ParseGroups ()
         if (!ParseGroups (rulestring_summ[0], local_scratch, rule))
             return rule;
-        if (rule.groups.IsEmpty ())
+        // Финальные проверки идут каскадом и не прерываются: пустое описание
+        // нарушает все три условия сразу. Поэтому пишется ПОСЛЕДНЯЯ сработавшая
+        // причина, а не первая. Порядок проверок менять нельзя, не меняя эту
+        // договорённость (закреплено тестом на пустой выходной схеме).
+        if (rule.groups.IsEmpty ()) {
             rule.parseValid = false;
-        if (rule.out_paramrawname.IsEmpty ())
+            rule.parseError = ParseError::NoGroupsAccepted;
+        }
+        if (rule.out_paramrawname.IsEmpty ()) {
             rule.parseValid = false;
-        if (rule.out_sum_paramrawname.IsEmpty ())
+            rule.parseError = ParseError::EmptyOutputSchema;
+        }
+        if (rule.out_sum_paramrawname.IsEmpty ()) {
             rule.parseValid = false;
+            rule.parseError = ParseError::EmptySumSchema;
+        }
         return rule;
     }
 

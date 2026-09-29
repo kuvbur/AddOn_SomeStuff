@@ -1244,6 +1244,129 @@ namespace TestFunc {
         DBprnt ("SpecRegression add rule", "end");
     }
 
+    // R4.4: причина отказа в разборе. Парсер пишет её в тех же точках, где
+    // сбрасывает parseValid, поэтому набор значений и число точек обязаны
+    // совпадать: 7 значений отказа + None.
+    // Ожидания рассчитаны воспроизведением ПОРЯДКА проверок парсера, а не
+    // подгонкой под вывод. Ключевой момент - каскад в конце GetRuleFromDescription:
+    // три финальные проверки не прерываются, поэтому при нескольких нарушениях
+    // видна ПОСЛЕДНЯЯ. Отсюда два неочевидных исхода:
+    //   - пустые обе схемы дают EmptySumSchema, а не EmptyOutputSchema;
+    //   - пустая выходная схема роняет и группы (0 != 1), поэтому признак
+    //     принятия групп здесь всегда false - и это не ошибка набора.
+    void TestSpecParseError () {
+        DBprnt ("SpecRegression parse error", "start");
+
+        struct ErrorCase {
+            const char *body; // часть описания после "Spec_rule{Fav;"
+            bool valid;
+            Spec::ParseError error;
+            const char *label;
+        };
+
+        const ErrorCase cases[] = {
+            {"g@@u;p;f;q@@s@@x;y)", true, Spec::ParseError::None, "valid rule has no error"},
+            // Маркер есть, но тело группы без точки с запятой.
+            {"g@@u@@s@@x;y)", false, Spec::ParseError::GroupNotSplit, "group not split"},
+            // Выходная схема из одной части (фильтр пустых не помогает: часть не пуста).
+            {"g@@u;p;f;q@@s@@x)", false, Spec::ParseError::OutputPartCount, "one output part"},
+            // Выходная схема из трёх частей.
+            {"g@@u;p;f;q@@s@@x;y;z)", false, Spec::ParseError::OutputPartCount, "three output parts"},
+            // Нет части s@@ вовсе.
+            {"g@@u;p;f;q)", false, Spec::ParseError::NoSummary, "no summary part"},
+            // s@@ есть, но вторая часть пуста и отфильтровывается - остаётся одна.
+            {"g@@u;p;f;q@@s@@)", false, Spec::ParseError::NoSummary, "summary filtered to one part"},
+            // Схема корректна, группа не совпала с ней по числу параметров:
+            // группа отброшена, схема непустая, значит видна NoGroupsAccepted.
+            {"g@@u;p1,p2;f;q@@s@@x;y)", false, Spec::ParseError::NoGroupsAccepted, "group dropped by size"},
+            // Выходная схема пуста (имя "%" срезается), суммы непусты. Группы
+            // тоже отброшены (0 != 1), но последней срабатывает EmptyOutputSchema.
+            {"g@@u;p;f;q@@s@@%;y)", false, Spec::ParseError::EmptyOutputSchema, "empty output schema"},
+            // Суммы пусты, выход непуст, группа без поля количеств принята.
+            {"g@@u;p;f@@s@@x;%)", false, Spec::ParseError::EmptySumSchema, "empty sum schema"},
+        };
+
+        for (const ErrorCase &test : cases) {
+            GS::UniString description = GS::UniString ("Spec_rule{Fav;") + test.body + "}";
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
+            const GS::UniString label = GS::UniString ("Spec error ") + test.label;
+            DBtest (rule.parseValid, test.valid, label + " parse flag");
+            // Причина обязана называть именно ту точку, которая отвергла описание.
+            DBtest (rule.parseError == test.error, label + " reason");
+            // parseValid и parseError не могут расходиться: успех = None.
+            DBtest (rule.parseValid == (rule.parseError == Spec::ParseError::None), label + " reason matches flag");
+        }
+
+        // НЕТ маркера g@@ - и разбор НЕ отказывает: StringSplt основан на
+        // UniString::Split, который возвращает минимум одну часть, поэтому
+        // условие "нет ни одной группы" не наступает НИКОГДА. Весь хвост после
+        // имени избранного становится одной обычной группой, и если её размеры
+        // совпали со схемой, правило принимается.
+        // Это зафиксировано как контракт: значимость ParseError::NoGroupMarker
+        // недостижима через GetRuleFromDescription, значение оставлено как
+        // защита на случай, если разбивка станет строже.
+        {
+            GS::UniString description = "Spec_rule{Fav;u;p;f;q@@s@@x;y}";
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
+            DBtest (rule.parseValid, true, "Spec error absent group marker still parsed");
+            DBtest (rule.parseError == Spec::ParseError::None, "Spec error absent group marker no error");
+            DBtest (rule.groups.GetSize () == 1, "Spec error absent group marker one group");
+            // Реально видна NoGroupsAccepted - единственный отказ по группам.
+            GS::UniString mismatched = "Spec_rule{Fav;u;p1,p2;f;q@@s@@x;y}";
+            const Spec::SpecRule dropped = Spec::GetRuleFromDescription (mismatched);
+            DBtest (!dropped.parseValid && dropped.parseError == Spec::ParseError::NoGroupsAccepted,
+                    "Spec error NoGroupsAccepted reachable");
+        }
+
+        // Текст причины не пустой и разный для каждого значения: иначе сообщение
+        // в AddRule станет бесполезным ("no parse error" на всё).
+        {
+            const Spec::ParseError all[] = {Spec::ParseError::None,
+                                            Spec::ParseError::NoGroupMarker,
+                                            Spec::ParseError::GroupNotSplit,
+                                            Spec::ParseError::OutputPartCount,
+                                            Spec::ParseError::NoSummary,
+                                            Spec::ParseError::NoGroupsAccepted,
+                                            Spec::ParseError::EmptyOutputSchema,
+                                            Spec::ParseError::EmptySumSchema};
+            const UInt32 n = sizeof (all) / sizeof (all[0]);
+            for (UInt32 i = 0; i < n; ++i) {
+                const GS::UniString text = Spec::ParseErrorText (all[i]);
+                DBtest (!text.IsEmpty (), "Spec error text not empty");
+                for (UInt32 j = i + 1; j < n; ++j) {
+                    DBtest (text != Spec::ParseErrorText (all[j]),
+                            GS::UniString::Printf ("Spec error text %u distinct from %u", i, j));
+                }
+            }
+        }
+
+        // Причина не теряется на пути AddRule -> словарь: невалидное правило
+        // сохраняет её, валидное остаётся с None.
+        {
+            SpecFixture f;
+            Spec::SpecRuleDict rules;
+            API_PropertyDefinition definition = {};
+            definition.groupGuid = f.extra;
+            definition.guid = f.old;
+            definition.name = "Sync_name_SpecFixture";
+            definition.description = "Spec_rule{Bad;g(u;p;f;q)s(x)}";
+            Spec::AddRule (definition, APINULLGuid, rules);
+            const Spec::SpecRule *stored = rules.GetPtr ("Bad;g@@u;p;f;q@@s@@x)");
+            DBtest (stored != nullptr, "Spec error AddRule stores invalid");
+            if (stored != nullptr) {
+                DBtest (!stored->parseValid, "Spec error AddRule invalid flag");
+                DBtest (stored->parseError == Spec::ParseError::OutputPartCount, "Spec error AddRule reason kept");
+            }
+            definition.description = "Spec_rule{Ok;g(u;p;f;q)s(x;y)}";
+            Spec::AddRule (definition, APINULLGuid, rules);
+            const Spec::SpecRule *good = rules.GetPtr ("Ok;g@@u;p;f;q@@s@@x;y)");
+            DBtest (good != nullptr && good->parseValid && good->parseError == Spec::ParseError::None,
+                    "Spec error AddRule valid keeps None");
+        }
+
+        DBprnt ("SpecRegression parse error", "end");
+    }
+
     void TestSpecSizes () {
         DBprnt ("SpecRegression sizes", "start");
         API_Element element = {};
@@ -1312,6 +1435,7 @@ namespace TestFunc {
         TestSpecNormalize ();
         TestSpecParser ();
         TestSpecAddRule ();
+        TestSpecParseError ();
         TestSpecSizes ();
         DBprnt ("SpecRegression", "end");
     }
