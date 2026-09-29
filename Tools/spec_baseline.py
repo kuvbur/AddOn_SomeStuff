@@ -269,16 +269,19 @@ def main():
     if expected is None:
         return 4
     exp_sum, act_sum = expected["summary"], summarize(body)
+    problems = []
     for key in ("status", "resultCode", "elementsToCreate",
                 "elementsToModify", "elementsToDelete"):
         if exp_sum.get(key) != act_sum.get(key):
-            print("FAIL summary %s: %r -> %r" % (key, exp_sum.get(key), act_sum.get(key)))
+            problem = "summary %s: %r -> %r" % (key, exp_sum.get(key), act_sum.get(key))
+            problems.append(problem)
+            print("FAIL " + problem)
         else:
             print("ok   summary %s = %r" % (key, act_sum.get(key)))
     print("     elapsedSeconds %r -> %r (not compared)"
           % (exp_sum.get("elapsedSeconds"), act_sum.get("elapsedSeconds")))
 
-    problems = diff_rows(expected["rows"], rows)
+    problems.extend(diff_rows(expected["rows"], rows))
     if problems:
         print("\nFAIL: %d difference(s)" % len(problems))
         for line in problems[:80]:
