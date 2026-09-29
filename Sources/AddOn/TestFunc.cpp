@@ -19,6 +19,40 @@ namespace TestFunc {
     void TestStringSplt (); // forward declaration
     void TestSpecRegression ();
 
+    // Тег функции в квадратных скобках (#230): печать и проверки помечаются именем
+    // функции-владельца, чтобы в панели «Отладка» их можно было отфильтровать:
+    //   ... [TestSpecMergeAndKey] test Spec merge sums add up ok ...
+    // Тег добавляется к СОДЕРЖАТЕЛЬНОМУ тексту (msg у DBprnt, reportString у
+    // DBtest), а не к выводимым значениям, поэтому он печатается в начале строки.
+    // Обёртки объявлены ДО макросов: препроцессор идёт по файлу последовательно,
+    // поэтому вызовы внутри самих обёрток макросами не подменяются.
+    namespace {
+        GS::UniString WithFuncTag (const char *tag, const GS::UniString &text) {
+            return GS::UniString ("[") + tag + GS::UniString ("] ") + text;
+        }
+
+        void TaggedPrnt (const char *tag, GS::UniString msg, GS::UniString reportString) {
+            DBprnt (WithFuncTag (tag, msg), reportString);
+        }
+
+        void TaggedTest (const char *tag, bool usl, GS::UniString reportString) {
+            DBtest (usl, WithFuncTag (tag, reportString));
+        }
+
+        void TaggedTest (const char *tag, GS::UniString a, GS::UniString b, GS::UniString reportString) {
+            DBtest (a, b, WithFuncTag (tag, reportString));
+        }
+
+        void TaggedTest (const char *tag, double a, double b, GS::UniString reportString) {
+            DBtest (a, b, WithFuncTag (tag, reportString));
+        }
+    } // namespace
+
+    // Подмена имён: набор перегрузок тот же, первым аргументом добавляется имя
+    // вызывающей функции. Область действия макросов - только этот файл.
+    #define DBprnt(...) TaggedPrnt (__func__, __VA_ARGS__)
+    #define DBtest(...) TaggedTest (__func__, __VA_ARGS__)
+
     void Test () {
         DBprnt ("TEST", "start");
         TestSpecRegression ();
@@ -424,6 +458,260 @@ namespace TestFunc {
             DBtest (f.values.Get (f.old).Get (f.outQuantity).val.intValue, 1, "Spec planning does not write values");
         }
         DBprnt ("SpecRegression reconcile", "end");
+    }
+
+    // R4.5: сверка S03-S09/S13 и действующей дедупликации.
+    // Ничего не меняется и не "исправляется": здесь закрепляются контракты
+    // объединения строк и построения ключа, потому что именно их сломает
+    // любая будущая правка. Ожидания рассчитаны воспроизведением цикла
+    // GetElementsForRule, а не подгонкой под вывод.
+    //   key = "@" + val для КАЖДОГО уникального параметра, разделителя между
+    //   параметрами нет. При elements.ContainsKey (key) новый элемент НЕ
+    //   создаётся: источник дописывается в существующую строку, суммы
+    //   складываются по позициям, где оба значения isValid. Первый
+    //   представитель (его out_param) не меняется - выходные значения не
+    //   суммируются и не переписываются.
+    //   n_elements растёт только при СОЗДАНИИ строки, поэтому объединение на
+    //   существующем ключе не увеличивает результат.
+    void TestSpecMergeAndKey () {
+        DBprnt ("SpecRegression merge and key", "start");
+
+        // S08: две группы с ОДИНАКОВЫМ ключом от одного элемента дают одну
+        // строку. Сумма складывается (2 + 2 = 4), а список источников получает
+        // ОДИН И ТОТ ЖЕ GUID дважды - объединение дописывает источник, не
+        // проверяя его новизну. Первый представитель сохраняет свои выходные.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            // Копия, а не Push (f.rule.groups[0]): передача элемента того же
+            // массива внутрь Push не гарантирована даже при достаточном запасе.
+            const Spec::GroupSpec duplicate = f.rule.groups[0];
+            f.rule.groups.Push (duplicate);
+            DBtest (f.Run (), 1, "Spec merge same key result");
+            DBtest (f.created.GetSize (), 1, "Spec merge same key one row");
+            const Spec::Element *row = f.created.GetPtr ("@A");
+            DBtest (row != nullptr, "Spec merge same key found");
+            if (row != nullptr && row->out_sum_param.GetSize () == 1) {
+                DBtest (row->out_sum_param[0].val.intValue, 4, "Spec merge sums add up");
+                DBtest (row->out_param.GetSize () == 1 && row->out_param[0].val.uniStringValue == "Alpha",
+                        "Spec merge keeps first representative");
+                // Два вхождения одного GUID - наблюдаемый контракт, не описка:
+                // список источников строки допускает повтор.
+                DBtest (row->elements.GetSize () == 2, "Spec merge repeats source GUID");
+            }
+        }
+
+        // Контроль к предыдущему: те же две группы, но уникальные значения
+        // различаются - две строки. Различие только в значении уникального
+        // поля, весь остальной код пути тот же.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            Spec::GroupSpec second = f.rule.groups[0];
+            second.unic_paramrawname[0] = f.flag; // другой источник значения
+            f.rule.groups.Push (second);
+            f.Text (f.first, f.flag, "B");
+            DBtest (f.Run (), 2, "Spec distinct keys result");
+            DBtest (f.created.GetSize (), 2, "Spec distinct keys two rows");
+            DBtest (f.created.ContainsKey ("@A") && f.created.ContainsKey ("@B"), "Spec distinct keys both present");
+        }
+
+        // S09: КОЛЛИЗИЯ КЛЮЧА. Один уникальный параметр со значением "A@B"
+        // даёт ключ "@A@B" - ровно как ДВА параметра со значениями "A" и "B",
+        // потому что разделителя между параметрами нет. Строки схлопываются,
+        // суммы складываются. Это старый контракт, он НЕ исправляется здесь:
+        // менять кодировку ключа в R запрещено планом (S09 - оформить как F).
+        {
+            SpecFixture f;
+            f.Source (f.first, "A@B", "Alpha", 2);
+            Spec::GroupSpec split = f.rule.groups[0];
+            split.unic_paramrawname[0] = f.flag;
+            split.unic_paramrawname.Push (f.outText);
+            f.rule.groups.Push (split);
+            f.Text (f.first, f.flag, "A");
+            f.Text (f.first, f.outText, "B");
+            DBtest (f.Run (), 1, "Spec key collision result");
+            DBtest (f.created.GetSize (), 1, "Spec key collision collapses to one row");
+            const Spec::Element *row = f.created.GetPtr ("@A@B");
+            DBtest (row != nullptr, "Spec key collision shared key");
+            if (row != nullptr && row->out_sum_param.GetSize () == 1)
+                DBtest (row->out_sum_param[0].val.intValue, 4, "Spec key collision sums merged");
+        }
+        // Контроль к коллизии: при НЕсовпадающей паре ("A@C" против "A"+"B")
+        // ключи не совпадают и строки остаются двумя.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A@C", "Alpha", 2);
+            Spec::GroupSpec split = f.rule.groups[0];
+            split.unic_paramrawname[0] = f.flag;
+            split.unic_paramrawname.Push (f.outText);
+            f.rule.groups.Push (split);
+            f.Text (f.first, f.flag, "A");
+            f.Text (f.first, f.outText, "B");
+            DBtest (f.Run (), 2, "Spec no collision control result");
+            DBtest (f.created.GetSize (), 2, "Spec no collision control two rows");
+        }
+
+        // S07 (часть): пропущенная сумма подставляется литералом "1", и этот
+        // литерал начисляется на КАЖДЫЙ источник. Два источника с одинаковым
+        // ключом дают 1 + 1 = 2, а не 1. Это принципиально отличается от
+        // настоящей суммы, поэтому закреплено отдельно.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 7);
+            f.rule.groups[0].sum_paramrawname.Clear ();
+            f.rule.groups[0].sum_paramrawname.Push ("1");
+            f.rule.elements.Push (f.second);
+            f.Text (f.second, f.key, "A");
+            f.Text (f.second, f.text, "Beta");
+            DBtest (f.Run (), 1, "Spec literal count result");
+            const Spec::Element *row = f.created.GetPtr ("@A");
+            DBtest (row != nullptr, "Spec literal count row");
+            if (row != nullptr && row->out_sum_param.GetSize () == 1)
+                DBtest (row->out_sum_param[0].val.intValue, 2, "Spec literal count per source");
+        }
+
+        // S07 (часть): отказ по размеру группы сделан в ExpandGroup, поэтому
+        // при расчёте строк отказ локален для группы - её снимает один флаг
+        // is_Valid, а остальные группы правила обрабатываются как обычно.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            Spec::GroupSpec broken = f.rule.groups[0];
+            broken.is_Valid = false;
+            f.rule.groups.Push (broken);
+            DBtest (f.Run (), 1, "Spec invalid group skipped result");
+            DBtest (f.created.GetSize (), 1, "Spec invalid group only survivor");
+            DBtest (f.created.ContainsKey ("@A"), "Spec invalid group kept valid key");
+        }
+
+        // S07 (часть): неполный выход отвергается сверкой слотов. Элемент, у
+        // которого не набрано всех выходных значений, в словарь не попадает,
+        // а n_elements обнуляется - но только при stop_on_error.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.rule.stop_on_error = true;
+            f.rule.out_paramrawname.Push (f.outQuantity); // два слота против одного
+            DBtest (f.Run (), 0, "Spec incomplete slots rejected");
+            DBtest (f.created.IsEmpty (), "Spec incomplete slots no row");
+            DBtest (f.errors.ContainsKey (f.first), "Spec incomplete slots marks element");
+        }
+
+        DBprnt ("SpecRegression merge and key", "end");
+    }
+
+    // R4.5: дедупликация AddRule по ключу = текст ВНУТРИ фигурных скобок.
+    // Префикс правила ("Spec_rule", "_v2", "_v3", "_km") в ключ НЕ входит,
+    // поэтому описания с одинаковым телом и разной политикой схлопываются, и
+    // выигрывает ТО, ЧТО ПРИШЛО ПЕРВЫМ. Закрепляется как контракт: описания
+    // в существующих моделях завязаны на такое поведение.
+    void TestSpecRuleDedup () {
+        DBprnt ("SpecRegression rule dedup", "start");
+        SpecFixture f;
+        // Ключ словаря - подстрока МЕЖДУ фигурными скобками нормализованного
+        // описания (префикс политики в него не входит). Не хардкодим: повторяем
+        // ровно ту же сборку, что делает AddRule.
+        // Возврат ЯВНО GS::UniString обязателен: GetSubstring отдаёт view-тип
+        // Substring, ссылающийся на нормализованную строку. Без явного типа
+        // лямбда вернула бы висящий вид на временный объект.
+        const auto ruleKey = [] (const GS::UniString &description) -> GS::UniString {
+            const GS::UniString normalized = Spec::NormalizeRuleDescription (description);
+            return GS::UniString (normalized.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0));
+        };
+        const GS::UniString bodyKey = ruleKey ("Spec_rule{Fav;g(u;p;f;q)s(x;y)}");
+        const GS::UniString brokenKey = ruleKey ("Spec_rule{Fav;g(u;p;f;q)s(x)}");
+
+        // Префикс политики не входит в ключ: v1 и v2 с одним телом - одна запись.
+        {
+            Spec::SpecRuleDict rules;
+            API_PropertyDefinition d = {};
+            d.groupGuid = f.extra;
+            d.guid = f.old;
+            d.name = "Sync_name_Plain";
+            d.description = "Spec_rule{Fav;g(u;p;f;q)s(x;y)}";
+            Spec::AddRule (d, f.first, rules);
+            d.name = "Sync_name_V2";
+            d.guid = f.extra;
+            d.description = "Spec_rule_v2{Fav;g(u;p;f;q)s(x;y)}";
+            Spec::AddRule (d, f.second, rules);
+            DBtest (rules.GetSize (), 1, "Spec dedup prefix not in key");
+            const Spec::SpecRule *rule = rules.GetPtr (bodyKey);
+            DBtest (rule != nullptr, "Spec dedup key found");
+            if (rule != nullptr) {
+                // Политика осталась от ПЕРВОГО (v1): delete_old не взведён.
+                DBtest (!rule->delete_old, "Spec dedup first policy wins");
+                DBtest (rule->rule_name == "Sync_name_Plain", "Spec dedup first property name wins");
+                DBtest (rule->rule_definitions.guid == f.old, "Spec dedup first property GUID wins");
+                // Второе свойство не попало ни в rule_name, ни в
+                // rule_definitions, но его элемент добавлен в общий список.
+                DBtest (rule->elements.GetSize () == 2, "Spec dedup second source appended");
+            }
+        }
+
+        // Невалидное правило занимает ключ навсегда: оно попадает в словарь
+        // даже при parseValid == false (чтобы не обработать дважды), и
+        // последующее описание с тем же ключом правило уже не восстановит -
+        // оно только попробует дополнить список элементов.
+        {
+            Spec::SpecRuleDict rules;
+            API_PropertyDefinition d = {};
+            d.groupGuid = f.extra;
+            d.guid = f.old;
+            d.name = "Sync_name_Broken";
+            d.description = "Spec_rule{Fav;g(u;p;f;q)s(x)}"; // схема из одной части
+            Spec::AddRule (d, f.first, rules);
+            const Spec::SpecRule *first = rules.GetPtr (brokenKey);
+            DBtest (first != nullptr && !first->parseValid, "Spec dedup invalid cached");
+            DBtest (first != nullptr && first->parseError == Spec::ParseError::OutputPartCount,
+                    "Spec dedup invalid keeps reason");
+            d.name = "Sync_name_Valid";
+            Spec::AddRule (d, f.second, rules);
+            DBtest (rules.GetSize (), 1, "Spec dedup invalid not rebuilt");
+            const Spec::SpecRule *after = rules.GetPtr (brokenKey);
+            DBtest (after != nullptr && !after->parseValid, "Spec dedup stays invalid");
+            // Источник не добавлен: элементы дописываются только валидному правилу.
+            DBtest (after != nullptr && after->elements.IsEmpty (), "Spec dedup invalid takes no source");
+        }
+
+        // Одно и то же описание, написанное по-разному, даёт один ключ.
+        {
+            Spec::SpecRuleDict rules;
+            API_PropertyDefinition d = {};
+            d.groupGuid = f.extra;
+            d.guid = f.old;
+            d.name = "Sync_name_Compact";
+            d.description = "Spec_rule{Fav;g(u;p;f;q)s(x;y)}";
+            Spec::AddRule (d, f.first, rules);
+            d.name = "Sync_name_Spaced";
+            d.description = "Spec_rule { Fav ;\n\t g (u;p;f;q) s (x;y) }";
+            Spec::AddRule (d, f.second, rules);
+            DBtest (rules.GetSize (), 1, "Spec dedup normalizes to one key");
+            const Spec::SpecRule *rule = rules.GetPtr (bodyKey);
+            DBtest (rule != nullptr && rule->elements.GetSize () == 2, "Spec dedup normalized source appended");
+            DBtest (rule != nullptr && rule->rule_name == "Sync_name_Compact", "Spec dedup normalized first wins");
+        }
+
+        // Порядок arrival определяет победителя: то же тело, но сначала v2.
+        {
+            Spec::SpecRuleDict rules;
+            API_PropertyDefinition d = {};
+            d.groupGuid = f.extra;
+            d.guid = f.old;
+            d.name = "Sync_name_V2First";
+            d.description = "Spec_rule_v2{Fav;g(u;p;f;q)s(x;y)}";
+            Spec::AddRule (d, f.first, rules);
+            d.name = "Sync_name_PlainSecond";
+            d.guid = f.extra;
+            d.description = "Spec_rule{Fav;g(u;p;f;q)s(x;y)}";
+            Spec::AddRule (d, f.second, rules);
+            DBtest (rules.GetSize (), 1, "Spec dedup order one key");
+            const Spec::SpecRule *rule = rules.GetPtr (bodyKey);
+            DBtest (rule != nullptr && rule->delete_old, "Spec dedup first v2 policy kept");
+            DBtest (rule != nullptr && rule->rule_name == "Sync_name_V2First", "Spec dedup order first name kept");
+        }
+
+        DBprnt ("SpecRegression rule dedup", "end");
     }
 
     void TestSpecReadPlan () {
@@ -1427,6 +1715,8 @@ namespace TestFunc {
         TestSpecReadPlan ();
         TestSpecGrouping ();
         TestSpecReconcile ();
+        TestSpecMergeAndKey ();
+        TestSpecRuleDedup ();
         TestSpecOutSlots ();
         TestSpecExpandGroup ();
         TestSpecGroups ();
