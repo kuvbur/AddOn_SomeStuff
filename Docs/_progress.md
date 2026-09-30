@@ -1,6 +1,7 @@
 # Состояние работы — документирование кодовой базы
 
 ## Обновления по задачам
+- #231 (2026-09-30, чекпоинты `4478494`…`a7e288e`): переработка тестов. `TestFunc.cpp` 330 KB -> 8 KB (реестр 49 наборов) + `TestKit.*` (файловый отчёт `%TEMP%\somestuff_test_report.txt`, счётчики, отбор `SMSTF_TEST`) + `Test{Spec,Sync,Param,Format,Renum,Core,Util}.*`; всё в `Sources/AddOn/tests/`. Раннер выдаёт `exit_code=70` при `failed>0`. Проверки переведены в таблицы кейсов в трёх наборах. Прогон AC25: `suites=49 passed=1825 failed=1` (провал предсуществующий, оформлен как #232). `compile_commands.json` пересобран: 31 -> 39 `.cpp`, 9 из `tests/`.
 - Пересборка `symbols.json` через clangd MCP (2026-09-28, коммит ниже): 8602 -> **840 символов**, все 31 `.cpp` из `compile_commands.json` (покрытие 31/31). Прежний файл собран regex-фолбэком `generate_symbols.py` и на 60.3% состоял из псевдосимволов (`if` 4399, `for` 693, `switch` 66, `while` 15, `return` 12, `sizeof` 2) плюс вызовов вместо определений. Новый файл собран `textDocument/documentSymbol` по каждому файлу (5 файлов напрямую, 26 — через подагентов), строки переведены 0-based -> 1-based. Виды: Function 569, Method 180, Field 36, Variable 23, Constructor 22, Class 5, Enum 5. Сверка с исходниками: расхождений нет (20 записей вида `Class.field` проверены по имени поля, 3 функции в `TablesNavigator.cpp` начинаются со строки `GSErrCode` из-за `__ACENV_CALL` — это корректно). `callgraph.json` не тронут: 155 рёбер на месте (md5 совпадает). Заодно поправлен `generate_symbols.py`: он больше не затирает `callgraph.json` (коммит `9508f2f`) и пишет в `Docs/_`, а не `docs/`.
 - Слияние `llm_test` → `master` (2026-09-28, fast-forward, `e8ff2eb`): документация переведена на схему веток. `AGENTS.md` §17 — снята привязка к `llm_test`/`docs/codebase-map`, грабли про squash заменены правилом «docs живут только в `master`»; §11 — добавлено правило веток (модульные feature-ветки от `master`, документация и мелкие правки в `master`, `Helpers.cpp` под замком). `REPOMAP.md` § Корень и `_progress.md` § Хеш коммита обновлены на тот же хеш. Исторические упоминания `llm_test` в шапках карточек (`ARCHITECTURE.md`, `modules/Sync.md`, `modules/SomeStuff_Main.md`, `modules/json_commands.md`) оставлены: это даты и хеши ревизий, снимаемые при обновлении карточек, а не указание на текущую ветку.
 - #221 (2026-09-28, AC25, чекпоинт `309606a`): документирована проверка диапазона при приведении `double` → `Int32`. (1) `CommonFunction.md`: две новые карточки `DoubleToInt32` (CommonFunction.cpp:955, hpp:428) и `DoubleToInt32RoundUp` (:990, hpp:437) с контрактом насыщения и перечнем вызывающих (проверено grep, 22 места). (2) `Helpers.md`: раздел «Приведение double к целым» с перечнем охваченных конвертаций и явно названными неохваченными кастами (нормализованный угол в `CoordNorthAngle`, индексы `API_AttributeIndex`) — диапазон там гарантирован кодом, а не данными. (3) `spec/Spec.md`: контракт `GetParamValue` дополнен приведением `intValue` материала слоя через `DoubleToInt32` (Spec.cpp:1472). (4) `Dimensions.md`: карточка `DimParse` — приведение `dimVal_r` (:307-311). (5) `Roombook.md`: инвариант про подсчёт пробелов/разделителей (:1030, :1040, :1251). Шапки обновлены на `309606a`. `symbols.json`: вручную добавлены две записи (`DoubleToInt32` :955, `DoubleToInt32RoundUp` :990) — регенерация `generate_symbols.py` НЕ выполнялась осознанно: regex fallback не ловит свободные функции с типом возврата (в файле нет даже `is_equal`/`ceil_mod`), переписал бы псевдо-символами и обнулил `callgraph.json`; стиль сохранён (LF, без BOM, без завершающего LF). `callgraph.json` не менялся: новые функции — существующий `CommonFunction.cpp`, рёбра не собирались. Runtime-проверка сообщений `msg_rep` не выполнялась; AC22–24/26–29 не собирались.
@@ -24,7 +25,7 @@
 Код и документация `Docs/` ведутся в `master`; глобальные доработки по модулям — в отдельных feature-ветках от `master` (AGENTS.md §11, §17).
 
 ## Хеш коммита
-`e8ff2eb` (2026-09-28)
+`9a6efa5` (2026-09-30, #231 закрыт; дальше — R5.5 Spec-рефакторинг)
 
 ## Список модулей
 
@@ -42,7 +43,10 @@
 | Summ | Sources/AddOn/Summ.cpp/hpp | 1 | 1 | Маленький |
 | ClassificationFunction | Sources/AddOn/ClassificationFunction.cpp/hpp | 1 | 1 | Маленький |
 | Constants | Sources/AddOn/Constants.hpp | 0 | 1 | Справочник |
-| TestFunc | Sources/AddOn/TestFunc.cpp/hpp | 1 | 1 | Большой |
+| tests/TestFunc | Sources/AddOn/tests/TestFunc.cpp/hpp | 1 | 1 | Маленький (реестр 49 наборов) |
+| tests/TestKit | Sources/AddOn/tests/TestKit.cpp/hpp | 1 | 1 | Средний |
+| tests/Test{Spec,Sync,Param} | Sources/AddOn/tests/Test{Spec,Sync,Param}.cpp | 1 | 1 | Огромный / Большой |
+| tests/Test{Format,Renum,Core,Util} | Sources/AddOn/tests/Test{Format,Renum,Core,Util}.cpp | 1 | 1 | Маленький |
 | dialogs/BrowserPalette | Sources/AddOn/dialogs/BrowserPalette.cpp/hpp | 1 | 1 | Большой |
 | dialogs/CommandHelpers | Sources/AddOn/dialogs/CommandHelpers.cpp/hpp | 1 | 1 | Маленький |
 | dialogs/DG4rule | Sources/AddOn/dialogs/DG4rule.cpp/hpp | 1 | 1 | Маленький |

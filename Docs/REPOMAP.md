@@ -21,7 +21,10 @@ D:/SomeStuff_addon/
 │   ├── ClassificationFunction.*# Auto-classification
 │   ├── MEPv1.*                 # MEP
 │   ├── CommonFunction.*        # Utils
-│   ├── TestFunc.*              # Local tests (TESTING only)
+│   ├── tests/                 # Local tests (TESTING only)
+│   │   ├── TestFunc.*         # Registry of suites + TestKit backend
+│   │   ├── TestKit.*          # Report file, counters, SMSTF_TEST filter
+│   │   └── Test{Spec,Sync,Param,Format,Renum,Core,Util}.*
 │   ├── dialogs/                # DG dialogs, HTML interface
 │   │   ├── BrowserPalette.*    # Palette + JS bridge
 │   │   ├── SyncSettings.*      # Settings (SyncSettings.dat)
@@ -77,13 +80,17 @@ D:/SomeStuff_addon/
 | UI | Dialogs, palette, HTML interface | dialogs/ (BrowserPalette, SyncSettings, OtherDbDialog, CommandHelpers, DG4rule) |
 | JSON commands | HTTP/JSON API AC25+ | json_commands/ (CommandBase, JsonCommandRegistrar, RoomBook, Spec, SyncAll, Health) |
 | Tables | Table rendering, navigation | table/TableRenderer, table/TablesNavigator |
-| Tests | TESTING-тесты | TestFunc |
+| Tests | TESTING-тесты | tests/ (TestFunc, TestKit, TestSpec/Sync/Param/Format/Renum/Core/Util) |
 | Third-party | Embedded libraries | third_party/qrcodegen |
 
-## Статистика (из compile_commands.json, 2026-09-27, AC25)
-- Всего записей: 32 (1 cmake_pch + 31 source-единиц)
-- `.cpp`: 31 (включая `json_commands/` ×6 и `dialogs/OtherDbDialog.cpp`)
-- **include paths**: 1464 `/I` флага, 61 уникальный путь, 0 отсутствующих (проверено 2026-09-22, `Docs/_progress.md`)
+## Статистика (из compile_commands.json, 2026-09-30, AC25)
+- Всего записей: 42 (3 cmake_pch + 39 source-единиц)
+- `.cpp`: 39 (включая `json_commands/` ×6, `dialogs/OtherDbDialog.cpp` и `tests/` ×9)
+- **include paths**: 60 уникальных путей, 0 отсутствующих (пересобрано 2026-09-30, `Docs/_progress.md`)
+
+## Изменения с предыдущей ревизии карты (2026-09-30)
+- Тесты вынесены в `Sources/AddOn/tests/` и разбиты по группам (#231): `TestFunc.cpp` 330 KB → 8 KB (реестр 49 наборов) + `TestKit.*` (файловый отчёт, счётчики, отбор `SMSTF_TEST`) + `Test{Spec,Sync,Param,Format,Renum,Core,Util}.*`. CMake не правился — `GLOB_RECURSE CONFIGURE_DEPENDS` подхватывает подпапку, а include-каталог содержит сам `Sources/AddOn`, поэтому `#include "tests/..."` резолвится изнутри, а снаружи — как `"tests/..."`.
+- `compile_commands.json` пересобран (`BuildAddOn.py --lsp`): 31 → 39 `.cpp`, 9 записей из `tests/`, старых записей `Sources/AddOn/Test*.cpp` не осталось. Файл не отслеживается git (`.gitignore:384`).
 
 ## Изменения с предыдущей ревизии карты (2026-09-25 → 2026-09-27)
 - Добавлена команда `SomeStuffCommand.SyncAll` (#213): `json_commands/SyncAllCommand.*` — обёртка над `SyncAndMonAll` без правок `Sync.cpp`; статистика и `compile_commands.json` пересобраны для AC25 (28–29+ не пересобирались).

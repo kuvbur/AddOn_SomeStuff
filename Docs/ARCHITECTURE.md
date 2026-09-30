@@ -21,7 +21,10 @@ Sources/AddOn/
 ├── ClassificationFunction.* — Авто-классификация
 ├── MEPv1.*                  — MEP
 ├── CommonFunction.*         — Утилиты
-├── TestFunc.*               — Локальные тесты (TESTING)
+├── tests/                   — Локальные тесты (TESTING)
+│   ├── TestFunc.*           — реестр наборов + бэкенд TestKit
+│   ├── TestKit.*            — отчёт, счётчики, отбор SMSTF_TEST
+│   └── Test{Spec,Sync,Param,Format,Renum,Core,Util}.*
 ├── Constants.hpp            — Справочник констант
 ├── dialogs/                 — DG-диалоги, HTML-интерфейс
 │   ├── BrowserPalette.*     — Браузер-палитра (HTML из RFIX/HTML/)
@@ -169,7 +172,10 @@ graph TD
 - Win: `python Tools\BuildAddOn.py -c config.json -v <version>`
 - Mac: `python3 Tools/BuildAddOn.py -c config.json -v <version>`
 - LSP: добавить `--lsp` к команде
-- Тесты: `Sources/AddOn/TestFunc.cpp/.hpp` (активны под `TESTING`)
+- Тесты: `Sources/AddOn/tests/` (активны под `TESTING`); результат — файловый отчёт
+  `%TEMP%\somestuff_test_report.txt`, раннер `Tools/restart_archicad_for_test.ps1`
+  выдаёт `70` при провалах. Отбор наборов — переменная окружения `SMSTF_TEST`
+  (группа, префикс со `*` или список через запятую)
 
 ## Версии
 
