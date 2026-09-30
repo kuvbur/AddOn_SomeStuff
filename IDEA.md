@@ -701,7 +701,7 @@ AC25 `BuildAddOn.py` — `Build succeeded!`; sweep AC26-29 — все `success`;
 
 
 ### Last Checkpoint
-R4.6 — коммит ниже (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md) + docs.
+R4.6 — `e87736d` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md).
 Предыдущий: R4.5 — `a4a9f54` (TestFunc.cpp, +290) + docs `74ade79` (Spec.md).
 Предыдущий: R4.4 — `9e151c0`; #229 — `f15653e` + docs `a33ec11`.
 Далее: R4.3 — `5ae5adc`; R4.2 четвёртый блок `245c167`, третий `8f3ba17`,
