@@ -11,12 +11,27 @@
 
 **Формат результата (#231).** Проверки идут через `TestKit::Check`, объявленный макросами `DBtest`/`DBrequire`/`DBskip` в `TestKit.hpp`; прод-`DBtest`/`DBprnt` из `CommonFunction.hpp` в тестах не используются — они объявлены в общем заголовке и вызываются также из `Helpers.cpp`/`CommonFunction.cpp`, где вывод остался прежним. Допуск для чисел берётся из продового `is_equal` (absTol 1e-12 / relTol 1e-9), а не из отдельной константы: вторая константа разошлась бы с продом на больших значениях (`TestSpecValueEdges` ждёт 2147483648.0 и -2147483649.0). `DBrequire` прерывает набор (обычный `DBtest` продолжает) — нужен там, где следом идёт разыменование указателя.
 
+**Раскладка по TU (#231).** Наборы разнесены по файлам, раскладка совпадает с группами
+реестра. Счётчик строк не равен числу проверок: `TestSpecParser` — 38 вызовов `DBtest`,
+но выполняет их 29-кратный цикл по таблице кейсов, `TestParsePrefixes` — 69 вызовов.
+При добавлении набора его объявление идёт в `TestFunc.hpp`, определение — в файл своей
+группы, строка `Register` — в `TestFunc.cpp`. CMake менять не нужно: sources берутся
+`GLOB_RECURSE CONFIGURE_DEPENDS` по `${addOnSourcesFolder}/*.cpp`, а include-каталог
+содержит сам `Sources/AddOn`, поэтому `tests/` подхватывается и видит корневые заголовки
+без правок. Внешние потребители `TestFunc.hpp` — `Helpers.cpp`, `SomeStuff_Main.cpp`,
+`Sync.cpp`, `spec/Spec.cpp` — включают его как `"tests/TestFunc.hpp"`.
+
 **Отбор наборов.** Реестр наполняется явно в `TestFunc::Test` (49 наборов, 6 групп: spec/sync/param/format/renum/core), а не статическими инициализаторами: при разбиении файла по TU регистратор вместе со своей `static`-функцией выкидывается линковкой и набор молча исчезает из прогона. Отбор — переменная окружения `SMSTF_TEST`: пусто (всё), группа, префикс с `*` или список через запятую. Мёртвый агрегатор `TestSpecRegression`, дублировавший реестр, удалён. [по коду `TestFunc.cpp`, `TestKit.cpp`]
 
 ## Файлы
-- `Sources/AddOn/TestFunc.cpp/hpp` (hpp целиком под `#ifdef TESTING`)
-- `Sources/AddOn/TestKit.cpp/hpp` (новое, #231; обе — только под `#ifdef TESTING`)
-- `Tools/restart_archicad_for_test.ps1` — чтение отчёта и код возврата (#231)
+- `Sources/AddOn/tests/` — все файлы тестов, только под `#ifdef TESTING`:
+  - `TestFunc.cpp` (103 строки) — заголовок, `Groups`, реестр 49 наборов, `Test()`;
+  - `TestFunc.hpp` — объявления наборов, сгруппированы по группам реестра;
+  - `TestKit.cpp/hpp` (#231) — бэкенд: отчёт, счётчики, отбор, макросы проверок;
+  - `TestSpec.cpp` (21) · `TestSync.cpp` (10) · `TestParam.cpp` (12) ·
+    `TestFormat.cpp` (3) · `TestRenum.cpp` (1) · `TestCore.cpp` (2) — наборы;
+  - `TestUtil.cpp` — 4 хелпера: `TestGetTextLineLength`, `DumpAllBuiltInProperties`,
+    `ResetSyncPropertyArray`, `ResetSyncPropertyOne` (две перегрузки).
 
 ## Публичный API (namespace TestFunc, все void)
 
@@ -36,7 +51,7 @@
 `TestCheckIgnoreVal` (55) — правила игнорирования; `TestReadProperty` (58) — чтение свойств; `TestAddProperty` (61) — добавление свойств в словарь; `TestPropertyHelpersToString` (64) — структуры → строка; `TestName2Rawname` (67) — имя → rawname, включая имена с одной недостающей скобкой и GREEN-кейсы без скобок/с полными скобками (AC25); `TestName2RawnameWithBrackets` (70) — с уже обёрнутыми скобками; `TestSyncString` (73) — парсинг правила; `TestSyncStringRealRules` (76) — реальные правила из BuildingInformation.xml; `TestParsePrefixes` (79) — константы префиксов; `TestParsePropertyDescription` (82) — команды Sync/Renum/Sum/Spec; `TestParseSyncStringIndependent` (85) — Этап 2 TDD; `TestParsePropertyDescriptionToRules` (88) — в структурированные правила.
 
 ### RED/GREEN-регрессии [из комментариев]
-`TestSpecGetParamValue` (`TestFunc.cpp:55`, объявление `TestFunc.hpp:20`) — #220: обычное чтение, отсутствующие ключи и составы, числовой/текстовый материал, положительные и отрицательные границы, list-data и формула. AC25 runtime: исходный набор 24 OK / 11 ERROR; после исправления и расширения — 43 OK / 0 ERROR (панель VS «Отладка»). Включён в `TestFunc::Test`; временный отдельный вызов из Main удалён, пользовательское отключение общего набора сохранено. Полный набор тестов не запускался. [по коду и runtime]
+`TestSpecGetParamValue` (`tests/TestSpec.cpp:104`, объявление `tests/TestFunc.hpp:57`, реестр `tests/TestFunc.cpp:39`) — #220: обычное чтение, отсутствующие ключи и составы, числовой/текстовый материал, положительные и отрицательные границы, list-data и формула. AC25 runtime: исходный набор 24 OK / 11 ERROR; после исправления и расширения — 43 OK / 0 ERROR (панель VS «Отладка»). Включён в `TestFunc::Test`; временный отдельный вызов из Main удалён, пользовательское отключение общего набора сохранено. Полный набор тестов не запускался. [по коду и runtime]
 
 `TestSyncString` (#202) — добавлены кейсы правил `File:lookup;"имя_файла",N,"ячейка",...`: полное число валидно и даёт `composite_pen`/`array_column_end`/`array_column_start`/`array_row_end`/`array_row_start`; мусор после числа (`2junk`) отклоняется в каждой из пяти позиций. Имена файла/ячеек — в кавычках: `GetSubstring` берёт первую пару скобок, вложенные `{...}` обрезают правило. Тесты в ArchiCAD не выполнялись — общий набор отключён коммитом `927d2d3`. Проверено только компиляцией AC25. [по коду, `6c9fc4d`]
 

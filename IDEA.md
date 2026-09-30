@@ -1,4 +1,4 @@
-﻿﻿﻿﻿# Current Task
+﻿﻿﻿﻿﻿# Current Task
 
 ## Task — рефакторинг Spec (R4: разбор парсера и однократная подготовка схемы)
 
@@ -1065,14 +1065,14 @@ Issue #227. Необязательный параметр `includeParameters` (b
 Issue: #231 — машиночитаемый результат, отбор наборов, DBrequire.
 
 ### Scope
-`Sources/AddOn/TestKit.cpp/hpp` (новые), `Sources/AddOn/TestFunc.cpp`,
+`Sources/AddOn/tests/` (TestKit, TestFunc, 7 наборных TU),
 `Docs/modules/TestFunc.md`, `Tools/restart_archicad_for_test.ps1`, `IDEA.md`.
 Вне scope: разбиение TU по модулям и табличные кейсы — следующий шаг;
 прод-код не менялся, вскрытый баг вынесен в #232.
 
 ### Status
-IN_PROGRESS — P0, TestKit, DBrequire, маркеры, раннер, документация и sweep
-закрыты (7 чекпоинтов). Осталось: разбиение TU и табличные кейсы.
+IN_PROGRESS — разбиение TU и перенос в `Sources/AddOn/tests/` закрыты
+(9 чекпоинтов). Осталось: табличные кейсы вместо повторов.
 
 ### Last Completed
 Раннер читает отчёт TestKit и выдаёт `exit_code=70` при провалах — раньше он
@@ -1082,12 +1082,13 @@ IN_PROGRESS — P0, TestKit, DBrequire, маркеры, раннер, докум
 до 90 с по маркеру `=== somestuff tests end ===`.
 
 ### Next Step
-Разбить `TestFunc.cpp` на TU по модулям (TestSpec*/TestSync/TestParam/TestFormat/
-TestRenum) — реестр в `TestFunc.cpp` остаётся единственным списком вызовов,
-чтобы перенос объявлений не потерял наборы. Затем табличные
-кейсы вместо повторов.
+Табличные кейсы вместо повторов: `TestSpecParser` держит таблицу `ParserCase`,
+но семь наборов рядом (`TestSpecOutSlots`, `TestSpecGroups`,
+`TestSpecOutputSchema`, `TestSpecPolicy`, `TestSpecNormalize`,
+`TestSpecParseError`) всё ещё пишут проверки поштучно.
 
 ### Last Checkpoint
+Перенос в `tests/` — `a6aaca2`; разбиение TU — `6a2e4fc`.
 Доки — `03d6c57` (Docs/modules/TestFunc.md, Refs: #231).
 Раннер — `984e246` (Tools/restart_archicad_for_test.ps1, Refs: #231).
 Маркеры — `e18aafd`; DBrequire — `cf3ec89`; TestKit — `677be90`; P0 — `4478494`.
@@ -1099,6 +1100,13 @@ TestRenum) — реестр в `TestFunc.cpp` остаётся единстве�
   `APICommon25.h` нет, а `DBPrint` принимает ровно один аргумент.
 - Реестр явно в `Test()`, не статическими инициализаторами: регистратор вместе
   со своей `static`-функцией выкидывается линковкой, и набор молча исчезает.
+CMake не правил: sources берутся `GLOB_RECURSE CONFIGURE_DEPENDS` по
+  `${addOnSourcesFolder}/*.cpp`, а include-каталог содержит сам `Sources/AddOn`,
+  поэтому `tests/` подхватывается без правок и видит корневые заголовки.
+Отдельный `TestSuites.hpp` не заводил — `TestFunc.hpp` уже содержит эти
+  объявления, второй заголовок дал бы два источника истины.
+`core.autocrlf=true`: git хранит LF и сам выдаёт CRLF в рабочем дереве,
+  поэтому ручная нормализация окончания строк в `tests/` избыточна.
 - Прод-`DBtest`/`DBprnt` в тестах не перекрываются: они объявлены в общем
   заголовке и вызываются из `Helpers.cpp`/`CommonFunction.cpp`.
 
