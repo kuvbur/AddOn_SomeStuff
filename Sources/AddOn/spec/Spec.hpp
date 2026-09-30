@@ -283,7 +283,21 @@ namespace Spec {
                         bool fromMaterial,
                         const GS::Int32 &n_layer);
 
+    // R6.1: расчётная часть правила — всё до сверки существующих строк.
+    // Заполняет elements и out_param, возвращает число созданных строк
+    // (0, если правило отвергнуто). Ничего не удаляет и не создаёт в модели:
+    // результат можно проверить, не имея модели. Контейнеры прежние, ключи
+    // прежние — это вынос, а не изменение модели (R6.2-R6.5 вводят SpecRow).
+    Int32 PlanRuleRows (SpecRule &rule,
+                        const SpecReadContext &context,
+                        ElementDict &elements,
+                        UnicGuid &error_element,
+                        bool showUserInterface,
+                        GS::HashTable<GS::UniString, GS::UniString> &out_param);
+
     // Формирует набор элементов для создания или обновления по одному правилу.
+    // После расчётной части (PlanRuleRows) идёт сверка существующих строк —
+    // это отдельный шаг R7, здесь она остаётся на прежнем месте.
     Int32 GetElementsForRule (SpecRule &rule,
                               const SpecReadContext &context,
                               ElementDict &elements,

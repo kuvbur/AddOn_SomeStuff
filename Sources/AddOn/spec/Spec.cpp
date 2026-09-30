@@ -1716,23 +1716,27 @@ namespace Spec {
                                      APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
     }
 
-    // -----------------------------------------------------------------------------
-    // Формирует набор элементов для создания или обновления на основе одного правила.
-    // Здесь важно не только собрать данные, но и правильно сгруппировать одинаковые элементы.
-    // -----------------------------------------------------------------------------
-    Int32 GetElementsForRule (SpecRule &rule,
-                              const SpecReadContext &context,
-                              ElementDict &elements,
-                              ElementDict &elements_mod,
-                              GS::Array<API_Guid> &elements_delete,
-                              UnicGuid &error_element,
-                              bool showUserInterface) {
+    // R6.1: расчётная часть правила — всё, что происходит ДО сверки
+    // существующих строк. Контейнеры прежние (out_param, elements, счётчики),
+    // ключи не тронуты: это чистый вынос, а не изменение модели.
+    // Единственное отличие — точка возврата: раньше тело доходило до
+    // delete_old внутри функции, теперь вызывающая решает, идти ли дальше.
+    // Ничего не создаётся и не удаляется здесь: только чтение и наполнение
+    // словарей. Именно это делает результат проверяемым без модели (выход R6).
+    // ----------------------------------------------------------------------------
+    Int32 PlanRuleRows (SpecRule &rule,
+                        const SpecReadContext &context,
+                        ElementDict &elements,
+                        UnicGuid &error_element,
+                        bool showUserInterface,
+                        GS::HashTable<GS::UniString, GS::UniString> &out_param) {
         ParamDict not_found_paramname = {};
         ParamDict not_found_unic = {};
         Int32 n_elements = 0;
         FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
-        GS::HashTable<GS::UniString, GS::UniString> out_param = {}; // Ключ - уникальные значения, значение - выходящие
-                                                                    // параметры
+        // out_param передан вызывающим (R6.1): ключ - уникальные значения,
+        // значение - выходящие параметры. Локального объявления больше нет,
+        // иначе оно затеняло бы параметр и молча обнуляло словарь на каждый вызов.
         // Число выходных слотов берётся из схемы правила ОДИН раз: оно не меняется
         // во время исполнения, а сверять его приходится для каждого элемента.
         const UInt32 out_slots = rule.out_paramrawname.GetSize ();
@@ -1920,6 +1924,33 @@ namespace Spec {
                 return 0;
             }
         }
+        // Прежде расчёт был частью GetElementsForRule и возвращал n_elements
+        // перед веткой delete_old. Возврат сохранён: без него число созданных
+        // строк потерялось бы на пути без отказов.
+        return n_elements;
+    }
+
+    Int32 GetElementsForRule (SpecRule &rule,
+                              const SpecReadContext &context,
+                              ElementDict &elements,
+                              ElementDict &elements_mod,
+                              GS::Array<API_Guid> &elements_delete,
+                              UnicGuid &error_element,
+                              bool showUserInterface) {
+        Int32 n_elements = 0;
+        // R6.1: расчёт вынесен. out_param — тот же словарь, что и раньше: он
+        // строится в расчётной части и читается в сверке существующих строк.
+        // Ключи строк и порядок не менялись.
+        GS::HashTable<GS::UniString, GS::UniString> out_param = {};
+        // Сверка существующих строк читает значения тем же reader и печатает тем
+        // же форматом, что и расчётная часть. Локальные reader/fstr переехали
+        // вместе с вынесенным телом, поэтому здесь объявляются свои — объекты
+        // те же по составу (контекст один на правило, формат ".2m" разбирается
+        // из одной и той же строки), читателей у контекста по-прежнему много,
+        // писателей нет. R7 вынесет саму сверку и сведёт их в одно место.
+        const SpecValueReader reader (context);
+        FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+        n_elements = PlanRuleRows (rule, context, elements, error_element, showUserInterface, out_param);
         if (!rule.delete_old)
             return n_elements;
         UnicGuid guids = {};

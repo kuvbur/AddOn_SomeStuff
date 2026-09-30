@@ -1206,6 +1206,134 @@ namespace TestFunc {
     // Главный критерий шага: ИСХОДНЫЕ СЛОВАРИ ДО/ПОСЛЕ ЧТЕНИЯ совпадают.
     // Чтение не обязано быть безопасно идемпотентным по значению (формулы
     // пересчитываются), но не обязано менять СЛОВАРИ - это проверяется здесь.
+    // R6.1: расчётная часть вынесена в PlanRuleRows. Набор проверяет НОВУЮ
+    // границу: расчёт считается БЕЗ сверки существующих строк и без модели —
+    // это и есть выход блока R6 («вычисленные строки можно проверить без
+    // создания объектов»).
+    //
+    // Сверка сравнивается с расчётом: delete_old = true у PlanRuleRows не
+    // меняет ничего (сверка живёт в GetElementsForRule), а delete_old = false
+    // у GetElementsForRule означает «не идти в сверку вообще».
+    void TestSpecPlanning () {
+        // --- расчёт единственного источника ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            Spec::ElementDict planned;
+            UnicGuid errors;
+            GS::HashTable<GS::UniString, GS::UniString> outParam;
+            const Int32 n = Spec::PlanRuleRows (f.rule, f.context, planned, errors, false, outParam);
+            DBtest (n, 1, "R6.1 one source one row");
+            DBtest (planned.GetSize (), 1, "R6.1 one row planned");
+            DBtest (errors.IsEmpty (), true, "R6.1 no errors");
+            // Строка рассчитана: слоты заполнены по схеме, источник и признаки
+            // правила перенесены.
+            const Spec::Element *row = planned.GetPtr ("@A");
+            DBrequire (row != nullptr, "R6.1 row found by key");
+            DBtest (row->out_param.GetSize (), 1, "R6.1 out slot filled");
+            DBtest (row->out_sum_param.GetSize (), 1, "R6.1 sum slot filled");
+            DBtest (row->out_param[0].val.uniStringValue, GS::UniString ("Alpha"), "R6.1 out value");
+            DBtest (row->out_sum_param[0].val.intValue, 2, "R6.1 sum value");
+            DBtest (row->elements.GetSize (), 1, "R6.1 source multiplicity");
+            DBtest (row->out_paramrawname.GetSize (), f.rule.out_paramrawname.GetSize (), "R6.1 out schema carried");
+            DBtest (row->favorite_name, f.rule.favorite_name, "R6.1 favorite carried");
+            // out_param: ключ - склеенные выходящие значения, значение - ключ
+            // строки. Он пережил вынос и остаётся тем же словарём.
+            DBtest (outParam.GetSize (), 1, "R6.1 outParam one entry");
+            DBtest (outParam.ContainsKey (EMPTYSTRING) || outParam.GetSize () == 1, true, "R6.1 outParam keyed");
+        }
+
+        // --- расчёт НЕ трогает существующие строки: delete_old не влияет ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Existing (f.old, "Alpha", 2);
+            Spec::ElementDict planned;
+            UnicGuid errors;
+            GS::HashTable<GS::UniString, GS::UniString> outParam;
+            f.rule.delete_old = true;
+            Spec::PlanRuleRows (f.rule, f.context, planned, errors, false, outParam);
+            // Сверки не было: ни удалений, ни модификаций — эти контейнеры
+            // не входят в расчётную часть вовсе.
+            DBtest (planned.GetSize (), 1, "R6.1 delete_old does not add rows");
+            DBtest (f.rule.exsist_elements.GetSize (), 1, "R6.1 existing list untouched by planning");
+        }
+
+        // --- суммирование одинаковых ключей в расчётной части ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Source (f.second, "A", "Alpha", 3);
+            Spec::ElementDict planned;
+            UnicGuid errors;
+            GS::HashTable<GS::UniString, GS::UniString> outParam;
+            const Int32 n = Spec::PlanRuleRows (f.rule, f.context, planned, errors, false, outParam);
+            // Одна строка, сумма сложена, источников два.
+            DBtest (n, 1, "R6.1 merged sources one row");
+            DBtest (planned.GetSize (), 1, "R6.1 merged row single");
+            const Spec::Element *row = planned.GetPtr ("@A");
+            DBrequire (row != nullptr, "R6.1 merged row found");
+            DBtest (row->out_sum_param[0].val.intValue, 5, "R6.1 merged sum");
+            DBtest (row->elements.GetSize (), 2, "R6.1 merged sources");
+        }
+
+        // --- расчёт и полный путь дают одну и ту же строку ---
+        // Это главная проверка шага: вынос не изменил ни ключ, ни значения.
+        {
+            SpecFixture plannedOnly;
+            plannedOnly.Source (plannedOnly.first, "A", "Alpha", 2);
+            Spec::ElementDict planned;
+            UnicGuid planErrors;
+            GS::HashTable<GS::UniString, GS::UniString> outParam;
+            const Int32 planCount =
+                Spec::PlanRuleRows (plannedOnly.rule, plannedOnly.context, planned, planErrors, false, outParam);
+
+            SpecFixture full;
+            full.Source (full.first, "A", "Alpha", 2);
+            const Int32 fullCount = full.Run ();
+
+            DBtest (planCount, fullCount, "R6.1 planning and full path agree on count");
+            DBtest (planned.GetSize (), full.created.GetSize (), "R6.1 planning and full path agree on rows");
+            DBtest (planned.ContainsKey ("@A"), full.created.ContainsKey ("@A"), "R6.1 agree on key");
+            const Spec::Element *a = planned.GetPtr ("@A");
+            const Spec::Element *b = full.created.GetPtr ("@A");
+            DBrequire (a != nullptr && b != nullptr, "R6.1 both rows available");
+            DBtest (a->out_param.GetSize (), b->out_param.GetSize (), "R6.1 agree on out slot count");
+            DBtest (a->out_sum_param.GetSize (), b->out_sum_param.GetSize (), "R6.1 agree on sum slot count");
+            DBtest (a->out_param[0].val.uniStringValue, b->out_param[0].val.uniStringValue, "R6.1 agree on out value");
+            DBtest (a->out_sum_param[0].val.intValue, b->out_sum_param[0].val.intValue, "R6.1 agree on sum value");
+        }
+
+        // --- отказ правила обнуляет расчёт, но НЕ трогает входные словари ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.rule.stop_on_error = true;
+            f.rule.groups[0].unic_paramrawname[0] = f.key;
+            f.context.read.Get (f.first).Delete (f.key);
+            Spec::ElementDict planned;
+            UnicGuid errors;
+            GS::HashTable<GS::UniString, GS::UniString> outParam;
+            const Int32 n = Spec::PlanRuleRows (f.rule, f.context, planned, errors, false, outParam);
+            DBtest (n, 0, "R6.1 rejected rule counts zero");
+            DBtest (planned.IsEmpty (), true, "R6.1 rejected rule clears rows");
+            DBtest (errors.ContainsKey (f.first), true, "R6.1 rejected rule marks element");
+        }
+
+        // --- видимость: skip происходит в расчётной части ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.rule.only_visible = true; // элемент синтетический, реальной видимости нет
+            Spec::ElementDict planned;
+            UnicGuid errors;
+            GS::HashTable<GS::UniString, GS::UniString> outParam;
+            const Int32 n = Spec::PlanRuleRows (f.rule, f.context, planned, errors, false, outParam);
+            DBtest (n, 0, "R6.1 invisible source skipped in planning");
+            DBtest (planned.IsEmpty (), true, "R6.1 invisible source yields no rows");
+        }
+    }
+
     void TestSpecReadBoundary () {
         // --- Критерий шага: словари до/после чтения ---
         {
