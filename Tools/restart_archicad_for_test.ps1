@@ -735,6 +735,65 @@ try {
         Write-Log "JSON test script not found: $jsonTestScript" Yellow
         Write-AIStatus "JSON_TESTS_SKIPPED" "reason=script_not_found path='$jsonTestScript'" Yellow
     }
+# -----------------------------------------------------------------------------
+# 13b. C++-тесты: файловый отчёт TestKit (#231)
+#
+# TestKit пишет %TEMP%\somestuff_test_report.txt построчно и сбрасывает на диск
+# на каждой строке, поэтому файл переживает падение ArchiCAD. Здесь он читается
+# и превращается в код возврата. Отсутствие файла - не ошибка сборки: тесты
+# могли не стартовать, и об этом честно сообщаем, не выставляя TESTS_FAILED.
+# -----------------------------------------------------------------------------
+$testReportPath = Join-Path $env:TEMP "somestuff_test_report.txt"
+
+# Тесты стартуют при APINotify_Open - то есть когда проект реально открылся,
+# а не когда процесс Archicad появился. Поэтому отчёт ожидаем: без ожидания
+# проверка успевает пройти ДО первого BEGIN и даёт ложное "report_missing".
+# Признак завершения прогона - строка "=== somestuff tests end ===".
+$cxxTestDeadline = (Get-Date).AddSeconds(90)
+$cxxTestComplete = $false
+while ((Get-Date) -lt $cxxTestDeadline) {
+    if (Test-Path $testReportPath) {
+        $peek = Get-Content $testReportPath -Raw -ErrorAction SilentlyContinue
+        if ($peek -match "=== somestuff tests end ===") {
+            $cxxTestComplete = $true
+            break
+        }
+    }
+    Start-Sleep -Milliseconds 500
+}
+if (-not $cxxTestComplete) {
+    Write-AIStatus "CXX_TESTS_TIMEOUT" "reason=no_end_marker waited_s=90 path='$testReportPath'" Yellow
+}
+
+if (Test-Path $testReportPath) {
+    $reportText = Get-Content $testReportPath -Raw -ErrorAction SilentlyContinue
+    if ($reportText -match "SUMMARY suites=(\d+) passed=(\d+) failed=(\d+)") {
+        $cxxSuites = $Matches[1]
+        $cxxPassed = $Matches[2]
+        $cxxFailed = $Matches[3]
+        $cxxColor = if ([int]$cxxFailed -eq 0) { "Green" } else { "Red" }
+        Write-AIStatus "CXX_TESTS" "suites=$cxxSuites passed=$cxxPassed failed=$cxxFailed" $cxxColor
+
+        $failedSuites = @([regex]::Matches($reportText, "FAILED_SUITE (\w+)") | ForEach-Object { $_.Groups[1].Value })
+        foreach ($suite in $failedSuites) {
+            Write-Log "  FAILED_SUITE: $suite" Red
+        }
+        $abortLines = @([regex]::Matches($reportText, "^ABORT .*$", [System.Text.RegularExpressions.RegexOptions]::Multiline))
+        foreach ($line in $abortLines) {
+            Write-Log "  $($line.Value)" Red
+        }
+
+        if ([int]$cxxFailed -gt 0 -and $runnerExitCode -eq $EXIT_SUCCESS) {
+            $runnerExitCode = $EXIT_TESTS_FAILED
+            Set-RunnerFailureReason "cxx_tests_failed_count_$cxxFailed"
+            Write-AIStatus "CXX_TESTS_FAILED" "status=FAILED failed=$cxxFailed" Red
+        }
+    } else {
+        Write-AIStatus "CXX_TESTS_NO_SUMMARY" "reason=no_SUMMARY_line path='$testReportPath'" Yellow
+    }
+} else {
+    Write-AIStatus "CXX_TESTS_NO_REPORT" "reason=report_missing path='$testReportPath'" Yellow
+}
 }
 catch {
     Write-Log "RUNNER ERROR: $($_.Exception.Message)" Red
