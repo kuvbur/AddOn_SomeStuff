@@ -17,98 +17,20 @@
 namespace TestFunc {
     // Запускает набор локальных проверок основных helpers.
     void Test ();
-    void TestSpecGetParamValue ();
 
     // Проверяет вычисление длины текстовой строки в нестандартных случаях.
     void TestGetTextLineLength (GS::UniString &var);
 
-    // Проверяет арифметические и логические операции внутренних функций.
-    void TestCalc ();
-
-    // Проверяет работу формульного парсинга и вычисления.
-    void TestFormula ();
-
-    // Проверяет форматирование строк по правилам add-on.
-    void TestFormatString ();
-
-    // Проверяет преобразование значений в ParamValue.
-    void TestConvertToParamValue ();
-
-    // Проверяет преобразование атрибутов в ParamValue.
-    void TestConvertAttributeToParamValue ();
-
-    // Проверяет преобразование свойств в ParamValue.
-    void TestConvertPropertyToParamValue ();
-
-    // Проверяет преобразование определений свойств в ParamValue.
-    void TestConvertPropertyDefinitionToParamValue ();
-
-    // Проверяет определение источника параметра по его raw-name.
-    void TestSetParamValueSourseByName ();
-
-    // Проверяет извлечение raw-name из описания свойства.
-    void TestSetrawNameFromProperty ();
-
-    // Проверяет правила игнорирования отдельных значений.
-    void TestCheckIgnoreVal ();
-
-    // Проверяет чтение свойств элемента.
-    void TestReadProperty ();
-
-    // Проверяет добавление новых свойств в словарь.
-    void TestAddProperty ();
-
-    // Проверяет преобразование вспомогательных структур в строку.
-    void TestPropertyHelpersToString ();
-
-    // Проверяет функцию Name2Rawname - преобразование имени в rawname.
-    void TestName2Rawname ();
-
-    // Проверяет функцию Name2Rawname с уже обёрнутыми скобками (временное решение до исправления бага).
-    void TestName2RawnameWithBrackets ();
-
-    // Проверяет функцию SyncString - парсинг строки правила синхронизации.
-    void TestSyncString ();
-
-    // Проверяет реальные правила синхронизации из BuildingInformation.xml.
-    void TestSyncStringRealRules ();
-
-    // Проверяет константы префиксов для парсинга.
-    void TestParsePrefixes ();
-
-    // Проверяет парсинг описания свойства с командами Sync, Renum, Sum, Spec.
-    void TestParsePropertyDescription ();
-
-    // Проверяет независимый вызов ParseSyncString (Этап 2 TDD).
-    void TestParseSyncStringIndependent ();
-
-    // Проверяет ParsePropertyDescriptionToRules — парсинг описания в структурированные правила.
-    void TestParsePropertyDescriptionToRules ();
-
     // Проверяет SyncAddSubelement — развёртывание правил from_sub/to_sub на подэлементы.
     // Включает RED-тест бага P1 (ветка to_sub недостижима) и GREEN-регрессии
-    // существующего корректного поведения (from_sub, обычное правило, пустой список).
-    void TestSyncAddSubelement ();
-
-    // Проверяет индексирование существующей отделки по GUID базового элемента.
-    void TestBuildOtdByParent ();
 
     // GREEN-регрессии логики нумерации: RenumPos (конструкторы, Add, FormatToMax,
-    // SetToMax), GetMostFrequentPos, ReNumGetFlag. Фиксируют текущее поведение.
-    void TestRenumPosLogic ();
 
     // GREEN-регрессии ParsePropertyDescriptionToRules для to_sub/from_sub/GUID:
     // targetType/targetName/hasSub/hasGUID/guidSourceProperty. Фиксирует контракт,
-    // который не должен измениться при правке бага P1 в SyncAddSubelement.
-    void TestDescToRulesSubGuid ();
-
-    // Проверяет GetPropertyRuleFlag — кэшированный признак правила в описании свойства.
-    void TestGetPropertyRuleFlag ();
 
     // Диагностика #184/#185: воспроизводит путь BrowserPalette::GetPropertiesList на
     // реальных элементах проекта и печатает длины описаний из двух источников
-    // определения (prop.definition и definitions из GetPropertyDefinitions).
-    void TestPropertyRuleFlagOnProjectElements ();
 
     // Выводит все встроенные свойства в отладочный журнал.
     void DumpAllBuiltInProperties ();
@@ -121,6 +43,76 @@ namespace TestFunc {
 
     // Сбрасывает свойства синхронизации для одного элемента с заданным набором свойств.
     void ResetSyncPropertyOne (const API_Guid &elemGuid, GS::Array<API_Property> &propertywrite);
+
+    // ---------------------------------------------------------------------
+    // Наборы. Определения разнесены по файлам, раскладка совпадает с группами
+    // реестра в TestFunc.cpp: spec -> TestSpec.cpp, sync -> TestSync.cpp,
+    // param -> TestParam.cpp, format -> TestFormat.cpp, renum -> TestRenum.cpp,
+    // core -> TestCore.cpp, общие хелперы -> TestUtil.cpp.
+    // Список наборов держится в реестре, а не статическими инициализаторами:
+    // иначе при разбиении файла регистратор выкидывается линковкой вместе со
+    // своим набором, и тот молча исчезает из прогона.
+
+    // --- spec: разбор правил, чтение значений, выходные слоты (21) ---
+    void TestSpecGetParamValue ();
+    void TestSpecGrouping ();
+    void TestSpecReconcile ();
+    void TestSpecMergeAndKey ();
+    void TestSpecRuleDedup ();
+    void TestSpecReadPlan ();
+    void TestSpecRuleDependencies ();
+    void TestSpecFavoriteResolution ();
+    void TestSpecValueReader ();
+    void TestSpecValueEdges ();
+    void TestSpecOutSlots ();
+    void TestSpecSlotBindings ();
+    void TestSpecExpandGroup ();
+    void TestSpecGroups ();
+    void TestSpecOutputSchema ();
+    void TestSpecPolicy ();
+    void TestSpecNormalize ();
+    void TestSpecParser ();
+    void TestSpecAddRule ();
+    void TestSpecParseError ();
+    void TestSpecSizes ();
+
+    // --- sync: правила синхронизации и разбор описаний (10) ---
+    void TestName2Rawname ();
+    void TestName2RawnameWithBrackets ();
+    void TestSyncString ();
+    void TestSyncStringRealRules ();
+    void TestParsePrefixes ();
+    void TestParsePropertyDescription ();
+    void TestParseSyncStringIndependent ();
+    void TestParsePropertyDescriptionToRules ();
+    void TestSyncAddSubelement ();
+    void TestDescToRulesSubGuid ();
+
+    // --- param: значения, свойства, словари (12) ---
+    void TestConvertToParamValue ();
+    void TestConvertAttributeToParamValue ();
+    void TestConvertPropertyToParamValue ();
+    void TestConvertPropertyDefinitionToParamValue ();
+    void TestSetParamValueSourseByName ();
+    void TestSetrawNameFromProperty ();
+    void TestCheckIgnoreVal ();
+    void TestReadProperty ();
+    void TestAddProperty ();
+    void TestPropertyHelpersToString ();
+    void TestGetPropertyRuleFlag ();
+    void TestPropertyRuleFlagOnProjectElements ();
+
+    // --- format: вычисления и форматирование (3) ---
+    void TestCalc ();
+    void TestFormula ();
+    void TestFormatString ();
+
+    // --- renum: логика нумерации (1) ---
+    void TestRenumPosLogic ();
+
+    // --- core: разное (2) ---
+    void TestStringSplt ();
+    void TestBuildOtdByParent ();
 } // namespace TestFunc
 
     #endif
