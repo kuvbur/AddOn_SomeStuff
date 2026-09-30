@@ -3672,6 +3672,9 @@ namespace TestFunc {
         ParamValue pvalueBefore = *params.GetPtr (pvalue.rawName);
         DBtest (!ParamHelpers::ReadProperty (APINULLGuid, params, propertyDefinitions),
                 "ReadProperty : APINULLGuid -> ACAPI-ошибка -> false");
+        // Ключ только что задан через Put, но полагаться на это нельзя: без
+        // проверки разыменование nullptr уронило бы ArchiCAD целиком.
+        DBrequire (params.GetPtr (pvalue.rawName) != nullptr, "ReadProperty : запись по ключу не исчезла");
         DBtest (params.GetPtr (pvalue.rawName)->isValid,
                 pvalueBefore.isValid,
                 "ReadProperty : значение в словаре не изменилось после ошибки ACAPI");
