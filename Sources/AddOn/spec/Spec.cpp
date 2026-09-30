@@ -1524,12 +1524,12 @@ namespace Spec {
     // Читает одно значение параметра для конкретного элемента.
     // Поддерживаются обычные свойства, формулы, материалы слоёв и данные из list-data.
     // -----------------------------------------------------------------------------
-    bool GetParamValue (const API_Guid &elemguid,
-                        const GS::UniString &rawname,
-                        const SpecReadContext &context,
-                        ParamValue &pvalue,
-                        bool fromMaterial,
-                        const GS::Int32 &n_layer) {
+    // Тело прежней GetParamValue перенесено дословно; изменились только сигнатура
+    // и обращения к словарям (context -> context поля контекста, без изменений).
+    bool SpecValueReader::Read (const API_Guid &elemguid,
+                                const GS::UniString &rawname,
+                                ParamValue &pvalue,
+                                GS::Int32 n_layer) const {
         pvalue.isValid = false;
         if (hasLibData (rawname)) {
             if (n_layer < 0)
@@ -1704,6 +1704,19 @@ namespace Spec {
     }
 
     // -----------------------------------------------------------------------------
+    // Видимость источника на момент расчёта.
+    // Прежде это был встроенный if прямо в заголовеке цикла по элементам. Вызов,
+    // флаги и порядок не изменились (R5.4): тот же ACAPI_Element_Filter, те же три
+    // флага, по одному разу на элемент, до чтения любых значений.
+    // -----------------------------------------------------------------------------
+    bool IsSourceVisible (const API_Guid &elemguid, bool onlyVisible) {
+        if (!onlyVisible)
+            return true;
+        return ACAPI_Element_Filter (elemguid,
+                                     APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
+    }
+
+    // -----------------------------------------------------------------------------
     // Формирует набор элементов для создания или обновления на основе одного правила.
     // Здесь важно не только собрать данные, но и правильно сгруппировать одинаковые элементы.
     // -----------------------------------------------------------------------------
@@ -1730,12 +1743,14 @@ namespace Spec {
         // каждого источника. Размер равен rule.groups.GetSize (), группы идут в
         // том же порядке, поэтому индексы сопоставимы.
         const GS::Array<GroupSlotBinding> slot_bindings = PrepareSlotBindings (rule);
+        // R5.4: единственный reader на всё правило. Значения он только читает, а
+        // число чтений задаёт вычислитель, поэтому изменить прочитанные данные
+        // «по ходу» нельзя.
+        const SpecValueReader reader (context);
         for (const API_Guid &elemguid : rule.elements) {
-            if (rule.only_visible) {
-                if (!ACAPI_Element_Filter (
-                        elemguid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay))
-                    continue;
-            }
+            // Видимость проверяется до чтения любых значений, как и до выноса.
+            if (!IsSourceVisible (elemguid, rule.only_visible))
+                continue;
             for (UInt32 group_index = 0; group_index < rule.groups.GetSize (); group_index++) {
                 const GroupSpec &group = rule.groups[group_index];
                 const GroupSlotBinding &binding = slot_bindings[group_index];
@@ -1747,8 +1762,7 @@ namespace Spec {
                 bool flag = true;
                 if (!group.flag_paramrawname.IsEmpty ()) {
                     ParamValue pvalue = {};
-                    if (GetParamValue (
-                            elemguid, group.flag_paramrawname, context, pvalue, group.fromMaterial, group.n_layer)) {
+                    if (reader.Read (elemguid, group.flag_paramrawname, pvalue, group.n_layer)) {
                         flag = pvalue.val.boolValue;
                     }
                 }
@@ -1759,7 +1773,7 @@ namespace Spec {
                 // Принадлежность субэлемента к группе определим по ключу - сцепке значений уникальных параметров
                 for (const GS::UniString &rawname : group.unic_paramrawname) {
                     ParamValue pvalue = {};
-                    if (!GetParamValue (elemguid, rawname, context, pvalue, group.fromMaterial, group.n_layer)) {
+                    if (!reader.Read (elemguid, rawname, pvalue, group.n_layer)) {
                         hasunic = false;
                         bool is_error = !group.fromMaterial;
                         if (pvalue.fromGDLArray)
@@ -1786,7 +1800,7 @@ namespace Spec {
                         ParamHelpers::ConvertIntToParamValue (pvalue, rawname, 1);
                         element.out_sum_param.Push (pvalue);
                     } else {
-                        if (GetParamValue (elemguid, rawname, context, pvalue, group.fromMaterial, group.n_layer)) {
+                        if (reader.Read (elemguid, rawname, pvalue, group.n_layer)) {
                             element.out_sum_param.Push (pvalue);
                         } else {
                             bool is_error = !group.fromMaterial;
@@ -1818,7 +1832,7 @@ namespace Spec {
                     for (const SlotBinding &slot : binding.outSlots) {
                         const GS::UniString &rawname = *slot.rawname;
                         ParamValue pvalue = {};
-                        if (GetParamValue (elemguid, rawname, context, pvalue, group.fromMaterial, group.n_layer)) {
+                        if (reader.Read (elemguid, rawname, pvalue, group.n_layer)) {
                             element.out_param.Push (pvalue);
                             key_out = key_out + ATSIGN + ParamHelpers::ToString (pvalue, fstr);
                         } else {
@@ -1915,7 +1929,7 @@ namespace Spec {
             // Принадлежность субэлемента к группе определим по ключу - сцепке значений уникальных параметров
             for (const GS::UniString &rawname : rule.out_paramrawname) {
                 ParamValue pvalue = {};
-                if (!GetParamValue (elemguid, rawname, context, pvalue, false, 0))
+                if (!reader.Read (elemguid, rawname, pvalue, 0))
                     hasunic = false;
                 key_out = key_out + ATSIGN + ParamHelpers::ToString (pvalue, fstr);
             }
@@ -1952,7 +1966,7 @@ namespace Spec {
                 GS::UniString rawname = rule.out_paramrawname[i];
                 ParamValue pvalue = {};
                 ParamValue elvalue = el.out_param[i];
-                if (!GetParamValue (elemguid, rawname, context, pvalue, false, 0)) {
+                if (!reader.Read (elemguid, rawname, pvalue, 0)) {
                     msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                     flag_change = true;
                 }
@@ -1978,7 +1992,7 @@ namespace Spec {
                 GS::UniString rawname = rule.out_sum_paramrawname[i];
                 ParamValue pvalue = {};
                 ParamValue elvalue = el.out_sum_param[i];
-                if (!GetParamValue (elemguid, rawname, context, pvalue, false, 0)) {
+                if (!reader.Read (elemguid, rawname, pvalue, 0)) {
                     msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                     flag_change = true;
                 }
@@ -2006,7 +2020,7 @@ namespace Spec {
             GS::UniString rawname = rule.destinationParamGuidName;
             if (!rawname.IsEmpty ()) {
                 ParamValue pvalue = {};
-                if (!GetParamValue (elemguid, rawname, context, pvalue, false, 0)) {
+                if (!reader.Read (elemguid, rawname, pvalue, 0)) {
                     msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                     flag_change = true;
                 }

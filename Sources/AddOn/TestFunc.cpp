@@ -101,7 +101,7 @@ namespace TestFunc {
         source.val.canCalculate = true;
         auto read = [&] (const GS::UniString &name, GS::Int32 layer) {
             result = source;
-            return Spec::GetParamValue (guid, name, context, result, false, layer);
+            return Spec::SpecValueReader (context).Read (guid, name, result, layer);
         };
         DBtest (read (rawname, 0), false, "SpecGetParamValue missing element");
         DBtest (result.isValid, false, "SpecGetParamValue missing element invalidates");
@@ -1192,12 +1192,105 @@ namespace TestFunc {
         DBprnt ("SpecRegression favorite resolution", "end");
     }
 
+    // R5.4: контракт read-only доступа к значениям.
+    //
+    // Закрепляются три вещи, которые иначе остались бы незамеченными:
+    //   1) reader только читает — прочитанные словари не меняются при чтении;
+    //   2) n_layer < 0 не читает ни материал, ни list-data (тот же отказ, что
+    //      и был в GetParamValue);
+    //   3) два reader на одном контексте дают одинаковый результат — чтения
+    //      не влияют друг на друга.
+    // Ожидания для (1) считаются по факту: сравниваются снимки словарей ДО и
+    // ПОСЛЕ серии чтений, а не заранее выписанные значения.
+    void TestSpecValueReader () {
+        DBprnt ("SpecRegression value reader", "start");
+        SpecFixture f;
+        f.Text (f.first, f.text, "Alpha");
+        f.Number (f.first, f.quantity, 3);
+        const GS::UniString libname = FORMULANAMEPREFIX + "{@listdata:elem.naen}<>";
+        ParamValue formula;
+        formula.isValid = true;
+        formula.val.hasFormula = true;
+        formula.val.type = API_PropertyStringValueType;
+        formula.val.uniStringValue = "3";
+        f.context.read.Get (f.first).Put (libname, formula);
+
+        // Снимок состояния словарей до чтений.
+        ParamDictValue readBefore = f.context.read.Get (f.first);
+        ParamDictCompositeElement compositeBefore = f.context.composite;
+        ListData::LibElements listDataBefore = f.context.listData;
+
+        const Spec::SpecValueReader reader (f.context);
+        ParamValue result;
+        // (2) Обычное свойство читается при любом n_layer, в том числе отрицательном.
+        DBtest (reader.Read (f.first, f.text, result, -1), "reader ordinary reads at negative layer");
+        DBtest (result.val.uniStringValue, GS::UniString ("Alpha"), "reader ordinary value");
+        DBtest (reader.Read (f.first, f.quantity, result, -1), "reader number reads at negative layer");
+        DBtest (result.val.intValue, 3, "reader number value");
+        // (2) list-data при n_layer < 0 отказывает, не падая.
+        DBtest (reader.Read (f.first, libname, result, -1), false, "reader libdata refuses negative layer");
+        DBtest (result.isValid, false, "reader libdata negative layer invalidates");
+        // (3) Второй reader того же контекста даёт тот же результат. Сравниваются
+        // два чтения ОДНОГО поля, а не предыдущий результат: к этому моменту в
+        // result лежит отказ чтения list-data (пустая строка).
+        const Spec::SpecValueReader second (f.context);
+        ParamValue other;
+        DBtest (second.Read (f.first, f.text, other, -1), "second reader same result");
+        ParamValue againSame;
+        DBtest (reader.Read (f.first, f.text, againSame, -1), "reader reads same field again");
+        DBtest (other.val.uniStringValue, GS::UniString ("Alpha"), "second reader value");
+        DBtest (other.val.uniStringValue, againSame.val.uniStringValue, "reader and second reader agree");
+        // Отсутствующий элемент и отсутствующий ключ — тот же нулевой исход.
+        DBtest (reader.Read (f.second, f.text, result, 0), false, "reader missing element");
+        DBtest (reader.Read (f.first, f.key, result, 0), false, "reader missing key");
+        DBtest (result.isValid, false, "reader missing key invalidates");
+
+        // (1) Чтения ничего не пишут: словари совпадают со снимком ДО.
+        // У GS::HashTable нет operator==, поэтому сравнение идёт перебором пар
+        // (размер + наличие каждой пары) — это и есть наблюдаемое состояние.
+        DBtest (f.context.read.GetSize (), 1, "reader did not add read entries");
+        DBtest (f.context.composite.GetSize (), compositeBefore.GetSize (), "reader composite size unchanged");
+        DBtest (f.context.listData.GetSize (), listDataBefore.GetSize (), "reader listdata size unchanged");
+        DBtest (f.context.composite.GetSize (), 0, "reader did not populate composite");
+        DBtest (f.context.listData.GetSize (), 0, "reader did not populate listdata");
+        {
+            bool same = true;
+            for (ParamDictValue::PairIterator it = readBefore.EnumeratePairs (); it != NULL; ++it) {
+    #ifdef ServerMainVers_2800
+                const ParamValue &before = it->value;
+    #else
+                const ParamValue &before = *it->value;
+    #endif
+                // У ParamValueData нет operator==, а ключ итератора в pre-AC28 -
+                // указатель, поэтому сверяются наблюдаемые поля поимённо.
+    #ifdef ServerMainVers_2800
+                const GS::UniString key = it->key;
+    #else
+                const GS::UniString key = *it->key;
+    #endif
+                const ParamValue *now = f.context.read.Get (f.first).GetPtr (key);
+                if (now == nullptr || now->val.type != before.val.type ||
+                    now->val.uniStringValue != before.val.uniStringValue || now->val.intValue != before.val.intValue ||
+                    now->val.doubleValue != before.val.doubleValue || now->val.hasFormula != before.val.hasFormula) {
+                    same = false;
+                }
+            }
+            DBtest (same, true, "reader left every read value unchanged");
+        }
+        // Повторное чтение даёт тот же результат (нет скрытого кэша с побочным эффектом).
+        ParamValue again;
+        DBtest (reader.Read (f.first, f.text, again, -1), "reader repeat reads");
+        DBtest (again.val.uniStringValue, GS::UniString ("Alpha"), "reader repeat same value");
+
+        DBprnt ("SpecRegression value reader", "end");
+    }
+
     void TestSpecValueEdges () {
         DBprnt ("SpecRegression values", "start");
         SpecFixture f;
         f.Text (f.first, f.text, "Alpha");
         ParamValue result;
-        DBtest (Spec::GetParamValue (f.first, f.text, f.context, result, true, -1),
+        DBtest (Spec::SpecValueReader (f.context).Read (f.first, f.text, result, -1),
                 "Spec ordinary ignores material argument and layer");
         DBtest (result.val.uniStringValue, GS::UniString ("Alpha"), "Spec ordinary original value");
         f.context.read.Get (f.first).Get (f.text).fromMaterial = true;
@@ -1215,7 +1308,7 @@ namespace TestFunc {
         const double integers[] = {0, -2, 0, 0, 2147483647.0, -2147483648.0};
         for (Int32 i = 0; i < 6; ++i) {
             const GS::UniString label = GS::UniString::Printf ("Spec material edge %d", i);
-            DBtest (Spec::GetParamValue (f.first, f.text, f.context, result, false, i), label);
+            DBtest (Spec::SpecValueReader (f.context).Read (f.first, f.text, result, i), label);
             DBtest (result.isValid, label + " valid");
             DBtest (result.val.uniStringValue, GS::UniString (texts[i]), label + " text");
             DBtest (result.val.doubleValue, numbers[i], label + " real");
@@ -1224,7 +1317,7 @@ namespace TestFunc {
             DBtest (result.val.boolValue, i != 0 && i != 2, label + " bool");
             DBtest (result.val.canCalculate, i != 2 && i != 3, label + " calculable");
         }
-        DBtest (Spec::GetParamValue (f.first, f.text, f.context, result, false, 100),
+        DBtest (Spec::SpecValueReader (f.context).Read (f.first, f.text, result, 100),
                 "Spec past end after numeric result");
         DBtest (result.val.doubleValue == 0 && result.val.rawDoubleValue == 0 && result.val.intValue == 0 &&
                     !result.val.boolValue && !result.val.canCalculate && result.val.uniStringValue.IsEmpty (),
@@ -2279,6 +2372,7 @@ namespace TestFunc {
     void TestSpecRegression () {
         DBprnt ("SpecRegression", "start");
         TestSpecGetParamValue ();
+        TestSpecValueReader ();
         TestSpecValueEdges ();
         TestSpecReadPlan ();
         TestSpecRuleDependencies ();
