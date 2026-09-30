@@ -7,6 +7,7 @@
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "spec/Spec.hpp"
+    #include "spec/SpecPlanning.hpp"
     #include "Sync.hpp"
     #include "tests/TestFunc.hpp"
     #include "tests/TestKit.hpp"
@@ -1214,6 +1215,190 @@ namespace TestFunc {
     // Сверка сравнивается с расчётом: delete_old = true у PlanRuleRows не
     // меняет ничего (сверка живёт в GetElementsForRule), а delete_old = false
     // у GetElementsForRule означает «не идти в сверку вообще».
+    // R6.2: вклад источника (RuleContribution) проверяется БЕЗ словаря
+    // элементов и без запуска GetElementsForRule — ровно то разделение, которое
+    // шаг и вводил. Вклад описывает, что вносит ОДИН источник; раскладка в
+    // агрегат — это R6.3 и здесь не проверяется.
+    void TestSpecContribution () {
+        // --- полный вклад: все слоты прочитаны ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 7);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            const Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            DBtest (c.isIncluded, true, "R6.2 full contribution included");
+            DBtest (c.status, Spec::ContributionStatus::Partial, "R6.2 phase 1 stops before outputs");
+            DBtest (c.source == f.first, true, "R6.2 contribution carries source");
+            DBtest (c.groupIndex, 0u, "R6.2 contribution carries group index");
+            DBtest (c.hasKey, true, "R6.2 key assembled");
+            DBtest (c.key, GS::UniString ("@A"), "R6.2 key value");
+            DBtest (c.outSumParam.GetSize (), 1, "R6.2 sum slot read in phase 1");
+            DBtest (c.outSumParam[0].val.intValue, 7, "R6.2 sum slot value");
+            DBtest (c.outParam.GetSize (), 0, "R6.2 outputs not read in phase 1");
+            DBtest (c.outputsRead, false, "R6.2 phase 2 flag unset");
+            DBtest (c.missingUnic.IsEmpty (), true, "R6.2 nothing missing");
+            DBtest (c.missingSum.IsEmpty (), true, "R6.2 nothing missing in sum");
+            DBtest (c.missingOut.IsEmpty (), true, "R6.2 nothing missing in out");
+            // Фаза 2: выходные слоты появляются только здесь.
+            Spec::RuleContribution full = c;
+            Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, full);
+            DBtest (full.outputsRead, true, "R6.2 phase 2 flag set");
+            DBtest (full.outParam.GetSize (), 1, "R6.2 out slot read in phase 2");
+            DBtest (full.outParam[0].val.uniStringValue, GS::UniString ("Alpha"), "R6.2 out slot value");
+            DBtest (full.keyOut, GS::UniString ("@Alpha"), "R6.2 out key value");
+            DBtest (full.isComplete, true, "R6.2 complete when all slots read");
+            DBtest (Spec::ClassifyContribution (full, 1, 1),
+                    Spec::ContributionStatus::Complete,
+                    "R6.2 classified complete");
+        }
+
+        // --- сумма-константа "1": слот есть, чтения не было ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.rule.groups[0].sum_paramrawname[0] = "1";
+            f.rule.out_sum_paramrawname[0] = "1";
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            DBtest (binding.sumSlots[0].isSumLiteral, true, "R6.2 literal slot recognised");
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            DBtest (c.outSumParam.GetSize (), 1, "R6.2 literal produces a slot");
+            DBtest (c.outSumParam[0].val.intValue, 1, "R6.2 literal value is one");
+            DBtest (c.missingSum.IsEmpty (), true, "R6.2 literal is not a missing field");
+        }
+
+        // --- выключенный флаг: вклад создан, но НЕ включён ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 3);
+            f.rule.groups[0].flag_paramrawname = f.flag;
+            ParamValue off = {};
+            // rawName задаётся ДО конвертера: Convert* заполняет его только
+            // если он пуст, поэтому так остаётся ключ f.flag, под которым поле
+            // и лежит в словаре. Иначе Read искал бы несуществующий {@gdl:...}.
+            off.rawName = f.flag;
+            ParamHelpers::ConvertBoolToParamValue (off, f.flag, false);
+            f.context.read.Get (f.first).Put (f.flag, off);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            const Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            DBtest (c.isIncluded, false, "R6.2 disabled flag excludes contribution");
+            DBtest (c.status, Spec::ContributionStatus::Excluded, "R6.2 disabled flag status");
+            DBtest (c.outSumParam.GetSize (), 0, "R6.2 excluded reads no slots");
+            DBtest (
+                Spec::ClassifyContribution (c, 1, 1), Spec::ContributionStatus::Excluded, "R6.2 excluded classified");
+        }
+
+        // --- непрочитанный уникальный параметр: вклад исключён, поле помечено ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 3);
+            f.context.read.Get (f.first).Delete (f.key);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            const Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            DBtest (c.status, Spec::ContributionStatus::Excluded, "R6.2 missing unic excludes");
+            DBtest (c.missingUnic.GetSize (), 1, "R6.2 missing unic recorded");
+            DBtest (c.missingUnic[0].rawname, f.key, "R6.2 missing unic name");
+            DBtest (c.missingUnic[0].isError, true, "R6.2 missing unic is an error");
+            DBtest (c.hasReadError, true, "R6.2 read error flagged");
+            // Ключ склеивается ДАЖЕ при отказе — пустое значение плюс ATSIGN.
+            DBtest (c.key, GS::UniString ("@"), "R6.2 key still gets sign on failure");
+            DBtest (c.hasKey, false, "R6.2 key marked unusable");
+        }
+
+        // --- fromMaterial снимает ошибку у непрочитанного поля ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 3);
+            f.rule.groups[0].fromMaterial = true;
+            f.context.read.Get (f.first).Delete (f.key);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            const Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            DBtest (c.missingUnic.GetSize (), 1, "R6.2 fromMaterial still records field");
+            DBtest (c.missingUnic[0].isError, false, "R6.2 fromMaterial clears error flag");
+            DBtest (c.hasReadError, false, "R6.2 fromMaterial clears read error");
+        }
+
+        // --- неполный выход: вклад частичный, isError хранится ПО ПОЛЮ ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 3);
+            f.context.read.Get (f.first).Delete (f.text);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c);
+            DBtest (c.outParam.GetSize (), 0, "R6.2 missing out yields no slot");
+            DBtest (c.missingOut.GetSize (), 1, "R6.2 missing out recorded");
+            DBtest (c.missingOut[0].rawname, f.text, "R6.2 missing out name");
+            DBtest (c.missingOut[0].isError, true, "R6.2 missing out is an error");
+            DBtest (c.isComplete, false, "R6.2 partial contribution incomplete");
+            DBtest (Spec::ClassifyContribution (c, 1, 1), Spec::ContributionStatus::Partial, "R6.2 partial classified");
+            DBtest (c.keyOut, GS::UniString (EMPTYSTRING), "R6.2 empty out key on failure");
+        }
+
+        // --- схема шире фактического числа слотов: тоже частичный ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 3);
+            Spec::RuleContribution c = {};
+            c.isIncluded = true;
+            c.outputsRead = true;
+            c.outSumParam.Push (ParamValue ());
+            c.outParam.Push (ParamValue ());
+            DBtest (
+                Spec::ClassifyContribution (c, 2, 2), Spec::ContributionStatus::Partial, "R6.2 short slots vs schema");
+            DBtest (
+                Spec::ClassifyContribution (c, 1, 1), Spec::ContributionStatus::Complete, "R6.2 exact slots complete");
+        }
+
+        // --- два вклада одного ключа строятся независимо друг от друга ---
+        // Основа для R6.3: раскладка в агрегат не должна зависеть от того,
+        // в каком порядке вклады дошли до словаря.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Source (f.second, "A", "Alpha", 3);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            const Spec::RuleContribution c1 =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            const Spec::RuleContribution c2 =
+                Spec::BuildContribution (f.second, 0, f.rule.groups[0], binding, reader, none1, none2);
+            DBtest (c1.key, c2.key, "R6.2 same key from both sources");
+            DBtest (c1.source == f.first, true, "R6.2 first contribution source");
+            DBtest (c2.source == f.second, true, "R6.2 second contribution source");
+            DBtest (c1.outSumParam[0].val.intValue, 2, "R6.2 first contribution sum");
+            DBtest (c2.outSumParam[0].val.intValue, 3, "R6.2 second contribution sum");
+        }
+    }
+
     void TestSpecPlanning () {
         // --- расчёт единственного источника ---
         {

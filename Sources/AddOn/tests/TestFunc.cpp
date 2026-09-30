@@ -47,6 +47,7 @@ namespace TestFunc {
         TestKit::Register ("TestSpecValueReader", Groups::Spec, TestSpecValueReader);
         TestKit::Register ("TestSpecReadBoundary", Groups::Spec, TestSpecReadBoundary);
         TestKit::Register ("TestSpecPlanning", Groups::Spec, TestSpecPlanning);
+        TestKit::Register ("TestSpecContribution", Groups::Spec, TestSpecContribution);
         TestKit::Register ("TestSpecValueEdges", Groups::Spec, TestSpecValueEdges);
         TestKit::Register ("TestSpecOutSlots", Groups::Spec, TestSpecOutSlots);
         TestKit::Register ("TestSpecSlotBindings", Groups::Spec, TestSpecSlotBindings);

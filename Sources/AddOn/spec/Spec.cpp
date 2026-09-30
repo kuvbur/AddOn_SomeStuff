@@ -4,7 +4,8 @@
 #include "api_headers/APIEnvir.h"
 
 #include "spec/Spec.hpp"
-
+// R6.2: вклад источника (RuleContribution) — отдельный внутренний модуль.
+#include "spec/SpecPlanning.hpp"
 #include "Sync.hpp"
 #ifdef TESTING
     #include "tests/TestFunc.hpp"
@@ -1758,65 +1759,45 @@ namespace Spec {
             for (UInt32 group_index = 0; group_index < rule.groups.GetSize (); group_index++) {
                 const GroupSpec &group = rule.groups[group_index];
                 const GroupSlotBinding &binding = slot_bindings[group_index];
-                Element element = {};
-                GS::UniString key;
                 if (!group.is_Valid)
                     continue;
-                // Проверяем значение флага, если он не найден - всё равно добавляем
-                bool flag = true;
-                if (!group.flag_paramrawname.IsEmpty ()) {
-                    ParamValue pvalue = {};
-                    if (reader.Read (elemguid, group.flag_paramrawname, pvalue, group.n_layer)) {
-                        flag = pvalue.val.boolValue;
-                    }
-                }
-                if (!flag) {
-                    continue;
-                }
-                bool hasunic = true;
-                // Принадлежность субэлемента к группе определим по ключу - сцепке значений уникальных параметров
-                for (const GS::UniString &rawname : group.unic_paramrawname) {
-                    ParamValue pvalue = {};
-                    if (!reader.Read (elemguid, rawname, pvalue, group.n_layer)) {
-                        hasunic = false;
-                        bool is_error = !group.fromMaterial;
-                        if (pvalue.fromGDLArray)
-                            is_error = pvalue.val.array_row_start == 1;
-                        if (is_error && rule.stop_on_error && !not_found_unic.ContainsKey (rawname)) {
-                            if (!error_element.ContainsKey (elemguid))
-                                error_element.Add (elemguid, true);
-                            msg_rep ("Spec", "Unic parameter not valid: " + rawname, APIERR_GENERAL, elemguid);
-                            not_found_unic.Add (rawname, true);
-                        }
-                    }
-                    GS::UniString val = pvalue.val.uniStringValue;
-                    val.ReplaceAll ("  ", SPACESTRING);
-                    val.Trim ();
-                    key = key + ATSIGN + val;
-                }
-                if (!hasunic) {
-                    continue;
-                }
-                for (const SlotBinding &slot : binding.sumSlots) {
-                    const GS::UniString &rawname = *slot.rawname;
-                    ParamValue pvalue = {};
-                    if (slot.isSumLiteral) {
-                        ParamHelpers::ConvertIntToParamValue (pvalue, rawname, 1);
-                        element.out_sum_param.Push (pvalue);
-                    } else {
-                        if (reader.Read (elemguid, rawname, pvalue, group.n_layer)) {
-                            element.out_sum_param.Push (pvalue);
-                        } else {
-                            bool is_error = !group.fromMaterial;
-                            if (pvalue.fromGDLArray)
-                                is_error = pvalue.val.array_row_start == 1;
-                            if (is_error && rule.stop_on_error && !not_found_paramname.ContainsKey ("sum:" + rawname)) {
+                // R6.2: вклад одного источника (новый внутренний модуль
+                // SpecPlanning). Фаза 1 — флаг, уникальные параметры, ключ и
+                // суммируемые слоты; фаза 2 (выходные слоты) вызывается ниже,
+                // только для первого представителя ключа. Число и порядок
+                // чтений не изменились: флаг -> уникальные -> суммы -> выход.
+                const RuleContribution contribution = BuildContribution (
+                    elemguid, group_index, group, binding, reader, not_found_paramname, not_found_unic);
+                GS::UniString key = contribution.key;
+                Element element = {};
+                // Политика отказов осталась здесь, снаружи вклада: вклад лишь
+                // сообщает, ЧТО не прочитано, а решение (писать ли отчёт, вести
+                // ли счётчик, останавливать ли правило) — по-прежнему здесь.
+                if (contribution.status == ContributionStatus::Excluded) {
+                    if (!contribution.missingUnic.IsEmpty ()) {
+                        for (const Spec::MissingField &field : contribution.missingUnic) {
+                            if (field.isError && rule.stop_on_error && !not_found_unic.ContainsKey (field.rawname)) {
                                 if (!error_element.ContainsKey (elemguid))
                                     error_element.Add (elemguid, true);
-                                msg_rep ("Spec", "Sum parameter not valid: " + rawname, APIERR_GENERAL, elemguid);
-                                not_found_paramname.Add ("sum:" + rawname, false);
+                                msg_rep (
+                                    "Spec", "Unic parameter not valid: " + field.rawname, APIERR_GENERAL, elemguid);
+                                not_found_unic.Add (field.rawname, true);
                             }
                         }
+                    }
+                    continue;
+                }
+                element.out_sum_param = contribution.outSumParam;
+                // Отчёт по непрочитанным полям суммы. Раньше он стоял в ветке
+                // отказа чтения суммы; теперь чтение живёт во вкладе, а решение
+                // (писать ли отчёт, вести ли счётчик) осталось здесь.
+                for (const Spec::MissingField &field : contribution.missingSum) {
+                    if (field.isError && rule.stop_on_error &&
+                        !not_found_paramname.ContainsKey ("sum:" + field.rawname)) {
+                        if (!error_element.ContainsKey (elemguid))
+                            error_element.Add (elemguid, true);
+                        msg_rep ("Spec", "Sum parameter not valid: " + field.rawname, APIERR_GENERAL, elemguid);
+                        not_found_paramname.Add ("sum:" + field.rawname, false);
                     }
                 }
                 if (elements.ContainsKey (key)) {
@@ -1832,22 +1813,18 @@ namespace Spec {
                                 exsists_element.out_sum_param[j].val + element.out_sum_param[j].val;
                     }
                 } else {
-                    GS::UniString key_out;
-                    for (const SlotBinding &slot : binding.outSlots) {
-                        const GS::UniString &rawname = *slot.rawname;
-                        ParamValue pvalue = {};
-                        if (reader.Read (elemguid, rawname, pvalue, group.n_layer)) {
-                            element.out_param.Push (pvalue);
-                            key_out = key_out + ATSIGN + ParamHelpers::ToString (pvalue, fstr);
-                        } else {
-                            bool is_error = !group.fromMaterial;
-                            if (pvalue.fromGDLArray)
-                                is_error = pvalue.val.array_row_start == 1;
-                            if (!not_found_paramname.ContainsKey (rawname) && rule.stop_on_error && is_error) {
-                                if (!error_element.ContainsKey (elemguid))
-                                    error_element.Add (elemguid, true);
-                                not_found_paramname.Add ("out:" + rawname, false);
-                            }
+                    // R6.2 фаза 2: выходные слоты — только здесь, то есть
+                    // только для первого представителя ключа. Ветка с
+                    // существующим ключом выше этого места не доходит.
+                    RuleContribution firstContribution = contribution;
+                    ReadContributionOutputs (elemguid, group, binding, reader, fstr, firstContribution);
+                    GS::UniString key_out = firstContribution.keyOut;
+                    element.out_param = firstContribution.outParam;
+                    for (const Spec::MissingField &field : firstContribution.missingOut) {
+                        if (!not_found_paramname.ContainsKey (field.rawname) && rule.stop_on_error && field.isError) {
+                            if (!error_element.ContainsKey (elemguid))
+                                error_element.Add (elemguid, true);
+                            not_found_paramname.Add ("out:" + field.rawname, false);
                         }
                     }
                     if (!out_param.ContainsKey (key_out))
