@@ -1,5 +1,7 @@
 //------------ kuvbur 2022 ------------
 #ifdef TESTING
+    #include <cstdlib> // std::getenv для отбора наборов (SMSTF_TEST)
+
     #include "ACAPinc.h"
 
     #include "api_headers/APIEnvir.h"
@@ -13,78 +15,145 @@
     #include "Roombook.hpp"
     #include "spec/Spec.hpp"
     #include "Sync.hpp"
+    #include "TestKit.hpp"
 
 namespace TestFunc {
 
-    void TestStringSplt (); // forward declaration
-    void TestSpecRegression ();
+    // Forward declarations: Test() registers the suites before their
+    // definitions appear later in the file.
+    void TestAddProperty ();
+    void TestBuildOtdByParent ();
+    void TestCalc ();
+    void TestCheckIgnoreVal ();
+    void TestConvertAttributeToParamValue ();
+    void TestConvertPropertyToParamValue ();
+    void TestConvertToParamValue ();
+    void TestDescToRulesSubGuid ();
+    void TestFormatString ();
+    void TestFormula ();
+    void TestGetPropertyRuleFlag ();
+    void TestName2Rawname ();
+    void TestName2RawnameWithBrackets ();
+    void TestParsePrefixes ();
+    void TestParsePropertyDescription ();
+    void TestParsePropertyDescriptionToRules ();
+    void TestParseSyncStringIndependent ();
+    void TestPropertyHelpersToString ();
+    void TestReadProperty ();
+    void TestRenumPosLogic ();
+    void TestSetParamValueSourseByName ();
+    void TestSetrawNameFromProperty ();
+    void TestSpecAddRule ();
+    void TestSpecExpandGroup ();
+    void TestSpecFavoriteResolution ();
+    void TestSpecGetParamValue ();
+    void TestSpecGrouping ();
+    void TestSpecGroups ();
+    void TestSpecMergeAndKey ();
+    void TestSpecNormalize ();
+    void TestSpecOutSlots ();
+    void TestSpecOutputSchema ();
+    void TestSpecParseError ();
+    void TestSpecParser ();
+    void TestSpecPolicy ();
+    void TestSpecReadPlan ();
+    void TestSpecReconcile ();
+    void TestSpecRuleDedup ();
+    void TestSpecRuleDependencies ();
+    void TestSpecSizes ();
+    void TestSpecSlotBindings ();
+    void TestSpecValueEdges ();
+    void TestSpecValueReader ();
+    void TestStringSplt ();
+    void TestSyncAddSubelement ();
+    void TestSyncString ();
+    void TestSyncStringRealRules ();
 
-    // Тег функции в квадратных скобках (#230): печать и проверки помечаются именем
-    // функции-владельца, чтобы в панели «Отладка» их можно было отфильтровать:
-    //   ... [TestSpecMergeAndKey] test Spec merge sums add up ok ...
-    // Тег добавляется к СОДЕРЖАТЕЛЬНОМУ тексту (msg у DBprnt, reportString у
-    // DBtest), а не к выводимым значениям, поэтому он печатается в начале строки.
-    // Обёртки объявлены ДО макросов: препроцессор идёт по файлу последовательно,
-    // поэтому вызовы внутри самих обёрток макросами не подменяются.
-    namespace {
-        GS::UniString WithFuncTag (const char *tag, const GS::UniString &text) {
-            return GS::UniString ("[") + tag + GS::UniString ("] ") + text;
-        }
+    // Результат тестов пишется TestKit в файл отчёта (TestKit::Run), который
+    // переживает падение ArchiCAD; в панель «Отладка» строки дублируются
+    // тем же каналом, что и раньше. Прод-DBtest/DBprnt из CommonFunction.hpp
+    // здесь НЕ используются: они объявлены в общем заголовке и вызываются
+    // также из Helpers.cpp/CommonFunction.cpp, где вывод остаётся прежним.
+    // Тег функции-владельца (#230) формирует сам TestKit - см. TestKit::Loc.
 
-        void TaggedPrnt (const char *tag, GS::UniString msg, GS::UniString reportString) {
-            DBprnt (WithFuncTag (tag, msg), reportString);
-        }
-
-        void TaggedTest (const char *tag, bool usl, GS::UniString reportString) {
-            DBtest (usl, WithFuncTag (tag, reportString));
-        }
-
-        void TaggedTest (const char *tag, GS::UniString a, GS::UniString b, GS::UniString reportString) {
-            DBtest (a, b, WithFuncTag (tag, reportString));
-        }
-
-        void TaggedTest (const char *tag, double a, double b, GS::UniString reportString) {
-            DBtest (a, b, WithFuncTag (tag, reportString));
-        }
-    } // namespace
-
-    // Подмена имён: набор перегрузок тот же, первым аргументом добавляется имя
-    // вызывающей функции. Область действия макросов - только этот файл.
-    #define DBprnt(...) TaggedPrnt (__func__, __VA_ARGS__)
-    #define DBtest(...) TaggedTest (__func__, __VA_ARGS__)
+    // Группы наборов: по ним работает отбор SMSTF_TEST (TestKit::Run).
+    namespace Groups {
+        static const char *Spec = "spec";
+        static const char *Sync = "sync";
+        static const char *Param = "param";
+        static const char *Format = "format";
+        static const char *Renum = "renum";
+        static const char *Core = "core";
+    } // namespace Groups
 
     void Test () {
-        DBprnt ("TEST", "start");
-        TestSpecRegression ();
-        TestFormatString ();
-        TestCalc ();
-        TestFormula ();
-        TestConvertToParamValue ();
-        TestConvertAttributeToParamValue ();
-        TestConvertPropertyToParamValue ();
-        TestConvertPropertyDefinitionToParamValue ();
-        TestSetParamValueSourseByName ();
-        TestSetrawNameFromProperty ();
-        TestCheckIgnoreVal ();
-        TestReadProperty ();
-        TestAddProperty ();
-        TestPropertyHelpersToString ();
-        TestStringSplt ();
-        TestName2Rawname (); // Sync.cpp-2 исправлен (порядок скобок { })
-        TestName2RawnameWithBrackets ();
-        TestSyncString ();
-        TestSyncStringRealRules ();
-        TestParsePrefixes ();
-        TestParsePropertyDescription ();
-        TestParseSyncStringIndependent ();
-        TestParsePropertyDescriptionToRules ();
-        TestSyncAddSubelement ();
-        TestBuildOtdByParent ();
-        TestRenumPosLogic ();
-        TestDescToRulesSubGuid ();
-        TestGetPropertyRuleFlag ();
-        TestPropertyRuleFlagOnProjectElements ();
-        DBprnt ("TEST", "end");
+        // Реестр наполняется явно (не статическими инициализаторами): набор
+        // объявляется один раз здесь и вызывается через TestKit::Run, который
+        // печатает BEGIN/END, считает провалы и пишет файл отчёта.
+        // Отбор: переменная окружения SMSTF_TEST — пусто (всё), группа
+        // ("spec", "sync", "param", "format", "renum", "core"), префикс с
+        // звёздочкой ("TestSpec*") или список через запятую.
+        TestKit::Register ("TestSpecGetParamValue", Groups::Spec, TestSpecGetParamValue);
+        TestKit::Register ("TestSpecGrouping", Groups::Spec, TestSpecGrouping);
+        TestKit::Register ("TestSpecReconcile", Groups::Spec, TestSpecReconcile);
+        TestKit::Register ("TestSpecMergeAndKey", Groups::Spec, TestSpecMergeAndKey);
+        TestKit::Register ("TestSpecRuleDedup", Groups::Spec, TestSpecRuleDedup);
+        TestKit::Register ("TestSpecReadPlan", Groups::Spec, TestSpecReadPlan);
+        TestKit::Register ("TestSpecRuleDependencies", Groups::Spec, TestSpecRuleDependencies);
+        TestKit::Register ("TestSpecFavoriteResolution", Groups::Spec, TestSpecFavoriteResolution);
+        TestKit::Register ("TestSpecValueReader", Groups::Spec, TestSpecValueReader);
+        TestKit::Register ("TestSpecValueEdges", Groups::Spec, TestSpecValueEdges);
+        TestKit::Register ("TestSpecOutSlots", Groups::Spec, TestSpecOutSlots);
+        TestKit::Register ("TestSpecSlotBindings", Groups::Spec, TestSpecSlotBindings);
+        TestKit::Register ("TestSpecExpandGroup", Groups::Spec, TestSpecExpandGroup);
+        TestKit::Register ("TestSpecGroups", Groups::Spec, TestSpecGroups);
+        TestKit::Register ("TestSpecOutputSchema", Groups::Spec, TestSpecOutputSchema);
+        TestKit::Register ("TestSpecPolicy", Groups::Spec, TestSpecPolicy);
+        TestKit::Register ("TestSpecNormalize", Groups::Spec, TestSpecNormalize);
+        TestKit::Register ("TestSpecParser", Groups::Spec, TestSpecParser);
+        TestKit::Register ("TestSpecAddRule", Groups::Spec, TestSpecAddRule);
+        TestKit::Register ("TestSpecParseError", Groups::Spec, TestSpecParseError);
+        TestKit::Register ("TestSpecSizes", Groups::Spec, TestSpecSizes);
+
+        TestKit::Register ("TestStringSplt", Groups::Core, TestStringSplt);
+        TestKit::Register ("TestBuildOtdByParent", Groups::Core, TestBuildOtdByParent);
+
+        TestKit::Register ("TestCalc", Groups::Format, TestCalc);
+        TestKit::Register ("TestFormula", Groups::Format, TestFormula);
+        TestKit::Register ("TestFormatString", Groups::Format, TestFormatString);
+
+        TestKit::Register ("TestConvertToParamValue", Groups::Param, TestConvertToParamValue);
+        TestKit::Register ("TestConvertAttributeToParamValue", Groups::Param, TestConvertAttributeToParamValue);
+        TestKit::Register ("TestConvertPropertyToParamValue", Groups::Param, TestConvertPropertyToParamValue);
+        TestKit::Register (
+            "TestConvertPropertyDefinitionToParamValue", Groups::Param, TestConvertPropertyDefinitionToParamValue);
+        TestKit::Register ("TestSetParamValueSourseByName", Groups::Param, TestSetParamValueSourseByName);
+        TestKit::Register ("TestSetrawNameFromProperty", Groups::Param, TestSetrawNameFromProperty);
+        TestKit::Register ("TestCheckIgnoreVal", Groups::Param, TestCheckIgnoreVal);
+        TestKit::Register ("TestReadProperty", Groups::Param, TestReadProperty);
+        TestKit::Register ("TestAddProperty", Groups::Param, TestAddProperty);
+        TestKit::Register ("TestPropertyHelpersToString", Groups::Param, TestPropertyHelpersToString);
+        TestKit::Register ("TestGetPropertyRuleFlag", Groups::Param, TestGetPropertyRuleFlag);
+        TestKit::Register (
+            "TestPropertyRuleFlagOnProjectElements", Groups::Param, TestPropertyRuleFlagOnProjectElements);
+
+        TestKit::Register ("TestName2Rawname", Groups::Sync, TestName2Rawname);
+        TestKit::Register ("TestName2RawnameWithBrackets", Groups::Sync, TestName2RawnameWithBrackets);
+        TestKit::Register ("TestSyncString", Groups::Sync, TestSyncString);
+        TestKit::Register ("TestSyncStringRealRules", Groups::Sync, TestSyncStringRealRules);
+        TestKit::Register ("TestParsePrefixes", Groups::Sync, TestParsePrefixes);
+        TestKit::Register ("TestParsePropertyDescription", Groups::Sync, TestParsePropertyDescription);
+        TestKit::Register ("TestParseSyncStringIndependent", Groups::Sync, TestParseSyncStringIndependent);
+        TestKit::Register ("TestParsePropertyDescriptionToRules", Groups::Sync, TestParsePropertyDescriptionToRules);
+        TestKit::Register ("TestSyncAddSubelement", Groups::Sync, TestSyncAddSubelement);
+        TestKit::Register ("TestDescToRulesSubGuid", Groups::Sync, TestDescToRulesSubGuid);
+
+        TestKit::Register ("TestRenumPosLogic", Groups::Renum, TestRenumPosLogic);
+
+        const char *filter = std::getenv ("SMSTF_TEST");
+        const int failed = TestKit::Run (filter);
+        if (failed > 0)
+            TestKit::Info ("RESULT", GS::UniString::Printf ("%d failed assertions, see report", failed));
     }
 
     void TestSpecGetParamValue () {
@@ -2368,32 +2437,6 @@ namespace TestFunc {
         DBtest (dx == 2 && dy == 19, "Spec size case sensitive B unchanged");
         BMKillHandle (reinterpret_cast<GSHandle *> (&memo.params));
         DBprnt ("SpecRegression sizes", "end");
-    }
-
-    void TestSpecRegression () {
-        DBprnt ("SpecRegression", "start");
-        TestSpecGetParamValue ();
-        TestSpecValueReader ();
-        TestSpecValueEdges ();
-        TestSpecReadPlan ();
-        TestSpecRuleDependencies ();
-        TestSpecFavoriteResolution ();
-        TestSpecGrouping ();
-        TestSpecReconcile ();
-        TestSpecMergeAndKey ();
-        TestSpecRuleDedup ();
-        TestSpecOutSlots ();
-        TestSpecSlotBindings ();
-        TestSpecExpandGroup ();
-        TestSpecGroups ();
-        TestSpecOutputSchema ();
-        TestSpecPolicy ();
-        TestSpecNormalize ();
-        TestSpecParser ();
-        TestSpecAddRule ();
-        TestSpecParseError ();
-        TestSpecSizes ();
-        DBprnt ("SpecRegression", "end");
     }
 
     void TestStringSplt () {
