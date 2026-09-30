@@ -890,8 +890,7 @@ C=2/M=12/D=2), поэтому нужен отдельный сценарий с�
 выражений) остались с R5.3 — их устранение относится к отдельной задаче, потому
 что `Helpers.cpp` под замком (#228).
 ### Last Checkpoint
-R5.4 — коммит этого шага (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
-Refs: #228).
+R5.4 — `97ddb7c` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md, Refs: #228).
 Предыдущий: R5.3 — `3d67b48` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
 Refs: #228).
 Предыдущий: R5.2 — `a1d59ea` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
