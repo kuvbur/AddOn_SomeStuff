@@ -22,6 +22,7 @@
 
 
 | 9 | `Propertycache.cpp:11` (GetPropertyRuleFlag, #158) | Комментарий: «Парсит описание только при промахе кэша» — подразумевает использование в проде | clangd callHierarchy: все входящие вызовы — только TestFunc (TestGetPropertyRuleFlag ×16, TestPropertyRuleFlagOnProjectElements ×2); в проде функция не вызывается (AC25, compile_commands) | Возможная мёртвая функция в проде — проверить отдельно, не исправлять |
+| 10 | `tests/TestParam.cpp:782,798,807,856,873,914,926` и `tests/TestFormat.cpp:16` — clangd: 8 ошибок | `ovl_ambiguous_oper_binary` на `params = {};` (7 шт., `GS::Array<API_Property[Definition]>`) и `-Wunused-variable` на `bool usl` в `TestCalc` | **Артефакт clangd, не дефект**: MSVC собирает без ошибок, проверено на AC25-AC29. Все 7 `params = {};` были в исходном `TestFunc.cpp` (строки 3561, 3573, 3585, 3635, 3648, 3688, 3704), `usl` неиспользуемым был тоже (TestFunc.cpp:2486) — разбиение на TU ничего не внесло. По репозиторию `= {};` встречается 611 раз, в т.ч. в проде | Не чинить: MSVC — арбитр, стиль `= {};` в проекте общепринят |
 
 ## Итог
 - Активных расхождений «комментарий ≠ код» с последствиями не найдено; #1 — косметическое.
