@@ -854,8 +854,7 @@ cache/helpers: отсутствие записи в модель ещё не д�
 
 
 ### Last Checkpoint
-R5.2 — коммит этого шага (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
-Refs: #228).
+R5.2 — `a1d59ea` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md, Refs: #228).
 Предыдущий: R5.1 — `e4c6dee` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
 Refs: #228).
 Предыдущий: R4.6 — `e87736d` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md).
