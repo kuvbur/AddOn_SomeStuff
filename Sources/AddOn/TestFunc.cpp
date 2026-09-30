@@ -963,6 +963,238 @@ namespace TestFunc {
         DBprnt ("SpecRegression rule dependencies", "end");
     }
 
+    // R5.2: разрешение избранного, служебных полей и старых объектов. Четыре
+    // вынесенные операции проверяются раздельно; MatchDestinationProperties,
+    // SelectExistingElements и AddExistingReadRequests чисты, а
+    // ResolveFavoriteLinks упирается в ambient-кэш свойств, поэтому для него
+    // закреплён именно ПРОМАХ чтения: неудачное чтение не кэшируется и не
+    // подменяет поля правила (R5.2 запрещает новую политику кэша без F).
+    void TestSpecFavoriteResolution () {
+        DBprnt ("SpecRegression favorite resolution", "start");
+
+        const GS::UniString OutName ("{@property:spec-out}"), SumName ("{@property:spec-sum}");
+
+        // MatchDestinationProperties: все имена найдены - признак остаётся.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push (OutName);
+            rule.out_sum_paramrawname.Push (SumName);
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            favorite.Add (OutName, EMPTYSTRING);
+            favorite.Add (SumName, EMPTYSTRING);
+            ParamDict errors;
+            DBtest (Spec::MatchDestinationProperties (rule, favorite, errors), true, "favorite complete ready");
+            DBtest (rule.destinationReady, true, "favorite complete flag kept");
+            DBtest (errors.IsEmpty (), true, "favorite complete no errors");
+        }
+
+        // Отсутствие выходного имени снимает готовность и копит имя в error_name.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push (OutName);
+            rule.out_sum_paramrawname.Push (SumName);
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            favorite.Add (OutName, EMPTYSTRING);
+            ParamDict errors;
+            DBtest (Spec::MatchDestinationProperties (rule, favorite, errors), false, "missing sum not ready");
+            DBtest (rule.destinationReady, false, "missing sum clears flag");
+            DBtest (errors.GetSize (), 1, "missing sum recorded once");
+            DBtest (errors.ContainsKey (SumName), true, "missing sum name recorded");
+            DBtest (errors.ContainsKey (OutName), false, "present name not recorded");
+        }
+
+        // Отсутствие суммы - тот же исход. Проверяется отдельно, потому что
+        // сверка идёт двумя проходами, и ошибка в первом не отменяет второй.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push (OutName);
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            ParamDict errors;
+            DBtest (Spec::MatchDestinationProperties (rule, favorite, errors), false, "no favorite names not ready");
+            DBtest (errors.GetSize (), 1, "only out name recorded");
+            DBtest (errors.ContainsKey (OutName), true, "out name recorded");
+        }
+
+        // Повторный проход по тому же правилу не дублирует запись в error_name.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push (OutName);
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            ParamDict errors;
+            Spec::MatchDestinationProperties (rule, favorite, errors);
+            Spec::MatchDestinationProperties (rule, favorite, errors);
+            DBtest (errors.GetSize (), 1, "repeat pass does not duplicate error");
+        }
+
+        // SelectExistingElements: пустое выделение означает "взять все".
+        {
+            Spec::SpecRule rule;
+            GS::Array<API_Guid> found;
+            found.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
+            found.Push (APIGuidFromString ("{22222222-2222-2222-2222-222222222222}"));
+            UnicGuid selected;
+            Spec::SelectExistingElements (rule, found, selected);
+            DBtest (rule.exsist_elements.GetSize (), 2, "empty selection takes all");
+        }
+
+        // Непустое выделение фильтрует по составу.
+        {
+            Spec::SpecRule rule;
+            GS::Array<API_Guid> found;
+            const API_Guid keep = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
+            found.Push (keep);
+            found.Push (APIGuidFromString ("{22222222-2222-2222-2222-222222222222}"));
+            UnicGuid selected;
+            selected.Add (keep, true);
+            Spec::SelectExistingElements (rule, found, selected);
+            DBtest (rule.exsist_elements.GetSize (), 1, "selection filters found");
+            DBtest (!rule.exsist_elements.IsEmpty () && rule.exsist_elements[0] == keep, "selection keeps chosen");
+        }
+
+        // Непустое выделение ДОПИСЫВАЕТ элементы, а не заменяет прежнее
+        // содержимое поля: это прежнее поведение (Push), и оно безопасно только
+        // тем, что словарь правил создаётся заново на каждый запуск.
+        {
+            Spec::SpecRule rule;
+            const API_Guid before = APIGuidFromString ("{33333333-3333-3333-3333-333333333333}");
+            rule.exsist_elements.Push (before);
+            GS::Array<API_Guid> found;
+            const API_Guid keep = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
+            found.Push (keep);
+            UnicGuid selected;
+            selected.Add (keep, true);
+            Spec::SelectExistingElements (rule, found, selected);
+            DBtest (rule.exsist_elements.GetSize (), 2, "selection appends to existing");
+        }
+
+        // Пустое выделение ПРИСВАИВАЕТ найденное, заменяя прежнее содержимое -
+        // асимметрия с предыдущим случаем задана кодом и закреплена здесь.
+        {
+            Spec::SpecRule rule;
+            const API_Guid before = APIGuidFromString ("{33333333-3333-3333-3333-333333333333}");
+            rule.exsist_elements.Push (before);
+            GS::Array<API_Guid> found;
+            found.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
+            UnicGuid selected;
+            Spec::SelectExistingElements (rule, found, selected);
+            DBtest (rule.exsist_elements.GetSize (), 1, "empty selection replaces existing");
+        }
+
+        // Несовпадение выделения с найденным даёт пустой результат.
+        {
+            Spec::SpecRule rule;
+            GS::Array<API_Guid> found;
+            found.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
+            UnicGuid selected;
+            selected.Add (APIGuidFromString ("{99999999-9999-9999-9999-999999999999}"), true);
+            Spec::SelectExistingElements (rule, found, selected);
+            DBtest (rule.exsist_elements.IsEmpty (), true, "selection misses all found");
+        }
+
+        // AddExistingReadRequests: запрашиваются выход, суммы и носитель GUID.
+        // Имена уходят в НИЖНЕМ регистре (NameToRawName), поэтому сверять их с
+        // out_paramrawname напрямую нельзя.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push (OutName);
+            rule.out_sum_paramrawname.Push (SumName);
+            rule.destinationParamGuidName = "{@property:Spec-Guid}";
+            const API_Guid elem = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
+            GS::Array<API_Guid> elements;
+            elements.Push (elem);
+            ParamDictElement read;
+            Spec::AddExistingReadRequests (rule, elements, read);
+            const ParamDictValue *params = read.GetPtr (elem);
+            DBtest (params != nullptr, true, "existing request element added");
+            if (params != nullptr) {
+                DBtest (params->GetSize (), 3, "existing request name count");
+                DBtest (params->ContainsKey ("{@property:spec-out}"), true, "existing request out");
+                DBtest (params->ContainsKey ("{@property:spec-sum}"), true, "existing request sum");
+                DBtest (params->ContainsKey ("{@property:spec-guid}"), true, "existing request guid");
+            }
+        }
+
+        // Повторный вызов на том же элементе не меняет набор имён.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push (OutName);
+            rule.out_sum_paramrawname.Push (SumName);
+            rule.destinationParamGuidName = "{@property:Spec-Guid}";
+            const API_Guid elem = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
+            GS::Array<API_Guid> elements;
+            elements.Push (elem);
+            ParamDictElement read;
+            Spec::AddExistingReadRequests (rule, elements, read);
+            Spec::AddExistingReadRequests (rule, elements, read);
+            const ParamDictValue *params = read.GetPtr (elem);
+            DBtest (params != nullptr && params->GetSize () == 3, "repeated request is idempotent");
+        }
+
+        // Пустой носитель GUID не добавляет имени (AddValueToParamDictValue
+        // игнорирует пустое имя) - правило без delete_old сюда не дойдёт,
+        // но контракт разворачивания закреплён.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push (OutName);
+            const API_Guid elem = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
+            GS::Array<API_Guid> elements;
+            elements.Push (elem);
+            ParamDictElement read;
+            Spec::AddExistingReadRequests (rule, elements, read);
+            const ParamDictValue *params = read.GetPtr (elem);
+            DBtest (params != nullptr && params->GetSize () == 1, "empty guid name not added");
+        }
+
+        // ResolveFavoriteLinks: чтение из кэша свойств на синтетическом имени
+        // промахивается, поэтому поля правила НЕ заполняются, а paramToWrite
+        // остаётся пустым. Это и есть требование R5.2: неудачное чтение не
+        // кэшируется и не подменяет результат.
+        {
+            Spec::SpecRule rule;
+            rule.subguid_paramrawname = "fixture-marker";
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            favorite.Add ("{@property:spec-rulename}", "spec_rule_name in name");
+            favorite.Add ("{@property:spec-guid}", "fixture-marker sync_guid link");
+            ParamDictValue write;
+            const bool found = Spec::ResolveFavoriteLinks (rule, favorite, write);
+            DBtest (found, false, "cache miss reports no guid link");
+            DBtest (rule.subguid_rulename.IsEmpty (), true, "cache miss keeps rulename empty");
+            DBtest (rule.destinationParamGuidName.IsEmpty (), true, "cache miss keeps guid name empty");
+            DBtest (write.IsEmpty (), true, "cache miss writes nothing");
+        }
+
+        // Тот же промах при пустом маркере: поиск GUID-свойства не выполняется
+        // вовсе, поэтому признак не может стать истинным никак.
+        {
+            Spec::SpecRule rule;
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            favorite.Add ("{@property:spec-guid}", "sync_guid link without marker");
+            ParamDictValue write;
+            DBtest (Spec::ResolveFavoriteLinks (rule, favorite, write), false, "empty marker finds nothing");
+        }
+
+        // Избранное без служебных описаний не даёт ни одного признака.
+        {
+            Spec::SpecRule rule;
+            rule.subguid_paramrawname = "fixture-marker";
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            favorite.Add ("{@property:spec-out}", "ordinary property");
+            ParamDictValue write;
+            DBtest (Spec::ResolveFavoriteLinks (rule, favorite, write), false, "no marker in descriptions");
+            DBtest (rule.subguid_rulename.IsEmpty (), true, "no rulename without description");
+        }
+
+        // Пустое избранное - тот же нулевой исход, без обращения к кэшу.
+        {
+            Spec::SpecRule rule;
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            ParamDictValue write;
+            DBtest (Spec::ResolveFavoriteLinks (rule, favorite, write), false, "empty favorite finds nothing");
+        }
+
+        DBprnt ("SpecRegression favorite resolution", "end");
+    }
+
     void TestSpecValueEdges () {
         DBprnt ("SpecRegression values", "start");
         SpecFixture f;
@@ -2053,6 +2285,7 @@ namespace TestFunc {
         TestSpecValueEdges ();
         TestSpecReadPlan ();
         TestSpecRuleDependencies ();
+        TestSpecFavoriteResolution ();
         TestSpecGrouping ();
         TestSpecReconcile ();
         TestSpecMergeAndKey ();

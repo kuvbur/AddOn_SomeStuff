@@ -678,77 +678,22 @@ namespace Spec {
             }
             if (pRuleFavorite == nullptr)
                 continue;
-            for (const auto &rawname : rule.out_paramrawname) {
-                if (!pRuleFavorite->ContainsKey (rawname)) {
-                    rule.destinationReady = false;
-                    if (!error_name.ContainsKey (rawname))
-                        error_name.Add (rawname, true);
-                }
-            }
-            for (const auto &rawname : rule.out_sum_paramrawname) {
-                if (!pRuleFavorite->ContainsKey (rawname)) {
-                    rule.destinationReady = false;
-                    if (!error_name.ContainsKey (rawname))
-                        error_name.Add (rawname, true);
-                }
-            }
-            if (!rule.destinationReady)
+            // Сверка выходной схемы с избранным. Признак готовности ставится
+            // функцией, а не вызывающим: иначе проверка «есть ли все имена»
+            // осталась бы размазанной по SpecArray.
+            if (!MatchDestinationProperties (rule, *pRuleFavorite, error_name))
                 continue;
-            bool flag_find = false;
-            GS::HashTable<GS::UniString, GS::UniString> &rule_favorite_name = *pRuleFavorite;
-            for (const auto &cItt : rule_favorite_name) {
-#ifdef ServerMainVers_2800
-                const GS::UniString rawname = cItt.key;
-                const GS::UniString description = cItt.value;
-#else
-                const GS::UniString rawname = *cItt.key;
-                const GS::UniString description = *cItt.value;
-#endif
-                // Ищем у избранного свойство для записи имя правила
-                if (description.Contains ("spec_rule_name")) {
-                    if (!paramToWrite.ContainsKey (rawname)) {
-                        ParamValue chpvalue;
-                        if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) {
-#if defined(TESTING)
-                            DBprnt ("ERROR SpecArray - GetParamValueFromCache spec_rule_name", rawname);
-#endif
-                            continue;
-                        }
-                        paramToWrite.Add (rawname, chpvalue);
-                    }
-                    rule.subguid_rulename = rawname;
-                }
-                // Ищем свойство, в которое нужно будет записать GUID.
-                // Сопоставление идёт по НЕИЗМЕНЯЕМОМУ маркеру subguid_paramrawname
-                // (из описания правила); найденное имя свойства пишется в
-                // destinationParamGuidName - больше маркер не подменяется результатом,
-                // поэтому повторный проход по тому же правилу ищет то же самое.
-                if (!rule.subguid_paramrawname.IsEmpty ()) {
-                    if (description.Contains (rule.subguid_paramrawname.ToLowerCase ()) &&
-                        description.Contains ("sync_guid")) {
-                        if (!paramToWrite.ContainsKey (rawname)) {
-                            ParamValue chpvalue;
-                            if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) {
-#if defined(TESTING)
-                                DBprnt ("ERROR SpecArray - GetParamValueFromCache sync_guid", rawname);
-#endif
-                                continue;
-                            }
-                            paramToWrite.Add (rawname, chpvalue);
-                        }
-                        rule.destinationParamGuidName = rawname;
-                        flag_find = true;
-                    }
-                }
-                if (flag_find && !rule.subguid_rulename.IsEmpty ())
-                    break;
-            }
+            // Поиск у избранного двух служебных свойств: носителя имени правила
+            // и носителя GUID. Прежде это был один проход с двумя проверками и
+            // ранним выходом, когда найдены оба; порядок прохода и момент
+            // чтения из кэша сохранены.
+            const bool guidFound = ResolveFavoriteLinks (rule, *pRuleFavorite, paramToWrite);
             // Поиск существующих объектов
             if (!rule.delete_old)
                 continue;
             if (rule.subguid_rulename.IsEmpty ())
                 continue;
-            if (!flag_find)
+            if (!guidFound)
                 continue;
             ParamValue subguid_pvalue;
             if (!ParamHelpers::GetParamValueFromCache (rule.subguid_rulename, subguid_pvalue)) {
@@ -759,32 +704,11 @@ namespace Spec {
             }
             GS::Array<API_Guid> exsist_elements =
                 GetElementByPropertyDescription (subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase ());
-            if (!selected_elements.IsEmpty ()) {
-                for (const API_Guid &exsist_element : exsist_elements) {
-                    if (!selected_elements.ContainsKey (exsist_element))
-                        continue;
-                    rule.exsist_elements.Push (exsist_element);
-                }
-            } else {
-                rule.exsist_elements = exsist_elements;
-            }
+            SelectExistingElements (rule, exsist_elements, selected_elements);
             if (rule.exsist_elements.IsEmpty ())
                 continue;
             // Собираем список параметрв для чтения у существующих элементов
-            ParamDictValue paramDict = {}; // Словарь параметров для чтения для одного элемента
-            for (const GS::UniString &rawname : rule.out_sum_paramrawname) {
-                if (!paramDict.ContainsKey (rawname))
-                    ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
-            }
-            for (const GS::UniString &rawname : rule.out_paramrawname) {
-                if (!paramDict.ContainsKey (rawname))
-                    ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
-            }
-            ParamHelpers::AddValueToParamDictValue (paramDict, rule.destinationParamGuidName);
-            // Добавляем параметры для каждого элемента
-            for (const API_Guid elemguid : rule.exsist_elements) {
-                ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
-            }
+            AddExistingReadRequests (rule, rule.exsist_elements, paramToRead);
         }
         // Если для размещаемого объекта не удалось найти нужные параметры, дальнейшая работа бессмысленна.
         if (!error_name.IsEmpty ()) {
@@ -1440,6 +1364,143 @@ namespace Spec {
             const GS::UniString rawname = *cItt.key;
 #endif
             ParamHelpers::AddValueToParamDictValue (paramToWrite, rawname);
+        }
+    }
+
+    // --------------------------------------------------------------------
+    // R5.2: разрешение избранного, служебных полей и старых объектов.
+    // Прежде это был один плотный блок внутри SpecArray, где смешаны сверка
+    // выходной схемы с избранным, поиск двух служебных свойств по описанию,
+    // отбор ранее созданных элементов и добавление запросов на их чтение.
+    // Вынесено по одной операции на функцию; МОМЕНТ вызова относительно диалога
+    // НЕ менялся (разрешение осталось до SpecDG) — это требование плана.
+    // Порядок чтений и все ранние выходы сохранены дословно, включая отказ
+    // кэшировать неудачное чтение (см. ResolveFavoriteLinks).
+    // --------------------------------------------------------------------
+
+    // Сверяет выходную схему правила с набором свойств избранного: все имена
+    // должны найтись. Отсутствующие имена копятся в error_name, признак
+    // готовности правила снимается. Возвращает признак готовности.
+    bool MatchDestinationProperties (SpecRule &rule,
+                                     const GS::HashTable<GS::UniString, GS::UniString> &favorite,
+                                     ParamDict &error_name) {
+        for (const auto &rawname : rule.out_paramrawname) {
+            if (!favorite.ContainsKey (rawname)) {
+                rule.destinationReady = false;
+                if (!error_name.ContainsKey (rawname))
+                    error_name.Add (rawname, true);
+            }
+        }
+        for (const auto &rawname : rule.out_sum_paramrawname) {
+            if (!favorite.ContainsKey (rawname)) {
+                rule.destinationReady = false;
+                if (!error_name.ContainsKey (rawname))
+                    error_name.Add (rawname, true);
+            }
+        }
+        return rule.destinationReady;
+    }
+
+    // Ищет у избранного два служебных свойства и пишет их в правило:
+    //   subguid_paramrawname (маркер из описания) -> destinationParamGuidName
+    //       (свойство, найденное по маркеру и слову "sync_guid");
+    //   описание со словом "spec_rule_name"      -> subguid_rulename.
+    // Значения берутся из кэша свойств; при неудаче чтение НЕ кэшируется и
+    // переход к следующему свойству сохраняется — кэшировать неудачу по новой
+    // политике запрещено без F (R5.2 плана). Возвращает признак, что
+    // носитель GUID найден; прежде это был локальный flag_find.
+    bool ResolveFavoriteLinks (SpecRule &rule,
+                               const GS::HashTable<GS::UniString, GS::UniString> &favorite,
+                               ParamDictValue &paramToWrite) {
+        bool guidFound = false;
+        for (const auto &cItt : favorite) {
+#ifdef ServerMainVers_2800
+            const GS::UniString rawname = cItt.key;
+            const GS::UniString description = cItt.value;
+#else
+            const GS::UniString rawname = *cItt.key;
+            const GS::UniString description = *cItt.value;
+#endif
+            // Ищем у избранного свойство для записи имя правила
+            if (description.Contains ("spec_rule_name")) {
+                if (!paramToWrite.ContainsKey (rawname)) {
+                    ParamValue chpvalue;
+                    if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) {
+#if defined(TESTING)
+                        DBprnt ("ERROR SpecArray - GetParamValueFromCache spec_rule_name", rawname);
+#endif
+                        continue;
+                    }
+                    paramToWrite.Add (rawname, chpvalue);
+                }
+                rule.subguid_rulename = rawname;
+            }
+            // Сопоставление идёт по НЕИЗМЕНЯЕМОМУ маркеру subguid_paramrawname
+            // (из описания правила); найденное имя свойства пишется в
+            // destinationParamGuidName - больше маркер не подменяется результатом,
+            // поэтому повторный проход по тому же правилу ищет то же самое.
+            if (!rule.subguid_paramrawname.IsEmpty ()) {
+                if (description.Contains (rule.subguid_paramrawname.ToLowerCase ()) &&
+                    description.Contains ("sync_guid")) {
+                    if (!paramToWrite.ContainsKey (rawname)) {
+                        ParamValue chpvalue;
+                        if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) {
+#if defined(TESTING)
+                            DBprnt ("ERROR SpecArray - GetParamValueFromCache sync_guid", rawname);
+#endif
+                            continue;
+                        }
+                        paramToWrite.Add (rawname, chpvalue);
+                    }
+                    rule.destinationParamGuidName = rawname;
+                    guidFound = true;
+                }
+            }
+            if (guidFound && !rule.subguid_rulename.IsEmpty ())
+                break;
+        }
+        return guidFound;
+    }
+
+    // Отбирает ранее созданные элементы правила. ПУСТОЙ selected_elements
+    // означает «взять все найденные» — прежнее поведение, менять его нельзя:
+    // это изменило бы объём удаляемых строк.
+    void SelectExistingElements (SpecRule &rule, const GS::Array<API_Guid> &found, const UnicGuid &selected_elements) {
+        if (selected_elements.IsEmpty ()) {
+            rule.exsist_elements = found;
+            return;
+        }
+        // Не присваивание, а ДОПИСЫВАНИЕ: прежде здесь был Push, и поле к
+        // этому моменту не очищается. Присваивание изменило бы поведение в
+        // случае непустого exsist_elements на входе (сейчас безопасен только
+        // тем, что словарь правил создаётся заново на каждый запуск).
+        for (const API_Guid &exsist_element : found) {
+            if (!selected_elements.ContainsKey (exsist_element))
+                continue;
+            rule.exsist_elements.Push (exsist_element);
+        }
+    }
+
+    // Запрашивает чтение выходных имён, сумм и носителя GUID у ранее созданных
+    // элементов, чтобы их можно было сравнить с правилом. Имена идут в
+    // НИЖНЕМ регистре (добавляет NameToRawName), поэтому сверять их с
+    // out_paramrawname напрямую нельзя.
+    void AddExistingReadRequests (const SpecRule &rule,
+                                  const GS::Array<API_Guid> &elements,
+                                  ParamDictElement &paramToRead) {
+        ParamDictValue paramDict = {}; // Словарь параметров для чтения для одного элемента
+        for (const GS::UniString &rawname : rule.out_sum_paramrawname) {
+            if (!paramDict.ContainsKey (rawname))
+                ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
+        }
+        for (const GS::UniString &rawname : rule.out_paramrawname) {
+            if (!paramDict.ContainsKey (rawname))
+                ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
+        }
+        ParamHelpers::AddValueToParamDictValue (paramDict, rule.destinationParamGuidName);
+        // Добавляем параметры для каждого элемента
+        for (const API_Guid elemguid : elements) {
+            ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
         }
     }
 

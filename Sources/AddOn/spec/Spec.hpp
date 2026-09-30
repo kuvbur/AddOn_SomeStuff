@@ -276,6 +276,38 @@ namespace Spec {
     // разбираются на служебные свойтия слоя и само выражение.
     void BuildReadParamDict (const ParamDict &readNames, ParamDictValue &paramDict);
 
+    // Сверяет выходную схему правила с набором свойств избранного: все имена
+    // должны найтись. Отсутствующие имена копятся в error_name, признак
+    // готовности правила снимается. Возвращает признак готовности.
+    bool MatchDestinationProperties (SpecRule &rule,
+                                     const GS::HashTable<GS::UniString, GS::UniString> &favorite,
+                                     ParamDict &error_name);
+
+    // Ищет у избранного два служебных свойства: носитель имени правила
+    // (описание со словом "spec_rule_name") и носитель GUID (описание с
+    // маркером subguid_paramrawname и словом "sync_guid"). Найденное имя
+    // GUID-свойства пишется в destinationParamGuidName — маркер из описания
+    // не подменяется. Значения берутся из кэша свойств; неудачное чтение НЕ
+    // кэшируется (R5.2 запрещает новую политику кэша без F), переход к
+    // следующему свойству сохраняется. Возвращает признак, что носитель GUID
+    // найден (прежде локальный flag_find).
+    bool ResolveFavoriteLinks (SpecRule &rule,
+                               const GS::HashTable<GS::UniString, GS::UniString> &favorite,
+                               ParamDictValue &paramToWrite);
+
+    // Отбирает ранее созданные элементы правила в поле rule.exsist_elements.
+    // ПУСТОЙ selected_elements означает «взять все найденные»; непустой —
+    // фильтр по выделению, причём элементы ДОПИСЫВАЮТСЯ, а не заменяют
+    // прежнее содержимое поля (прежнее поведение, менять нельзя: это изменило
+    // бы объём удаляемых строк).
+    void SelectExistingElements (SpecRule &rule, const GS::Array<API_Guid> &found, const UnicGuid &selected_elements);
+
+    // Запрашивает чтение выходных имён, сумм и носителя GUID у ранее созданных
+    // элементов, чтобы их можно было сравнить с правилом.
+    void AddExistingReadRequests (const SpecRule &rule,
+                                  const GS::Array<API_Guid> &elements,
+                                  ParamDictElement &paramToRead);
+
     void GetParamToReadFromRule (SpecRule &rules, ParamDictElement &paramToRead, ParamDictValue &paramToWrite);
 
     // Создаёт или настраивает элемент, который будет размещён согласно правилу.
