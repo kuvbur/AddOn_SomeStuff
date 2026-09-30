@@ -16,87 +16,85 @@ namespace TestFunc {
     // -----------------------------------------------------------------------------
     // Тест Name2Rawname - преобразование имени в rawname
     // -----------------------------------------------------------------------------
+    // Кейсы Name2Rawname: вход -> rawname. Раньше это были пары копипаст-проверок,
+    // по одной на префикс; таблица держит те же входы и те же ожидаемые ключи,
+    // а порядок строк исходный, поэтому падение читается по тому же входу.
+    // Равенство по префиксу - полное, кроме одного кейса BuildingMaterial,
+    // который сверяется по началу строки (ключ несёт хвост пути): он вынесен
+    // отдельно, в таблицу не входит.
+    //
+    // Лейбл в таблице — это сам вход: так он был в исходных проверках, и в отчёте
+    // видно, какой именно вход дал неверный ключ. Колонка rawnameTail — это
+    // хвост лейбла второй проверки целиком, начиная со слова "rawname":
+    // у {@Coord:Symb_Pos_X} исходный лейбл заканчивается на "rawname lowered"
+    // (#161 — нормализация регистра), у остальных на "rawname" или
+    // "rawname unchanged". Пустая колонка означает "оставить хвост как есть".
+    // -----------------------------------------------------------------------------
+    namespace {
+        struct RawNameCase {
+            const char *input;
+            const char *expected;
+            const char *rawnameTail;
+        };
+
+        const RawNameCase plainNameCases[] = {
+            {"Property:TestProperty", "{@property:testproperty}", ""},
+            {"property:AnotherProperty", "{@property:anotherproperty}", ""},
+            {"Coord:symb_pos_x", "{@coord:symb_pos_x}", ""},
+            {"TestGDLParam", "{@gdl:testgdlparam}", ""},
+            {"{id}", "{@id:id}", ""},
+            {"Morph:param1", "{@morph:param1}", ""},
+            {"IFC:PropertyName", "{@ifc:propertyname}", ""},
+            {"Info:someinfo", "{@info:someinfo}", ""},
+            {"Glob:variable", "{@glob:variable}", ""},
+            {"Class:classification", "{@class:classification}", ""},
+            {"Element:property", "{@element:property}", ""},
+            {"File:filename", "{@file:filename}", ""},
+            {"Attrib:Layer", "{@attrib:layer}", ""},
+        };
+
+        const RawNameCase bracketedNameCases[] = {
+            {"{@property:testproperty}", "{@property:testproperty}", ""},
+            {"{@coord:symb_pos_x}", "{@coord:symb_pos_x}", ""},
+            // Sync.cpp-8 (#161): каноническая ветка нормализует регистр — ключи
+            // кэша всегда в нижнем, иначе правило молча не находит значение.
+            {"{@Coord:Symb_Pos_X}", "{@coord:symb_pos_x}", "rawname lowered"},
+            {"{@gdl:testgdlparam}", "{@gdl:testgdlparam}", ""},
+            {"{@id:id}", "{@id:id}", ""},
+            {"{@morph:param1}", "{@morph:param1}", ""},
+            {"{@ifc:propertyname}", "{@ifc:propertyname}", ""},
+            {"{@info:someinfo}", "{@info:someinfo}", ""},
+            {"{@glob:variable}", "{@glob:variable}", ""},
+            {"{@class:classification}", "{@class:classification}", ""},
+            {"{@element:property}", "{@element:property}", ""},
+            {"{@file:filename}", "{@file:filename}", ""},
+            {"{@attrib:layer}", "{@attrib:layer}", ""},
+        };
+    } // namespace
+
     void TestName2Rawname () {
         GS::UniString name;
         GS::UniString rawname;
 
-        // Тест: обычное свойство
-        name = "Property:TestProperty";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname Property:TestProperty -> true");
-        DBtest (rawname, GS::UniString ("{@property:testproperty}"), "Name2Rawname Property:TestProperty -> rawname");
-
-        // Тест: с префиксом property
-        name = "property:AnotherProperty";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname property:AnotherProperty -> true");
-        DBtest (
-            rawname, GS::UniString ("{@property:anotherproperty}"), "Name2Rawname property:AnotherProperty -> rawname");
-
-        // Тест: координаты
-        name = "Coord:symb_pos_x";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname Coord:symb_pos_x -> true");
-        DBtest (rawname, GS::UniString ("{@coord:symb_pos_x}"), "Name2Rawname Coord:symb_pos_x -> rawname");
-
-        // Тест: GDL параметр
-        name = "TestGDLParam";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname TestGDLParam -> true");
-        DBtest (rawname, GS::UniString ("{@gdl:testgdlparam}"), "Name2Rawname TestGDLParam -> rawname");
-
-        // Тест: ID
-        name = "{id}";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname {id} -> true");
-        DBtest (rawname, GS::UniString ("{@id:id}"), "Name2Rawname {id} -> rawname");
+        for (const RawNameCase &c : plainNameCases) {
+            name = c.input;
+            DBtest (Name2Rawname (name, rawname), GS::UniString::Printf ("Name2Rawname %s -> true", c.input));
+            DBtest (rawname,
+                    GS::UniString (c.expected),
+                    GS::UniString::Printf (
+                        "Name2Rawname %s -> %s", c.input, c.rawnameTail[0] == '\0' ? "rawname" : c.rawnameTail));
+        }
 
         // Тест: пустая строка -> false
         name = "";
         DBtest (!Name2Rawname (name, rawname), "Name2Rawname empty string -> false");
 
-        // Тест: BuildingMaterial свойство
+        // Тест: BuildingMaterial свойство. Ключ несёт хвост пути, поэтому сверяем
+        // начало строки, а не равенство.
         name = "Property:BuildingMaterialProperties/Density";
         DBtest (Name2Rawname (name, rawname), "Name2Rawname Property:BuildingMaterialProperties/Density -> true");
         DBtest (rawname.BeginsWith ("{@property:buildingmaterialproperties/density"),
                 "Name2Rawname BuildingMaterial -> rawname");
-
-        // Тест: Morph
-        name = "Morph:param1";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname Morph:param1 -> true");
-        DBtest (rawname, GS::UniString ("{@morph:param1}"), "Name2Rawname Morph:param1 -> rawname");
-
-        // Тест: IFC
-        name = "IFC:PropertyName";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname IFC:PropertyName -> true");
-        DBtest (rawname, GS::UniString ("{@ifc:propertyname}"), "Name2Rawname IFC:PropertyName -> rawname");
-
-        // Тест: Info
-        name = "Info:someinfo";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname Info:someinfo -> true");
-        DBtest (rawname, GS::UniString ("{@info:someinfo}"), "Name2Rawname Info:someinfo -> rawname");
-
-        // Тест: Glob
-        name = "Glob:variable";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname Glob:variable -> true");
-        DBtest (rawname, GS::UniString ("{@glob:variable}"), "Name2Rawname Glob:variable -> rawname");
-
-        // Тест: Class
-        name = "Class:classification";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname Class:classification -> true");
-        DBtest (rawname, GS::UniString ("{@class:classification}"), "Name2Rawname Class:classification -> rawname");
-
-        // Тест: Element
-        name = "Element:property";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname Element:property -> true");
-        DBtest (rawname, GS::UniString ("{@element:property}"), "Name2Rawname Element:property -> rawname");
-
-        // Тест: File
-        name = "File:filename";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname File:filename -> true");
-        DBtest (rawname, GS::UniString ("{@file:filename}"), "Name2Rawname File:filename -> rawname");
-
-        // Тест: Attrib (Layer)
-        name = "Attrib:Layer";
-        DBtest (Name2Rawname (name, rawname), "Name2Rawname Attrib:Layer -> true");
-        DBtest (rawname, GS::UniString ("{@attrib:layer}"), "Name2Rawname Attrib:Layer -> rawname");
-
-        return;
     }
 
     // -----------------------------------------------------------------------------
@@ -104,107 +102,33 @@ namespace TestFunc {
     // Баг: Name2Rawname сначала добавляет BRACEEND (}), потом BRACESTART ({).
     // Входные данные, УЖЕ содержащие правильные скобки "{@prefix:name}", проходят корректно.
     // -----------------------------------------------------------------------------
+    // Тест Name2Rawname с уже обёрнутыми скобками (временное решение до исправления бага в Sync.cpp:1323-1326)
+    // Баг: Name2Rawname сначала добавляет BRACEEND (}), потом BRACESTART ({).
+    // Входные данные, УЖЕ содержащие правильные скобки "{@prefix:name}", проходят корректно.
+    // Кейсы - в общей таблице bracketedNameCases (см. выше).
+    // -----------------------------------------------------------------------------
     void TestName2RawnameWithBrackets () {
         GS::UniString name;
         GS::UniString rawname;
 
-        // Тест: уже корректный rawname свойства
-        name = "{@property:testproperty}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@property:testproperty} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@property:testproperty}"),
-                "Name2RawnameWithBrackets {@property:testproperty} -> rawname unchanged");
+        for (const RawNameCase &c : bracketedNameCases) {
+            // Пустая колонка rawnameTail означает исходный суффикс " unchanged";
+            // непустая заменяет его целиком (единственный такой кейс - #161,
+            // "lowered" вместо " unchanged").
+            const char *tail = c.rawnameTail[0] == '\0' ? "rawname unchanged" : c.rawnameTail;
+            name = c.input;
+            DBtest (Name2Rawname (name, rawname),
+                    GS::UniString::Printf ("Name2RawnameWithBrackets %s -> true", c.input));
+            DBtest (rawname,
+                    GS::UniString (c.expected),
+                    GS::UniString::Printf ("Name2RawnameWithBrackets %s -> %s", c.input, tail));
+        }
 
-        // Тест: уже корректный rawname координат
-        name = "{@coord:symb_pos_x}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@coord:symb_pos_x} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@coord:symb_pos_x}"),
-                "Name2RawnameWithBrackets {@coord:symb_pos_x} -> rawname unchanged");
-
-        // Sync.cpp-8 (#161): каноническая ветка нормализует регистр — ключи кэша
-        // всегда в нижнем регистре, иначе правило молча не находит значение.
-        name = "{@Coord:Symb_Pos_X}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@Coord:Symb_Pos_X} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@coord:symb_pos_x}"),
-                "Name2RawnameWithBrackets {@Coord:Symb_Pos_X} -> rawname lowered");
-
-        // Тест: уже корректный rawname GDL
-        name = "{@gdl:testgdlparam}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@gdl:testgdlparam} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@gdl:testgdlparam}"),
-                "Name2RawnameWithBrackets {@gdl:testgdlparam} -> rawname unchanged");
-
-        // Тест: уже корректный rawname ID
-        name = "{@id:id}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@id:id} -> true");
-        DBtest (rawname, GS::UniString ("{@id:id}"), "Name2RawnameWithBrackets {@id:id} -> rawname unchanged");
-
-        // Тест: уже корректный rawname BuildingMaterial
+        // BuildingMaterial: ключ несёт хвост пути, сверяем начало строки.
         name = "{@property:buildingmaterialproperties/density}";
         DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets BuildingMaterial -> true");
         DBtest (rawname.BeginsWith ("{@property:buildingmaterialproperties/density"),
                 "Name2RawnameWithBrackets BuildingMaterial -> rawname unchanged");
-
-        // Тест: уже корректный rawname Morph
-        name = "{@morph:param1}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@morph:param1} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@morph:param1}"),
-                "Name2RawnameWithBrackets {@morph:param1} -> rawname unchanged");
-
-        // Тест: уже корректный rawname IFC
-        name = "{@ifc:propertyname}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@ifc:propertyname} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@ifc:propertyname}"),
-                "Name2RawnameWithBrackets {@ifc:propertyname} -> rawname unchanged");
-
-        // Тест: уже корректный rawname Info
-        name = "{@info:someinfo}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@info:someinfo} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@info:someinfo}"),
-                "Name2RawnameWithBrackets {@info:someinfo} -> rawname unchanged");
-
-        // Тест: уже корректный rawname Glob
-        name = "{@glob:variable}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@glob:variable} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@glob:variable}"),
-                "Name2RawnameWithBrackets {@glob:variable} -> rawname unchanged");
-
-        // Тест: уже корректный rawname Class
-        name = "{@class:classification}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@class:classification} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@class:classification}"),
-                "Name2RawnameWithBrackets {@class:classification} -> rawname unchanged");
-
-        // Тест: уже корректный rawname Element
-        name = "{@element:property}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@element:property} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@element:property}"),
-                "Name2RawnameWithBrackets {@element:property} -> rawname unchanged");
-
-        // Тест: уже корректный rawname File
-        name = "{@file:filename}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@file:filename} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@file:filename}"),
-                "Name2RawnameWithBrackets {@file:filename} -> rawname unchanged");
-
-        // Тест: уже корректный rawname Attrib
-        name = "{@attrib:layer}";
-        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@attrib:layer} -> true");
-        DBtest (rawname,
-                GS::UniString ("{@attrib:layer}"),
-                "Name2RawnameWithBrackets {@attrib:layer} -> rawname unchanged");
-
-        return;
     }
 
     // -----------------------------------------------------------------------------
