@@ -1,4 +1,4 @@
-﻿﻿﻿# Current Task
+﻿﻿﻿﻿# Current Task
 
 ## Task — рефакторинг Spec (R4: разбор парсера и однократная подготовка схемы)
 
@@ -1071,8 +1071,8 @@ Issue: #231 — машиночитаемый результат, отбор на
 прод-код не менялся, вскрытый баг вынесен в #232.
 
 ### Status
-IN_PROGRESS — P0, TestKit, DBrequire, маркеры, раннер и документация закрыты
-(6 чекпоинтов). Осталось: разбиение TU, табличные кейсы, sweep AC26-29.
+IN_PROGRESS — P0, TestKit, DBrequire, маркеры, раннер, документация и sweep
+закрыты (7 чекпоинтов). Осталось: разбиение TU и табличные кейсы.
 
 ### Last Completed
 Раннер читает отчёт TestKit и выдаёт `exit_code=70` при провалах — раньше он
@@ -1084,8 +1084,8 @@ IN_PROGRESS — P0, TestKit, DBrequire, маркеры, раннер и доку
 ### Next Step
 Разбить `TestFunc.cpp` на TU по модулям (TestSpec*/TestSync/TestParam/TestFormat/
 TestRenum) — реестр в `TestFunc.cpp` остаётся единственным списком вызовов,
-чтобы перенос объявлений не потерял наборы. Затем sweep AC26-29: собран только
-AC25, совместимость ветки `DBPrint` (AC22-23) и `is_equal` не проверена.
+чтобы перенос объявлений не потерял наборы. Затем табличные
+кейсы вместо повторов.
 
 ### Last Checkpoint
 Доки — `03d6c57` (Docs/modules/TestFunc.md, Refs: #231).
@@ -1102,6 +1102,19 @@ AC25, совместимость ветки `DBPrint` (AC22-23) и `is_equal` н
 - Прод-`DBtest`/`DBprnt` в тестах не перекрываются: они объявлены в общем
   заголовке и вызываются из `Helpers.cpp`/`CommonFunction.cpp`.
 
+### Sweep сборки (2026-09-30, BuildAddOn.py)
+
+| Версия | Результат |
+|---|---|
+| AC22 | падает: ресурсы `AddOn.grc` (ResID 32580) — не связано с тестами |
+| AC23 | падает: `Roombook::TypeOtd` объявлен только с AC24 (`Roombook.hpp:14-15`), `TestBuildOtdByParent` не учёл версию |
+| AC24 | не собиралась в этом прогоне |
+| AC25 | Build succeeded |
+| AC26–29 | Build succeeded |
+
+Обе причины предсуществующие: `TestBuildOtdByParent` с `Roombook::TypeOtd` есть
+ещё в `39486f8` (до TestKit) — оформлено как **#233**. Ветка `DBPrint` (AC22-23)
+на практике не проверена, потому что до C++ дело не доходит.
 ### Прогон (AC25, 2026-09-30)
 `suites=49 passed=1832 failed=1`, `FAILED_SUITE TestConvertPropertyToParamValue`,
 `exit_code=70`. Провал предсуществующий и оформлен как **#232**: вещественные
