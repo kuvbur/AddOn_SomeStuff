@@ -92,9 +92,7 @@ namespace TestFunc {
         const API_Guid guid = APINULLGuid;
         const GS::UniString rawname = "{@property:test-spec}";
         const GS::UniString libname = FORMULANAMEPREFIX + "{@listdata:elem.naen}<>";
-        ParamDictElement values;
-        ParamDictCompositeElement composites;
-        ListData::LibElements libdata;
+        Spec::SpecReadContext context;
         ParamValue result;
         ParamValue source;
         source.isValid = true;
@@ -103,35 +101,35 @@ namespace TestFunc {
         source.val.canCalculate = true;
         auto read = [&] (const GS::UniString &name, GS::Int32 layer) {
             result = source;
-            return Spec::GetParamValue (guid, name, values, result, false, layer, composites, libdata);
+            return Spec::GetParamValue (guid, name, context, result, false, layer);
         };
         DBtest (read (rawname, 0), false, "SpecGetParamValue missing element");
         DBtest (result.isValid, false, "SpecGetParamValue missing element invalidates");
         ParamDictValue params;
-        values.Add (guid, params);
+        context.read.Add (guid, params);
         DBtest (read (rawname, 0), false, "SpecGetParamValue missing key");
         DBtest (result.isValid, false, "SpecGetParamValue missing key invalidates");
-        values.Get (guid).Add (rawname, source);
+        context.read.Get (guid).Add (rawname, source);
         DBtest (read (rawname, 0), true, "SpecGetParamValue ordinary success");
         DBtest (result.val.uniStringValue, GS::UniString ("original"), "SpecGetParamValue ordinary unchanged");
-        values.Get (guid).Get (rawname).isValid = false;
+        context.read.Get (guid).Get (rawname).isValid = false;
         DBtest (read (rawname, 0), false, "SpecGetParamValue invalid input");
         DBtest (result.isValid, false, "SpecGetParamValue invalid input invalidates");
-        values.Get (guid).Get (rawname) = source;
-        values.Get (guid).Get (rawname).fromMaterial = true;
+        context.read.Get (guid).Get (rawname) = source;
+        context.read.Get (guid).Get (rawname).fromMaterial = true;
         DBtest (read (rawname, 0), false, "SpecGetParamValue missing composite element");
         DBtest (result.isValid, false, "SpecGetParamValue missing composite invalidates");
         ParamDictComposite layers;
-        composites.Add (guid, layers);
+        context.composite.Add (guid, layers);
         DBtest (read (rawname, 0), false, "SpecGetParamValue missing composite key");
         DBtest (result.isValid, false, "SpecGetParamValue composite key invalidates");
         ParamComposite composite;
-        composites.Get (guid).Add (rawname, composite);
+        context.composite.Get (guid).Add (rawname, composite);
         DBtest (read (rawname, 0), false, "SpecGetParamValue empty composite");
         DBtest (result.isValid, false, "SpecGetParamValue empty composite invalidates");
         ParamValueComposite layer;
         layer.val = "12.5";
-        composites.Get (guid).Get (rawname).composite.Push (layer);
+        context.composite.Get (guid).Get (rawname).composite.Push (layer);
         DBtest (read (rawname, 0), true, "SpecGetParamValue numeric layer");
         DBtest (result.val.doubleValue, 12.5, "SpecGetParamValue layer number");
         DBtest (result.val.canCalculate, true, "SpecGetParamValue layer calculable");
@@ -142,7 +140,7 @@ namespace TestFunc {
         DBtest (result.val.uniStringValue.IsEmpty (), true, "SpecGetParamValue past end empty");
         DBtest (result.val.canCalculate, false, "SpecGetParamValue past end not calculable");
         DBtest (result.val.boolValue, false, "SpecGetParamValue past end false");
-        composites.Get (guid).Get (rawname).composite[0].val = "material";
+        context.composite.Get (guid).Get (rawname).composite[0].val = "material";
         DBtest (read (rawname, 0), true, "SpecGetParamValue text layer");
         DBtest (result.val.canCalculate, false, "SpecGetParamValue text not calculable");
         DBtest (result.val.boolValue, true, "SpecGetParamValue text nonempty");
@@ -152,7 +150,7 @@ namespace TestFunc {
         formula.rawName = libname;
         formula.val.hasFormula = true;
         formula.val.uniStringValue = "{@listdata:elem.naen}<>";
-        values.Get (guid).Add (libname, formula);
+        context.read.Get (guid).Add (libname, formula);
         DBtest (read (libname, 0), true, "SpecGetParamValue missing lib data empty success");
         DBtest (result.isValid, true, "SpecGetParamValue empty lib valid");
         DBtest (result.val.uniStringValue.IsEmpty (), true, "SpecGetParamValue empty lib text");
@@ -168,7 +166,7 @@ namespace TestFunc {
         subpos.arm.Add ("10@test", arm);
         lib.subpos.Add ("test", subpos);
         lib.keys.Push (GS::Pair<GS::UniString, GS::UniString> ("test", "10@test"));
-        libdata.Add (guid, lib);
+        context.listData.Add (guid, lib);
         DBtest (read (libname, 0), true, "SpecGetParamValue lib formula success");
         DBtest (result.val.uniStringValue, GS::UniString ("Rebar"), "SpecGetParamValue lib formula result");
         DBtest (read (libname, 1), true, "SpecGetParamValue lib past end success");
@@ -192,9 +190,8 @@ namespace TestFunc {
             const GS::UniString outText = "{@property:spec-out-text}";
             const GS::UniString outQuantity = "{@property:spec-out-quantity}";
             Spec::SpecRule rule;
-            ParamDictElement values;
-            ParamDictCompositeElement composites;
-            ListData::LibElements libdata;
+            // R5.3: набор прочитанных словарей — один объект, как в SpecArray.
+            Spec::SpecReadContext context;
             Spec::ElementDict created;
             Spec::ElementDict modified;
             GS::Array<API_Guid> deleted;
@@ -217,18 +214,18 @@ namespace TestFunc {
                 ParamValue param;
                 param.rawName = name;
                 ParamHelpers::ConvertStringToParamValue (param, name, value);
-                if (!values.ContainsKey (guid))
-                    values.Add (guid, ParamDictValue ());
-                values.Get (guid).Put (name, param);
+                if (!context.read.ContainsKey (guid))
+                    context.read.Add (guid, ParamDictValue ());
+                context.read.Get (guid).Put (name, param);
             }
 
             void Number (const API_Guid &guid, const GS::UniString &name, Int32 value) {
                 ParamValue param;
                 param.rawName = name;
                 ParamHelpers::ConvertIntToParamValue (param, name, value);
-                if (!values.ContainsKey (guid))
-                    values.Add (guid, ParamDictValue ());
-                values.Get (guid).Put (name, param);
+                if (!context.read.ContainsKey (guid))
+                    context.read.Add (guid, ParamDictValue ());
+                context.read.Get (guid).Put (name, param);
             }
 
             void Source (const API_Guid &guid, const GS::UniString &k, const GS::UniString &t, Int32 q) {
@@ -250,8 +247,7 @@ namespace TestFunc {
                 modified.Clear ();
                 deleted.Clear ();
                 errors.Clear ();
-                return Spec::GetElementsForRule (
-                    rule, values, composites, libdata, created, modified, deleted, errors, false);
+                return Spec::GetElementsForRule (rule, context, created, modified, deleted, errors, false);
             }
 
             void Shape (Int32 result,
@@ -302,7 +298,7 @@ namespace TestFunc {
                 DBtest (row->exs_guid == APINULLGuid, "Spec new row no existing GUID");
             }
             DBtest (f.errors.IsEmpty (), "Spec valid no errors");
-            DBtest (f.values.Get (f.first).Get (f.quantity).val.intValue, 2, "Spec source quantity unchanged");
+            DBtest (f.context.read.Get (f.first).Get (f.quantity).val.intValue, 2, "Spec source quantity unchanged");
             f.Source (f.second, "A", "Beta", 3);
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec merge");
             row = f.created.GetPtr ("@A");
@@ -329,8 +325,8 @@ namespace TestFunc {
             if (row != nullptr && row->out_sum_param.GetSize () == 1)
                 DBtest (row->out_sum_param[0].val.intValue, 0, "Spec signed sum zero");
             f.rule.groups[0].sum_paramrawname[0] = "1";
-            f.values.Get (f.first).Delete (f.quantity);
-            f.values.Get (f.second).Delete (f.quantity);
+            f.context.read.Get (f.first).Delete (f.quantity);
+            f.context.read.Get (f.second).Delete (f.quantity);
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec literal count");
             row = f.created.GetPtr ("@A B");
             if (row != nullptr && row->out_sum_param.GetSize () == 1)
@@ -351,7 +347,7 @@ namespace TestFunc {
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec false flag skips");
             f.Number (f.first, f.flag, 1);
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec true flag includes");
-            f.values.Get (f.first).Get (f.flag).isValid = false;
+            f.context.read.Get (f.first).Get (f.flag).isValid = false;
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec invalid flag includes");
             f.rule.groups[0].is_Valid = false;
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec invalid group skips");
@@ -381,7 +377,7 @@ namespace TestFunc {
                 f.Source (f.second, "B", "Beta", 3);
                 f.rule.stop_on_error = stop != 0;
                 const GS::UniString name = missing == 0 ? f.key : (missing == 1 ? f.text : f.quantity);
-                f.values.Get (f.second).Delete (name);
+                f.context.read.Get (f.second).Delete (name);
                 const GS::UniString label = GS::UniString::Printf ("Spec missing %d stop %d", missing, stop);
                 f.Shape (f.Run (), stop != 0 ? 0 : 1, stop != 0 ? 0 : 1, 0, 0, label);
                 DBtest (f.errors.ContainsKey (f.second), stop != 0, label + " error GUID");
@@ -419,9 +415,9 @@ namespace TestFunc {
                 DBtest (row->out_sum_param[0].val.intValue, 3, "Spec update new sum");
                 DBtest (row->elements.GetSize () == 1 && row->elements[0] == f.first, "Spec update source GUID");
             }
-            f.values.Get (f.old).Delete (f.outQuantity);
+            f.context.read.Get (f.old).Delete (f.outQuantity);
             f.Shape (f.Run (), 1, 0, 1, 0, "Spec absent old sum updates");
-            f.values.Get (f.old).Delete (f.outText);
+            f.context.read.Get (f.old).Delete (f.outText);
             f.Shape (f.Run (), 2, 1, 0, 1, "Spec absent old text replaces");
             DBtest (f.deleted.GetSize () == 1 && f.deleted[0] == f.old, "Spec replacement deletes old GUID");
         }
@@ -455,7 +451,8 @@ namespace TestFunc {
             DBtest (f.created.ContainsKey ("@B"), "Spec mixed new key");
             DBtest (f.modified.ContainsKey ("@A"), "Spec mixed update key");
             DBtest (f.deleted.GetSize () == 1 && f.deleted[0] == f.extra, "Spec mixed delete GUID");
-            DBtest (f.values.Get (f.old).Get (f.outQuantity).val.intValue, 1, "Spec planning does not write values");
+            DBtest (
+                f.context.read.Get (f.old).Get (f.outQuantity).val.intValue, 1, "Spec planning does not write values");
         }
         DBprnt ("SpecRegression reconcile", "end");
     }
@@ -1200,10 +1197,10 @@ namespace TestFunc {
         SpecFixture f;
         f.Text (f.first, f.text, "Alpha");
         ParamValue result;
-        DBtest (Spec::GetParamValue (f.first, f.text, f.values, result, true, -1, f.composites, f.libdata),
+        DBtest (Spec::GetParamValue (f.first, f.text, f.context, result, true, -1),
                 "Spec ordinary ignores material argument and layer");
         DBtest (result.val.uniStringValue, GS::UniString ("Alpha"), "Spec ordinary original value");
-        f.values.Get (f.first).Get (f.text).fromMaterial = true;
+        f.context.read.Get (f.first).Get (f.text).fromMaterial = true;
         ParamComposite composite;
         ParamValueComposite layer;
         const char *texts[] = {"0", "-2.5", "", "Material", "2147483648", "-2147483649"};
@@ -1213,12 +1210,12 @@ namespace TestFunc {
         }
         ParamDictComposite byName;
         byName.Add (f.text, composite);
-        f.composites.Add (f.first, byName);
+        f.context.composite.Add (f.first, byName);
         const double numbers[] = {0, -2.5, 0, 0, 2147483648.0, -2147483649.0};
         const double integers[] = {0, -2, 0, 0, 2147483647.0, -2147483648.0};
         for (Int32 i = 0; i < 6; ++i) {
             const GS::UniString label = GS::UniString::Printf ("Spec material edge %d", i);
-            DBtest (Spec::GetParamValue (f.first, f.text, f.values, result, false, i, f.composites, f.libdata), label);
+            DBtest (Spec::GetParamValue (f.first, f.text, f.context, result, false, i), label);
             DBtest (result.isValid, label + " valid");
             DBtest (result.val.uniStringValue, GS::UniString (texts[i]), label + " text");
             DBtest (result.val.doubleValue, numbers[i], label + " real");
@@ -1227,15 +1224,15 @@ namespace TestFunc {
             DBtest (result.val.boolValue, i != 0 && i != 2, label + " bool");
             DBtest (result.val.canCalculate, i != 2 && i != 3, label + " calculable");
         }
-        DBtest (Spec::GetParamValue (f.first, f.text, f.values, result, false, 100, f.composites, f.libdata),
+        DBtest (Spec::GetParamValue (f.first, f.text, f.context, result, false, 100),
                 "Spec past end after numeric result");
         DBtest (result.val.doubleValue == 0 && result.val.rawDoubleValue == 0 && result.val.intValue == 0 &&
                     !result.val.boolValue && !result.val.canCalculate && result.val.uniStringValue.IsEmpty (),
                 "Spec past end clears all result fields");
-        DBtest (f.values.Get (f.first).Get (f.text).val.uniStringValue,
+        DBtest (f.context.read.Get (f.first).Get (f.text).val.uniStringValue,
                 GS::UniString ("Alpha"),
                 "Spec material source unchanged");
-        DBtest (f.composites.Get (f.first).Get (f.text).composite.GetSize (), 6, "Spec layers unchanged");
+        DBtest (f.context.composite.Get (f.first).Get (f.text).composite.GetSize (), 6, "Spec layers unchanged");
         DBprnt ("SpecRegression values", "end");
     }
 

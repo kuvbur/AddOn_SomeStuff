@@ -411,6 +411,67 @@
   и сохранность значений в конечной модели — независимого read-back нет, как и в
   R3-R5.1.
 
+### R5.3 — один набор прочитанных словарей (`SpecReadContext`) (#228)
+- Введён `Spec::SpecReadContext` (`Spec.hpp`): поля `read` (`ParamDictElement`),
+  `composite` (`ParamDictCompositeElement`), `listData` (`ListData::LibElements`).
+  Владелец — `SpecArray`, у него структура живёт весь запуск.
+- `GetParamValue` и `GetElementsForRule` принимают контекст вместо трёх
+  отдельных параметров; сигнатуры сократились с 8/9 до 6/7 аргументов. Тело
+  `GetElementsForRule` переведено дословно — 8 вызовов `GetParamValue` (4
+  многострочных, 4 однострочных) сменили три аргумента на один.
+- **Смысл группировки:** раздельными словарями можно было заполнить разные
+  наборы данных, и согласованность держалась только на договорённости.
+  Контекст делает рассогласование непредставимым — но сам по себе не проверяет,
+  что чтение выполнено. [по коду]
+- **Пакетное `ElementsRead` осталось на прежнем месте** (`Spec.cpp:750`, сразу
+  после `SpecDG`) — это прямое требование R5.3. Менялось только то, какие поля
+  контекста оно заполняет. Относительный порядок вызовов не менялся нигде.
+- Сборщики запросов (`GetParamToReadFromRule`, `AddExistingReadRequests`)
+  намеренно остались с `ParamDictElement &paramToRead`: это словари ЗАПРОСОВ на
+  чтение, а не прочитанные данные, и они по-прежнему не часть контекста. [по коду]
+- **Зафиксирована зависимость от ambient cache/helpers** — предмет R5.3.
+  `GetParamValue` читает значения ТОЛЬКО из трёх словарей контекста и элемент не
+  открывает, НО транзитивно зовёт `ParamHelpers::ReadFormula` → `EvalExpression`
+  (`CommonFunction.cpp:1349`), а тот:
+  - под `TESTING` пишет `PROPERTYCACHE ().formulaCacheStats` (`calls`,
+    `fullHits`, `fullClears`) — то есть наказывает само чтение значения;
+  - держит статический кэш `exprResultFullCache` со сбросом при >4096 записей.
+  Остальные проверенные транзитивные вызовы (`GetParamValueForElements`,
+  `ReplaceParamInExpression`, `ListData::AddLibdataToParamValueDict`) ambient-эффектов
+  не имеют — проверено чтением кода. **Вывод: «нет записи в модель» ≠ чистая
+  функция.** Эти эффекты не тронуты: `Helpers.cpp` под замком (#228), правка
+  заделала бы 26 включающих единиц. Устранение — отдельная задача с A/B по
+  счётчикам формул. [по коду]
+- Проверка эквивалентности мультимножеством (код без комментариев, HEAD vs
+  текущий): ушли только `paramToRead`/`paramCompositeToRead`/`paramListDataToRead`
+  (19/16/14) вместе с типами `ParamDictElement`/`ParamDictCompositeElement`/
+  `LibElements`/`ListData`; пришли `context` (16), `readContext` (9), `read` (7),
+  `composite` (4), `listData` (2), `SpecReadContext` (3). Ни одного имени
+  ACAPI-вызова в диффе нет. [по коду + подсчёту]
+- Тесты переведены на контекст: фикстура `SpecFixture` (поля `values`/`composites`/
+  `libdata` → `context`) и оба прямых вызова `GetParamValue` в `TestSpecValueEdges`.
+  Новых наборов в R5.3 не добавлял — шаг чисто механический, покрытие не изменилось.
+- **Ошибка правки, пойманная сборкой:** regex-замена многострочных вызовов
+  `GetParamValue` съела закрывающую скобку самого вызова, оставив `group.n_layer) {`.
+  clangd ошибок не показал (0 диагностик) — поймал только MSVC. Первая попытка
+  починки добавила скобку не туда; верная — `))` в первом вызове и `) {` в
+  остальных трёх. **Вывод: при переносе многострочных вызовов проверять скобки
+  по сборке, clangd по compile DB их не ловит.**
+- Побочные эффекты: не менялись — те же вызовы ACAPI в том же порядке, тот же
+  момент пакетного чтения относительно `SpecDG`. [по коду]
+- Проверка: clang-format на 3 файла; AC25 — `Build succeeded!`; sweep AC26–29 —
+  все `success`; `restart_archicad_for_test.ps1` exit_code=0.
+- **Тесты (AC25, панель VS «Отладка», сессия 13:58):** 22 набора, все
+  `end`-маркеры на месте, **1868 проверок `ok` — ровно как до R5.3**, 1
+  `ERROR IN TEST` (та же предсуществующая `ConvertToParamValue` — вне области).
+  `TestSpecGetParamValue` 43, `TestSpecValueEdges` 54, `TestSpecGrouping` 43,
+  `TestSpecFavoriteResolution` 33, `TestSpecRuleDependencies` 35.
+- **A/B:** `r53-ok` — C=2/M=12/D=2, 14 строк; `diff_rows` против эталона P0 = **0**
+  и против `r52-ok` = **0**; sha256 фикстуры `db1690f…` совпал.
+- Не покрыто `not verified`: сценарии create-from-scratch / update / delete_old и
+  сохранность значений в конечной модели — независимого read-back нет, как и в
+  R3-R5.2. Счётчики `formulaCacheStats` как регрессионный признак не заведены.
+
 ## Карточки
 
 ### R3 — `SpecRule`: разведение определения и состояния запуска (#228)

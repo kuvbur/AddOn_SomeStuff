@@ -559,18 +559,19 @@ namespace Spec {
 #else
         short i = 1;
 #endif
-        ParamDictElement paramToRead = {};                   // Словарь с параметрами для чтения
-        ParamDictCompositeElement paramCompositeToRead = {}; // Прочитанные составы конструкции
-        ListData::LibElements paramListDataToRead = {};      // Прочитанные данные объектов
-        ParamDictValue paramToWrite = {};                    // Словарь с параметрами для записи (с нулевым GUID)
-        GS::Array<ElementDict> elements_new = {};            // Массив со словарём создаваемых элементов
-        GS::Array<ElementDict> elements_mod = {};            // Массив со словарём модифицируемых элементов
-        GS::Array<API_Guid> elements_delete = {};            // Массив удаляемых элементов
-        ParamDictElement paramOut = {};                      // Словарь свойств для записи в расставленные элементы
-        GS::Array<API_Guid> guidArraysync = {}; // Список элементов, которые требуется синхронизировать (расставленные
-                                                // элементы)
-        UnicGuid error_element = {};            // Элементы с ошибками
-        ParamDict error_name = {};              // Список имён, не найденных у избранного
+        // R5.3: набор прочитанных словарей один на весь запуск. До чтения
+        // заполняется только поле read (запросы), composite/listData — выход
+        // ParamHelpers::ElementsRead.
+        SpecReadContext readContext = {};
+        ParamDictValue paramToWrite = {};         // Словарь с параметрами для записи (с нулевым GUID)
+        GS::Array<ElementDict> elements_new = {}; // Массив со словарём создаваемых элементов
+        GS::Array<ElementDict> elements_mod = {}; // Массив со словарём модифицируемых элементов
+        GS::Array<API_Guid> elements_delete = {}; // Массив удаляемых элементов
+        ParamDictElement paramOut = {};           // Словарь свойств для записи в расставленные элементы
+        GS::Array<API_Guid> guidArraysync = {};   // Список элементов, которые требуется синхронизировать (расставленные
+                                                  // элементы)
+        UnicGuid error_element = {};              // Элементы с ошибками
+        ParamDict error_name = {};                // Список имён, не найденных у избранного
         GS::HashTable<GS::UniString, GS::HashTable<GS::UniString, GS::UniString>> paramdict_favorite =
             {}; // Словарь с именами параметров и описаниями свойств избранных элементов
         ProcessWindowGuard pwGuard (funcname, nPhase, showUserInterface);
@@ -632,9 +633,9 @@ namespace Spec {
             if (!rule.IsRunnableForRun ()) {
                 continue;
             }
-            GetParamToReadFromRule (rule, paramToRead, paramToWrite);
+            GetParamToReadFromRule (rule, readContext.read, paramToWrite);
         }
-        if (paramToRead.IsEmpty ()) {
+        if (readContext.read.IsEmpty ()) {
             msg_rep ("Spec", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
             GS::UniString SpecRuleReadFoundString =
                 RSGetIndString (iseng, SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
@@ -650,7 +651,7 @@ namespace Spec {
                 ACAPI_WriteReport (SpecWriteNotFoundString, true);
             return APIERR_GENERAL;
         }
-        subtitle = GS::UniString::Printf ("Reading parameters from %d elements", paramToRead.GetSize ());
+        subtitle = GS::UniString::Printf ("Reading parameters from %d elements", readContext.read.GetSize ());
         if (showUserInterface) {
 #ifdef ServerMainVers_2700
             maxval = 2;
@@ -708,7 +709,7 @@ namespace Spec {
             if (rule.exsist_elements.IsEmpty ())
                 continue;
             // Собираем список параметрв для чтения у существующих элементов
-            AddExistingReadRequests (rule, rule.exsist_elements, paramToRead);
+            AddExistingReadRequests (rule, rule.exsist_elements, readContext.read);
         }
         // Если для размещаемого объекта не удалось найти нужные параметры, дальнейшая работа бессмысленна.
         if (!error_name.IsEmpty ()) {
@@ -741,7 +742,9 @@ namespace Spec {
                 return APIERR_CANCEL;
             }
         }
-        ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, true);
+        // R5.3: пакетное чтение остаётся здесь, на прежнем месте относительно
+        // SpecDG — переносить его в этом шаге нельзя.
+        ParamHelpers::ElementsRead (readContext.read, readContext.composite, readContext.listData, true, true);
         // Массив со словарями элементов для создания по правилам
         Int32 n_elements = 0; // Количество создаваемых элементов для отчёта
         bool has_v2 = false;
@@ -755,15 +758,8 @@ namespace Spec {
                 continue;
             ElementDict elements_n = {}; // Словарь создаваемых элементов для правила
             ElementDict elements_m = {};
-            n_elements += GetElementsForRule (rule,
-                                              paramToRead,
-                                              paramCompositeToRead,
-                                              paramListDataToRead,
-                                              elements_n,
-                                              elements_m,
-                                              elements_delete,
-                                              error_element,
-                                              showUserInterface);
+            n_elements += GetElementsForRule (
+                rule, readContext, elements_n, elements_m, elements_delete, error_element, showUserInterface);
             if (!elements_n.IsEmpty ())
                 elements_new.Push (elements_n);
             if (!elements_m.IsEmpty ())
@@ -1245,7 +1241,7 @@ namespace Spec {
     //
     // Сбор зависимостей не обращается к модели - это объявление данных, а не
     // их чтение. Объединение запросов делает вызывающий, потому что словари
-    // paramToRead/paramToWrite у всего запуска общие.
+    // Словари запросов на чтение и на запись у всего запуска общие.
     // --------------------------------------------------------------------
     // -----------------------------------------------------------------------------
     // На основе правила формирует список параметров, которые нужно прочитать из исходных элементов
@@ -1510,16 +1506,16 @@ namespace Spec {
     // Параметры:
     //   elemguid - GUID элемента
     //   rawname - "сырое" имя параметра (с префиксами @property:, @material:, @formula:, @gdl:)
-    //   paramToRead - словарь прочитанных параметров (заполняется ElementsRead)
+    //   context - набор прочитанных словарей (R5.3; заполняется ElementsRead)
     //   pvalue - [OUT] полученное значение
     //   fromMaterial - флаг: читать из материалов слоев конструкции
     //   n_layer - номер слоя материала
-    //   paramCompositeToRead - прочитанные составы конструкции
-    //   paramListDataToRead - прочитанные данные ведомостей
+    // Значения берутся только из context; см. доказанную границу чистоты
+    // (ambient-эффекты EvalExpression) в комментарии к SpecReadContext.
     // Алгоритм:
     //   1. Если это libdata (@listdata:) - парсит формулу и вычисляет через ListData
     //   2. Если это формула (@formula:) - парсит и вычисляет через ReadFormula
-    //   3. Если это материал (@material:) - читает из paramCompositeToRead по n_layer
+    //   3. Если это материал (@material:) - читает из context.composite по n_layer
     //   4. Иначе - читает через GetParamValueForElements (обычное свойство/GDL)
     // Возвращает: true если значение успешно прочитано
     // Примечание: pvalue.isValid = true только при успешном чтении
@@ -1530,17 +1526,15 @@ namespace Spec {
     // -----------------------------------------------------------------------------
     bool GetParamValue (const API_Guid &elemguid,
                         const GS::UniString &rawname,
-                        const ParamDictElement &paramToRead,
+                        const SpecReadContext &context,
                         ParamValue &pvalue,
                         bool fromMaterial,
-                        const GS::Int32 &n_layer,
-                        const ParamDictCompositeElement &paramCompositeToRead,
-                        const ListData::LibElements &paramListDataToRead) {
+                        const GS::Int32 &n_layer) {
         pvalue.isValid = false;
         if (hasLibData (rawname)) {
             if (n_layer < 0)
                 return false;
-            const ParamDictValue *p = paramToRead.GetPtr (elemguid);
+            const ParamDictValue *p = context.read.GetPtr (elemguid);
             if (p == nullptr)
                 return false;
             const ParamValue *formula = p->GetPtr (rawname);
@@ -1551,7 +1545,7 @@ namespace Spec {
             GS::UniString formula_expression = formula->val.uniStringValue;
             ParamHelpers::ParseParamName (formula_expression, paramDict);
             if (!ListData::AddLibdataToParamValueDict (
-                    elemguid, n_layer, paramListDataToRead, formula_expression, paramDict)) {
+                    elemguid, n_layer, context.listData, formula_expression, paramDict)) {
                 pvalue.val.type = API_PropertyStringValueType;
                 pvalue.val.uniStringValue = EMPTYSTRING;
                 pvalue.val.doubleValue = 0;
@@ -1579,7 +1573,7 @@ namespace Spec {
             pvalue = *result;
             return pvalue.isValid;
         }
-        if (!ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue))
+        if (!ParamHelpers::GetParamValueForElements (elemguid, rawname, context.read, pvalue))
             return false;
         if (!pvalue.fromMaterial)
             return true;
@@ -1587,17 +1581,17 @@ namespace Spec {
         pvalue.isValid = false;
         if (n_layer < 0)
             return false;
-        const ParamDictComposite *pc = paramCompositeToRead.GetPtr (elemguid);
+        const ParamDictComposite *pc = context.composite.GetPtr (elemguid);
         if (pc == nullptr) {
 #if defined(TESTING)
-            DBprnt ("Spec err", "!paramCompositeToRead.ContainsKey (elemguid)");
+            DBprnt ("Spec err", "!context.composite.ContainsKey (elemguid)");
 #endif
             return false;
         }
         const ParamComposite *pcelem = pc->GetPtr (rawname);
         if (pcelem == nullptr) {
 #if defined(TESTING)
-            DBprnt ("Spec err", "!paramCompositeToRead.ContainsKey (rawname)");
+            DBprnt ("Spec err", "!context.composite.ContainsKey (rawname)");
 #endif
             return false;
         }
@@ -1648,9 +1642,7 @@ namespace Spec {
     // Назначение: обрабатывает элементы согласно правилу и группирует их
     // Параметры:
     //   rule - правило спецификации (содержит группы, параметры для чтения/записи)
-    //   paramToRead - прочитанные параметры элементов
-    //   paramCompositeToRead - прочитанные составы конструкции (для материалов)
-    //   paramListDataToRead - прочитанные данные ведомостей
+    //   context - набор прочитанных словарей (R5.3)
     //   elements - [OUT] словарь создаваемых элементов (ключ - уникальная комбинация)
     //   elements_mod - [OUT] словарь модифицируемых элементов (для delete_old)
     //   elements_delete - [OUT] массив удаляемых устаревших элементов
@@ -1716,9 +1708,7 @@ namespace Spec {
     // Здесь важно не только собрать данные, но и правильно сгруппировать одинаковые элементы.
     // -----------------------------------------------------------------------------
     Int32 GetElementsForRule (SpecRule &rule,
-                              const ParamDictElement &paramToRead,
-                              const ParamDictCompositeElement &paramCompositeToRead,
-                              const ListData::LibElements &paramListDataToRead,
+                              const SpecReadContext &context,
                               ElementDict &elements,
                               ElementDict &elements_mod,
                               GS::Array<API_Guid> &elements_delete,
@@ -1757,14 +1747,8 @@ namespace Spec {
                 bool flag = true;
                 if (!group.flag_paramrawname.IsEmpty ()) {
                     ParamValue pvalue = {};
-                    if (GetParamValue (elemguid,
-                                       group.flag_paramrawname,
-                                       paramToRead,
-                                       pvalue,
-                                       group.fromMaterial,
-                                       group.n_layer,
-                                       paramCompositeToRead,
-                                       paramListDataToRead)) {
+                    if (GetParamValue (
+                            elemguid, group.flag_paramrawname, context, pvalue, group.fromMaterial, group.n_layer)) {
                         flag = pvalue.val.boolValue;
                     }
                 }
@@ -1775,14 +1759,7 @@ namespace Spec {
                 // Принадлежность субэлемента к группе определим по ключу - сцепке значений уникальных параметров
                 for (const GS::UniString &rawname : group.unic_paramrawname) {
                     ParamValue pvalue = {};
-                    if (!GetParamValue (elemguid,
-                                        rawname,
-                                        paramToRead,
-                                        pvalue,
-                                        group.fromMaterial,
-                                        group.n_layer,
-                                        paramCompositeToRead,
-                                        paramListDataToRead)) {
+                    if (!GetParamValue (elemguid, rawname, context, pvalue, group.fromMaterial, group.n_layer)) {
                         hasunic = false;
                         bool is_error = !group.fromMaterial;
                         if (pvalue.fromGDLArray)
@@ -1809,14 +1786,7 @@ namespace Spec {
                         ParamHelpers::ConvertIntToParamValue (pvalue, rawname, 1);
                         element.out_sum_param.Push (pvalue);
                     } else {
-                        if (GetParamValue (elemguid,
-                                           rawname,
-                                           paramToRead,
-                                           pvalue,
-                                           group.fromMaterial,
-                                           group.n_layer,
-                                           paramCompositeToRead,
-                                           paramListDataToRead)) {
+                        if (GetParamValue (elemguid, rawname, context, pvalue, group.fromMaterial, group.n_layer)) {
                             element.out_sum_param.Push (pvalue);
                         } else {
                             bool is_error = !group.fromMaterial;
@@ -1848,14 +1818,7 @@ namespace Spec {
                     for (const SlotBinding &slot : binding.outSlots) {
                         const GS::UniString &rawname = *slot.rawname;
                         ParamValue pvalue = {};
-                        if (GetParamValue (elemguid,
-                                           rawname,
-                                           paramToRead,
-                                           pvalue,
-                                           group.fromMaterial,
-                                           group.n_layer,
-                                           paramCompositeToRead,
-                                           paramListDataToRead)) {
+                        if (GetParamValue (elemguid, rawname, context, pvalue, group.fromMaterial, group.n_layer)) {
                             element.out_param.Push (pvalue);
                             key_out = key_out + ATSIGN + ParamHelpers::ToString (pvalue, fstr);
                         } else {
@@ -1952,8 +1915,7 @@ namespace Spec {
             // Принадлежность субэлемента к группе определим по ключу - сцепке значений уникальных параметров
             for (const GS::UniString &rawname : rule.out_paramrawname) {
                 ParamValue pvalue = {};
-                if (!GetParamValue (
-                        elemguid, rawname, paramToRead, pvalue, false, 0, paramCompositeToRead, paramListDataToRead))
+                if (!GetParamValue (elemguid, rawname, context, pvalue, false, 0))
                     hasunic = false;
                 key_out = key_out + ATSIGN + ParamHelpers::ToString (pvalue, fstr);
             }
@@ -1990,8 +1952,7 @@ namespace Spec {
                 GS::UniString rawname = rule.out_paramrawname[i];
                 ParamValue pvalue = {};
                 ParamValue elvalue = el.out_param[i];
-                if (!GetParamValue (
-                        elemguid, rawname, paramToRead, pvalue, false, 0, paramCompositeToRead, paramListDataToRead)) {
+                if (!GetParamValue (elemguid, rawname, context, pvalue, false, 0)) {
                     msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                     flag_change = true;
                 }
@@ -2017,8 +1978,7 @@ namespace Spec {
                 GS::UniString rawname = rule.out_sum_paramrawname[i];
                 ParamValue pvalue = {};
                 ParamValue elvalue = el.out_sum_param[i];
-                if (!GetParamValue (
-                        elemguid, rawname, paramToRead, pvalue, false, 0, paramCompositeToRead, paramListDataToRead)) {
+                if (!GetParamValue (elemguid, rawname, context, pvalue, false, 0)) {
                     msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                     flag_change = true;
                 }
@@ -2046,8 +2006,7 @@ namespace Spec {
             GS::UniString rawname = rule.destinationParamGuidName;
             if (!rawname.IsEmpty ()) {
                 ParamValue pvalue = {};
-                if (!GetParamValue (
-                        elemguid, rawname, paramToRead, pvalue, false, 0, paramCompositeToRead, paramListDataToRead)) {
+                if (!GetParamValue (elemguid, rawname, context, pvalue, false, 0)) {
                     msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                     flag_change = true;
                 }

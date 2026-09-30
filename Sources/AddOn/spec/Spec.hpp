@@ -92,6 +92,33 @@ namespace Spec {
         bool IsRunnableForRun () const { return parseValid && selected && destinationReady; }
     };
 
+    // R5.3: ОДИН набор прочитанных словарей на весь запуск.
+    //
+    // Три словаря, которые ParamHelpers::ElementsRead заполняет для всего набора
+    // элементов, перестали быть отдельными параметрами и стали полями одной
+    // структуры: раздельные словари можно было заполнить из разных вызовов
+    // чтения, и рассинхронизация была невозможна только по договорённости.
+    // Элемент для чтения НЕ хранится в контексте — контекст владеет данными
+    // чтения, а не списком элементов.
+    //
+    // Доказанная граница чистоты (проверено чтением кода, НЕ измерением):
+    //   - значения берутся ТОЛЬКО из этих трёх словарей, элемент не открывается;
+    //   - НО GetParamValue транзитивно зовёт ParamHelpers::ReadFormula ->
+    //     EvalExpression, а тот:
+    //       * под TESTING пишет PROPERTYCACHE ().formulaCacheStats (calls,
+    //         fullHits, fullClears) — то есть НАГРАЖДЁТ чтение значений;
+    //       * держит статический кэш exprResultFullCache (сброс при >4096).
+    //   Отсутствие записи в модель НЕ означает полностью чистую функцию: эти два
+    //  ambient-эффекта живут в Helpers/CommonFunction и в этом шаге не тронуты,
+    //   потому что Helpers.cpp под замком (#228) и правка затронула бы все
+    //   26 включающих его единиц. Устранение — отдельная задача с собственным
+    //   A/B по счётчикам формул.
+    struct SpecReadContext {
+        ParamDictElement read = {};               // Прочитанные значения свойств/GDL
+        ParamDictCompositeElement composite = {}; // Прочитанные составы конструкции (материалы слоёв)
+        ListData::LibElements listData = {};      // Прочитанные данные ведомостей (list-data)
+    };
+
     // Временный контейнер для одного элемента, который будет создан или обновлён по правилу.
     struct Element {
         GS::Array<ParamValue> out_param = {};
@@ -206,20 +233,18 @@ namespace Spec {
                                             GS::HashTable<GS::UniString, GS::UniString> &paramdict);
 
     // Читает одно значение параметра для конкретного элемента.
+    // Поддерживаются обычные свойства, формулы, материалы слоёв и данные из list-data.
+    // R5.3: три словаря чтения приходят одной структурой.
     bool GetParamValue (const API_Guid &elemguid,
                         const GS::UniString &rawname,
-                        const ParamDictElement &paramToRead,
+                        const SpecReadContext &context,
                         ParamValue &pvalue,
                         bool fromMaterial,
-                        const GS::Int32 &n_layer,
-                        const ParamDictCompositeElement &paramCompositeToRead,
-                        const ListData::LibElements &paramListDataToRead);
+                        const GS::Int32 &n_layer);
 
     // Формирует набор элементов для создания или обновления по одному правилу.
     Int32 GetElementsForRule (SpecRule &rule,
-                              const ParamDictElement &paramToRead,
-                              const ParamDictCompositeElement &paramCompositeToRead,
-                              const ListData::LibElements &paramListDataToRead,
+                              const SpecReadContext &context,
                               ElementDict &elements,
                               ElementDict &elements_mod,
                               GS::Array<API_Guid> &elements_delete,
