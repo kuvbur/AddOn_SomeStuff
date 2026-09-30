@@ -769,6 +769,200 @@ namespace TestFunc {
         DBprnt ("SpecRegression read plan", "end");
     }
 
+    // R5.1: сбор зависимостей правила - что нужно прочитать у источников и что
+    // потом записать. Сбор отделён от разворачивания имён в словарь элемента,
+    // поэтому проверяется сам перечень (без обращения к модели), а сличение в
+    // общие словари запуска остаётся отдельным контрактом адаптера.
+    void TestSpecRuleDependencies () {
+        DBprnt ("SpecRegression rule dependencies", "start");
+
+        const GS::UniString P ("{@gdl:p}"), U ("{@gdl:u}"), F ("{@gdl:f}"), Q ("{@gdl:q}");
+
+        // Пустое правило: ни читать, ни записывать нечего.
+        {
+            const Spec::SpecRule rule;
+            const Spec::RuleDependencies dependencies = Spec::CollectRuleDependencies (rule);
+            DBtest (dependencies.read.IsEmpty (), true, "empty rule reads nothing");
+            DBtest (dependencies.write.IsEmpty (), true, "empty rule writes nothing");
+        }
+
+        // Обычная группа: флаг, уникальный, выходной и сумма - все читаются;
+        // на запись идут только имена ВЫХОДНОЙ СХЕМЫ правила, а не поля группы.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push (P);
+            rule.out_sum_paramrawname.Push (Q);
+            Spec::GroupSpec group;
+            group.flag_paramrawname = F;
+            group.unic_paramrawname.Push (U);
+            group.out_paramrawname.Push (P);
+            group.sum_paramrawname.Push (Q);
+            rule.groups.Push (group);
+            const Spec::RuleDependencies dependencies = Spec::CollectRuleDependencies (rule);
+            DBtest (dependencies.read.GetSize (), 4, "plain group reads four names");
+            DBtest (dependencies.read.ContainsKey (F), true, "flag is read");
+            DBtest (dependencies.read.ContainsKey (U), true, "unic is read");
+            DBtest (dependencies.read.ContainsKey (P), true, "group out is read");
+            DBtest (dependencies.read.ContainsKey (Q), true, "group sum is read");
+            DBtest (dependencies.write.GetSize (), 2, "schema names are written");
+            DBtest (dependencies.write.ContainsKey (P) && dependencies.write.ContainsKey (Q), true, "write names");
+            DBtest (dependencies.write.ContainsKey (U) || dependencies.write.ContainsKey (F),
+                    false,
+                    "group fields are not written");
+        }
+
+        // Литерал "1" в суммах - счётчик источников, читать нечего.
+        {
+            Spec::SpecRule rule;
+            Spec::GroupSpec group;
+            group.out_paramrawname.Push (P);
+            group.sum_paramrawname.Push ("1");
+            rule.groups.Push (group);
+            const Spec::RuleDependencies dependencies = Spec::CollectRuleDependencies (rule);
+            DBtest (dependencies.read.ContainsKey ("1"), false, "literal one is not read");
+            DBtest (dependencies.read.ContainsKey ("{@gdl:1}"), false, "literal one is not normalised");
+            // Два имени, а не одно: пустой флаг группы тоже попадает в перечень
+            // (см. блок про пустой флаг ниже) и отбрасывается только при разворачивании.
+            DBtest (dependencies.read.GetSize (), 2, "only group out and empty flag are listed");
+        }
+
+        // Невалидная группа: её поля не читаются, но ФЛАГ читается - по нему
+        // элемент отбрасывается в цикле, и без чтения отбрасывался бы иначе.
+        {
+            Spec::SpecRule rule;
+            Spec::GroupSpec group;
+            group.is_Valid = false;
+            group.flag_paramrawname = F;
+            group.unic_paramrawname.Push (U);
+            group.out_paramrawname.Push (P);
+            group.sum_paramrawname.Push (Q);
+            rule.groups.Push (group);
+            const Spec::RuleDependencies dependencies = Spec::CollectRuleDependencies (rule);
+            DBtest (dependencies.read.GetSize (), 1, "invalid group reads only flag");
+            DBtest (dependencies.read.ContainsKey (F), true, "invalid group flag is read");
+        }
+
+        // Пустой флаг попадает в перечень, но в словарь элемента не попадает:
+        // AddValueToParamDictValue игнорирует пустое имя. Это различие между
+        // перечнем и разворотом, а не отказ сбора.
+        {
+            Spec::SpecRule rule;
+            Spec::GroupSpec group;
+            group.flag_paramrawname = EMPTYSTRING;
+            group.out_paramrawname.Push (P);
+            rule.groups.Push (group);
+            const Spec::RuleDependencies dependencies = Spec::CollectRuleDependencies (rule);
+            DBtest (dependencies.read.ContainsKey (EMPTYSTRING), true, "empty flag reaches the list");
+            ParamDictValue paramDict;
+            Spec::BuildReadParamDict (dependencies.read, paramDict);
+            DBtest (paramDict.GetSize (), 1, "empty flag is dropped when expanded");
+        }
+
+        // Слои материалов и ведомостей: читается только нулевой слой - остальные
+        // копии одинаковы, повторное чтение того же набора не нужно.
+        for (Int32 mode = 0; mode < 2; mode++) {
+            Spec::SpecRule rule;
+            for (Int32 layer = 0; layer < 3; layer++) {
+                Spec::GroupSpec group;
+                group.n_layer = layer;
+                group.fromMaterial = mode == 0;
+                group.fromLibData = mode == 1;
+                group.flag_paramrawname = F;
+                group.out_paramrawname.Push (P);
+                group.sum_paramrawname.Push (Q);
+                rule.groups.Push (group);
+            }
+            const Spec::RuleDependencies dependencies = Spec::CollectRuleDependencies (rule);
+            // Три группы дают три различных имени (флаг, выход, сумма); слои 1 и 2
+            // пропускаются, поэтому их имена в перечень не попадают.
+            DBtest (dependencies.read.GetSize (), 3, "layered rule reads layer zero only");
+        }
+
+        // Несколько групп: имена объединяются, дубли не повторяются.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push (P);
+            rule.out_sum_paramrawname.Push (Q);
+            for (Int32 i = 0; i < 3; i++) {
+                Spec::GroupSpec group;
+                group.flag_paramrawname = F;
+                group.unic_paramrawname.Push (U);
+                group.out_paramrawname.Push (P);
+                group.sum_paramrawname.Push (Q);
+                rule.groups.Push (group);
+            }
+            const Spec::RuleDependencies dependencies = Spec::CollectRuleDependencies (rule);
+            DBtest (dependencies.read.GetSize (), 4, "repeated groups do not duplicate names");
+            DBtest (dependencies.write.GetSize (), 2, "repeated groups do not duplicate writes");
+        }
+
+        // Сбор - чистое перечисление: разворачивания имён в нём нет, поэтому
+        // служебных свойств материала (толщина, единицы, коэффициент запаса,
+        // двадцать имён синхронизации) в перечне не возникает. Они появляются
+        // только в BuildReadParamDict.
+        {
+            Spec::SpecRule rule;
+            const GS::UniString material = "{@material:layers_auto,all;" + P + "}";
+            Spec::GroupSpec group;
+            group.fromMaterial = true;
+            group.out_paramrawname.Push (material);
+            rule.groups.Push (group);
+            const Spec::RuleDependencies dependencies = Spec::CollectRuleDependencies (rule);
+            DBtest (dependencies.read.GetSize (), 2, "material name is listed as is plus empty flag");
+            DBtest (dependencies.read.ContainsKey (material), true, "material name kept whole");
+            ParamDictValue paramDict;
+            Spec::BuildReadParamDict (dependencies.read, paramDict);
+            DBtest (paramDict.ContainsKey (material), true, "material param added");
+            DBtest (paramDict.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_th}"),
+                    true,
+                    "material thickness helper added");
+            DBtest (paramDict.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_units}"),
+                    true,
+                    "material units helper added");
+            DBtest (paramDict.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_kzap}"),
+                    true,
+                    "material kzap helper added");
+            DBtest (paramDict.ContainsKey ("{@property:sync_name19}"), true, "material sync name range added");
+            if (paramDict.ContainsKey (material)) {
+                const ParamValue &param = paramDict.Get (material);
+                DBtest (param.fromMaterial, true, "material param flagged from material");
+                DBtest (param.fromQuantity, true, "material param flagged from quantity");
+                DBtest (param.composite_pen, -2, "material param pen");
+            }
+        }
+
+        // Формула: из имени выражения получаются и служебные свойства слоя, и
+        // сама формула с признаком hasFormula.
+        {
+            Spec::SpecRule rule;
+            const GS::UniString formula = FORMULANAMEPREFIX + "0.5*" + P + STRFORMULASTART + STRFORMULAEND;
+            Spec::GroupSpec group;
+            group.out_paramrawname.Push (formula);
+            rule.groups.Push (group);
+            const Spec::RuleDependencies dependencies = Spec::CollectRuleDependencies (rule);
+            ParamDictValue paramDict;
+            Spec::BuildReadParamDict (dependencies.read, paramDict);
+            DBtest (paramDict.ContainsKey (formula), true, "formula param added");
+            if (paramDict.ContainsKey (formula)) {
+                DBtest (paramDict.Get (formula).val.hasFormula, true, "formula param has formula flag");
+            }
+        }
+
+        // Адаптер сливает зависимости в общие словари запуска: правило без
+        // источников не читает ничего, но имена на запись всё равно попадают -
+        // это проверка из старого TestSpecReadPlan, сохранённая по смыслу.
+        {
+            SpecFixture f;
+            ParamDictElement read;
+            ParamDictValue write;
+            Spec::GetParamToReadFromRule (f.rule, read, write);
+            DBtest (read.IsEmpty (), true, "adapter reads nothing without sources");
+            DBtest (write.GetSize (), 2, "adapter writes schema without sources");
+        }
+
+        DBprnt ("SpecRegression rule dependencies", "end");
+    }
+
     void TestSpecValueEdges () {
         DBprnt ("SpecRegression values", "start");
         SpecFixture f;
@@ -1858,6 +2052,7 @@ namespace TestFunc {
         TestSpecGetParamValue ();
         TestSpecValueEdges ();
         TestSpecReadPlan ();
+        TestSpecRuleDependencies ();
         TestSpecGrouping ();
         TestSpecReconcile ();
         TestSpecMergeAndKey ();

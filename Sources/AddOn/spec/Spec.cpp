@@ -1309,55 +1309,73 @@ namespace Spec {
     }
 
     // --------------------------------------------------------------------
-    // Формирование списка параметров для чтения на основе правила
-    // Назначение: анализирует группы правила и добавляет имена свойств в списки для чтения/записи
-    // Параметры:
-    //   rule - правило спецификации (содержит группы с параметрами)
-    //   paramToRead - [OUT] словарь параметров для чтения (заполняется)
-    //   paramToWrite - [OUT] словарь параметров для записи (заполняется)
-    // Алгоритм:
-    //   1. Для каждой группы (group) в правиле:
-    //      - добавляет флаг (flag_paramrawname)
-    //      - добавляет параметры для суммирования (sum_paramrawname)
-    //      - добавляет уникальные параметры (unic_paramrawname)
-    //      - добавляет параметры для вывода (out_paramrawname)
-    //   2. Обрабатывает специальные префиксы: MATERIALNAMEPREFIX (@material:) и FORMULANAMEPREFIX (@formula:)
-    //   3. Для каждого элемента в rule.elements добавляет параметры в paramToRead
-    //   4. Добавляет параметры для записи в paramToWrite
-    // Примечание: параметры материалов и формул обрабатываются особым образом
+    // Зависимости правила: что читать у источников и что потом записывать
+    // Исходная функция GetParamToReadFromRule делала три разных дела вперемешку:
+    // перечисляла зависимости, разворачивала имена в словарь одного элемента и
+    // сливала результат в общие словари запуска. R5.1 разносит их на
+    // CollectRuleDependencies (что нужно), BuildReadParamDict (как из имён
+    // получаются служебные свойства материалов и формул) и адаптер
+    // GetParamToReadFromRule (слияние, прежняя форма вызова).
+    // Порядок и кратность чтения прежние: объединение запросов между
+    // правилами не менялось.
+    //
+    // Сбор зависимостей не обращается к модели - это объявление данных, а не
+    // их чтение. Объединение запросов делает вызывающий, потому что словари
+    // paramToRead/paramToWrite у всего запуска общие.
     // --------------------------------------------------------------------
     // -----------------------------------------------------------------------------
     // На основе правила формирует список параметров, которые нужно прочитать из исходных элементов
     // и список параметров, которые потом будут записаны в новые элементы.
-    // -----------------------------------------------------------------------------
-    void GetParamToReadFromRule (SpecRule &rule, ParamDictElement &paramToRead, ParamDictValue &paramToWrite) {
-        ParamDict params = {}; // Словарь с уникальными параметрами читаемых элементов
+    // --------------------------------------------------------------------
+    RuleDependencies CollectRuleDependencies (const SpecRule &rule) {
+        RuleDependencies dependencies = {};
         for (const GroupSpec &group : rule.groups) {
             // Для материалов и компонент читаем только 0 группу - остальные одинаковые
             if ((group.fromLibData || group.fromMaterial) && group.n_layer > 0) {
                 continue;
             }
-            const GS::UniString &rawname = group.flag_paramrawname;
-            if (!params.ContainsKey (rawname))
-                params.Add (rawname, true);
+            // Флаг добавляется ДО проверки is_Valid: элементы невалидной группы
+            // всё равно отбрасываются по значению флага, поэтому читать его надо.
+            // Пустое имя флага попадает в набор, но BuildReadParamDict его
+            // пропускает (AddValueToParamDictValue игнорирует пустое имя) -
+            // поведение прежнее.
+            if (!dependencies.read.ContainsKey (group.flag_paramrawname))
+                dependencies.read.Add (group.flag_paramrawname, true);
             if (!group.is_Valid) {
                 continue;
             }
             for (const GS::UniString &rawname : group.sum_paramrawname) {
-                if (!params.ContainsKey (rawname) && !rawname.IsEqual ("1"))
-                    params.Add (rawname, true);
+                // Литерал "1" - счётчик источников, читать нечего.
+                if (!dependencies.read.ContainsKey (rawname) && !rawname.IsEqual ("1"))
+                    dependencies.read.Add (rawname, true);
             }
             for (const GS::UniString &rawname : group.unic_paramrawname) {
-                if (!params.ContainsKey (rawname))
-                    params.Add (rawname, true);
+                if (!dependencies.read.ContainsKey (rawname))
+                    dependencies.read.Add (rawname, true);
             }
             for (const GS::UniString &rawname : group.out_paramrawname) {
-                if (!params.ContainsKey (rawname))
-                    params.Add (rawname, true);
+                if (!dependencies.read.ContainsKey (rawname))
+                    dependencies.read.Add (rawname, true);
             }
         }
-        ParamDictValue paramDict = {}; // Словарь параметров для чтения для одного элемента
-        for (const auto &cItt : params) {
+        for (const GS::UniString &rawname : rule.out_sum_paramrawname) {
+            if (!dependencies.write.ContainsKey (rawname))
+                dependencies.write.Add (rawname, true);
+        }
+        for (const GS::UniString &rawname : rule.out_paramrawname) {
+            if (!dependencies.write.ContainsKey (rawname))
+                dependencies.write.Add (rawname, true);
+        }
+        return dependencies;
+    }
+
+    // Разворачивает собранные имена в словарь параметров ОДНОГО элемента.
+    // Обычные имена добавляются как есть; имена материалов и формул требуют
+    // разбора выражения, служебных свойств слоя и самой формулы - поэтому
+    // они здесь, а не в CollectRuleDependencies, который остаётся чистым
+    // перечислением имён.
+    void BuildReadParamDict (const ParamDict &readNames, ParamDictValue &paramDict) {
+        for (const auto &cItt : readNames) {
 #ifdef ServerMainVers_2800
             const GS::UniString rawname = cItt.key;
 #else
@@ -1399,32 +1417,29 @@ namespace Spec {
                 }
             }
         }
+    }
+
+    // Адаптер прежней формы: собирает зависимости правила и сливает их в общие
+    // словари запуска. Объединение запросов между правилами остаётся здесь
+    // (AddParamDictValue2ParamDictElement не трогает уже набранное), поэтому
+    // кратность чтения компонентов и порядок добавления прежние.
+    void GetParamToReadFromRule (SpecRule &rule, ParamDictElement &paramToRead, ParamDictValue &paramToWrite) {
+        const RuleDependencies dependencies = CollectRuleDependencies (rule);
+        ParamDictValue paramDict = {}; // Словарь параметров для чтения для одного элемента
+        BuildReadParamDict (dependencies.read, paramDict);
         // Добавляем параметры для каждого элемента
         if (!paramDict.IsEmpty ()) {
             for (const API_Guid elemguid : rule.elements) {
                 ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
             }
         }
-        // Добавляем параметры для записи
-        ParamDict paramswrite = {}; // Словарь с уникальными параметрами записываемых элементов
-        for (const GS::UniString &rawname : rule.out_sum_paramrawname) {
-            if (!paramswrite.ContainsKey (rawname))
-                paramswrite.Add (rawname, true);
-        }
-        for (const GS::UniString &rawname : rule.out_paramrawname) {
-            if (!paramswrite.ContainsKey (rawname))
-                paramswrite.Add (rawname, true);
-        }
-        // Добавляем параметры для каждого элемента
-        if (!paramswrite.IsEmpty ()) {
-            for (const auto &cItt : paramswrite) {
+        for (const auto &cItt : dependencies.write) {
 #ifdef ServerMainVers_2800
-                const GS::UniString rawname = cItt.key;
+            const GS::UniString rawname = cItt.key;
 #else
-                const GS::UniString rawname = *cItt.key;
+            const GS::UniString rawname = *cItt.key;
 #endif
-                ParamHelpers::AddValueToParamDictValue (paramToWrite, rawname);
-            }
+            ParamHelpers::AddValueToParamDictValue (paramToWrite, rawname);
         }
     }
 
