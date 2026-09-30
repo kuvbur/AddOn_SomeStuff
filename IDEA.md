@@ -984,7 +984,7 @@ reader/fstr; частота ACAPI-вызовов 99 в обоих без изм�
   сохранить это поведение адаптером, а найденное неверное суммирование —
   оформить отдельным F, НЕ «чинить» строгим конструктором.
 ### Last Checkpoint
-R6.1 — коммит этого шага (Spec.cpp/.hpp, tests/TestSpec.cpp, tests/TestFunc.cpp,
+R6.1 — `8417c0d` (Spec.cpp/.hpp, tests/TestSpec.cpp, tests/TestFunc.cpp,
 tests/TestFunc.hpp, Spec.md, IDEA.md, Refs: #228).
 Предыдущий: R5.5 — `3d74933` (tests/TestSpec.cpp, tests/TestFunc.cpp,
 tests/TestFunc.hpp, Spec.md, TestFunc.md, IDEA.md, Refs: #228).
