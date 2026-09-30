@@ -31,9 +31,6 @@ namespace TestFunc {
     // Проверяет форматирование строк по правилам add-on.
     void TestFormatString ();
 
-    // Проверяет форматирование строк на основе формул.
-    void TestFormatStringFormula ();
-
     // Проверяет преобразование значений в ParamValue.
     void TestConvertToParamValue ();
 

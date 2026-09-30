@@ -7,6 +7,8 @@
 
 Вывод `DBprnt`/`DBtest` идёт в отладочный вывод ArchiCAD (`DBPrintf`/`DBPrint`); результаты читают в панели «Отладка» Visual Studio через VS MCP `output_read` (AGENTS.md §9). Файл `test_results.txt` больше не используется. Ошибки ищут как `ERROR IN TEST`, набор проверок ограничен строками `TEST : start` / `TEST : end`.
 
+**Тег функции в квадратных скобках (#230).** `DBprnt`/`DBtest` в этом файле — не прод-функции, а локальные макросы, которые подставляют `__func__` в обёртки `TaggedPrnt`/`TaggedTest` (объявлены в анонимном namespace в начале файла, макросы — сразу после). Тег добавляется к содержательному тексту, поэтому строка вывода имеет вид `[TestSpecMergeAndKey] Spec merge sums add up` — имя функции печатается в начале строки, и по нему строка фильтруется в панели «Отладка». Прод-реализация в `CommonFunction.cpp` не менялась: её вывод используется и вне тестов (`Propertycache.hpp` и др.), и подменять его глобально нельзя. Обёртки объявлены до макросов, поэтому вызовы внутри них не подменяются (препроцессор идёт по файлу последовательно); вызовов `DBtest`/`DBprnt` в лямбдах в файле нет, поэтому `__func__` всегда даёт имя теста, а не оператора. [по коду `TestFunc.cpp:22-54`, runtime AC25 2026-09-29]
+
 ## Файлы
 - `Sources/AddOn/TestFunc.cpp/hpp` (hpp целиком под `#ifdef TESTING`)
 
@@ -20,7 +22,6 @@
 | `TestCalc` | 25 | Арифметические и логические операции внутренних функций |
 | `TestFormula` | 28 | Формульный парсинг и вычисление |
 | `TestFormatString` | 31 | Форматирование строк по правилам add-on |
-| `TestFormatStringFormula` | 34 | Форматирование строк на основе формул |
 
 ### Преобразования в ParamValue [из комментариев]
 `TestConvertToParamValue` (37) — значения; `TestConvertAttributeToParamValue` (40) — атрибуты; `TestConvertPropertyToParamValue` (43) — свойства; `TestConvertPropertyDefinitionToParamValue` (46) — определения; `TestSetParamValueSourseByName` (49) — источник по raw-name; `TestSetrawNameFromProperty` (52) — raw-name из описания свойства.

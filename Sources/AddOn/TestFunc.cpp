@@ -297,7 +297,7 @@ namespace TestFunc {
                 DBtest (row->out_sum_paramrawname[0], f.outQuantity, "Spec sum target copied");
                 DBtest (row->exs_guid == APINULLGuid, "Spec new row no existing GUID");
             }
-            DBtest (f.errors.IsEmpty (), "Spec valid no errors");
+            DBtest (f.errors.IsEmpty (), "Spec valid problem list empty");
             DBtest (f.context.read.Get (f.first).Get (f.quantity).val.intValue, 2, "Spec source quantity unchanged");
             f.Source (f.second, "A", "Beta", 3);
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec merge");
@@ -380,7 +380,7 @@ namespace TestFunc {
                 f.context.read.Get (f.second).Delete (name);
                 const GS::UniString label = GS::UniString::Printf ("Spec missing %d stop %d", missing, stop);
                 f.Shape (f.Run (), stop != 0 ? 0 : 1, stop != 0 ? 0 : 1, 0, 0, label);
-                DBtest (f.errors.ContainsKey (f.second), stop != 0, label + " error GUID");
+                DBtest (f.errors.ContainsKey (f.second), stop != 0, label + " blamed GUID");
                 DBtest (!f.errors.ContainsKey (f.first), label + " valid source not blamed");
             }
         }
@@ -982,7 +982,7 @@ namespace TestFunc {
             ParamDict errors;
             DBtest (Spec::MatchDestinationProperties (rule, favorite, errors), true, "favorite complete ready");
             DBtest (rule.destinationReady, true, "favorite complete flag kept");
-            DBtest (errors.IsEmpty (), true, "favorite complete no errors");
+            DBtest (errors.IsEmpty (), true, "favorite complete problem list empty");
         }
 
         // Отсутствие выходного имени снимает готовность и копит имя в error_name.
@@ -1020,7 +1020,7 @@ namespace TestFunc {
             ParamDict errors;
             Spec::MatchDestinationProperties (rule, favorite, errors);
             Spec::MatchDestinationProperties (rule, favorite, errors);
-            DBtest (errors.GetSize (), 1, "repeat pass does not duplicate error");
+            DBtest (errors.GetSize (), 1, "repeat pass does not duplicate entry");
         }
 
         // SelectExistingElements: пустое выделение означает "взять все".
@@ -1863,7 +1863,7 @@ namespace TestFunc {
             Spec::ApplyRulePolicy (test.prefix, rule);
             const GS::UniString label = GS::UniString ("Spec policy ") + test.label;
             DBtest (rule.delete_old, test.delete_old, label + " delete old");
-            DBtest (rule.stop_on_error, test.stop_on_error, label + " stop on error");
+            DBtest (rule.stop_on_error, test.stop_on_error, label + " stop flag");
             DBtest (rule.only_visible, test.only_visible, label + " only visible");
             DBtest (rule.isKM, test.isKM, label + " KM");
             DBtest (rule.isKZH, test.isKZH, label + " KZH");
@@ -2204,7 +2204,7 @@ namespace TestFunc {
     //   - пустая выходная схема роняет и группы (0 != 1), поэтому признак
     //     принятия групп здесь всегда false - и это не ошибка набора.
     void TestSpecParseError () {
-        DBprnt ("SpecRegression parse error", "start");
+        DBprnt ("SpecRegression parse reason", "start");
 
         struct ErrorCase {
             const char *body; // часть описания после "Spec_rule{Fav;"
@@ -2214,7 +2214,7 @@ namespace TestFunc {
         };
 
         const ErrorCase cases[] = {
-            {"g@@u;p;f;q@@s@@x;y)", true, Spec::ParseError::None, "valid rule has no error"},
+            {"g@@u;p;f;q@@s@@x;y)", true, Spec::ParseError::None, "valid rule reason None"},
             // Маркер есть, но тело группы без точки с запятой.
             {"g@@u@@s@@x;y)", false, Spec::ParseError::GroupNotSplit, "group not split"},
             // Выходная схема из одной части (фильтр пустых не помогает: часть не пуста).
@@ -2238,7 +2238,7 @@ namespace TestFunc {
         for (const ErrorCase &test : cases) {
             GS::UniString description = GS::UniString ("Spec_rule{Fav;") + test.body + "}";
             const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
-            const GS::UniString label = GS::UniString ("Spec error ") + test.label;
+            const GS::UniString label = GS::UniString ("Spec parse reason ") + test.label;
             DBtest (rule.parseValid, test.valid, label + " parse flag");
             // Причина обязана называть именно ту точку, которая отвергла описание.
             DBtest (rule.parseError == test.error, label + " reason");
@@ -2257,18 +2257,18 @@ namespace TestFunc {
         {
             GS::UniString description = "Spec_rule{Fav;u;p;f;q@@s@@x;y}";
             const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
-            DBtest (rule.parseValid, true, "Spec error absent group marker still parsed");
-            DBtest (rule.parseError == Spec::ParseError::None, "Spec error absent group marker no error");
-            DBtest (rule.groups.GetSize () == 1, "Spec error absent group marker one group");
+            DBtest (rule.parseValid, true, "Spec parse reason absent marker still parsed");
+            DBtest (rule.parseError == Spec::ParseError::None, "Spec parse reason absent marker None");
+            DBtest (rule.groups.GetSize () == 1, "Spec parse reason absent marker one group");
             // Реально видна NoGroupsAccepted - единственный отказ по группам.
             GS::UniString mismatched = "Spec_rule{Fav;u;p1,p2;f;q@@s@@x;y}";
             const Spec::SpecRule dropped = Spec::GetRuleFromDescription (mismatched);
             DBtest (!dropped.parseValid && dropped.parseError == Spec::ParseError::NoGroupsAccepted,
-                    "Spec error NoGroupsAccepted reachable");
+                    "Spec parse reason NoGroupsAccepted reachable");
         }
 
         // Текст причины не пустой и разный для каждого значения: иначе сообщение
-        // в AddRule станет бесполезным ("no parse error" на всё).
+        // в AddRule станет бесполезным ("нет причины" на всё).
         {
             const Spec::ParseError all[] = {Spec::ParseError::None,
                                             Spec::ParseError::NoGroupMarker,
@@ -2281,10 +2281,10 @@ namespace TestFunc {
             const UInt32 n = sizeof (all) / sizeof (all[0]);
             for (UInt32 i = 0; i < n; ++i) {
                 const GS::UniString text = Spec::ParseErrorText (all[i]);
-                DBtest (!text.IsEmpty (), "Spec error text not empty");
+                DBtest (!text.IsEmpty (), "Spec parse reason text non-empty");
                 for (UInt32 j = i + 1; j < n; ++j) {
                     DBtest (text != Spec::ParseErrorText (all[j]),
-                            GS::UniString::Printf ("Spec error text %u distinct from %u", i, j));
+                            GS::UniString::Printf ("Spec parse reason text %u differs from %u", i, j));
                 }
             }
         }
@@ -2301,19 +2301,20 @@ namespace TestFunc {
             definition.description = "Spec_rule{Bad;g(u;p;f;q)s(x)}";
             Spec::AddRule (definition, APINULLGuid, rules);
             const Spec::SpecRule *stored = rules.GetPtr ("Bad;g@@u;p;f;q@@s@@x)");
-            DBtest (stored != nullptr, "Spec error AddRule stores invalid");
+            DBtest (stored != nullptr, "Spec parse reason AddRule keeps invalid rule");
             if (stored != nullptr) {
-                DBtest (!stored->parseValid, "Spec error AddRule invalid flag");
-                DBtest (stored->parseError == Spec::ParseError::OutputPartCount, "Spec error AddRule reason kept");
+                DBtest (!stored->parseValid, "Spec parse reason AddRule invalid flag true");
+                DBtest (stored->parseError == Spec::ParseError::OutputPartCount,
+                        "Spec parse reason AddRule keeps reason");
             }
             definition.description = "Spec_rule{Ok;g(u;p;f;q)s(x;y)}";
             Spec::AddRule (definition, APINULLGuid, rules);
             const Spec::SpecRule *good = rules.GetPtr ("Ok;g@@u;p;f;q@@s@@x;y)");
             DBtest (good != nullptr && good->parseValid && good->parseError == Spec::ParseError::None,
-                    "Spec error AddRule valid keeps None");
+                    "Spec parse reason AddRule valid keeps None");
         }
 
-        DBprnt ("SpecRegression parse error", "end");
+        DBprnt ("SpecRegression parse reason", "end");
     }
 
     void TestSpecSizes () {
@@ -4698,43 +4699,59 @@ namespace TestFunc {
             DBtest (n, (UInt32)2, "ParseDesc MultiSync -> 2 parts");
         }
 
-        // Тест 3: Описание с Renum_flag
+        // Тесты 3-6: RENUM/RENUMFLAG/Sum/Spec не разбираются SyncString - команда
+        // не начинается с SYNCPART, поэтому проверять надо не наличие подстроки в
+        // литерале (это тавтология: сверяется константа сама с собой), а исход
+        // ParsePropertyDescriptionToRules. hasSyncRules обязан быть false, а
+        // hasOtherCommands - true: команда опознана, но правил синхронизации нет.
         {
             GS::UniString desc = "Renum_flag{Property:RenumRule; NULL}";
-            GS::UniString ldesc = desc.ToLowerCase ();
-            DBtest (ldesc.Contains (RENUMFLAG.ToLowerCase ()), "ParseDesc Renum_flag -> contains Renum_flag");
+            const ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (!result.hasSyncRules, "ParseDesc Renum_flag -> no sync rules");
+            DBtest (result.hasOtherCommands, "ParseDesc Renum_flag -> has other commands");
         }
-
-        // Тест 4: Описание с Renum
         {
             GS::UniString desc = "Renum{Property:Criteria; Property:Delimetr}";
-            GS::UniString ldesc = desc.ToLowerCase ();
-            DBtest (ldesc.Contains (RENUM.ToLowerCase ()), "ParseDesc Renum -> contains Renum");
+            const ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (!result.hasSyncRules, "ParseDesc Renum -> no sync rules");
+            DBtest (result.hasOtherCommands, "ParseDesc Renum -> has other commands");
+            if (!result.otherCommands.IsEmpty ())
+                DBtest (result.otherCommands[0].commandType == "Renum", "ParseDesc Renum -> commandType Renum");
         }
-
-        // Тест 5: Описание с Sum
         {
             GS::UniString desc = "Sum{Property:SumProp1; Property:SumProp2; max}";
-            GS::UniString ldesc = desc.ToLowerCase ();
-            DBtest (ldesc.Contains ("sum{"), "ParseDesc Sum -> contains Sum");
+            const ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (!result.hasSyncRules, "ParseDesc Sum -> no sync rules");
+            DBtest (result.hasOtherCommands, "ParseDesc Sum -> has other commands");
+            if (!result.otherCommands.IsEmpty ())
+                DBtest (result.otherCommands[0].commandType == "Sum", "ParseDesc Sum -> commandType Sum");
         }
-
-        // Тест 6: Описание с Spec_rule
         {
             GS::UniString desc = "Spec_rule{g(U, P, F, Q)}{s(Pn, Qn)}";
-            GS::UniString ldesc = desc.ToLowerCase ();
-            DBtest (ldesc.Contains ("spec_rule"), "ParseDesc Spec_rule -> contains Spec_rule");
+            const ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (!result.hasSyncRules, "ParseDesc Spec_rule -> no sync rules");
+            DBtest (result.hasOtherCommands, "ParseDesc Spec_rule -> has other commands");
+            if (!result.otherCommands.IsEmpty ())
+                DBtest (result.otherCommands[0].commandType == "Spec_rule",
+                        "ParseDesc Spec_rule -> commandType Spec_rule");
         }
 
-        // Тест 7: Комбинированное описание (Sync + Renum)
+        // Тест 7: Комбинированное описание (Sync + Renum_flag). Разбор отдаёт
+        // И правило синхронизации, И прочую команду: RENUMFLAG не начинается с
+        // SYNCPART, но остаётся в otherCommands. Проверяется разбор, а не
+        // наличие подстроки в литерале описания.
         {
             GS::UniString desc = "Sync_from{Property:Source}Renum_flag{Property:RenumRule}";
             GS::Array<GS::UniString> parts;
             GS::Array<GS::UniString> scratch;
             UInt32 n = StringSpltFilter (desc, SYNCPART, parts, BRACESTART, &scratch);
             DBtest (n >= 1, "ParseDesc Combined -> at least 1 sync part");
-            GS::UniString ldesc = desc.ToLowerCase ();
-            DBtest (ldesc.Contains (RENUMFLAG.ToLowerCase ()), "ParseDesc Combined -> contains Renum_flag");
+            const ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (result.hasSyncRules, "ParseDesc Combined -> has sync rules");
+            DBtest (result.hasOtherCommands, "ParseDesc Combined -> has other commands");
+            if (!result.otherCommands.IsEmpty ())
+                DBtest (result.otherCommands[0].commandType == "Renum_flag",
+                        "ParseDesc Combined -> commandType Renum_flag");
         }
 
         // Тест 8: Описание с игнорируемыми значениями
@@ -5445,7 +5462,7 @@ namespace TestFunc {
         }
         DBprnt ("TEST",
                 GS::UniString ("RuleFlagProj list: elements=") + GS::ValueToUniString ((Int32)elements.GetSize ()) +
-                    GS::UniString (" wallErr=") + GS::ValueToUniString (wallListError) + GS::UniString (" slabErr=") +
+                    GS::UniString (" wallCode=") + GS::ValueToUniString (wallListError) + GS::UniString (" slabCode=") +
                     GS::ValueToUniString ((Int32)err));
         if (err != NoError || elements.IsEmpty ())
             return;
@@ -5463,7 +5480,7 @@ namespace TestFunc {
                 ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
             if (err != NoError || definitions.IsEmpty ()) {
                 DBprnt ("TEST",
-                        GS::UniString ("RuleFlagProj definitions: err=") + GS::ValueToUniString ((Int32)err) +
+                        GS::UniString ("RuleFlagProj definitions: code=") + GS::ValueToUniString ((Int32)err) +
                             GS::UniString (" count=") + GS::ValueToUniString ((Int32)definitions.GetSize ()));
                 continue;
             }
