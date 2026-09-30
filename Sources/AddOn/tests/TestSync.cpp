@@ -577,93 +577,112 @@ namespace TestFunc {
     // -----------------------------------------------------------------------------
     // Тест констант префиксов
     // -----------------------------------------------------------------------------
+    // Проверка констант синхронизации и параметров. Набор проверяет значения
+    // констант против эталонных литералов: смена префикса или индекса типа в
+    // проде должна ломать тест, а не молча разъезжаться с UI.
+    // Проверки собраны в две таблицы по типу значения - раньше это были 62
+    // копипаст-строки, и добавление одной константы требовало дублировать
+    // структуру, а не строку. Набор и набор проверок не изменились: те же 62
+    // сверки с теми же литералами, внутри каждой таблицы порядок исходный
+    // (группы: префиксы, индексы, флаги, разделители, ключевые слова,
+    // форматы), но строковые и числовые идут двумя проходами, а не вперемешку.
+    namespace {
+        struct UniConstCase {
+            GS::UniString actual;
+            GS::UniString expected;
+            const char *label;
+        };
+
+        struct IntConstCase {
+            Int32 actual;
+            Int32 expected;
+            const char *label;
+        };
+
+        const UniConstCase uniConstCases[] = {
+            // --- префиксы имён параметров ---
+            {PROPERTYNAMEPREFIX, GS::UniString ("{@property:"), "PROPERTYNAMEPREFIX"},
+            {GDLNAMEPREFIX, GS::UniString ("{@gdl:"), "GDLNAMEPREFIX"},
+            {COORDNAMEPREFIX, GS::UniString ("{@coord:"), "COORDNAMEPREFIX"},
+            {IDNAMEPREFIX, GS::UniString ("{@id:"), "IDNAMEPREFIX"},
+            {MORPHNAMEPREFIX, GS::UniString ("{@morph:"), "MORPHNAMEPREFIX"},
+            {INFONAMEPREFIX, GS::UniString ("{@info:"), "INFONAMEPREFIX"},
+            {IFCNAMEPREFIX, GS::UniString ("{@ifc:"), "IFCNAMEPREFIX"},
+            {GLOBNAMEPREFIX, GS::UniString ("{@glob:"), "GLOBNAMEPREFIX"},
+            {CLASSNAMEPREFIX, GS::UniString ("{@class:"), "CLASSNAMEPREFIX"},
+            {ELEMENTNAMEPREFIX, GS::UniString ("{@element:"), "ELEMENTNAMEPREFIX"},
+            {FILENAMEPREFIX, GS::UniString ("{@file:"), "FILENAMEPREFIX"},
+            {ATTRIBNAMEPREFIX, GS::UniString ("{@attrib:"), "ATTRIBNAMEPREFIX"},
+            {LISTDATANAMEPREFIX, GS::UniString ("{@listdata:"), "LISTDATANAMEPREFIX"},
+            {MATERIALNAMEPREFIX, GS::UniString ("{@material:"), "MATERIALNAMEPREFIX"},
+            {FORMULANAMEPREFIX, GS::UniString ("{@formula:"), "FORMULANAMEPREFIX"},
+            {MEPNAMEPREFIX, GS::UniString ("{@mep:"), "MEPNAMEPREFIX"},
+            {FLAGNAMEPREFIX, GS::UniString ("{@flag:"), "FLAGNAMEPREFIX"},
+            // --- префиксы правил синхронизации ---
+            {SYNCFROMSTRING, GS::UniString ("from{"), "SYNCFROMSTRING"},
+            {SYNCTOSTRING, GS::UniString ("to{"), "SYNCTOSTRING"},
+            {SYNCFROMSUBSTRING, GS::UniString ("from_sub{"), "SYNCFROMSUBSTRING"},
+            {SYNCTOSUBSTRING, GS::UniString ("to_sub{"), "SYNCTOSUBSTRING"},
+            {FROMGUIDBR, GS::UniString ("from_GUID{"), "FROMGUIDBR"},
+            {FROMGUID, GS::UniString ("from_GUID"), "FROMGUID"},
+            {TOGUIDBR, GS::UniString ("to_GUID{"), "TOGUIDBR"},
+            {TOGUID, GS::UniString ("to_GUID"), "TOGUID"},
+            // --- разделители и спецсимволы ---
+            {BRACESTART, GS::UniString ("{"), "BRACESTART"},
+            {BRACEEND, GS::UniString ("}"), "BRACEEND"},
+            {SEMICOLON, GS::UniString (";"), "SEMICOLON"},
+            // --- имена служебных полей и ключевых слов ---
+            {SYNCNAME, GS::UniString ("sync_name"), "SYNCNAME"},
+            {SYNCCORRECTFLAG, GS::UniString ("Sync_correct_flag"), "SYNCCORRECTFLAG"},
+            {SYNCCLASSFLAG, GS::UniString ("Sync_class_flag"), "SYNCCLASSFLAG"},
+            {SYNCGUID, GS::UniString ("Sync_GUID"), "SYNCGUID"},
+            {RENUMFLAG, GS::UniString ("Renum_flag"), "RENUMFLAG"},
+            {RENUM, GS::UniString ("Renum"), "RENUM"},
+            {PROPERTYSTRING, GS::UniString ("property"), "PROPERTYSTRING"},
+            // --- форматы по умолчанию ---
+            {DEFULTREALFSTRING, GS::UniString (".3m"), "DEFULTREALFSTRING"},
+            {DEFULTLEGHTFSTRING, GS::UniString ("1mm"), "DEFULTLEGHTFSTRING"},
+            {DEFULTINTFSTRING, GS::UniString ("0m"), "DEFULTINTFSTRING"},
+        };
+
+        const IntConstCase intConstCases[] = {
+            // --- числовые индексы типов параметров ---
+            {PROPERTYTYPEINX, 2, "PROPERTYTYPEINX"},
+            {GDLTYPEINX, 4, "GDLTYPEINX"},
+            {COORDTYPEINX, 3, "COORDTYPEINX"},
+            {IDTYPEINX, 1, "IDTYPEINX"},
+            {MORPHTYPEINX, 8, "MORPHTYPEINX"},
+            {INFOTYPEINX, 6, "INFOTYPEINX"},
+            {IFCTYPEINX, 7, "IFCTYPEINX"},
+            {GLOBTYPEINX, 12, "GLOBTYPEINX"},
+            {CLASSTYPEINX, 13, "CLASSTYPEINX"},
+            {ELEMENTTYPEINX, 15, "ELEMENTTYPEINX"},
+            {FILETYPEINX, 17, "FILETYPEINX"},
+            {ATTRIBTYPEINX, 9, "ATTRIBTYPEINX"},
+            {LISTDATATYPEINX, 10, "LISTDATATYPEINX"},
+            {MATERIALTYPEINX, 11, "MATERIALTYPEINX"},
+            {FORMULATYPEINX, 14, "FORMULATYPEINX"},
+            {MEPTYPEINX, 16, "MEPTYPEINX"},
+            {FLAGTYPEINX, 18, "FLAGTYPEINX"},
+            // --- направления и виды правил синхронизации ---
+            {SYNC_FROM, 1, "SYNC_FROM"},
+            {SYNC_TO, 2, "SYNC_TO"},
+            {SYNC_TO_SUB, 3, "SYNC_TO_SUB"},
+            {SYNC_FROM_SUB, 4, "SYNC_FROM_SUB"},
+            {SYNC_FROM_GUID, 5, "SYNC_FROM_GUID"},
+            {SYNC_FROM_ZONE, 6, "SYNC_FROM_ZONE"},
+            {SYNC_TO_ZONE, 7, "SYNC_TO_ZONE"},
+        };
+    } // namespace
+
     void TestParsePrefixes () {
-        // Проверка основных префиксов имен параметров
-        DBtest (PROPERTYNAMEPREFIX, GS::UniString ("{@property:"), "PROPERTYNAMEPREFIX");
-        DBtest (GDLNAMEPREFIX, GS::UniString ("{@gdl:"), "GDLNAMEPREFIX");
-        DBtest (COORDNAMEPREFIX, GS::UniString ("{@coord:"), "COORDNAMEPREFIX");
-        DBtest (IDNAMEPREFIX, GS::UniString ("{@id:"), "IDNAMEPREFIX");
-        DBtest (MORPHNAMEPREFIX, GS::UniString ("{@morph:"), "MORPHNAMEPREFIX");
-        DBtest (INFONAMEPREFIX, GS::UniString ("{@info:"), "INFONAMEPREFIX");
-        DBtest (IFCNAMEPREFIX, GS::UniString ("{@ifc:"), "IFCNAMEPREFIX");
-        DBtest (GLOBNAMEPREFIX, GS::UniString ("{@glob:"), "GLOBNAMEPREFIX");
-        DBtest (CLASSNAMEPREFIX, GS::UniString ("{@class:"), "CLASSNAMEPREFIX");
-        DBtest (ELEMENTNAMEPREFIX, GS::UniString ("{@element:"), "ELEMENTNAMEPREFIX");
-        DBtest (FILENAMEPREFIX, GS::UniString ("{@file:"), "FILENAMEPREFIX");
-        DBtest (ATTRIBNAMEPREFIX, GS::UniString ("{@attrib:"), "ATTRIBNAMEPREFIX");
-        DBtest (LISTDATANAMEPREFIX, GS::UniString ("{@listdata:"), "LISTDATANAMEPREFIX");
-        DBtest (MATERIALNAMEPREFIX, GS::UniString ("{@material:"), "MATERIALNAMEPREFIX");
-        DBtest (FORMULANAMEPREFIX, GS::UniString ("{@formula:"), "FORMULANAMEPREFIX");
-        DBtest (MEPNAMEPREFIX, GS::UniString ("{@mep:"), "MEPNAMEPREFIX");
-        DBtest (FLAGNAMEPREFIX, GS::UniString ("{@flag:"), "FLAGNAMEPREFIX");
+        for (const UniConstCase &c : uniConstCases) {
+            DBtest (c.actual, c.expected, c.label);
+        }
 
-        // Проверка числовых индексов типов
-        DBtest (PROPERTYTYPEINX, (short)2, "PROPERTYTYPEINX");
-        DBtest (GDLTYPEINX, (short)4, "GDLTYPEINX");
-        DBtest (COORDTYPEINX, (short)3, "COORDTYPEINX");
-        DBtest (IDTYPEINX, (short)1, "IDTYPEINX");
-        DBtest (MORPHTYPEINX, (short)8, "MORPHTYPEINX");
-        DBtest (INFOTYPEINX, (short)6, "INFOTYPEINX");
-        DBtest (IFCTYPEINX, (short)7, "IFCTYPEINX");
-        DBtest (GLOBTYPEINX, (short)12, "GLOBTYPEINX");
-        DBtest (CLASSTYPEINX, (short)13, "CLASSTYPEINX");
-        DBtest (ELEMENTTYPEINX, (short)15, "ELEMENTTYPEINX");
-        DBtest (FILETYPEINX, (short)17, "FILETYPEINX");
-        DBtest (ATTRIBTYPEINX, (short)9, "ATTRIBTYPEINX");
-        DBtest (LISTDATATYPEINX, (short)10, "LISTDATATYPEINX");
-        DBtest (MATERIALTYPEINX, (short)11, "MATERIALTYPEINX");
-        DBtest (FORMULATYPEINX, (short)14, "FORMULATYPEINX");
-        DBtest (MEPTYPEINX, (short)16, "MEPTYPEINX");
-        DBtest (FLAGTYPEINX, (short)18, "FLAGTYPEINX");
-
-        // Проверка констант синхронизации
-        DBtest (SYNC_FROM, 1, "SYNC_FROM");
-        DBtest (SYNC_TO, 2, "SYNC_TO");
-        DBtest (SYNC_TO_SUB, 3, "SYNC_TO_SUB");
-        DBtest (SYNC_FROM_SUB, 4, "SYNC_FROM_SUB");
-        DBtest (SYNC_FROM_GUID, 5, "SYNC_FROM_GUID");
-        DBtest (SYNC_FROM_ZONE, 6, "SYNC_FROM_ZONE");
-        DBtest (SYNC_TO_ZONE, 7, "SYNC_TO_ZONE");
-
-        // Проверка префиксов правил
-        DBtest (SYNCFROMSTRING, GS::UniString ("from{"), "SYNCFROMSTRING");
-        DBtest (SYNCTOSTRING, GS::UniString ("to{"), "SYNCTOSTRING");
-        DBtest (SYNCFROMSUBSTRING, GS::UniString ("from_sub{"), "SYNCFROMSUBSTRING");
-        DBtest (SYNCTOSUBSTRING, GS::UniString ("to_sub{"), "SYNCTOSUBSTRING");
-        DBtest (FROMGUIDBR, GS::UniString ("from_GUID{"), "FROMGUIDBR");
-        DBtest (FROMGUID, GS::UniString ("from_GUID"), "FROMGUID");
-        DBtest (TOGUIDBR, GS::UniString ("to_GUID{"), "TOGUIDBR");
-        DBtest (TOGUID, GS::UniString ("to_GUID"), "TOGUID");
-
-        // Проверка специальных символов
-        DBtest (BRACESTART, GS::UniString ("{"), "BRACESTART");
-        DBtest (BRACEEND, GS::UniString ("}"), "BRACEEND");
-        DBtest (SEMICOLON, GS::UniString (";"), "SEMICOLON");
-        DBtest (GS::UniString ("{"), GS::UniString ("{"), "CHARBRACESTART as string");
-        DBtest (GS::UniString ("}"), GS::UniString ("}"), "CHARBRACEEND as string");
-        DBtest (GS::UniString (";"), GS::UniString (";"), "CHARBSEMICOLON as string");
-        DBtest (GS::UniString ("<"), GS::UniString ("<"), "CHARFORMULASTART as string");
-        DBtest (GS::UniString (">"), GS::UniString (">"), "CHARFORMULAEND as string");
-        DBtest (GS::UniString ("\""), GS::UniString ("\""), "CHARDQUT as string");
-        DBtest (GS::UniString (","), GS::UniString (","), "CHARCOMMA as string");
-
-        // Проверка SYNCNAME и других специальных констант
-        DBtest (SYNCNAME, GS::UniString ("sync_name"), "SYNCNAME");
-        DBtest (SYNCCORRECTFLAG, GS::UniString ("Sync_correct_flag"), "SYNCCORRECTFLAG");
-        DBtest (SYNCCLASSFLAG, GS::UniString ("Sync_class_flag"), "SYNCCLASSFLAG");
-        DBtest (SYNCGUID, GS::UniString ("Sync_GUID"), "SYNCGUID");
-
-        // Проверка специальных ключевых слов
-        DBtest (RENUMFLAG, GS::UniString ("Renum_flag"), "RENUMFLAG");
-        DBtest (RENUM, GS::UniString ("Renum"), "RENUM");
-        DBtest (PROPERTYSTRING, GS::UniString ("property"), "PROPERTYSTRING");
-
-        // Проверка форматов
-        DBtest (DEFULTREALFSTRING, GS::UniString (".3m"), "DEFULTREALFSTRING");
-        DBtest (DEFULTLEGHTFSTRING, GS::UniString ("1mm"), "DEFULTLEGHTFSTRING");
-        DBtest (DEFULTINTFSTRING, GS::UniString ("0m"), "DEFULTINTFSTRING");
-
-        return;
+        for (const IntConstCase &c : intConstCases) {
+            DBtest (c.actual, c.expected, c.label);
+        }
     }
 
     // -----------------------------------------------------------------------------
