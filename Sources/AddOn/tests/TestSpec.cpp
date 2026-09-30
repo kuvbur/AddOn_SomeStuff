@@ -1185,6 +1185,242 @@ namespace TestFunc {
         DBtest (again.val.uniStringValue, GS::UniString ("Alpha"), "reader repeat same value");
     }
 
+    // R5.5: граница выделения чтения. Оценочный набор — он не добавляет нового
+    // поведения, а проверяет, что R5.1-R5.4 не изменили наблюдаемое поведение.
+    //
+    // Покрытие сценариев плана по состоянию на этот шаг:
+    //   S10 материалы (один слой, многослойная, конец слоя) - TestSpecGetParamValue
+    //       и TestSpecValueEdges;
+    //   S11 отрицательный индекс / за концом / пустое-числовое-текстовое - там же;
+    //   S12 listdata (нет данных, позиция, конец списка, невычисленная формула) -
+    //       TestSpecGetParamValue;
+    //   S13 GDL-массивы на ЧТЕНИИ - не покрыт: разбор @arr живёт в Helpers
+    //       (ConvertStringToParamValue, Helpers.cpp:6220) и читает через ACAPI.
+    //       R5 запрещает трогать Helpers, поэтому здесь закрепляется только
+    //       спец-семантика СОБСТВЕННО чтения (первый ряд - ошибка строки);
+    //   S14 формулы - частично (значение результата покрыто, отсутствие утечки
+    //       значений между элементами - нет);
+    //   S15 флаг и отсутствия полей - TestSpecGrouping;
+    //   S16 два правила на одном избранном - см. блок S16 ниже.
+    //
+    // Главный критерий шага: ИСХОДНЫЕ СЛОВАРИ ДО/ПОСЛЕ ЧТЕНИЯ совпадают.
+    // Чтение не обязано быть безопасно идемпотентным по значению (формулы
+    // пересчитываются), но не обязано менять СЛОВАРИ - это проверяется здесь.
+    void TestSpecReadBoundary () {
+        // --- Критерий шага: словари до/после чтения ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Text (f.second, f.text, "Beta");
+            f.Text (f.first, f.outText, "Old");
+            f.Number (f.first, f.outQuantity, 5);
+            // Снимок ДО любых чтений.
+            const UInt32 readSizeBefore = f.context.read.GetSize ();
+            const UInt32 compositeSizeBefore = f.context.composite.GetSize ();
+            const UInt32 listDataSizeBefore = f.context.listData.GetSize ();
+            const GS::UniString sourceBefore = f.context.read.Get (f.first).Get (f.text).val.uniStringValue;
+            const Int32 quantityBefore = f.context.read.Get (f.first).Get (f.quantity).val.intValue;
+
+            // Чтение обычного поля, материала, отсутствующего поля и за концом слоя.
+            const Spec::SpecValueReader reader (f.context);
+            ParamValue value;
+            DBtest (reader.Read (f.first, f.text, value, 0), "boundary ordinary read");
+            DBtest (reader.Read (f.first, f.quantity, value, 0), "boundary number read");
+            DBtest (reader.Read (f.first, f.outText, value, 0), "boundary out field read");
+            DBtest (reader.Read (f.first, f.key, value, 0), "boundary missing key refuses");
+            DBtest (reader.Read (f.first, f.text, value, 100), "boundary past end reads empty");
+
+            // СЛОВАРИ обязаны совпасть со снимком.
+            DBtest (f.context.read.GetSize (), readSizeBefore, "boundary read size unchanged");
+            DBtest (f.context.composite.GetSize (), compositeSizeBefore, "boundary composite size unchanged");
+            DBtest (f.context.listData.GetSize (), listDataSizeBefore, "boundary listdata size unchanged");
+            DBtest (f.context.read.Get (f.first).Get (f.text).val.uniStringValue,
+                    sourceBefore,
+                    "boundary source text intact");
+            DBtest (f.context.read.Get (f.first).Get (f.quantity).val.intValue,
+                    quantityBefore,
+                    "boundary source quantity intact");
+            DBtest (f.context.read.Get (f.first).Get (f.outText).val.uniStringValue,
+                    GS::UniString ("Old"),
+                    "boundary out field not consumed");
+            // Соседний элемент не тронут.
+            DBtest (f.context.read.Get (f.second).Get (f.text).val.uniStringValue,
+                    GS::UniString ("Beta"),
+                    "boundary neighbour element intact");
+        }
+
+        // --- S14: формулы и отсутствие утечки значений между элементами ---
+        // Контракт зафиксирован ЧТЕНИЕМ КОДА, а не предположением:
+        //   - обычная формула (без маркеров %elem./%mat./... и без
+        //     {@listdata:}) на этапе Read НЕ вычисляется - возвращается
+        //     прочитанное значение из словаря как есть (hasLibData == false ->
+        //     ветка GetParamValueForElements);
+        //   - вычисляется только list-data формула, и делается это в ЛОКАЛЬНЫЙ
+        //     словарь paramDict, который создаётся внутри Read и наружу не
+        //     отдаётся. Значит результат одного элемента не может попасть в
+        //     чтение другого - это и есть «нет утечки».
+        // Первая часть: обычная формула отдаёт исходное значение.
+        {
+            SpecFixture f;
+            const GS::UniString plain = FORMULANAMEPREFIX + "{@property:spec-text}<>";
+            ParamValue pv;
+            pv.isValid = true;
+            pv.val.hasFormula = true;
+            pv.val.type = API_PropertyRealValueType;
+            pv.val.uniStringValue = "10";
+            pv.val.doubleValue = 10;
+            // Элемент надо завести: read.Get на отсутствующем ключе бросает.
+            f.Text (f.first, f.text, "src");
+            f.context.read.Get (f.first).Put (plain, pv);
+            ParamValue got;
+            DBtest (Spec::SpecValueReader (f.context).Read (f.first, plain, got, 0), "S14 plain formula read");
+            DBtest (got.val.doubleValue, 10.0, "S14 plain formula not evaluated at read");
+            DBtest (got.val.hasFormula, true, "S14 plain formula flag preserved");
+        }
+        // Вторая часть: два элемента с РАЗНЫМИ list-data формулами дают разные
+        // результаты в любом порядке чтения - локальный словарь изолирован.
+        {
+            SpecFixture f;
+            const GS::UniString libName = FORMULANAMEPREFIX + "{@listdata:elem.naen}<>";
+
+            ListData::LibElement libA;
+            ListData::Subpos subA;
+            ListData::Arm a1;
+            a1.naen = "Rebar-A";
+            subA.arm.Add ("10@test", a1);
+            libA.subpos.Add ("test", subA);
+            libA.keys.Push (GS::Pair<GS::UniString, GS::UniString> ("test", "10@test"));
+            f.context.listData.Add (f.first, libA);
+
+            ListData::LibElement libB;
+            ListData::Subpos subB;
+            ListData::Arm a2;
+            a2.naen = "Rebar-B";
+            subB.arm.Add ("10@test", a2);
+            libB.subpos.Add ("test", subB);
+            libB.keys.Push (GS::Pair<GS::UniString, GS::UniString> ("test", "10@test"));
+            f.context.listData.Add (f.second, libB);
+
+            ParamValue fa;
+            fa.isValid = true;
+            fa.val.hasFormula = true;
+            fa.val.type = API_PropertyStringValueType;
+            // В uniStringValue лежит ВЫРАЖЕНИЕ, а не имя с префиксом
+            // {@formula: (так устроен рабочий тест TestSpecGetParamValue).
+            fa.val.uniStringValue = "{@listdata:elem.naen}<>";
+            f.Text (f.first, f.text, "srcA");
+            f.Text (f.second, f.text, "srcB");
+            f.context.read.Get (f.first).Put (libName, fa);
+            ParamValue fb;
+            fb.isValid = true;
+            fb.val.hasFormula = true;
+            fb.val.type = API_PropertyStringValueType;
+            fb.val.uniStringValue = "{@listdata:elem.naen}<>";
+            f.context.read.Get (f.second).Put (libName, fb);
+
+            const Spec::SpecValueReader reader (f.context);
+            ParamValue first, second;
+            DBtest (reader.Read (f.first, libName, first, 0), "S14 element A formula read");
+            DBtest (reader.Read (f.second, libName, second, 0), "S14 element B formula read");
+            // Обратный порядок - результаты те же, утечки нет.
+            ParamValue secondFirst, firstSecond;
+            DBtest (reader.Read (f.second, libName, secondFirst, 0), "S14 reverse B read");
+            DBtest (reader.Read (f.first, libName, firstSecond, 0), "S14 reverse A read");
+            DBtest (first.val.uniStringValue, GS::UniString ("Rebar-A"), "S14 element A value");
+            DBtest (second.val.uniStringValue, GS::UniString ("Rebar-B"), "S14 element B value");
+            DBtest (firstSecond.val.uniStringValue, first.val.uniStringValue, "S14 A stable across order");
+            DBtest (secondFirst.val.uniStringValue, second.val.uniStringValue, "S14 B stable across order");
+        }
+
+        // --- S16: два правила на одном избранном ---
+        // Соседнее правило не должно пострадать от разрешения избранного и от
+        // сверки выходной схемы: признаки готовности независимы.
+        {
+            const GS::UniString OutName ("{@property:spec-out}"), SumName ("{@property:spec-sum}");
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            favorite.Add (OutName, EMPTYSTRING);
+            favorite.Add (SumName, EMPTYSTRING);
+            ParamDict errors;
+
+            Spec::SpecRule good;
+            good.out_paramrawname.Push (OutName);
+            good.out_sum_paramrawname.Push (SumName);
+            Spec::SpecRule bad;
+            bad.out_paramrawname.Push (OutName);
+            bad.out_sum_paramrawname.Push ("{@property:spec-missing}");
+
+            // Первое правило проверяется ДО второго: его признак не должен сброситься.
+            DBtest (Spec::MatchDestinationProperties (good, favorite, errors), true, "S16 first rule ready");
+            DBtest (Spec::MatchDestinationProperties (bad, favorite, errors), false, "S16 second rule not ready");
+            DBtest (good.destinationReady, true, "S16 first rule flag survived neighbour");
+            DBtest (bad.destinationReady, false, "S16 second rule flag cleared");
+            DBtest (good.out_paramrawname.GetSize (), 1, "S16 first rule schema intact");
+            DBtest (good.out_sum_paramrawname.GetSize (), 1, "S16 first rule sum schema intact");
+            // Обратный порядок: неполное правило не должно влиять на полное.
+            ParamDict errors2;
+            Spec::MatchDestinationProperties (bad, favorite, errors2);
+            DBtest (Spec::MatchDestinationProperties (good, favorite, errors2), true, "S16 good ready after bad");
+            DBtest (good.destinationReady, true, "S16 good flag kept after bad");
+            // Отсутствие избранного целиком: оба правила не готовы, ошибка одна.
+            ParamDict errors3;
+            GS::HashTable<GS::UniString, GS::UniString> emptyFavorite;
+            DBtest (
+                Spec::MatchDestinationProperties (good, emptyFavorite, errors3), false, "S16 no favorite not ready");
+            DBtest (Spec::MatchDestinationProperties (bad, emptyFavorite, errors3),
+                    false,
+                    "S16 no favorite both not ready");
+            DBtest (errors3.GetSize (), 3, "S16 three missing names recorded");
+        }
+
+        // --- S13: семантика первого ряда GDL-массива на чтении ---
+        // Разбор имени @arr - territory Helpers (ConvertStringToParamValue,
+        // Helpers.cpp:6220), он читает через ACAPI и R5 его не трогает. Здесь
+        // закрепляется только то, что видит вычислитель.
+        //
+        // Предусловие найдено ЧТЕНИЕМ КОДА, и оно неочевидно: признак
+        // fromGDLArray попадает в pvalue только если Read дошёл до материальной
+        // ветки. Обычный отказ (нет элемента/ключа, isValid == false) pvalue не
+        // заполняет, и тогда fromGDLArray == false, а is_error = !fromMaterial
+        // даёт обычную ошибку. Маршрут с fromGDLArray воспроизводится так:
+        // значение валидно И fromMaterial, но состава конструкции нет.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.rule.groups[0].unic_paramrawname[0] = f.text;
+            f.rule.stop_on_error = true;
+
+            // Валидное значение с признаком материала и без состава: Read
+            // возвращает false, но pvalue сохраняет признаки источника.
+            ParamValue firstRow = {};
+            firstRow.isValid = true;
+            firstRow.fromMaterial = true;
+            firstRow.fromGDLArray = true;
+            firstRow.val.array_row_start = 1;
+            f.context.read.Get (f.first).Put (f.text, firstRow);
+            f.Shape (f.Run (), 0, 0, 0, 0, "S13 first row stops");
+            DBtest (f.errors.ContainsKey (f.first), true, "S13 first row marks element error");
+
+            // Второй ряд: тот же маршрут, но array_row_start == 2 — отказ не
+            // является ошибкой элемента.
+            ParamValue secondRow = firstRow;
+            secondRow.val.array_row_start = 2;
+            f.context.read.Get (f.first).Put (f.text, secondRow);
+            f.Shape (f.Run (), 0, 0, 0, 0, "S13 second row skips silently");
+            DBtest (f.errors.ContainsKey (f.first), false, "S13 second row not an error");
+
+            // Контроль маршрута, найденный чтением кода: признаки материала
+            // НЕЛЬЗЯ снять и ждать отказа. Без fromMaterial Read возвращает
+            // успех по прочитанному значению, строка создаётся, а ветка
+            // is_error = !fromMaterial не оценивается вовсе. Проверка закрепляет
+            // именно это, чтобы отличие от маршрута GDL было явным.
+            ParamValue plain = firstRow;
+            plain.fromMaterial = false;
+            f.context.read.Get (f.first).Put (f.text, plain);
+            f.Shape (f.Run (), 1, 1, 0, 0, "S13 non material reads fine");
+            DBtest (f.errors.ContainsKey (f.first), false, "S13 non material is not an error");
+        }
+    }
+
     void TestSpecValueEdges () {
         SpecFixture f;
         f.Text (f.first, f.text, "Alpha");

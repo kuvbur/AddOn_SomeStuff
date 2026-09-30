@@ -53,7 +53,7 @@ namespace TestFunc {
     // иначе при разбиении файла регистратор выкидывается линковкой вместе со
     // своим набором, и тот молча исчезает из прогона.
 
-    // --- spec: разбор правил, чтение значений, выходные слоты (21) ---
+    // --- spec: разбор правил, чтение значений, выходные слоты (22) ---
     void TestSpecGetParamValue ();
     void TestSpecGrouping ();
     void TestSpecReconcile ();
@@ -63,6 +63,7 @@ namespace TestFunc {
     void TestSpecRuleDependencies ();
     void TestSpecFavoriteResolution ();
     void TestSpecValueReader ();
+    void TestSpecReadBoundary ();
     void TestSpecValueEdges ();
     void TestSpecOutSlots ();
     void TestSpecSlotBindings ();
