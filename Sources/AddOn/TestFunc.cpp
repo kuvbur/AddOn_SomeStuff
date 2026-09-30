@@ -157,7 +157,6 @@ namespace TestFunc {
     }
 
     void TestSpecGetParamValue () {
-        DBprnt ("SpecGetParamValue", "start");
         const API_Guid guid = APINULLGuid;
         const GS::UniString rawname = "{@property:test-spec}";
         const GS::UniString libname = FORMULANAMEPREFIX + "{@listdata:elem.naen}<>";
@@ -242,7 +241,6 @@ namespace TestFunc {
         DBtest (result.val.uniStringValue.IsEmpty (), true, "SpecGetParamValue lib past end empty");
         DBtest (read (libname, -1), false, "SpecGetParamValue populated lib negative index");
         DBtest (result.isValid, false, "SpecGetParamValue populated lib negative invalidates");
-        DBprnt ("SpecGetParamValue", "end");
     }
 
     namespace {
@@ -334,7 +332,6 @@ namespace TestFunc {
     } // namespace
 
     void TestSpecGrouping () {
-        DBprnt ("SpecRegression grouping", "start");
         {
             SpecFixture f;
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec empty");
@@ -462,11 +459,9 @@ namespace TestFunc {
             f.rule.out_sum_paramrawname.Push ("{@property:extra-sum}");
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec sum arity mismatch");
         }
-        DBprnt ("SpecRegression grouping", "end");
     }
 
     void TestSpecReconcile () {
-        DBprnt ("SpecRegression reconcile", "start");
         {
             SpecFixture f;
             f.Source (f.first, "A", "Alpha", 2);
@@ -523,7 +518,6 @@ namespace TestFunc {
             DBtest (
                 f.context.read.Get (f.old).Get (f.outQuantity).val.intValue, 1, "Spec planning does not write values");
         }
-        DBprnt ("SpecRegression reconcile", "end");
     }
 
     // R4.5: сверка S03-S09/S13 и действующей дедупликации.
@@ -540,8 +534,6 @@ namespace TestFunc {
     //   n_elements растёт только при СОЗДАНИИ строки, поэтому объединение на
     //   существующем ключе не увеличивает результат.
     void TestSpecMergeAndKey () {
-        DBprnt ("SpecRegression merge and key", "start");
-
         // S08: две группы с ОДИНАКОВЫМ ключом от одного элемента дают одну
         // строку. Сумма складывается (2 + 2 = 4), а список источников получает
         // ОДИН И ТОТ ЖЕ GUID дважды - объединение дописывает источник, не
@@ -663,8 +655,6 @@ namespace TestFunc {
             DBtest (f.created.IsEmpty (), "Spec incomplete slots no row");
             DBtest (f.errors.ContainsKey (f.first), "Spec incomplete slots marks element");
         }
-
-        DBprnt ("SpecRegression merge and key", "end");
     }
 
     // R4.5: дедупликация AddRule по ключу = текст ВНУТРИ фигурных скобок.
@@ -673,7 +663,6 @@ namespace TestFunc {
     // выигрывает ТО, ЧТО ПРИШЛО ПЕРВЫМ. Закрепляется как контракт: описания
     // в существующих моделях завязаны на такое поведение.
     void TestSpecRuleDedup () {
-        DBprnt ("SpecRegression rule dedup", "start");
         SpecFixture f;
         // Ключ словаря - подстрока МЕЖДУ фигурными скобками нормализованного
         // описания (префикс политики в него не входит). Не хардкодим: повторяем
@@ -776,12 +765,9 @@ namespace TestFunc {
             DBtest (rule != nullptr && rule->delete_old, "Spec dedup first v2 policy kept");
             DBtest (rule != nullptr && rule->rule_name == "Sync_name_V2First", "Spec dedup order first name kept");
         }
-
-        DBprnt ("SpecRegression rule dedup", "end");
     }
 
     void TestSpecReadPlan () {
-        DBprnt ("SpecRegression read plan", "start");
         SpecFixture f;
         ParamDictElement read;
         ParamDictValue write;
@@ -832,7 +818,6 @@ namespace TestFunc {
             }
             DBtest (specialWrite.GetSize (), 2, "Spec skipped group keeps write targets");
         }
-        DBprnt ("SpecRegression read plan", "end");
     }
 
     // R5.1: сбор зависимостей правила - что нужно прочитать у источников и что
@@ -840,8 +825,6 @@ namespace TestFunc {
     // поэтому проверяется сам перечень (без обращения к модели), а сличение в
     // общие словари запуска остаётся отдельным контрактом адаптера.
     void TestSpecRuleDependencies () {
-        DBprnt ("SpecRegression rule dependencies", "start");
-
         const GS::UniString P ("{@gdl:p}"), U ("{@gdl:u}"), F ("{@gdl:f}"), Q ("{@gdl:q}");
 
         // Пустое правило: ни читать, ни записывать нечего.
@@ -1025,8 +1008,6 @@ namespace TestFunc {
             DBtest (read.IsEmpty (), true, "adapter reads nothing without sources");
             DBtest (write.GetSize (), 2, "adapter writes schema without sources");
         }
-
-        DBprnt ("SpecRegression rule dependencies", "end");
     }
 
     // R5.2: разрешение избранного, служебных полей и старых объектов. Четыре
@@ -1036,8 +1017,6 @@ namespace TestFunc {
     // закреплён именно ПРОМАХ чтения: неудачное чтение не кэшируется и не
     // подменяет поля правила (R5.2 запрещает новую политику кэша без F).
     void TestSpecFavoriteResolution () {
-        DBprnt ("SpecRegression favorite resolution", "start");
-
         const GS::UniString OutName ("{@property:spec-out}"), SumName ("{@property:spec-sum}");
 
         // MatchDestinationProperties: все имена найдены - признак остаётся.
@@ -1257,8 +1236,6 @@ namespace TestFunc {
             ParamDictValue write;
             DBtest (Spec::ResolveFavoriteLinks (rule, favorite, write), false, "empty favorite finds nothing");
         }
-
-        DBprnt ("SpecRegression favorite resolution", "end");
     }
 
     // R5.4: контракт read-only доступа к значениям.
@@ -1272,7 +1249,6 @@ namespace TestFunc {
     // Ожидания для (1) считаются по факту: сравниваются снимки словарей ДО и
     // ПОСЛЕ серии чтений, а не заранее выписанные значения.
     void TestSpecValueReader () {
-        DBprnt ("SpecRegression value reader", "start");
         SpecFixture f;
         f.Text (f.first, f.text, "Alpha");
         f.Number (f.first, f.quantity, 3);
@@ -1350,12 +1326,9 @@ namespace TestFunc {
         ParamValue again;
         DBtest (reader.Read (f.first, f.text, again, -1), "reader repeat reads");
         DBtest (again.val.uniStringValue, GS::UniString ("Alpha"), "reader repeat same value");
-
-        DBprnt ("SpecRegression value reader", "end");
     }
 
     void TestSpecValueEdges () {
-        DBprnt ("SpecRegression values", "start");
         SpecFixture f;
         f.Text (f.first, f.text, "Alpha");
         ParamValue result;
@@ -1395,7 +1368,6 @@ namespace TestFunc {
                 GS::UniString ("Alpha"),
                 "Spec material source unchanged");
         DBtest (f.context.composite.Get (f.first).Get (f.text).composite.GetSize (), 6, "Spec layers unchanged");
-        DBprnt ("SpecRegression values", "end");
     }
 
     // R4.1: нормализация описания - отдельная проверяемая единица.
@@ -1428,8 +1400,6 @@ namespace TestFunc {
     // доступная сверка - по числу набранных значений против размеров схемы,
     // вычисленных один раз до цикла. Ожидания сверены воспроизведением функции.
     void TestSpecOutSlots () {
-        DBprnt ("SpecRegression out slots", "start");
-
         struct SlotCase {
             UInt32 out;      // сколько значений попало в out_param
             UInt32 sum;      // сколько значений попало в out_sum_param
@@ -1471,8 +1441,6 @@ namespace TestFunc {
             Spec::Element element = {};
             DBtest (Spec::OutSlotsMatchSchema (element, 1, 1), false, "empty element");
         }
-
-        DBprnt ("SpecRegression out slots", "end");
     }
 
     // Привязка слотов группы к полям: Spec::PrepareSlotBindings (). Это ОДИН
@@ -1485,8 +1453,6 @@ namespace TestFunc {
     //   - sizesMatchSchema отражает число ПОЛЕЙ группы, а не число
     //     фактически набранных значений элемента.
     void TestSpecSlotBindings () {
-        DBprnt ("SpecRegression slot bindings", "start");
-
         // Пустое правило: ни групп, ни привязок.
         {
             Spec::SpecRule rule;
@@ -1616,13 +1582,9 @@ namespace TestFunc {
                 DBtest (bindings[0].sizesMatchSchema, false, "empty group does not match schema");
             }
         }
-
-        DBprnt ("SpecRegression slot bindings", "end");
     }
 
     void TestSpecExpandGroup () {
-        DBprnt ("SpecRegression expand group", "start");
-
         const GS::UniString P ("{@gdl:p}"), U ("{@gdl:u}"), F ("{@gdl:f}"), Q ("{@gdl:q}");
 
         // Обычная группа без массивов: ровно одна группа, n_layer не задан.
@@ -1741,13 +1703,9 @@ namespace TestFunc {
                 DBtest (rule.groups[1].out_paramrawname[0], "{@gdl:p@arr_2_2_1_1_1}", "array row 2");
             }
         }
-
-        DBprnt ("SpecRegression expand group", "end");
     }
 
     void TestSpecGroups () {
-        DBprnt ("SpecRegression groups", "start");
-
         struct GroupCase {
             const char *readPart;
             UInt32 nOut;   // сколько имён ждём в выходной схеме s()
@@ -1829,13 +1787,9 @@ namespace TestFunc {
             const bool ok = Spec::ParseGroups (readPart, scratch, rule);
             DBtest (ok, false, "favorite name alone rejected");
         }
-
-        DBprnt ("SpecRegression groups", "end");
     }
 
     void TestSpecOutputSchema () {
-        DBprnt ("SpecRegression output schema", "start");
-
         struct SchemaCase {
             const char *writePart;
             bool ok;
@@ -1893,12 +1847,9 @@ namespace TestFunc {
             DBtest (rule.out_paramrawname.IsEmpty () && rule.out_sum_paramrawname.IsEmpty (),
                     "Spec schema wired no output");
         }
-        DBprnt ("SpecRegression output schema", "end");
     }
 
     void TestSpecPolicy () {
-        DBprnt ("SpecRegression policy", "start");
-
         struct PolicyCase {
             const char *prefix;
             bool delete_old;
@@ -1959,12 +1910,9 @@ namespace TestFunc {
             DBtest (rule.isKM && !rule.isKZH, "Spec policy wired KM");
             DBtest (!rule.delete_old && !rule.stop_on_error && rule.only_visible, "Spec policy wired policy fields");
         }
-        DBprnt ("SpecRegression policy", "end");
     }
 
     void TestSpecNormalize () {
-        DBprnt ("SpecRegression normalize", "start");
-
         // Порядок замен существенен, поэтому проверяем и каждый вид вызова, и то,
         // что "gl("/ "gm(" не схлопываются в общий "g(" (иначе получилось бы
         // "g@@libdata@(" - группа с открытой скобкой в имени).
@@ -2037,11 +1985,9 @@ namespace TestFunc {
         DBtest (Spec::NormalizeRuleDescription (GS::UniString ("Spec_rule{Fav;g ( a )}")),
                 GS::UniString ("Spec_rule{Fav;g@@ a )}"),
                 "Spec normalize inner spaces kept");
-        DBprnt ("SpecRegression normalize", "end");
     }
 
     void TestSpecParser () {
-        DBprnt ("SpecRegression parser", "start");
         const char *prefixes[] = {"Spec_rule", "Spec_rule_v2", "Spec_rule_v3", "Spec_rule_km", "Spec_rule_kzh"};
         for (Int32 i = 0; i < 5; ++i) {
             GS::UniString description = GS::UniString (prefixes[i]) + "{Fav;g@@u;p;f;q@@s@@x;y)}";
@@ -2189,11 +2135,9 @@ namespace TestFunc {
                         "Spec parser literal counts");
             }
         }
-        DBprnt ("SpecRegression parser", "end");
     }
 
     void TestSpecAddRule () {
-        DBprnt ("SpecRegression add rule", "start");
         SpecFixture f;
         Spec::SpecRuleDict rules;
         API_PropertyDefinition definition = {};
@@ -2259,7 +2203,6 @@ namespace TestFunc {
             if (parsed != nullptr)
                 DBtest (parsed->groups.GetSize (), i == 0 ? 50 : 100, "Spec AddRule expanded groups");
         }
-        DBprnt ("SpecRegression add rule", "end");
     }
 
     // R4.4: причина отказа в разборе. Парсер пишет её в тех же точках, где
@@ -2273,8 +2216,6 @@ namespace TestFunc {
     //   - пустая выходная схема роняет и группы (0 != 1), поэтому признак
     //     принятия групп здесь всегда false - и это не ошибка набора.
     void TestSpecParseError () {
-        DBprnt ("SpecRegression parse reason", "start");
-
         struct ErrorCase {
             const char *body; // часть описания после "Spec_rule{Fav;"
             bool valid;
@@ -2382,12 +2323,9 @@ namespace TestFunc {
             DBtest (good != nullptr && good->parseValid && good->parseError == Spec::ParseError::None,
                     "Spec parse reason AddRule valid keeps None");
         }
-
-        DBprnt ("SpecRegression parse reason", "end");
     }
 
     void TestSpecSizes () {
-        DBprnt ("SpecRegression sizes", "start");
         API_Element element = {};
         API_ElementMemo memo = {};
         double dx = 17;
@@ -2436,11 +2374,9 @@ namespace TestFunc {
         DBtest (!Spec::GetSizePlaceElement (element, memo, dx, dy), "Spec size partial AB");
         DBtest (dx == 2 && dy == 19, "Spec size case sensitive B unchanged");
         BMKillHandle (reinterpret_cast<GSHandle *> (&memo.params));
-        DBprnt ("SpecRegression sizes", "end");
     }
 
     void TestStringSplt () {
-        DBprnt ("TEST", "TestStringSplt");
         GS::Array<GS::UniString> parts;
         UInt32 n;
 
@@ -2502,7 +2438,6 @@ namespace TestFunc {
         DBtest (parts.Get (0), GS::UniString ("a"), "parts[0] trimmed");
         DBtest (parts.Get (1), GS::UniString ("b"), "parts[1] trimmed");
 
-        DBprnt ("TEST", "TestStringSplt : done");
         return;
     }
 
@@ -2548,7 +2483,6 @@ namespace TestFunc {
     }
 
     void TestCalc () {
-        DBprnt ("TEST", "TestCalc");
         bool usl = false;
         GS::UniString test_expression = "";
         GS::UniString rep = "";
@@ -2597,7 +2531,6 @@ namespace TestFunc {
     }
 
     void TestFormula () {
-        DBprnt ("TEST", "TestReadFormula");
         ParamDictValue params;
         ParamValue pvalue;
         pvalue.val.hasFormula = true;
@@ -2694,7 +2627,6 @@ namespace TestFunc {
     }
 
     void TestFormatString () {
-        DBprnt ("TEST", "TestFormatString");
         GS::Array<GS::UniString> tests;
         GS::Array<FormatString> rezult_format;
         GS::Array<GS::UniString> rezult_name;
@@ -2863,7 +2795,6 @@ namespace TestFunc {
     // Простые тесты функций конвертации базовых типов в ParamValue (Helpers.hpp/cpp)
     // -----------------------------------------------------------------------------
     void TestConvertToParamValue () {
-        DBprnt ("TEST", "TestConvertToParamValue");
         ParamValue pvalue;
 
         // ---- ConvertIntToParamValue ----
@@ -2952,7 +2883,6 @@ namespace TestFunc {
         DBtest (!pvalue.val.boolValue, "ConvertStringToParamValue : boolValue (пустая строка)");
         DBtest (!pvalue.val.canCalculate, "ConvertStringToParamValue : canCalculate (пустая строка)");
 
-        DBprnt ("TEST", "TestConvertToParamValue : done");
         return;
     }
 
@@ -2960,7 +2890,6 @@ namespace TestFunc {
     // Тест ConvertAttributeToParamValue на граничных значениях API_Attribute
     // -----------------------------------------------------------------------------
     void TestConvertAttributeToParamValue () {
-        DBprnt ("TEST", "TestConvertAttributeToParamValue");
         ParamValue pvalue;
         API_Attribute attrib;
 
@@ -3029,7 +2958,6 @@ namespace TestFunc {
                 GS::UniString ("{@attrib:custom_rawname}"),
                 "ConvertAttributeToParamValue : rawName не перезаписывается, если не пуст");
 
-        DBprnt ("TEST", "TestConvertAttributeToParamValue : done");
         // Примечание: конкретное имя атрибута (attr.header.name) в данном тесте не заполняется -
         // это отдельное низкоуровневое поле фиксированного размера в API_AttributeHeader,
         // корректно заполняемое реальным ACAPI_Attribute_Get. Пустое имя - тоже граничный случай,
@@ -3041,7 +2969,6 @@ namespace TestFunc {
     // Тест ConvertToParamValue (API_Property) на граничных значениях
     // -----------------------------------------------------------------------------
     void TestConvertPropertyToParamValue () {
-        DBprnt ("TEST", "TestConvertPropertyToParamValue");
         ParamValue pvalue;
         API_Property property;
 
@@ -3193,7 +3120,6 @@ namespace TestFunc {
                 "ConvertToParamValue(Property) : return (Undefined -> false)");
         DBtest (!pvalue.isValid, "ConvertToParamValue(Property) : isValid (Undefined -> false)");
 
-        DBprnt ("TEST", "TestConvertPropertyToParamValue : done");
         return;
     }
 
@@ -3201,7 +3127,6 @@ namespace TestFunc {
     // Тест ConvertToParamValue (API_PropertyDefinition) на граничных значениях
     // -----------------------------------------------------------------------------
     void TestConvertPropertyDefinitionToParamValue () {
-        DBprnt ("TEST", "TestConvertPropertyDefinitionToParamValue");
         ParamValue pvalue;
         API_PropertyDefinition definition;
 
@@ -3260,7 +3185,6 @@ namespace TestFunc {
                 "ConvertToParamValue(Definition) : return (Undefined valueType всё равно true)");
         DBtest (pvalue.val.type == API_PropertyUndefinedValueType,
                 "ConvertToParamValue(Definition) : val.type (Undefined)");
-        DBprnt ("TEST", "TestConvertPropertyDefinitionToParamValue : done");
         return;
     }
 
@@ -3268,7 +3192,6 @@ namespace TestFunc {
     // Тест SetParamValueSourseByName - назначение флагов источника по префиксу rawName
     // -----------------------------------------------------------------------------
     void TestSetParamValueSourseByName () {
-        DBprnt ("TEST", "TestSetParamValueSourseByName");
         ParamValue pvalue;
 
         // ---- PROPERTYNAMEPREFIX ----
@@ -3416,7 +3339,6 @@ namespace TestFunc {
         DBtest (pvalue.val.array_column_start, 7, "SetParamValueSourseByName : val.array_column_start (@arr_3_5_7_9)");
         DBtest (pvalue.val.array_column_end, 9, "SetParamValueSourseByName : val.array_column_end (@arr_3_5_7_9)");
 
-        DBprnt ("TEST", "TestSetParamValueSourseByName : done");
         return;
     }
 
@@ -3424,7 +3346,6 @@ namespace TestFunc {
     // Тест SetrawNameFromProperty - переопределение rawName/name по описанию свойства
     // -----------------------------------------------------------------------------
     void TestSetrawNameFromProperty () {
-        DBprnt ("TEST", "TestSetrawNameFromProperty");
         ParamValue pvalue;
         API_Property property;
 
@@ -3493,7 +3414,6 @@ namespace TestFunc {
                 "SetrawNameFromProperty : rawName переписан на some_stuff_kzap");
         DBtest (pvalue.name, GS::UniString ("some_stuff_kzap"), "SetrawNameFromProperty : name == some_stuff_kzap");
 
-        DBprnt ("TEST", "TestSetrawNameFromProperty : done");
         // Примечание: ветка description.Contains (SYNCCORRECTFLAG) не покрыта тестом - значение
         // константы SYNCCORRECTFLAG не определено в Helpers.hpp/cpp (внешний заголовок), поэтому
         // корректную тестовую строку для срабатывания этой ветки составить нельзя.
@@ -3504,7 +3424,6 @@ namespace TestFunc {
     // Тест CheckIgnoreVal на граничных значениях
     // -----------------------------------------------------------------------------
     void TestCheckIgnoreVal () {
-        DBprnt ("TEST", "TestCheckIgnoreVal");
         ParamValue param;
         SkipValues ignorevals;
 
@@ -3622,7 +3541,6 @@ namespace TestFunc {
         ignorevals.ignorevals.Push ("ignoreme");
         DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : сравнение по trim-строке");
 
-        DBprnt ("TEST", "TestCheckIgnoreVal : done");
         return;
     }
 
@@ -3636,7 +3554,6 @@ namespace TestFunc {
     // заведомо невалидным APINULLGuid, для которого ACAPI_Element_GetPropertyValues
     // гарантированно не найдёт элемент и вернёт ошибку.
     void TestReadProperty () {
-        DBprnt ("TEST", "TestReadProperty");
         ParamDictValue params;
         GS::Array<API_PropertyDefinition> propertyDefinitions;
 
@@ -3679,7 +3596,6 @@ namespace TestFunc {
                 pvalueBefore.isValid,
                 "ReadProperty : значение в словаре не изменилось после ошибки ACAPI");
 
-        DBprnt ("TEST", "TestReadProperty : done");
         return;
     }
 
@@ -3693,7 +3609,6 @@ namespace TestFunc {
     // а не догадкой о содержимом rawName - так тест остаётся корректным независимо от
     // конкретной реализации GetPropertyFullName.
     void TestAddProperty () {
-        DBprnt ("TEST", "TestAddProperty");
         ParamDictValue params;
         GS::Array<API_Property> properties;
 
@@ -3811,7 +3726,6 @@ namespace TestFunc {
         DBtest (params.GetSize () == 1,
                 "AddProperty : несовпавшее свойство не добавляется в словарь (needAdd == false)");
 
-        DBprnt ("TEST", "TestAddProperty : done");
         return;
     }
 
@@ -3819,7 +3733,6 @@ namespace TestFunc {
     // Тест PropertyHelpers::ToString (API_Property) - проверка строкового представления свойств
     // -----------------------------------------------------------------------------
     void TestPropertyHelpersToString () {
-        DBprnt ("TEST", "TestPropertyHelpersToString");
         API_Property property;
         FormatString fstring;
 
@@ -3973,7 +3886,6 @@ namespace TestFunc {
         GS::UniString defaultRealResult = PropertyHelpers::ToString (property);
         DBtest (!defaultRealResult.IsEmpty (), "ToString(Property) : Default Real не пустая");
 
-        DBprnt ("TEST", "TestPropertyHelpersToString : done");
         return;
     }
 
@@ -4055,7 +3967,6 @@ namespace TestFunc {
     // Тест Name2Rawname - преобразование имени в rawname
     // -----------------------------------------------------------------------------
     void TestName2Rawname () {
-        DBprnt ("TEST", "TestName2Rawname");
         GS::UniString name;
         GS::UniString rawname;
 
@@ -4135,7 +4046,6 @@ namespace TestFunc {
         DBtest (Name2Rawname (name, rawname), "Name2Rawname Attrib:Layer -> true");
         DBtest (rawname, GS::UniString ("{@attrib:layer}"), "Name2Rawname Attrib:Layer -> rawname");
 
-        DBprnt ("TEST", "TestName2Rawname : done");
         return;
     }
 
@@ -4145,7 +4055,6 @@ namespace TestFunc {
     // Входные данные, УЖЕ содержащие правильные скобки "{@prefix:name}", проходят корректно.
     // -----------------------------------------------------------------------------
     void TestName2RawnameWithBrackets () {
-        DBprnt ("TEST", "TestName2RawnameWithBrackets");
         GS::UniString name;
         GS::UniString rawname;
 
@@ -4245,7 +4154,6 @@ namespace TestFunc {
                 GS::UniString ("{@attrib:layer}"),
                 "Name2RawnameWithBrackets {@attrib:layer} -> rawname unchanged");
 
-        DBprnt ("TEST", "TestName2RawnameWithBrackets : done");
         return;
     }
 
@@ -4253,7 +4161,6 @@ namespace TestFunc {
     // Тест SyncString - парсинг строки правила синхронизации
     // -----------------------------------------------------------------------------
     void TestSyncString () {
-        DBprnt ("TEST", "TestSyncString");
         ParamValue param;
         SkipValues ignorevals;
         FormatString stringformat;
@@ -4438,7 +4345,6 @@ namespace TestFunc {
                 GS::UniString::Printf ("SyncString File junk in number #%d -> false", junk + 1));
         }
 
-        DBprnt ("TEST", "TestSyncString : done");
         return;
     }
 
@@ -4446,7 +4352,6 @@ namespace TestFunc {
     // Тест реальных правил синхронизации из BuildingInformation.xml
     // -----------------------------------------------------------------------------
     void TestSyncStringRealRules () {
-        DBprnt ("TEST", "TestSyncStringRealRules");
         ParamValue param;
         SkipValues ignorevals;
         FormatString stringformat;
@@ -4616,7 +4521,6 @@ namespace TestFunc {
                 "SyncStringReal Material R0усл .3mp -> true");
         DBtest (param.fromMaterial, "SyncStringReal Material R0усл .3mp -> fromMaterial");
 
-        DBprnt ("TEST", "TestSyncStringRealRules : done");
         return;
     }
 
@@ -4624,8 +4528,6 @@ namespace TestFunc {
     // Тест констант префиксов
     // -----------------------------------------------------------------------------
     void TestParsePrefixes () {
-        DBprnt ("TEST", "TestParsePrefixes");
-
         // Проверка основных префиксов имен параметров
         DBtest (PROPERTYNAMEPREFIX, GS::UniString ("{@property:"), "PROPERTYNAMEPREFIX");
         DBtest (GDLNAMEPREFIX, GS::UniString ("{@gdl:"), "GDLNAMEPREFIX");
@@ -4711,7 +4613,6 @@ namespace TestFunc {
         DBtest (DEFULTLEGHTFSTRING, GS::UniString ("1mm"), "DEFULTLEGHTFSTRING");
         DBtest (DEFULTINTFSTRING, GS::UniString ("0m"), "DEFULTINTFSTRING");
 
-        DBprnt ("TEST", "TestParsePrefixes : done");
         return;
     }
 
@@ -4719,8 +4620,6 @@ namespace TestFunc {
     // Тест парсинга описания свойства с командами Sync, Renum, Sum, Spec
     // -----------------------------------------------------------------------------
     void TestParsePropertyDescription () {
-        DBprnt ("TEST", "TestParsePropertyDescription");
-
         ParamValue param;
         SkipValues ignorevals;
         FormatString stringformat;
@@ -4837,7 +4736,6 @@ namespace TestFunc {
             DBtest (n, (UInt32)0, "ParseDesc Empty -> 0 parts");
         }
 
-        DBprnt ("TEST", "TestParsePropertyDescription : done");
         return;
     }
 
@@ -4845,8 +4743,6 @@ namespace TestFunc {
     // Тест независимого вызова ParseSyncString (Этап 2 TDD)
     // -----------------------------------------------------------------------------
     void TestParseSyncStringIndependent () {
-        DBprnt ("TEST", "TestParseSyncStringIndependent");
-
         // Подготовка тестовых данных
         API_Guid elemGuid = APINULLGuid;
         API_ElemTypeID elementType = API_ObjectID;
@@ -4965,7 +4861,6 @@ namespace TestFunc {
                                   subproperty);
         DBtest (!result, "ParseSyncString no BRACEEND -> false");
 
-        DBprnt ("TEST", "TestParseSyncStringIndependent : done");
         return;
     }
 
@@ -4973,8 +4868,6 @@ namespace TestFunc {
     // Тест ParsePropertyDescriptionToRules — парсинг описания в структурированные правила
     // -----------------------------------------------------------------------------
     void TestParsePropertyDescriptionToRules () {
-        DBprnt ("TEST", "TestParsePropertyDescriptionToRules");
-
         // Тест 1: простое Sync_from описание
         {
             DBprnt ("DescToRules", "Test 1 start");
@@ -5074,7 +4967,6 @@ namespace TestFunc {
             }
         }
 
-        DBprnt ("TEST", "TestParsePropertyDescriptionToRules : done");
         return;
     }
 
@@ -5095,8 +4987,6 @@ namespace TestFunc {
     // а GREEN-тесты обязаны остаться зелёными.
     // -----------------------------------------------------------------------------
     void TestSyncAddSubelement () {
-        DBprnt ("TEST", "TestSyncAddSubelement");
-
         // ---- Вспомогательное правило-прототип ----
         auto makeRule = [] () {
             WriteData rule;
@@ -5250,7 +5140,6 @@ namespace TestFunc {
                     "Sync_to_GUID external destination -> write scheduled");
         }
 
-        DBprnt ("TEST", "TestSyncAddSubelement : done");
         return;
     }
 
@@ -5260,8 +5149,6 @@ namespace TestFunc {
     // результаты обязаны совпадать.
     // -----------------------------------------------------------------------------
     void TestRenumPosLogic () {
-        DBprnt ("TEST", "TestRenumPosLogic");
-
         // ---- RenumPos (int): isNum, strpos, Add ----
         RenumPos pos5 = RenumPos (5);
         DBtest (pos5.isNum, "RenumPos(5) -> isNum");
@@ -5354,7 +5241,6 @@ namespace TestFunc {
         ignoreFlag.val.uniStringValue = "ignore";
         DBtest (ReNumGetFlag (ignoreFlag, positionValid) == RENUM_IGNORE, "ReNumGetFlag string ignore -> IGNORE");
 
-        DBprnt ("TEST", "TestRenumPosLogic : done");
         return;
     }
 
@@ -5364,8 +5250,6 @@ namespace TestFunc {
     // использует UI палитры; правка бага P1 в SyncAddSubelement не должна их менять.
     // -----------------------------------------------------------------------------
     void TestDescToRulesSubGuid () {
-        DBprnt ("TEST", "TestDescToRulesSubGuid");
-
         // ---- to_sub: hasSub = true, targetType определён ----
         {
             GS::UniString desc = "Sync_to_sub{Property:TargetSub}";
@@ -5399,7 +5283,6 @@ namespace TestFunc {
             }
         }
 
-        DBprnt ("TEST", "TestDescToRulesSubGuid : done");
         return;
     }
 
@@ -5409,8 +5292,6 @@ namespace TestFunc {
     // инвалидацию по изменению описания и отсутствие ложных правил у обычных свойств.
     // -----------------------------------------------------------------------------
     void TestGetPropertyRuleFlag () {
-        DBprnt ("TEST", "TestGetPropertyRuleFlag");
-
         API_PropertyDefinition definition = {};
         definition.guid = APINULLGuid;
 
@@ -5483,7 +5364,6 @@ namespace TestFunc {
                     !entry->parsed.hasSyncRules && !entry->parsed.hasOtherCommands,
                 "RuleCache clears parsed commands for empty description");
         flags.Delete (definition.guid);
-        DBprnt ("TEST", "TestGetPropertyRuleFlag : done");
         return;
     }
 
@@ -5498,8 +5378,6 @@ namespace TestFunc {
     // Только DBprnt: это измерение, а не проверка — провалов теста оно не создаёт.
     // -----------------------------------------------------------------------------
     void TestPropertyRuleFlagOnProjectElements () {
-        DBprnt ("TEST", "TestPropertyRuleFlagOnProjectElements");
-
         GS::Array<API_Guid> elements;
         GSErrCode err = ACAPI_Element_GetElemList (API_WallID, &elements);
         const Int32 wallListError = (Int32)err;
@@ -5591,13 +5469,10 @@ namespace TestFunc {
                         GS::ValueToUniString ((Int32)rulesFromPropertyDefinition) +
                         GS::UniString (" rulesFromArrayDef=") + GS::ValueToUniString ((Int32)rulesFromArrayDefinition));
         }
-        DBprnt ("TEST", "TestPropertyRuleFlagOnProjectElements : done");
         return;
     }
 
     void TestBuildOtdByParent () {
-        DBprnt ("TEST", "TestBuildOtdByParent");
-
         const API_Guid baseGuid = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
         const API_Guid floorGuid = APIGuidFromString ("{22222222-2222-2222-2222-222222222222}");
         const API_Guid wallGuid = APIGuidFromString ("{33333333-3333-3333-3333-333333333333}");
@@ -5633,8 +5508,6 @@ namespace TestFunc {
         result = Roombook::BuildOtdByParent (otdElements, unknownParentDict, hasBaseElement);
         DBtest (!hasBaseElement, "BuildOtdByParent: unknown child keeps has_base_element false");
         DBtest (result.IsEmpty (), "BuildOtdByParent: unknown child is ignored");
-
-        DBprnt ("TEST", "TestBuildOtdByParent : done");
     }
 
 } // namespace TestFunc
