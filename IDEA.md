@@ -845,8 +845,7 @@ ACAPI из методов строки в этом шаге не появило�
 готовит accessor, а не переносит чтение.
 
 ### Last Checkpoint
-R5.3 — коммит этого шага (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
-Refs: #228).
+R5.3 — `3d67b48` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md, Refs: #228).
 Предыдущий: R5.2 — `a1d59ea` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
 Refs: #228).
 Предыдущий: R5.1 — `e4c6dee` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
