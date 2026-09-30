@@ -935,8 +935,8 @@ sha256 фикстуры `db1690f…` (совпал).
 - тесты читаются из `%TEMP%\somestuff_test_report.txt`, код возврата раннера 70 при
   failed>0; панель «Отладка» VS результатом не является.
 ### Last Checkpoint
-R5.5 — коммит этого шага (tests/TestSpec.cpp, tests/TestFunc.cpp,
-tests/TestFunc.hpp, Spec.md, TestFunc.md, IDEA.md, Refs: #228).
+R5.5 — `3d74933` (tests/TestSpec.cpp, tests/TestFunc.cpp, tests/TestFunc.hpp,
+Spec.md, TestFunc.md, IDEA.md, Refs: #228).
 Предыдущий: R5.4 — `97ddb7c` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
 Refs: #228).
 Предыдущий: R5.3 — `3d67b48` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
