@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿# Current Task
+﻿﻿﻿﻿﻿﻿# Current Task
 
 ## Task — рефакторинг Spec (R4: разбор парсера и однократная подготовка схемы)
 
@@ -1071,8 +1071,8 @@ Issue: #231 — машиночитаемый результат, отбор на
 прод-код не менялся, вскрытый баг вынесен в #232.
 
 ### Status
-IN_PROGRESS — разбиение TU и перенос в `Sources/AddOn/tests/` закрыты
-(9 чекпоинтов). Осталось: табличные кейсы вместо повторов.
+DONE — все шаги закрыты (13 чекпоинтов). Прод-код не менялся; два
+вскрытых бага вынесены в #232 и #233.
 
 ### Last Completed
 Раннер читает отчёт TestKit и выдаёт `exit_code=70` при провалах — раньше он
@@ -1082,12 +1082,14 @@ IN_PROGRESS — разбиение TU и перенос в `Sources/AddOn/tests/
 до 90 с по маркеру `=== somestuff tests end ===`.
 
 ### Next Step
-Табличные кейсы вместо повторов: `TestSpecParser` держит таблицу `ParserCase`,
-но семь наборов рядом (`TestSpecOutSlots`, `TestSpecGroups`,
-`TestSpecOutputSchema`, `TestSpecPolicy`, `TestSpecNormalize`,
-`TestSpecParseError`) всё ещё пишут проверки поштучно.
+Следующий шаг вне scope этой задачи: `TestSpecGetParamValue` (43 проверки),
+`TestSyncStringRealRules` (44), `TestSpecFavoriteResolution` (33) и
+`TestConvertToParamValue` (45) остались поштучными - у них на каждый
+кейс своя функция со своими входами, таблица потребовала бы скрывать
+проверяемый контракт. Отдельная задача.
 
 ### Last Checkpoint
+Табличные кейсы — `78aaadc` (Name2Rawname) и `0d3ebc8` (TestParsePrefixes).
 Перенос в `tests/` — `a6aaca2`; разбиение TU — `6a2e4fc`.
 Доки — `03d6c57` (Docs/modules/TestFunc.md, Refs: #231).
 Раннер — `984e246` (Tools/restart_archicad_for_test.ps1, Refs: #231).
@@ -1124,8 +1126,10 @@ CMake не правил: sources берутся `GLOB_RECURSE CONFIGURE_DEPENDS`
 ещё в `39486f8` (до TestKit) — оформлено как **#233**. Ветка `DBPrint` (AC22-23)
 на практике не проверена, потому что до C++ дело не доходит.
 ### Прогон (AC25, 2026-09-30)
-`suites=49 passed=1832 failed=1`, `FAILED_SUITE TestConvertPropertyToParamValue`,
-`exit_code=70`. Провал предсуществующий и оформлен как **#232**: вещественные
+`suites=49 passed=1825 failed=1`, `FAILED_SUITE TestConvertPropertyToParamValue`,
+`exit_code=70`. 1832 -> 1825: удалены 7 тавтологий в TestParsePrefixes
+(сверяли литерал с самим собой), которые P0 пропустил в другом наборе.
+Перевод проверок в таблицы выполненных проверок не меняет. Провал предсуществующий и оформлен как **#232**: вещественные
 свойства округляются по `n_zero` из кэша форматов проекта (`Helpers.cpp:8274-8296`),
 а не по своему формату. Проверка `doubleValue (отрицательное)` оставлена падать.
 ## Archive — архитектурный разбор Spec (2026-09-28)
