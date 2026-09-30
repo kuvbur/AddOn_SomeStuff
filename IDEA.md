@@ -1,4 +1,4 @@
-﻿﻿# Current Task
+﻿﻿﻿# Current Task
 
 ## Task — рефакторинг Spec (R4: разбор парсера и однократная подготовка схемы)
 
@@ -1060,6 +1060,53 @@ Issue #227. Необязательный параметр `includeParameters` (b
   после Tools/restart_archicad_for_test.ps1 (exit_code=0) и прогона Spec на сборке
   из коммита (1-й: создано 16, 2-й: completed 0/0/0).
 
+## Task — переработка тестов (#231)
+
+Issue: #231 — машиночитаемый результат, отбор наборов, DBrequire.
+
+### Scope
+`Sources/AddOn/TestKit.cpp/hpp` (новые), `Sources/AddOn/TestFunc.cpp`,
+`Docs/modules/TestFunc.md`, `Tools/restart_archicad_for_test.ps1`, `IDEA.md`.
+Вне scope: разбиение TU по модулям и табличные кейсы — следующий шаг;
+прод-код не менялся, вскрытый баг вынесен в #232.
+
+### Status
+IN_PROGRESS — P0, TestKit, DBrequire, маркеры, раннер и документация закрыты
+(6 чекпоинтов). Осталось: разбиение TU, табличные кейсы, sweep AC26-29.
+
+### Last Completed
+Раннер читает отчёт TestKit и выдаёт `exit_code=70` при провалах — раньше он
+объявлял `$EXIT_TESTS_FAILED`, но выставлял только по JSON-тестам, поэтому прогон
+с упавшей C++-проверкой завершался как SUCCESS. Существенно: тесты стартуют на
+`APINotify_Open`, отчёт проверен за 12 с до первого `BEGIN`, добавлено ожидание
+до 90 с по маркеру `=== somestuff tests end ===`.
+
+### Next Step
+Разбить `TestFunc.cpp` на TU по модулям (TestSpec*/TestSync/TestParam/TestFormat/
+TestRenum) — реестр в `TestFunc.cpp` остаётся единственным списком вызовов,
+чтобы перенос объявлений не потерял наборы. Затем sweep AC26-29: собран только
+AC25, совместимость ветки `DBPrint` (AC22-23) и `is_equal` не проверена.
+
+### Last Checkpoint
+Доки — `03d6c57` (Docs/modules/TestFunc.md, Refs: #231).
+Раннер — `984e246` (Tools/restart_archicad_for_test.ps1, Refs: #231).
+Маркеры — `e18aafd`; DBrequire — `cf3ec89`; TestKit — `677be90`; P0 — `4478494`.
+
+### Решения
+- Допуск чисел берётся из продового `is_equal`, а не из новой константы: вторая
+  разошлась бы с продом на `TestSpecValueEdges` (2147483648.0 и -2147483649.0).
+- Канал вывода — `DBPrintf`/`DBPrint`, а не `ACAPI_WriteReport`: последнего в
+  `APICommon25.h` нет, а `DBPrint` принимает ровно один аргумент.
+- Реестр явно в `Test()`, не статическими инициализаторами: регистратор вместе
+  со своей `static`-функцией выкидывается линковкой, и набор молча исчезает.
+- Прод-`DBtest`/`DBprnt` в тестах не перекрываются: они объявлены в общем
+  заголовке и вызываются из `Helpers.cpp`/`CommonFunction.cpp`.
+
+### Прогон (AC25, 2026-09-30)
+`suites=49 passed=1832 failed=1`, `FAILED_SUITE TestConvertPropertyToParamValue`,
+`exit_code=70`. Провал предсуществующий и оформлен как **#232**: вещественные
+свойства округляются по `n_zero` из кэша форматов проекта (`Helpers.cpp:8274-8296`),
+а не по своему формату. Проверка `doubleValue (отрицательное)` оставлена падать.
 ## Archive — архитектурный разбор Spec (2026-09-28)
 
 - Scope: обсуждение архитектуры, без изменения C++, сборки, runtime и GitHub issues. Рассмотрен общий код AC22–29 в `62a5d38`; будущий первый runtime-контур предложен для AC25 по текущим расследованиям, совместимость остальных версий не проверена.
