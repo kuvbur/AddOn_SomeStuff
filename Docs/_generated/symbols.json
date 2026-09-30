@@ -1,38 +1,206 @@
 [
   {
-    "name": "DimAutoRoundOne",
-    "kind": "Function",
-    "file": "Sources/AddOn/Dimensions.cpp",
-    "module": "Dimensions",
-    "line": 17
+    "name": "using namespace ACAPI::MEP",
+    "kind": "Variable",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 7
   },
   {
-    "name": "DimAutoRound",
+    "name": "GetRigidSegmentClassIDFromRoutingElemClassID",
     "kind": "Function",
-    "file": "Sources/AddOn/Dimensions.cpp",
-    "module": "Dimensions",
-    "line": 36
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 9
   },
   {
-    "name": "DimParse",
+    "name": "GetBendClassIDFromRoutingElemClassID",
     "kind": "Function",
-    "file": "Sources/AddOn/Dimensions.cpp",
-    "module": "Dimensions",
-    "line": 289
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 32
   },
   {
-    "name": "DimRoundAll",
+    "name": "GetTransitionClassIDFromRoutingElemClassID",
     "kind": "Function",
-    "file": "Sources/AddOn/Dimensions.cpp",
-    "module": "Dimensions",
-    "line": 427
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 68
   },
   {
-    "name": "DimRoundByType",
+    "name": "MEPv1::RoutingElementSharedData",
+    "kind": "Class",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 95
+  },
+  {
+    "name": "MEPv1::RoutingElementSharedData::ok",
+    "kind": "Field",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 96
+  },
+  {
+    "name": "MEPv1::RoutingElementSharedData::hasSystemName",
+    "kind": "Field",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 97
+  },
+  {
+    "name": "MEPv1::RoutingElementSharedData::systemName",
+    "kind": "Field",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 98
+  },
+  {
+    "name": "MEPv1::RoutingElementSharedData::routingLength",
+    "kind": "Field",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 99
+  },
+  {
+    "name": "MEPv1::RoutingElementSharedData::branchTableID",
+    "kind": "Field",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 100
+  },
+  {
+    "name": "MEPv1::routingSubelemCache",
+    "kind": "Variable",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 103
+  },
+  {
+    "name": "MEPv1::routingElementDataCache",
+    "kind": "Variable",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 105
+  },
+  {
+    "name": "MEPv1::GetRoutingElementSharedDataCached",
     "kind": "Function",
-    "file": "Sources/AddOn/Dimensions.cpp",
-    "module": "Dimensions",
-    "line": 449
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 107
+  },
+  {
+    "name": "MEPv1::ClearRoutingSubelemCache",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 157
+  },
+  {
+    "name": "MEPv1::GetSubElementOfRoutingCached",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 162
+  },
+  {
+    "name": "MEPv1::ReadMEP",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 174
+  },
+  {
+    "name": "MEPv1::GetSubElementOfRouting",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 182
+  },
+  {
+    "name": "MEPv1::GetSubElement",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 238
+  },
+  {
+    "name": "MEPv1::GetMEPData",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 304
+  },
+  {
+    "name": "MEPv1::ReadTransitionData",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 526
+  },
+  {
+    "name": "MEPv1::ReadRoutingElementData",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 592
+  },
+  {
+    "name": "MEPv1::ReadBendData",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 618
+  },
+  {
+    "name": "MEPv1::ReadRigidSegmentData",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 684
+  },
+  {
+    "name": "MEPv1::ReadRoutingSegmentData",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 724
+  },
+  {
+    "name": "MEPv1::ReadDuctSegmentPreferenceTable",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 803
+  },
+  {
+    "name": "MEPv1::ReadPipeSegmentPreferenceTable",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 891
+  },
+  {
+    "name": "MEPv1::ReadDuctBendPreferenceTable",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 956
+  },
+  {
+    "name": "MEPv1::ReadPipeBendPreferenceTable",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 1060
+  },
+  {
+    "name": "MEPv1::ReadTransitionPreferenceTable",
+    "kind": "Function",
+    "file": "Sources/AddOn/MEPv1.cpp",
+    "module": "MEPv1",
+    "line": 1139
   },
   {
     "name": "ClassificationFunc::autoclassname",
@@ -103,335 +271,6 @@
     "file": "Sources/AddOn/ClassificationFunction.cpp",
     "module": "ClassificationFunction",
     "line": 255
-  },
-  {
-    "name": "ReNumSelected",
-    "kind": "Function",
-    "file": "Sources/AddOn/ReNum.cpp",
-    "module": "ReNum",
-    "line": 56
-  },
-  {
-    "name": "RenumDG",
-    "kind": "Function",
-    "file": "Sources/AddOn/ReNum.cpp",
-    "module": "ReNum",
-    "line": 131
-  },
-  {
-    "name": "GetRenumElements",
-    "kind": "Function",
-    "file": "Sources/AddOn/ReNum.cpp",
-    "module": "ReNum",
-    "line": 186
-  },
-  {
-    "name": "ReNum_GetElement",
-    "kind": "Function",
-    "file": "Sources/AddOn/ReNum.cpp",
-    "module": "ReNum",
-    "line": 365
-  },
-  {
-    "name": "GetMostFrequentPos",
-    "kind": "Function",
-    "file": "Sources/AddOn/ReNum.cpp",
-    "module": "ReNum",
-    "line": 573
-  },
-  {
-    "name": "GetPos",
-    "kind": "Function",
-    "file": "Sources/AddOn/ReNum.cpp",
-    "module": "ReNum",
-    "line": 601
-  },
-  {
-    "name": "ReNumOneRule",
-    "kind": "Function",
-    "file": "Sources/AddOn/ReNum.cpp",
-    "module": "ReNum",
-    "line": 622
-  },
-  {
-    "name": "ElementsSeparation",
-    "kind": "Function",
-    "file": "Sources/AddOn/ReNum.cpp",
-    "module": "ReNum",
-    "line": 811
-  },
-  {
-    "name": "ReNumHasFlag",
-    "kind": "Function",
-    "file": "Sources/AddOn/ReNum.cpp",
-    "module": "ReNum",
-    "line": 934
-  },
-  {
-    "name": "ReNumGetFlag",
-    "kind": "Function",
-    "file": "Sources/AddOn/ReNum.cpp",
-    "module": "ReNum",
-    "line": 961
-  },
-  {
-    "name": "SumCriteria",
-    "kind": "Class",
-    "file": "Sources/AddOn/Summ.cpp",
-    "module": "Summ",
-    "line": 14
-  },
-  {
-    "name": "SumSelected",
-    "kind": "Function",
-    "file": "Sources/AddOn/Summ.cpp",
-    "module": "Summ",
-    "line": 29
-  },
-  {
-    "name": "SumDG",
-    "kind": "Function",
-    "file": "Sources/AddOn/Summ.cpp",
-    "module": "Summ",
-    "line": 78
-  },
-  {
-    "name": "GetSumValuesOfElements",
-    "kind": "Function",
-    "file": "Sources/AddOn/Summ.cpp",
-    "module": "Summ",
-    "line": 120
-  },
-  {
-    "name": "Sum_GetElement",
-    "kind": "Function",
-    "file": "Sources/AddOn/Summ.cpp",
-    "module": "Summ",
-    "line": 193
-  },
-  {
-    "name": "Sum_Rule",
-    "kind": "Function",
-    "file": "Sources/AddOn/Summ.cpp",
-    "module": "Summ",
-    "line": 318
-  },
-  {
-    "name": "Sum_OneRule",
-    "kind": "Function",
-    "file": "Sources/AddOn/Summ.cpp",
-    "module": "Summ",
-    "line": 409
-  },
-  {
-    "name": "GetPropertyRuleFlag",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 11
-  },
-  {
-    "name": "GetCache",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 34
-  },
-  {
-    "name": "PROPERTYCACHE",
-    "kind": "Variable",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 39
-  },
-  {
-    "name": "ReportFormulaCacheStats",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 47
-  },
-  {
-    "name": "ParamHelpers::ReadLibraryFile",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 70
-  },
-  {
-    "name": "ParamHelpers::SetParamValueFromCache",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 145
-  },
-  {
-    "name": "ParamHelpers::isPropertyDefinitionRead",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 154
-  },
-  {
-    "name": "ParamHelpers::isAttributeRead",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 161
-  },
-  {
-    "name": "ParamHelpers::isMEPRead",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 169
-  },
-  {
-    "name": "ParamHelpers::GetLayerFromCache",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 177
-  },
-  {
-    "name": "ParamHelpers::GetGroupFromCache",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 204
-  },
-  {
-    "name": "ParamHelpers::GetGDLRawName",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 239
-  },
-  {
-    "name": "ParamHelpers::GetParamValueFromCache",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 251
-  },
-  {
-    "name": "ParamHelpers::isCacheContainsParamValue",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 334
-  },
-  {
-    "name": "ParamHelpers::GetMEPSystemGroup",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 391
-  },
-  {
-    "name": "ParamHelpers::GetGeoLocationToParamDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 421
-  },
-  {
-    "name": "ParamHelpers::GetPlaceSetsToParamDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 524
-  },
-  {
-    "name": "ParamHelpers::GetLocOriginToParamDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 602
-  },
-  {
-    "name": "ParamHelpers::GetAllInfoToParamDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 675
-  },
-  {
-    "name": "ParamHelpers::GetAllAttributeToParamDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 718
-  },
-  {
-    "name": "ParamHelpers::GetAllPropertyDefinitionToParamDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 767
-  },
-  {
-    "name": "ParamHelpers::GetArrayPropertyDefinitionToParamDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 814
-  },
-  {
-    "name": "isEng",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 893
-  },
-  {
-    "name": "AddUnreadGDLParams",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 900
-  },
-  {
-    "name": "CountUnreadGDLParams",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 923
-  },
-  {
-    "name": "IsUnreadGDLParams",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 946
-  },
-  {
-    "name": "GetPropertyNameByGUID",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 956
-  },
-  {
-    "name": "GetPropertyFullName",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 984
-  },
-  {
-    "name": "DimReadPref",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 1020
-  },
-  {
-    "name": "DimParsePref",
-    "kind": "Function",
-    "file": "Sources/AddOn/Propertycache.cpp",
-    "module": "Propertycache",
-    "line": 1061
   },
   {
     "name": "GetUnicGuid",
@@ -571,7 +410,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/CommonFunction.cpp",
     "module": "CommonFunction",
-    "line": 882
+    "line": 900
   },
   {
     "name": "check_accuracy",
@@ -809,7 +648,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/CommonFunction.cpp",
     "module": "CommonFunction",
-    "line": 1962
+    "line": 1979
   },
   {
     "name": "ElemHead_To_Neig",
@@ -823,7 +662,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/CommonFunction.cpp",
     "module": "CommonFunction",
-    "line": 2219
+    "line": 2292
   },
   {
     "name": "ConstructPolygon2DFromElementMemo",
@@ -924,1586 +763,676 @@
     "line": 2725
   },
   {
-    "name": "using namespace ACAPI::MEP",
+    "name": "DimAutoRoundOne",
+    "kind": "Function",
+    "file": "Sources/AddOn/Dimensions.cpp",
+    "module": "Dimensions",
+    "line": 17
+  },
+  {
+    "name": "DimAutoRound",
+    "kind": "Function",
+    "file": "Sources/AddOn/Dimensions.cpp",
+    "module": "Dimensions",
+    "line": 36
+  },
+  {
+    "name": "DimParse",
+    "kind": "Function",
+    "file": "Sources/AddOn/Dimensions.cpp",
+    "module": "Dimensions",
+    "line": 289
+  },
+  {
+    "name": "DimRoundAll",
+    "kind": "Function",
+    "file": "Sources/AddOn/Dimensions.cpp",
+    "module": "Dimensions",
+    "line": 427
+  },
+  {
+    "name": "DimRoundByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/Dimensions.cpp",
+    "module": "Dimensions",
+    "line": 449
+  },
+  {
+    "name": "GetPropertyRuleFlag",
+    "kind": "Function",
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 11
+  },
+  {
+    "name": "GetCache",
+    "kind": "Function",
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 34
+  },
+  {
+    "name": "PROPERTYCACHE",
     "kind": "Variable",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 7
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 39
   },
   {
-    "name": "GetRigidSegmentClassIDFromRoutingElemClassID",
+    "name": "ReportFormulaCacheStats",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 9
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 47
   },
   {
-    "name": "GetBendClassIDFromRoutingElemClassID",
+    "name": "ParamHelpers::ReadLibraryFile",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 32
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 70
   },
   {
-    "name": "GetTransitionClassIDFromRoutingElemClassID",
+    "name": "ParamHelpers::SetParamValueFromCache",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 68
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 145
   },
   {
-    "name": "MEPv1::RoutingElementSharedData",
-    "kind": "Class",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 95
-  },
-  {
-    "name": "MEPv1::RoutingElementSharedData::ok",
-    "kind": "Field",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 96
-  },
-  {
-    "name": "MEPv1::RoutingElementSharedData::hasSystemName",
-    "kind": "Field",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 97
-  },
-  {
-    "name": "MEPv1::RoutingElementSharedData::systemName",
-    "kind": "Field",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 98
-  },
-  {
-    "name": "MEPv1::RoutingElementSharedData::routingLength",
-    "kind": "Field",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 99
-  },
-  {
-    "name": "MEPv1::RoutingElementSharedData::branchTableID",
-    "kind": "Field",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 100
-  },
-  {
-    "name": "MEPv1::routingSubelemCache",
-    "kind": "Variable",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 103
-  },
-  {
-    "name": "MEPv1::routingElementDataCache",
-    "kind": "Variable",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 105
-  },
-  {
-    "name": "MEPv1::GetRoutingElementSharedDataCached",
+    "name": "ParamHelpers::isPropertyDefinitionRead",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 107
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 154
   },
   {
-    "name": "MEPv1::ClearRoutingSubelemCache",
+    "name": "ParamHelpers::isAttributeRead",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 157
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 161
   },
   {
-    "name": "MEPv1::GetSubElementOfRoutingCached",
+    "name": "ParamHelpers::GetLayerFromCache",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 162
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 177
   },
   {
-    "name": "MEPv1::ReadMEP",
+    "name": "ParamHelpers::GetGroupFromCache",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 174
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 204
   },
   {
-    "name": "MEPv1::GetSubElementOfRouting",
+    "name": "ParamHelpers::GetGDLRawName",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 182
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 239
   },
   {
-    "name": "MEPv1::GetSubElement",
+    "name": "ParamHelpers::GetParamValueFromCache",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 238
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 251
   },
   {
-    "name": "MEPv1::GetMEPData",
+    "name": "ParamHelpers::isCacheContainsParamValue",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 304
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 334
   },
   {
-    "name": "MEPv1::ReadTransitionData",
+    "name": "ParamHelpers::GetGeoLocationToParamDict",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 526
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 421
   },
   {
-    "name": "MEPv1::ReadRoutingElementData",
+    "name": "ParamHelpers::GetPlaceSetsToParamDict",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 592
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 524
   },
   {
-    "name": "MEPv1::ReadBendData",
+    "name": "ParamHelpers::GetLocOriginToParamDict",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 618
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 602
   },
   {
-    "name": "MEPv1::ReadRigidSegmentData",
+    "name": "ParamHelpers::GetAllInfoToParamDict",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 684
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 675
   },
   {
-    "name": "MEPv1::ReadRoutingSegmentData",
+    "name": "ParamHelpers::GetAllAttributeToParamDict",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 724
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 718
   },
   {
-    "name": "MEPv1::ReadDuctSegmentPreferenceTable",
+    "name": "ParamHelpers::GetAllPropertyDefinitionToParamDict",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 803
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 767
   },
   {
-    "name": "MEPv1::ReadPipeSegmentPreferenceTable",
+    "name": "ParamHelpers::GetArrayPropertyDefinitionToParamDict",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 891
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 814
   },
   {
-    "name": "MEPv1::ReadDuctBendPreferenceTable",
+    "name": "isEng",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 893
+  },
+  {
+    "name": "AddUnreadGDLParams",
+    "kind": "Function",
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 900
+  },
+  {
+    "name": "CountUnreadGDLParams",
+    "kind": "Function",
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 923
+  },
+  {
+    "name": "IsUnreadGDLParams",
+    "kind": "Function",
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 946
+  },
+  {
+    "name": "GetPropertyNameByGUID",
+    "kind": "Function",
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
     "line": 956
   },
   {
-    "name": "MEPv1::ReadPipeBendPreferenceTable",
+    "name": "GetPropertyFullName",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 1060
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 984
   },
   {
-    "name": "MEPv1::ReadTransitionPreferenceTable",
+    "name": "DimReadPref",
     "kind": "Function",
-    "file": "Sources/AddOn/MEPv1.cpp",
-    "module": "MEPv1",
-    "line": 1139
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 1020
+  },
+  {
+    "name": "DimParsePref",
+    "kind": "Function",
+    "file": "Sources/AddOn/Propertycache.cpp",
+    "module": "Propertycache",
+    "line": 1061
+  },
+  {
+    "name": "ReNumSelected",
+    "kind": "Function",
+    "file": "Sources/AddOn/ReNum.cpp",
+    "module": "ReNum",
+    "line": 56
+  },
+  {
+    "name": "RenumDG",
+    "kind": "Function",
+    "file": "Sources/AddOn/ReNum.cpp",
+    "module": "ReNum",
+    "line": 131
+  },
+  {
+    "name": "GetRenumElements",
+    "kind": "Function",
+    "file": "Sources/AddOn/ReNum.cpp",
+    "module": "ReNum",
+    "line": 186
+  },
+  {
+    "name": "ReNum_GetElement",
+    "kind": "Function",
+    "file": "Sources/AddOn/ReNum.cpp",
+    "module": "ReNum",
+    "line": 365
+  },
+  {
+    "name": "GetMostFrequentPos",
+    "kind": "Function",
+    "file": "Sources/AddOn/ReNum.cpp",
+    "module": "ReNum",
+    "line": 573
+  },
+  {
+    "name": "GetPos",
+    "kind": "Function",
+    "file": "Sources/AddOn/ReNum.cpp",
+    "module": "ReNum",
+    "line": 601
+  },
+  {
+    "name": "ReNumOneRule",
+    "kind": "Function",
+    "file": "Sources/AddOn/ReNum.cpp",
+    "module": "ReNum",
+    "line": 622
+  },
+  {
+    "name": "ElementsSeparation",
+    "kind": "Function",
+    "file": "Sources/AddOn/ReNum.cpp",
+    "module": "ReNum",
+    "line": 811
+  },
+  {
+    "name": "ReNumHasFlag",
+    "kind": "Function",
+    "file": "Sources/AddOn/ReNum.cpp",
+    "module": "ReNum",
+    "line": 934
+  },
+  {
+    "name": "ReNumGetFlag",
+    "kind": "Function",
+    "file": "Sources/AddOn/ReNum.cpp",
+    "module": "ReNum",
+    "line": 961
   },
   {
     "name": "ReservationChangeHandler",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 38
+    "line": 42
   },
   {
     "name": "ProjectEventHandlerProc",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 73
+    "line": 75
   },
   {
     "name": "ElementEventHandlerProc",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 145
+    "line": 146
   },
   {
     "name": "Do_ElementMonitor",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 285
+    "line": 284
   },
   {
     "name": "SelectionChangeHandlerProc",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 331
+    "line": 332
   },
   {
     "name": "MenuSetState",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 342
+    "line": 341
   },
   {
     "name": "SetPaletteMenuText",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 356
+    "line": 355
   },
   {
     "name": "MenuCommandHandler",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 371
+    "line": 370
   },
   {
     "name": "CheckEnvironment",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 509
+    "line": 510
   },
   {
     "name": "RegisterInterface",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 523
+    "line": 524
   },
   {
     "name": "Initialize",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 542
+    "line": 543
   },
   {
     "name": "FreeData",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 589
+    "line": 590
   },
   {
-    "name": "AutoFunc::GetNear",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 15
-  },
-  {
-    "name": "AutoFunc::GetCuplane",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 34
-  },
-  {
-    "name": "AutoFunc::Get3DProjectionInfo",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 149
-  },
-  {
-    "name": "AutoFunc::Get3DDocument",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 208
-  },
-  {
-    "name": "AutoFunc::GetSectLine",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 260
-  },
-  {
-    "name": "AutoFunc::DoSect",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 401
-  },
-  {
-    "name": "AutoFunc::PlaceDocSect",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 484
-  },
-  {
-    "name": "AutoFunc::ProfileByLine",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 551
-  },
-  {
-    "name": "AutoFunc::RestoreStartDatabaseAndWindow",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 744
-  },
-  {
-    "name": "AutoFunc::AlignOneDrawingsByPoints",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 764
-  },
-  {
-    "name": "AutoFunc::GetDrawingsSort",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 879
-  },
-  {
-    "name": "AutoFunc::AlignDrawingsByPoints",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
-    "module": "pk",
-    "line": 913
-  },
-  {
-    "name": "ResetProperty",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/ResetProperty.cpp",
-    "module": "pk",
+    "name": "SumCriteria",
+    "kind": "Class",
+    "file": "Sources/AddOn/Summ.cpp",
+    "module": "Summ",
     "line": 14
   },
   {
-    "name": "ResetPropertyElement2Defult",
+    "name": "SumSelected",
     "kind": "Function",
-    "file": "Sources/AddOn/pk/ResetProperty.cpp",
-    "module": "pk",
-    "line": 40
+    "file": "Sources/AddOn/Summ.cpp",
+    "module": "Summ",
+    "line": 29
   },
   {
-    "name": "ResetElementsInDB",
+    "name": "SumDG",
     "kind": "Function",
-    "file": "Sources/AddOn/pk/ResetProperty.cpp",
-    "module": "pk",
-    "line": 122
+    "file": "Sources/AddOn/Summ.cpp",
+    "module": "Summ",
+    "line": 78
   },
   {
-    "name": "ResetOneElemen",
+    "name": "GetSumValuesOfElements",
     "kind": "Function",
-    "file": "Sources/AddOn/pk/ResetProperty.cpp",
-    "module": "pk",
-    "line": 240
+    "file": "Sources/AddOn/Summ.cpp",
+    "module": "Summ",
+    "line": 120
   },
   {
-    "name": "ResetElementsDefault",
+    "name": "Sum_GetElement",
     "kind": "Function",
-    "file": "Sources/AddOn/pk/ResetProperty.cpp",
-    "module": "pk",
-    "line": 275
-  },
-  {
-    "name": "ResetOneElemenDefault",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/ResetProperty.cpp",
-    "module": "pk",
-    "line": 356
-  },
-  {
-    "name": "Revision::SetRevision",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 14
-  },
-  {
-    "name": "Revision::GetScheme",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 98
-  },
-  {
-    "name": "Revision::GetAllChangesMarker",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 152
-  },
-  {
-    "name": "Revision::ChangeLayoutProperty",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 398
-  },
-  {
-    "name": "Revision::CheckChanges",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 645
-  },
-  {
-    "name": "Revision::GetChangesLayout",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 762
-  },
-  {
-    "name": "Revision::GetChangesMarker",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 822
-  },
-  {
-    "name": "Revision::GetMarkerPos",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 892
-  },
-  {
-    "name": "Revision::GetMarkerText",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 919
-  },
-  {
-    "name": "Revision::ChangeMarkerTextOnLayout",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 984
-  },
-  {
-    "name": "Revision::ChangeMarkerText",
-    "kind": "Function",
-    "file": "Sources/AddOn/pk/Revision.cpp",
-    "module": "pk",
-    "line": 1011
-  },
-  {
-    "name": "kMinWidthMm",
-    "kind": "Variable",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 14
-  },
-  {
-    "name": "kMaxWrappedLines",
-    "kind": "Variable",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 15
-  },
-  {
-    "name": "AttrIndex",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 20
-  },
-  {
-    "name": "ToApiJust",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 25
-  },
-  {
-    "name": "ResolveHAlign",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 38
-  },
-  {
-    "name": "ResolveVAlign",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 42
-  },
-  {
-    "name": "RangesOverlap",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 46
-  },
-  {
-    "name": "VerticalShiftFactor",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 50
-  },
-  {
-    "name": "HorizontalShiftFactor",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 62
-  },
-  {
-    "name": "FindFirstFillIndex",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 76
-  },
-  {
-    "name": "TableRenderer::TableRenderer::SetCells",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 98
-  },
-  {
-    "name": "TableRenderer::TableRenderer::SetFormattingRules",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 103
-  },
-  {
-    "name": "TableRenderer::TableRenderer::SetDrawingScale",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 108
-  },
-  {
-    "name": "TableRenderer::TableRenderer::IsLayoutComputed",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 110
-  },
-  {
-    "name": "TableRenderer::TableRenderer::ToModel",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 115
-  },
-  {
-    "name": "TableRenderer::TableRenderer::TotalWidthMm",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 117
-  },
-  {
-    "name": "TableRenderer::TableRenderer::TotalHeightMm",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 124
-  },
-  {
-    "name": "TableRenderer::TableRenderer::GetTotalWidth",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 131
-  },
-  {
-    "name": "TableRenderer::TableRenderer::GetTotalHeight",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 133
-  },
-  {
-    "name": "TableRenderer::TableRenderer::GetColumnWidth",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 135
-  },
-  {
-    "name": "TableRenderer::TableRenderer::GetRowHeight",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 141
-  },
-  {
-    "name": "TableRenderer::TableRenderer::SlotIndex",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 150
-  },
-  {
-    "name": "TableRenderer::TableRenderer::SlotLayout",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 152
-  },
-  {
-    "name": "TableRenderer::TableRenderer::SlotLayout",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 156
-  },
-  {
-    "name": "TableRenderer::TableRenderer::FindCell",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 160
-  },
-  {
-    "name": "TableRenderer::TableRenderer::IsSlotCoveredByMerge",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 168
-  },
-  {
-    "name": "TableRenderer::TableRenderer::ResolveFontIndex",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 186
-  },
-  {
-    "name": "TableRenderer::TableRenderer::MeasureWidthMm",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 210
-  },
-  {
-    "name": "TableRenderer::TableRenderer::WrapText",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 220
-  },
-  {
-    "name": "TableRenderer::TableRenderer::ComputeLayout",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 295
-  },
-  {
-    "name": "TableRenderer::TableRenderer::BuildCellLayouts",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 361
-  },
-  {
-    "name": "TableRenderer::TableRenderer::ComputeColumnWidthsMm",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 393
-  },
-  {
-    "name": "TableRenderer::TableRenderer::WrapCellLayouts",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 483
-  },
-  {
-    "name": "TableRenderer::TableRenderer::ComputeRowHeightsMm",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 528
-  },
-  {
-    "name": "TableRenderer::TableRenderer::Draw",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 615
-  },
-  {
-    "name": "TableRenderer::TableRenderer::DrawFills",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 635
-  },
-  {
-    "name": "TableRenderer::TableRenderer::DrawGrid",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 658
-  },
-  {
-    "name": "TableRenderer::TableRenderer::DrawTexts",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 728
-  },
-  {
-    "name": "TableRenderer::TableRenderer::CreateLineElement",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 786
-  },
-  {
-    "name": "TableRenderer::TableRenderer::CreateFillElement",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 807
-  },
-  {
-    "name": "TableRenderer::TableRenderer::CreateTextElement",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 863
-  },
-  {
-    "name": "TableRenderer::TableRenderer::SetPrototypeContent",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 971
-  },
-  {
-    "name": "TableRenderer::TableRenderer::RunSelfTest",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TableRenderer.cpp",
-    "module": "table",
-    "line": 1032
-  },
-  {
-    "name": "isEng",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 12
-  },
-  {
-    "name": "kEnableNavigatorRegistration",
-    "kind": "Variable",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 17
-  },
-  {
-    "name": "kNavigatorRootGuid",
-    "kind": "Variable",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 18
-  },
-  {
-    "name": "kNavigatorRootDisplayId",
-    "kind": "Variable",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 19
-  },
-  {
-    "name": "kScheduleDisplayIdPrefix",
-    "kind": "Variable",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 20
-  },
-  {
-    "name": "GetNavigatorRootDisplayName",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 22
-  },
-  {
-    "name": "GetDefaultScheduleName",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 26
-  },
-  {
-    "name": "ScheduleSettingsDialog",
-    "kind": "Class",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 31
-  },
-  {
-    "name": "ScheduleSettingsDialog::ScheduleSettingsDialog",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 35
-  },
-  {
-    "name": "ScheduleSettingsDialog::GetDisplayId",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 37
-  },
-  {
-    "name": "ScheduleSettingsDialog::GetDisplayName",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 38
-  },
-  {
-    "name": "ScheduleSettingsDialog::(anonymous enum)",
-    "kind": "Enum",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 41
-  },
-  {
-    "name": "ScheduleSettingsDialog::okButton",
-    "kind": "Field",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 43
-  },
-  {
-    "name": "ScheduleSettingsDialog::cancelButton",
-    "kind": "Field",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 44
-  },
-  {
-    "name": "ScheduleSettingsDialog::displayIdEdit",
-    "kind": "Field",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 45
-  },
-  {
-    "name": "ScheduleSettingsDialog::displayNameEdit",
-    "kind": "Field",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 46
-  },
-  {
-    "name": "ScheduleSettingsDialog::PanelCloseRequested",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 48
-  },
-  {
-    "name": "ScheduleSettingsDialog::ButtonClicked",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 49
-  },
-  {
-    "name": "NavigatorCallback",
-    "kind": "Class",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 52
-  },
-  {
-    "name": "NavigatorCallback::OpenView",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 54
-  },
-  {
-    "name": "NavigatorCallback::OpenSettings",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 55
-  },
-  {
-    "name": "NavigatorCallback::ExecuteMergePostProcess",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 56
-  },
-  {
-    "name": "NavigatorCallback::CreateIDFStore",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 57
-  },
-  {
-    "name": "NavigatorCallback::GetElemsForDrawingCheck",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 66
-  },
-  {
-    "name": "NavigatorCallback::NewItem",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 67
-  },
-  {
-    "name": "NavigatorCallback::DeleteItem",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 68
-  },
-  {
-    "name": "NavigatorCallback::RenameItem",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 69
-  },
-  {
-    "name": "NavigatorCallback::GetIcon",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 70
-  },
-  {
-    "name": "GetNavigatorCallback",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 77
-  },
-  {
-    "name": "ScheduleSettingsDialog::ScheduleSettingsDialog",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 85
-  },
-  {
-    "name": "ScheduleSettingsDialog::GetDisplayId",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 99
-  },
-  {
-    "name": "ScheduleSettingsDialog::GetDisplayName",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 101
-  },
-  {
-    "name": "ScheduleSettingsDialog::PanelCloseRequested",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 103
-  },
-  {
-    "name": "ScheduleSettingsDialog::ButtonClicked",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 108
-  },
-  {
-    "name": "GetViewPointData",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 116
-  },
-  {
-    "name": "GetNewItemParentGuid",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 125
-  },
-  {
-    "name": "GetNavigatorChildren",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 136
-  },
-  {
-    "name": "BuildUniqueScheduleDefaults",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 146
-  },
-  {
-    "name": "ApiWindowGuard",
-    "kind": "Class",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 191
-  },
-  {
-    "name": "ApiWindowGuard::ApiWindowGuard",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 194
-  },
-  {
-    "name": "ApiWindowGuard::~ApiWindowGuard",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 199
-  },
-  {
-    "name": "RenderScheduleIntoWindow",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 213
-  },
-  {
-    "name": "RegenerateScheduleContent",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 234
-  },
-  {
-    "name": "GetWindowValidatorInfo",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 261
-  },
-  {
-    "name": "ScheduleWindowHandlerProc",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 285
-  },
-  {
-    "name": "OpenScheduleWindow",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 331
-  },
-  {
-    "name": "MergeViewPointData",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 407
-  },
-  {
-    "name": "SaveOldFormatViewPointData",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 420
-  },
-  {
-    "name": "ConvertNewFormatViewPointData",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 433
-  },
-  {
-    "name": "TablesNavigator::IsNavigatorRegistrationEnabled",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 447
-  },
-  {
-    "name": "TablesNavigator::RegisterInterface",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 449
-  },
-  {
-    "name": "TablesNavigator::Initialize",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 460
-  },
-  {
-    "name": "EnsureNavigatorRootImpl",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 500
-  },
-  {
-    "name": "TablesNavigator::EnsureNavigatorRoot",
-    "kind": "Function",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 572
-  },
-  {
-    "name": "TablesNavigator::NavigatorCallback::OpenView",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 589
-  },
-  {
-    "name": "TablesNavigator::NavigatorCallback::OpenSettings",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 604
-  },
-  {
-    "name": "TablesNavigator::NavigatorCallback::ExecuteMergePostProcess",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 626
-  },
-  {
-    "name": "TablesNavigator::NavigatorCallback::CreateIDFStore",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 633
-  },
-  {
-    "name": "TablesNavigator::NavigatorCallback::GetElemsForDrawingCheck",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 704
-  },
-  {
-    "name": "TablesNavigator::NavigatorCallback::NewItem",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 716
-  },
-  {
-    "name": "TablesNavigator::NavigatorCallback::DeleteItem",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 760
-  },
-  {
-    "name": "TablesNavigator::NavigatorCallback::RenameItem",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 782
-  },
-  {
-    "name": "TablesNavigator::NavigatorCallback::GetIcon",
-    "kind": "Method",
-    "file": "Sources/AddOn/table/TablesNavigator.cpp",
-    "module": "table",
-    "line": 784
-  },
-  {
-    "name": "qrcodegen::QrSegment::Mode::Mode",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 44
-  },
-  {
-    "name": "qrcodegen::QrSegment::Mode::getModeBits",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 50
-  },
-  {
-    "name": "qrcodegen::QrSegment::Mode::numCharCountBits",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 52
-  },
-  {
-    "name": "qrcodegen::QrSegment::makeBytes",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 60
-  },
-  {
-    "name": "qrcodegen::QrSegment::makeNumeric",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 69
-  },
-  {
-    "name": "qrcodegen::QrSegment::makeAlphanumeric",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 91
-  },
-  {
-    "name": "qrcodegen::QrSegment::makeSegments",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 113
-  },
-  {
-    "name": "qrcodegen::QrSegment::makeEci",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 131
-  },
-  {
-    "name": "qrcodegen::QrSegment::QrSegment",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 148
-  },
-  {
-    "name": "qrcodegen::QrSegment::QrSegment",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 154
-  },
-  {
-    "name": "qrcodegen::QrSegment::getTotalBits",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 160
-  },
-  {
-    "name": "qrcodegen::QrSegment::isNumeric",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 176
-  },
-  {
-    "name": "qrcodegen::QrSegment::isAlphanumeric",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 185
-  },
-  {
-    "name": "qrcodegen::QrSegment::getMode",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
+    "file": "Sources/AddOn/Summ.cpp",
+    "module": "Summ",
     "line": 193
   },
   {
-    "name": "qrcodegen::QrSegment::getNumChars",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 195
+    "name": "Sum_Rule",
+    "kind": "Function",
+    "file": "Sources/AddOn/Summ.cpp",
+    "module": "Summ",
+    "line": 318
   },
   {
-    "name": "qrcodegen::QrSegment::getData",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 197
+    "name": "Sum_OneRule",
+    "kind": "Function",
+    "file": "Sources/AddOn/Summ.cpp",
+    "module": "Summ",
+    "line": 409
   },
   {
-    "name": "qrcodegen::QrCode::getFormatBits",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 203
+    "name": "nLib",
+    "kind": "Variable",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 24
   },
   {
-    "name": "qrcodegen::QrCode::encodeText",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 218
+    "name": "g_ElementSyncCache",
+    "kind": "Variable",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 28
   },
   {
-    "name": "qrcodegen::QrCode::encodeBinary",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 223
+    "name": "g_LastDimensionScan",
+    "kind": "Variable",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 29
   },
   {
-    "name": "qrcodegen::QrCode::encodeSegments",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 228
+    "name": "SYNC_THROTTLE_THRESHOLD",
+    "kind": "Variable",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 32
   },
   {
-    "name": "qrcodegen::QrCode::QrCode",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 289
+    "name": "IsElementThrottled",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 39
   },
   {
-    "name": "qrcodegen::QrCode::getVersion",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 329
+    "name": "IsDimensionScanThrottled",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 70
   },
   {
-    "name": "qrcodegen::QrCode::getSize",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 331
+    "name": "ClearSyncThrottleCache",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 79
   },
   {
-    "name": "qrcodegen::QrCode::getErrorCorrectionLevel",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 333
+    "name": "ParseFileNumber",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 90
   },
   {
-    "name": "qrcodegen::QrCode::getMask",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 335
+    "name": "MonAll",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 115
   },
   {
-    "name": "qrcodegen::QrCode::getModule",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 337
+    "name": "MonByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 168
   },
   {
-    "name": "qrcodegen::QrCode::drawFunctionPatterns",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 339
+    "name": "SyncAndMonAll",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 221
   },
   {
-    "name": "qrcodegen::QrCode::drawFormatBits",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 367
+    "name": "SyncByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 332
   },
   {
-    "name": "qrcodegen::QrCode::drawVersion",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 393
+    "name": "SyncElement",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 404
   },
   {
-    "name": "qrcodegen::QrCode::drawFinderPattern",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 414
+    "name": "SyncElement",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 412
   },
   {
-    "name": "qrcodegen::QrCode::drawAlignmentPattern",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 425
+    "name": "SyncSelected",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 456
   },
   {
-    "name": "qrcodegen::QrCode::setFunctionModule",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 432
+    "name": "SyncArray",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 477
   },
   {
-    "name": "qrcodegen::QrCode::module",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 439
+    "name": "RunParamSelected",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 557
   },
   {
-    "name": "qrcodegen::QrCode::addEccAndInterleave",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 443
+    "name": "RunParam",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 597
   },
   {
-    "name": "qrcodegen::QrCode::drawCodewords",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 482
+    "name": "SyncRelationsElement",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 725
   },
   {
-    "name": "qrcodegen::QrCode::applyMask",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 508
+    "name": "SyncData",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 753
   },
   {
-    "name": "qrcodegen::QrCode::getPenaltyScore",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 548
+    "name": "SyncNeedResync",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 844
   },
   {
-    "name": "qrcodegen::QrCode::getAlignmentPatternPositions",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 623
+    "name": "SyncCalcRule",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 894
   },
   {
-    "name": "qrcodegen::QrCode::getNumRawDataModules",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 637
+    "name": "SyncAddSubelement",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1002
   },
   {
-    "name": "qrcodegen::QrCode::getNumDataCodewords",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 651
+    "name": "SyncAddRule",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1052
   },
   {
-    "name": "qrcodegen::QrCode::reedSolomonComputeDivisor",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 656
+    "name": "Name2Rawname",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1081
   },
   {
-    "name": "qrcodegen::QrCode::reedSolomonComputeRemainder",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 680
+    "name": "ParseSyncString",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1178
   },
   {
-    "name": "qrcodegen::QrCode::reedSolomonMultiply",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 692
+    "name": "SyncString",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1538
   },
   {
-    "name": "qrcodegen::QrCode::finderPenaltyCountPatterns",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 703
+    "name": "SyncSetSubelement",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 2248
   },
   {
-    "name": "qrcodegen::QrCode::finderPenaltyTerminateAndCount",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 712
+    "name": "SyncSetSubelementScope",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 2343
   },
   {
-    "name": "qrcodegen::QrCode::finderPenaltyAddHistory",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 724
+    "name": "SyncShowSubelement",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 2412
   },
   {
-    "name": "qrcodegen::QrCode::getBit",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 731
+    "name": "SyncGetParentelement",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 2682
   },
   {
-    "name": "qrcodegen::data_too_long::data_too_long",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 768
+    "name": "SyncGetSubelement",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 2846
   },
   {
-    "name": "qrcodegen::BitBuffer::BitBuffer",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 772
+    "name": "SyncGetSyncGUIDProperty",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 2907
   },
   {
-    "name": "qrcodegen::BitBuffer::appendBits",
-    "kind": "Method",
-    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
-    "module": "third_party",
-    "line": 774
+    "name": "ParsePropertyDescription",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 2970
   },
   {
     "name": "paletteGuid",
@@ -2525,6 +1454,20 @@
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
     "line": 24
+  },
+  {
+    "name": "BrowserPalette::instance",
+    "kind": "Field",
+    "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
+    "module": "dialogs",
+    "line": 31
+  },
+  {
+    "name": "BrowserPalette::suppressSelectionRefresh",
+    "kind": "Field",
+    "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
+    "module": "dialogs",
+    "line": 32
   },
   {
     "name": "ShowOrHideBrowserPalette",
@@ -2629,7 +1572,7 @@
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 1622
+    "line": 1624
   },
   {
     "name": "ElementCanHaveProperty",
@@ -2664,7 +1607,7 @@
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 1698
+    "line": 1700
   },
   {
     "name": "BrowserPalette::RegisterPaletteControlCallBack",
@@ -2765,182 +1708,182 @@
     "line": 188
   },
   {
-    "name": "IsSameOtherDbTarget",
+    "name": "SyncDialogs::IsSameOtherDbTarget",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 15
   },
   {
-    "name": "AddOtherDbTargetImpl",
+    "name": "SyncDialogs::AddOtherDbTargetImpl",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 23
   },
   {
-    "name": "GetOtherStoryNameImpl",
+    "name": "SyncDialogs::GetOtherStoryNameImpl",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 45
   },
   {
-    "name": "SelectOtherDbTarget",
+    "name": "SyncDialogs::SelectOtherDbTarget",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 67
   },
   {
-    "name": "OtherDbDialog::DialogResourceID",
+    "name": "SyncDialogs::OtherDbDialog::DialogResourceID",
     "kind": "Enum",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 117
   },
   {
-    "name": "OtherDbDialog::DialogResourceID::CloseButtonId",
+    "name": "SyncDialogs::OtherDbDialog::DialogResourceID::CloseButtonId",
     "kind": "Enum",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 117
   },
   {
-    "name": "OtherDbDialog::DialogResourceID::ShowButtonId",
+    "name": "SyncDialogs::OtherDbDialog::DialogResourceID::ShowButtonId",
     "kind": "Enum",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 117
   },
   {
-    "name": "OtherDbDialog::DialogResourceID::ListBoxId",
+    "name": "SyncDialogs::OtherDbDialog::DialogResourceID::ListBoxId",
     "kind": "Enum",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 117
   },
   {
-    "name": "OtherDbDialog::OtherDbDialog",
+    "name": "SyncDialogs::OtherDbDialog::OtherDbDialog",
     "kind": "Constructor",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 119
   },
   {
-    "name": "OtherDbDialog::~OtherDbDialog",
+    "name": "SyncDialogs::OtherDbDialog::~OtherDbDialog",
     "kind": "Constructor",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 140
   },
   {
-    "name": "OtherDbDialog::GetSelectedTargetIndex",
+    "name": "SyncDialogs::OtherDbDialog::GetSelectedTargetIndex",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 147
   },
   {
-    "name": "OtherDbDialog::ButtonClicked",
+    "name": "SyncDialogs::OtherDbDialog::ButtonClicked",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 149
   },
   {
-    "name": "OtherDbDialog::ListBoxDoubleClicked",
+    "name": "SyncDialogs::OtherDbDialog::ListBoxDoubleClicked",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 159
   },
   {
-    "name": "OtherDbDialog::PanelResized",
+    "name": "SyncDialogs::OtherDbDialog::PanelResized",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 165
   },
   {
-    "name": "OtherDbDialog::closeButton",
+    "name": "SyncDialogs::OtherDbDialog.closeButton",
     "kind": "Field",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 177
   },
   {
-    "name": "OtherDbDialog::showButton",
+    "name": "SyncDialogs::OtherDbDialog.showButton",
     "kind": "Field",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 178
   },
   {
-    "name": "OtherDbDialog::listBox",
+    "name": "SyncDialogs::OtherDbDialog.listBox",
     "kind": "Field",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 179
   },
   {
-    "name": "OtherDbDialog::targets",
+    "name": "SyncDialogs::OtherDbDialog.targets",
     "kind": "Field",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 180
   },
   {
-    "name": "OtherDbDialog::selectedTargetIndex",
+    "name": "SyncDialogs::OtherDbDialog.selectedTargetIndex",
     "kind": "Field",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 181
   },
   {
-    "name": "OtherDbDialog::NameTab",
+    "name": "SyncDialogs::OtherDbDialog.NameTab",
     "kind": "Field",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 182
   },
   {
-    "name": "OtherDbDialog::CountTab",
+    "name": "SyncDialogs::OtherDbDialog.CountTab",
     "kind": "Field",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 183
   },
   {
-    "name": "OtherDbDialog::SetListBoxColumns",
+    "name": "SyncDialogs::OtherDbDialog::SetListBoxColumns",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 185
   },
   {
-    "name": "OtherDbDialog::InitListBox",
+    "name": "SyncDialogs::OtherDbDialog::InitListBox",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 201
   },
   {
-    "name": "AddOtherDbTarget",
+    "name": "SyncDialogs::AddOtherDbTarget",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 229
   },
   {
-    "name": "GetOtherStoryName",
+    "name": "SyncDialogs::GetOtherStoryName",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
     "line": 238
   },
   {
-    "name": "ShowOtherDbDialog",
+    "name": "SyncDialogs::ShowOtherDbDialog",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/OtherDbDialog.cpp",
     "module": "dialogs",
@@ -2952,6 +1895,13 @@
     "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
     "module": "dialogs",
     "line": 36
+  },
+  {
+    "name": "SyncSettings::classInfo",
+    "kind": "Field",
+    "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+    "module": "dialogs",
+    "line": 38
   },
   {
     "name": "SyncSettings::SyncSettings",
@@ -3255,104 +2205,6 @@
     "line": 450
   },
   {
-    "name": "GetSubposKey",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 11
-  },
-  {
-    "name": "GetKey",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 21
-  },
-  {
-    "name": "GetKey",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 26
-  },
-  {
-    "name": "GetKey",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 31
-  },
-  {
-    "name": "GetKey",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 49
-  },
-  {
-    "name": "GetKey",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 67
-  },
-  {
-    "name": "GetParam",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 87
-  },
-  {
-    "name": "AddMat",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 104
-  },
-  {
-    "name": "AddArm",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 141
-  },
-  {
-    "name": "AddSubpos",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 193
-  },
-  {
-    "name": "AddProkat",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 240
-  },
-  {
-    "name": "GetAllKeys",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 295
-  },
-  {
-    "name": "Add",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 344
-  },
-  {
-    "name": "AddLibdataToParamValueDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
-    "module": "spec",
-    "line": 372
-  },
-  {
     "name": "CommandNamespace",
     "kind": "Function",
     "file": "Sources/AddOn/json_commands/CommandBase.cpp",
@@ -3379,13 +2231,6 @@
     "file": "Sources/AddOn/json_commands/CommandBase.cpp",
     "module": "json_commands",
     "line": 23
-  },
-  {
-    "name": "CommandBase::IsProcessWindowVisible",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/CommandBase.cpp",
-    "module": "json_commands",
-    "line": 32
   },
   {
     "name": "CommandBase::OnResponseValidationFailed",
@@ -3430,6 +2275,41 @@
     "line": 68
   },
   {
+    "name": "HealthCommand::HealthCommand",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
+    "module": "json_commands",
+    "line": 14
+  },
+  {
+    "name": "HealthCommand::GetName",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
+    "module": "json_commands",
+    "line": 19
+  },
+  {
+    "name": "HealthCommand::GetInputParametersSchema",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
+    "module": "json_commands",
+    "line": 24
+  },
+  {
+    "name": "HealthCommand::GetResponseSchema",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
+    "module": "json_commands",
+    "line": 29
+  },
+  {
+    "name": "HealthCommand::Execute",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
+    "module": "json_commands",
+    "line": 34
+  },
+  {
     "name": "RegisterJsonCommands",
     "kind": "Function",
     "file": "Sources/AddOn/json_commands/JsonCommandRegistrar.cpp",
@@ -3472,1285 +2352,599 @@
     "line": 34
   },
   {
-    "name": "nLib",
-    "kind": "Variable",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 24
+    "name": "SpecCommand::SpecCommand",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+    "module": "json_commands",
+    "line": 17
   },
   {
-    "name": "g_ElementSyncCache",
-    "kind": "Variable",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 28
+    "name": "SpecCommand::GetName",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+    "module": "json_commands",
+    "line": 22
   },
   {
-    "name": "g_LastDimensionScan",
-    "kind": "Variable",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 29
+    "name": "SpecCommand::GetInputParametersSchema",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+    "module": "json_commands",
+    "line": 27
   },
   {
-    "name": "SYNC_THROTTLE_THRESHOLD",
-    "kind": "Variable",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 32
+    "name": "SpecCommand::GetResponseSchema",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+    "module": "json_commands",
+    "line": 58
   },
   {
-    "name": "IsElementThrottled",
+    "name": "GuidListToObjectState",
     "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 39
+    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+    "module": "json_commands",
+    "line": 65
   },
   {
-    "name": "IsDimensionScanThrottled",
+    "name": "AddDumpedValues",
     "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 70
-  },
-  {
-    "name": "ClearSyncThrottleCache",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 79
-  },
-  {
-    "name": "ParseFileNumber",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 90
-  },
-  {
-    "name": "MonAll",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 115
-  },
-  {
-    "name": "MonByType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 168
-  },
-  {
-    "name": "SyncAndMonAll",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 221
-  },
-  {
-    "name": "SyncByType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 332
-  },
-  {
-    "name": "SyncElement",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 404
-  },
-  {
-    "name": "SyncElement",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 412
-  },
-  {
-    "name": "SyncSelected",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 456
-  },
-  {
-    "name": "SyncArray",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 477
-  },
-  {
-    "name": "RunParamSelected",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 557
-  },
-  {
-    "name": "RunParam",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 597
-  },
-  {
-    "name": "SyncRelationsElement",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 725
-  },
-  {
-    "name": "SyncData",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 753
-  },
-  {
-    "name": "SyncNeedResync",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 844
-  },
-  {
-    "name": "SyncCalcRule",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 894
-  },
-  {
-    "name": "SyncAddSubelement",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 1002
-  },
-  {
-    "name": "SyncAddRule",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 1052
-  },
-  {
-    "name": "Name2Rawname",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 1081
-  },
-  {
-    "name": "ParseSyncString",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 1178
-  },
-  {
-    "name": "SyncString",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 1538
-  },
-  {
-    "name": "SyncSetSubelement",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 2248
-  },
-  {
-    "name": "SyncSetSubelementScope",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 2343
-  },
-  {
-    "name": "SyncShowSubelement",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 2412
-  },
-  {
-    "name": "SyncGetParentelement",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 2682
-  },
-  {
-    "name": "SyncGetSubelement",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 2846
-  },
-  {
-    "name": "SyncGetSyncGUIDProperty",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 2907
-  },
-  {
-    "name": "ParsePropertyDescription",
-    "kind": "Function",
-    "file": "Sources/AddOn/Sync.cpp",
-    "module": "Sync",
-    "line": 2970
-  },
-  {
-    "name": "Roombook::typeinzone",
-    "kind": "Variable",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 25
-  },
-  {
-    "name": "Roombook::reducededges",
-    "kind": "Variable",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 28
-  },
-  {
-    "name": "Roombook::cls",
-    "kind": "Variable",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 30
-  },
-  {
-    "name": "Roombook::nPhase",
-    "kind": "Variable",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 32
-  },
-  {
-    "name": "Roombook::GetTargetZones",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 34
-  },
-  {
-    "name": "Roombook::PrepareRoomProcessingContext",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 92
-  },
-  {
-    "name": "Roombook::BuildElementReadIndex",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 98
-  },
-  {
-    "name": "Roombook::ProcessElementsForRoomData",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 122
-  },
-  {
-    "name": "Roombook::PrepareReadParams",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 183
-  },
-  {
-    "name": "Roombook::ReadElementParameters",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 185
-  },
-  {
-    "name": "Roombook::ProcessSlabFinishes",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 208
-  },
-  {
-    "name": "Roombook::ApplyFavoriteAndMaterialData",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 271
-  },
-  {
-    "name": "Roombook::ProcessWallFinishes",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 288
-  },
-  {
-    "name": "Roombook::BuildMaterialSummaryForRooms",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 379
-  },
-  {
-    "name": "Roombook::WriteRoomMaterialData",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 481
-  },
-  {
-    "name": "Roombook::ProcessRoomFinishes",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 512
-  },
-  {
-    "name": "Roombook::RemoveUnusedFinishingElements",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 567
-  },
-  {
-    "name": "Roombook::PrepareElementsForUpdate",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 604
-  },
-  {
-    "name": "Roombook::RoomBook",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 669
-  },
-  {
-    "name": "Roombook::Otd_GetOtd_ByZone",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 758
-  },
-  {
-    "name": "Roombook::BuildOtdByParent",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 876
-  },
-  {
-    "name": "Roombook::Otd_GetOtd_Parent",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 917
-  },
-  {
-    "name": "Roombook::OtdData_GetColumnfFormat",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 961
-  },
-  {
-    "name": "Roombook::OtdData_CalcForRoom",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1053
-  },
-  {
-    "name": "Roombook::OtdData_WriteToRoom",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1146
-  },
-  {
-    "name": "Roombook::OtdData_AddValueToDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1288
-  },
-  {
-    "name": "Roombook::OtdWall_GetArea",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1317
-  },
-  {
-    "name": "Roombook::CollectRoomInfo",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1350
-  },
-  {
-    "name": "Roombook::Opening_Create_One",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1502
-  },
-  {
-    "name": "Roombook::OtdWall_Create_FromWall",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1551
-  },
-  {
-    "name": "Roombook::Opening_Add_One",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1742
-  },
-  {
-    "name": "Roombook::OtdWall_Add_One",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1774
-  },
-  {
-    "name": "Roombook::OtdWall_Create_FromColumn",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1803
-  },
-  {
-    "name": "Roombook::Floor_FindAll",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1899
-  },
-  {
-    "name": "Roombook::Floor_FindInOneRoom",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1941
-  },
-  {
-    "name": "Roombook::Floor_Create_All",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1982
-  },
-  {
-    "name": "Roombook::Floor_Create_One",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2035
-  },
-  {
-    "name": "Roombook::Param_ToParamDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2194
-  },
-  {
-    "name": "Roombook::Param_GetForWindowParams",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2208
-  },
-  {
-    "name": "Roombook::Param_GetForBase",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2260
-  },
-  {
-    "name": "Roombook::Param_GetForRooms",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2404
-  },
-  {
-    "name": "Roombook::Param_Property_FindInParams",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2642
-  },
-  {
-    "name": "Roombook::Param_Property_Read",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2691
-  },
-  {
-    "name": "Roombook::Param_Material_Get",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2728
-  },
-  {
-    "name": "Roombook::Param_SetToRooms",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2754
-  },
-  {
-    "name": "Roombook::Param_SetToBase",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3075
-  },
-  {
-    "name": "Roombook::Param_SetComposite",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3138
-  },
-  {
-    "name": "Roombook::Param_SetToWindows",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3251
-  },
-  {
-    "name": "Roombook::RoomReductionPolyProc",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3378
-  },
-  {
-    "name": "Roombook::Edges_GetFromRoom",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3436
-  },
-  {
-    "name": "Roombook::ClearZoneGUID",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3505
-  },
-  {
-    "name": "Roombook::OpeningReveals_Create_One",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3543
-  },
-  {
-    "name": "Roombook::OtdWall_Delim_All",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3700
-  },
-  {
-    "name": "Roombook::OtdWall_Delim_One",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3834
-  },
-  {
-    "name": "Roombook::SetMaterialByType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3901
-  },
-  {
-    "name": "Roombook::SetMaterialFinish_ByComposite",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4011
-  },
-  {
-    "name": "Roombook::SetMaterialFinish",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4022
-  },
-  {
-    "name": "Roombook::Edge_FindOnEdge",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4051
-  },
-  {
-    "name": "Roombook::Edge_FindEdge",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4082
-  },
-  {
-    "name": "Roombook::Draw_Elements",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4099
-  },
-  {
-    "name": "Roombook::OtdWall_Draw",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4234
-  },
-  {
-    "name": "Roombook::OtdBeam_Draw_Beam",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4263
-  },
-  {
-    "name": "Roombook::OtdBeam_GetDefult_Beam",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4319
-  },
-  {
-    "name": "Roombook::OtdBeam_Draw_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4338
-  },
-  {
-    "name": "Roombook::OtdBeam_GetDefult_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4349
-  },
-  {
-    "name": "Roombook::OtdWall_Draw_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4376
-  },
-  {
-    "name": "Roombook::OtdWall_GetDefult_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4505
-  },
-  {
-    "name": "Roombook::OtdWall_Draw_Wall",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4532
-  },
-  {
-    "name": "Roombook::OtdWall_GetDefult_Wall",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4585
-  },
-  {
-    "name": "Roombook::Opening_Draw",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4614
-  },
-  {
-    "name": "Roombook::Opening_GetDefult",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4673
-  },
-  {
-    "name": "Roombook::Floor_Draw",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4695
-  },
-  {
-    "name": "Roombook::Floor_Draw_Slab",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4726
-  },
-  {
-    "name": "Roombook::Floor_Draw_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4826
-  },
-  {
-    "name": "Roombook::Floor_GetDefult_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4971
-  },
-  {
-    "name": "Roombook::Floor_GetDefult_Slab",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4995
-  },
-  {
-    "name": "Roombook::Class_SetClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5022
-  },
-  {
-    "name": "Roombook::Class_SetClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5033
-  },
-  {
-    "name": "Roombook::Class_SetClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5046
-  },
-  {
-    "name": "Roombook::Class_GetClassGuid",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5054
-  },
-  {
-    "name": "Roombook::Class_GetOtdTypeByClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5101
-  },
-  {
-    "name": "Roombook::Class_FindFinClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5145
-  },
-  {
-    "name": "Roombook::SetSyncOtdWall",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5216
-  },
-  {
-    "name": "Roombook::Class_IsElementFinClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5316
-  },
-  {
-    "name": "Roombook::Param_AddUnicElementByType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5331
-  },
-  {
-    "name": "Roombook::Param_AddUnicGUIDByType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5359
-  },
-  {
-    "name": "Roombook::Favorite_GetType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5371
-  },
-  {
-    "name": "Roombook::Favorite_GetDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5386
-  },
-  {
-    "name": "Roombook::Favorite_ReadComposite",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5495
-  },
-  {
-    "name": "Roombook::Favorite_FindName",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5532
-  },
-  {
-    "name": "Roombook::Favorite_GetByName",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5632
-  },
-  {
-    "name": "Roombook::Favorite_GetByName",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5650
-  },
-  {
-    "name": "Roombook::Check",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5672
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.finclass",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 76
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.finclassguids",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 77
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.storyLevels",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 78
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.deletelist",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 79
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.exsistot_byzone",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 80
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.roomsinfo",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
+    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+    "module": "json_commands",
     "line": 81
   },
   {
-    "name": "Roombook::RoomProcessingContext.elementToRead",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 82
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.paramToRead",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 83
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.param_composite",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 84
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.paramDict",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 85
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.paramDict_favorite",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 86
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.guidselementToRead",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 87
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.openinginwall",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 88
-  },
-  {
-    "name": "Roombook::RoomProcessingContext.slabsinzone",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 89
-  },
-  {
-    "name": "Roombook::ReadParamsForRoomBook.windowParams",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 179
-  },
-  {
-    "name": "Roombook::ReadParamsForRoomBook.roomParams",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 180
-  },
-  {
-    "name": "Roombook::MaterialSummary.paramToWrite",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 373
-  },
-  {
-    "name": "Roombook::MaterialSummary.columnFormat",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 374
-  },
-  {
-    "name": "Roombook::MaterialSummary.dct_bytype",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 375
-  },
-  {
-    "name": "Roombook::MaterialSummary.zones_bytype",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 376
-  },
-  {
-    "name": "TestFunc::TestStringSplt",
+    "name": "AddElementDumps",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 19
+    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+    "module": "json_commands",
+    "line": 113
   },
   {
-    "name": "TestFunc::Test",
-    "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
+    "name": "SpecCommand::Execute",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
+    "module": "json_commands",
+    "line": 138
+  },
+  {
+    "name": "SyncAllCommand::SyncAllCommand",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/json_commands/SyncAllCommand.cpp",
+    "module": "json_commands",
+    "line": 16
+  },
+  {
+    "name": "SyncAllCommand::GetName",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/SyncAllCommand.cpp",
+    "module": "json_commands",
     "line": 21
   },
   {
-    "name": "TestFunc::TestSpecGetParamValue",
-    "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 55
+    "name": "SyncAllCommand::GetInputParametersSchema",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/SyncAllCommand.cpp",
+    "module": "json_commands",
+    "line": 26
   },
   {
-    "name": "TestFunc::TestStringSplt",
-    "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 146
+    "name": "SyncAllCommand::GetResponseSchema",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/SyncAllCommand.cpp",
+    "module": "json_commands",
+    "line": 31
   },
   {
-    "name": "TestFunc::TestGetTextLineLength",
-    "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 213
+    "name": "SyncAllCommand::Execute",
+    "kind": "Method",
+    "file": "Sources/AddOn/json_commands/SyncAllCommand.cpp",
+    "module": "json_commands",
+    "line": 36
   },
   {
-    "name": "TestFunc::TestCalc",
+    "name": "AutoFunc::GetNear",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 254
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 15
   },
   {
-    "name": "TestFunc::TestFormula",
+    "name": "AutoFunc::GetCuplane",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 303
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 34
   },
   {
-    "name": "TestFunc::TestFormatString",
+    "name": "AutoFunc::Get3DProjectionInfo",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 400
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 149
   },
   {
-    "name": "TestFunc::TestConvertToParamValue",
+    "name": "AutoFunc::Get3DDocument",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 569
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 208
   },
   {
-    "name": "TestFunc::TestConvertAttributeToParamValue",
+    "name": "AutoFunc::GetSectLine",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 666
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 260
   },
   {
-    "name": "TestFunc::TestConvertPropertyToParamValue",
+    "name": "AutoFunc::DoSect",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 747
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 401
   },
   {
-    "name": "TestFunc::TestConvertPropertyDefinitionToParamValue",
+    "name": "AutoFunc::PlaceDocSect",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 907
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 484
   },
   {
-    "name": "TestFunc::TestSetParamValueSourseByName",
+    "name": "AutoFunc::ProfileByLine",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 974
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 551
   },
   {
-    "name": "TestFunc::TestSetrawNameFromProperty",
+    "name": "AutoFunc::RestoreStartDatabaseAndWindow",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1130
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 744
   },
   {
-    "name": "TestFunc::TestCheckIgnoreVal",
+    "name": "AutoFunc::AlignOneDrawingsByPoints",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1210
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 764
   },
   {
-    "name": "TestFunc::TestReadProperty",
+    "name": "AutoFunc::GetDrawingsSort",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1342
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 879
   },
   {
-    "name": "TestFunc::TestAddProperty",
+    "name": "AutoFunc::AlignDrawingsByPoints",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1396
+    "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+    "module": "pk",
+    "line": 913
   },
   {
-    "name": "TestFunc::TestPropertyHelpersToString",
+    "name": "ResetProperty",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1522
+    "file": "Sources/AddOn/pk/ResetProperty.cpp",
+    "module": "pk",
+    "line": 14
   },
   {
-    "name": "TestFunc::DumpAllBuiltInProperties",
+    "name": "ResetPropertyElement2Defult",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1681
+    "file": "Sources/AddOn/pk/ResetProperty.cpp",
+    "module": "pk",
+    "line": 40
   },
   {
-    "name": "TestFunc::ResetSyncPropertyArray",
+    "name": "ResetElementsInDB",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1704
+    "file": "Sources/AddOn/pk/ResetProperty.cpp",
+    "module": "pk",
+    "line": 122
   },
   {
-    "name": "TestFunc::ResetSyncPropertyOne",
+    "name": "ResetOneElemen",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1715
+    "file": "Sources/AddOn/pk/ResetProperty.cpp",
+    "module": "pk",
+    "line": 240
   },
   {
-    "name": "TestFunc::ResetSyncPropertyOne",
+    "name": "ResetElementsDefault",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1729
+    "file": "Sources/AddOn/pk/ResetProperty.cpp",
+    "module": "pk",
+    "line": 275
   },
   {
-    "name": "TestFunc::TestName2Rawname",
+    "name": "ResetOneElemenDefault",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1758
+    "file": "Sources/AddOn/pk/ResetProperty.cpp",
+    "module": "pk",
+    "line": 356
   },
   {
-    "name": "TestFunc::TestName2RawnameWithBrackets",
+    "name": "Revision::SetRevision",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1848
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 14
   },
   {
-    "name": "TestFunc::TestSyncString",
+    "name": "Revision::GetScheme",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 1956
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 98
   },
   {
-    "name": "TestFunc::TestSyncStringRealRules",
+    "name": "Revision::GetAllChangesMarker",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 152
+  },
+  {
+    "name": "Revision::ChangeLayoutProperty",
+    "kind": "Function",
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 398
+  },
+  {
+    "name": "Revision::CheckChanges",
+    "kind": "Function",
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 645
+  },
+  {
+    "name": "Revision::GetChangesLayout",
+    "kind": "Function",
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 762
+  },
+  {
+    "name": "Revision::GetChangesMarker",
+    "kind": "Function",
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 822
+  },
+  {
+    "name": "Revision::GetMarkerPos",
+    "kind": "Function",
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 892
+  },
+  {
+    "name": "Revision::GetMarkerText",
+    "kind": "Function",
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 919
+  },
+  {
+    "name": "Revision::ChangeMarkerTextOnLayout",
+    "kind": "Function",
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 984
+  },
+  {
+    "name": "Revision::ChangeMarkerText",
+    "kind": "Function",
+    "file": "Sources/AddOn/pk/Revision.cpp",
+    "module": "pk",
+    "line": 1011
+  },
+  {
+    "name": "Spec::ParamValueToDumpString",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 18
+  },
+  {
+    "name": "Spec::FillDumpFromParamDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 19
+  },
+  {
+    "name": "Spec::FillDumpGDLParameter",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 20
+  },
+  {
+    "name": "Spec::GetRuleFromDefaultElem",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 42
+  },
+  {
+    "name": "Spec::SpecAll",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 150
+  },
+  {
+    "name": "Spec::SpecFilter",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 222
+  },
+  {
+    "name": "Spec::SpecFilter",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 366
+  },
+  {
+    "name": "Spec::SpecDG",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 469
+  },
+  {
+    "name": "Spec::SpecArray",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 535
+  },
+  {
+    "name": "Spec::GetRuleFromElement",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1144
+  },
+  {
+    "name": "Spec::NormalizeRuleDescription",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1222
+  },
+  {
+    "name": "Spec::AddRule",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1270
+  },
+  {
+    "name": "Spec::GetParamToReadFromRule",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1324
+  },
+  {
+    "name": "Spec::GetParamValue",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1446
+  },
+  {
+    "name": "Spec::OutSlotsMatchSchema",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1592
+  },
+  {
+    "name": "Spec::GetElementsForRule",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1602
+  },
+  {
+    "name": "Spec::ParseErrorText",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1981
+  },
+  {
+    "name": "Spec::ApplyRulePolicy",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2013
+  },
+  {
+    "name": "Spec::ExpandGroup",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2057
+  },
+  {
+    "name": "Spec::ParseGroups",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
     "line": 2149
   },
   {
-    "name": "TestFunc::TestParsePrefixes",
+    "name": "Spec::ParseOutputSchema",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
     "line": 2327
   },
   {
-    "name": "TestFunc::TestParsePropertyDescription",
+    "name": "Spec::GetRuleFromDescription",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 2422
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2369
   },
   {
-    "name": "TestFunc::TestParseSyncStringIndependent",
+    "name": "Spec::GetElementForPlaceProperties",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 2532
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2427
   },
   {
-    "name": "TestFunc::TestParsePropertyDescriptionToRules",
+    "name": "Spec::GetElementForPlace",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 2660
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2537
   },
   {
-    "name": "TestFunc::TestSyncAddSubelement",
+    "name": "Spec::GetSizePlaceElement",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 2782
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2582
   },
   {
-    "name": "TestFunc::TestRenumPosLogic",
+    "name": "Spec::PlaceElements",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 2947
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2664
   },
   {
-    "name": "TestFunc::TestDescToRulesSubGuid",
+    "name": "Spec::ParamValueToDumpString",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 3051
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2903
   },
   {
-    "name": "TestFunc::TestGetPropertyRuleFlag",
+    "name": "Spec::FillDumpFromParamDict",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 3096
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2925
   },
   {
-    "name": "TestFunc::TestPropertyRuleFlagOnProjectElements",
+    "name": "Spec::FillDumpGDLParameter",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 3185
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2945
   },
   {
-    "name": "TestFunc::TestBuildOtdByParent",
+    "name": "ListData::GetSubposKey",
     "kind": "Function",
-    "file": "Sources/AddOn/TestFunc.cpp",
-    "module": "TestFunc",
-    "line": 3283
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 11
+  },
+  {
+    "name": "ListData::GetKey",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 21
+  },
+  {
+    "name": "ListData::GetKey",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 26
+  },
+  {
+    "name": "ListData::GetKey",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 31
+  },
+  {
+    "name": "ListData::GetKey",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 49
+  },
+  {
+    "name": "ListData::GetKey",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 67
+  },
+  {
+    "name": "ListData::GetParam",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 87
+  },
+  {
+    "name": "ListData::AddMat",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 104
+  },
+  {
+    "name": "ListData::AddArm",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 141
+  },
+  {
+    "name": "ListData::AddSubpos",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 193
+  },
+  {
+    "name": "ListData::AddProkat",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 240
+  },
+  {
+    "name": "ListData::GetAllKeys",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 295
+  },
+  {
+    "name": "ListData::Add",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 344
+  },
+  {
+    "name": "ListData::AddLibdataToParamValueDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec_libpart.cpp",
+    "module": "spec",
+    "line": 372
   },
   {
     "name": "IsDummyModeOn",
@@ -4758,6 +2952,48 @@
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
     "line": 24
+  },
+  {
+    "name": "FormatStringFunc::GetFormatStringFromFormula",
+    "kind": "Function",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 27
+  },
+  {
+    "name": "FormatStringFunc::GetFormatString",
+    "kind": "Function",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 88
+  },
+  {
+    "name": "FormatStringFunc::IsValid",
+    "kind": "Function",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 119
+  },
+  {
+    "name": "FormatStringFunc::ReplaceMeters",
+    "kind": "Function",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 167
+  },
+  {
+    "name": "FormatStringFunc::ParseFormatString",
+    "kind": "Function",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 184
+  },
+  {
+    "name": "FormatStringFunc::NumToString",
+    "kind": "Function",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 296
   },
   {
     "name": "GetRuleFromSelected",
@@ -5355,6 +3591,13 @@
     "line": 5862
   },
   {
+    "name": "ParamHelpers::ReadIFC",
+    "kind": "Function",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 5892
+  },
+  {
     "name": "ParamHelpers::ReadClassification",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
@@ -5558,6 +3801,13 @@
     "line": 8574
   },
   {
+    "name": "ParamHelpers::ConvertToParamValue",
+    "kind": "Function",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 8605
+  },
+  {
     "name": "ParamHelpers::ConvertByFormatString",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
@@ -5621,262 +3871,2726 @@
     "line": 9539
   },
   {
-    "name": "FormatStringFunc::GetFormatStringFromFormula",
-    "kind": "Function",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 27
-  },
-  {
-    "name": "FormatStringFunc::GetFormatString",
-    "kind": "Function",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 88
-  },
-  {
-    "name": "FormatStringFunc::IsValid",
-    "kind": "Function",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 119
-  },
-  {
-    "name": "FormatStringFunc::ReplaceMeters",
-    "kind": "Function",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 167
-  },
-  {
-    "name": "FormatStringFunc::ParseFormatString",
-    "kind": "Function",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 184
-  },
-  {
-    "name": "FormatStringFunc::NumToString",
-    "kind": "Function",
-    "file": "Sources/AddOn/Helpers.cpp",
-    "module": "Helpers",
-    "line": 296
-  },
-  {
-    "name": "Spec::GetRuleFromDefaultElem",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 36
-  },
-  {
-    "name": "Spec::SpecAll",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 144
-  },
-  {
-    "name": "Spec::SpecFilter",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 212
-  },
-  {
-    "name": "Spec::SpecFilter",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 356
-  },
-  {
-    "name": "Spec::SpecDG",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 459
-  },
-  {
-    "name": "Spec::SpecArray",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 525
-  },
-  {
-    "name": "Spec::GetRuleFromElement",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1091
-  },
-  {
-    "name": "Spec::AddRule",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1158
-  },
-  {
-    "name": "Spec::GetParamToReadFromRule",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1245
-  },
-  {
-    "name": "Spec::GetParamValue",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1367
-  },
-  {
-    "name": "Spec::GetElementsForRule",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1510
-  },
-  {
-    "name": "Spec::GetRuleFromDescription",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 1881
-  },
-  {
-    "name": "Spec::GetElementForPlaceProperties",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2232
-  },
-  {
-    "name": "Spec::GetElementForPlace",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2342
-  },
-  {
-    "name": "Spec::GetSizePlaceElement",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2387
-  },
-  {
-    "name": "Spec::PlaceElements",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2469
-  },
-  {
-    "name": "SpecCommand::SpecCommand",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
-    "module": "json_commands",
-    "line": 15
-  },
-  {
-    "name": "SpecCommand::GetName",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
-    "module": "json_commands",
-    "line": 20
-  },
-  {
-    "name": "SpecCommand::GetInputParametersSchema",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
-    "module": "json_commands",
+    "name": "Roombook::typeinzone",
+    "kind": "Variable",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
     "line": 25
   },
   {
-    "name": "SpecCommand::GetResponseSchema",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
-    "module": "json_commands",
-    "line": 52
+    "name": "Roombook::reducededges",
+    "kind": "Variable",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 28
   },
   {
-    "name": "SpecCommand::Execute",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/SpecCommand.cpp",
-    "module": "json_commands",
-    "line": 57
+    "name": "Roombook::cls",
+    "kind": "Variable",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 30
   },
   {
-    "name": "HealthCommand::HealthCommand",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
-    "module": "json_commands",
-    "line": 14
+    "name": "Roombook::nPhase",
+    "kind": "Variable",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 32
   },
   {
-    "name": "HealthCommand::GetName",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
-    "module": "json_commands",
-    "line": 19
-  },
-  {
-    "name": "HealthCommand::GetInputParametersSchema",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
-    "module": "json_commands",
-    "line": 24
-  },
-  {
-    "name": "HealthCommand::GetResponseSchema",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
-    "module": "json_commands",
-    "line": 29
-  },
-  {
-    "name": "HealthCommand::Execute",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/HealthCommand.cpp",
-    "module": "json_commands",
+    "name": "Roombook::GetTargetZones",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
     "line": 34
   },
   {
-    "name": "SyncAllCommand::SyncAllCommand",
-    "kind": "Constructor",
-    "file": "Sources/AddOn/json_commands/SyncAllCommand.cpp",
-    "module": "json_commands",
-    "line": 16
+    "name": "Roombook::RoomProcessingContext.finclass",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 76
   },
   {
-    "name": "SyncAllCommand::GetName",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/SyncAllCommand.cpp",
-    "module": "json_commands",
-    "line": 21
+    "name": "Roombook::RoomProcessingContext.finclassguids",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 77
   },
   {
-    "name": "SyncAllCommand::GetInputParametersSchema",
+    "name": "Roombook::RoomProcessingContext.storyLevels",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 78
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.deletelist",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 79
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.exsistot_byzone",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 80
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.roomsinfo",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 81
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.elementToRead",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 82
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.paramToRead",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 83
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.param_composite",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 84
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.paramDict",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 85
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.paramDict_favorite",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 86
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.guidselementToRead",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 87
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.openinginwall",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 88
+  },
+  {
+    "name": "Roombook::RoomProcessingContext.slabsinzone",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 89
+  },
+  {
+    "name": "Roombook::PrepareRoomProcessingContext",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 92
+  },
+  {
+    "name": "Roombook::BuildElementReadIndex",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 98
+  },
+  {
+    "name": "Roombook::ProcessElementsForRoomData",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 122
+  },
+  {
+    "name": "Roombook::ReadParamsForRoomBook.windowParams",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 179
+  },
+  {
+    "name": "Roombook::ReadParamsForRoomBook.roomParams",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 180
+  },
+  {
+    "name": "Roombook::PrepareReadParams",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 183
+  },
+  {
+    "name": "Roombook::ReadElementParameters",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 185
+  },
+  {
+    "name": "Roombook::ProcessSlabFinishes",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 208
+  },
+  {
+    "name": "Roombook::ApplyFavoriteAndMaterialData",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 271
+  },
+  {
+    "name": "Roombook::ProcessWallFinishes",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 288
+  },
+  {
+    "name": "Roombook::MaterialSummary.paramToWrite",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 373
+  },
+  {
+    "name": "Roombook::MaterialSummary.columnFormat",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 374
+  },
+  {
+    "name": "Roombook::MaterialSummary.dct_bytype",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 375
+  },
+  {
+    "name": "Roombook::MaterialSummary.zones_bytype",
+    "kind": "Field",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 376
+  },
+  {
+    "name": "Roombook::BuildMaterialSummaryForRooms",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 379
+  },
+  {
+    "name": "Roombook::WriteRoomMaterialData",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 481
+  },
+  {
+    "name": "Roombook::ProcessRoomFinishes",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 512
+  },
+  {
+    "name": "Roombook::RemoveUnusedFinishingElements",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 567
+  },
+  {
+    "name": "Roombook::PrepareElementsForUpdate",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 604
+  },
+  {
+    "name": "Roombook::RoomBook",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 669
+  },
+  {
+    "name": "Roombook::Otd_GetOtd_ByZone",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 758
+  },
+  {
+    "name": "Roombook::BuildOtdByParent",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 876
+  },
+  {
+    "name": "Roombook::Otd_GetOtd_Parent",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 917
+  },
+  {
+    "name": "Roombook::OtdData_GetColumnfFormat",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 961
+  },
+  {
+    "name": "Roombook::OtdData_CalcForRoom",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1053
+  },
+  {
+    "name": "Roombook::OtdData_WriteToRoom",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1146
+  },
+  {
+    "name": "Roombook::OtdData_AddValueToDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1288
+  },
+  {
+    "name": "Roombook::OtdWall_GetArea",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1317
+  },
+  {
+    "name": "Roombook::CollectRoomInfo",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1350
+  },
+  {
+    "name": "Roombook::Opening_Create_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1502
+  },
+  {
+    "name": "Roombook::OtdWall_Create_FromWall",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1551
+  },
+  {
+    "name": "Roombook::Opening_Add_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1742
+  },
+  {
+    "name": "Roombook::OtdWall_Add_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1774
+  },
+  {
+    "name": "Roombook::OtdWall_Create_FromColumn",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1803
+  },
+  {
+    "name": "Roombook::Floor_FindAll",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1899
+  },
+  {
+    "name": "Roombook::Floor_FindInOneRoom",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1941
+  },
+  {
+    "name": "Roombook::Floor_Create_All",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 1982
+  },
+  {
+    "name": "Roombook::Floor_Create_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 2035
+  },
+  {
+    "name": "Roombook::Param_ToParamDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 2194
+  },
+  {
+    "name": "Roombook::Param_GetForWindowParams",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 2208
+  },
+  {
+    "name": "Roombook::Param_GetForBase",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 2260
+  },
+  {
+    "name": "Roombook::Param_GetForRooms",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 2404
+  },
+  {
+    "name": "Roombook::Param_Property_FindInParams",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 2642
+  },
+  {
+    "name": "Roombook::Param_Property_Read",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 2691
+  },
+  {
+    "name": "Roombook::Param_Material_Get",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 2728
+  },
+  {
+    "name": "Roombook::Param_SetToRooms",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 2754
+  },
+  {
+    "name": "Roombook::Param_SetToBase",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 3075
+  },
+  {
+    "name": "Roombook::Param_SetComposite",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 3138
+  },
+  {
+    "name": "Roombook::Param_SetToWindows",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 3251
+  },
+  {
+    "name": "Roombook::RoomRedProc",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 3380
+  },
+  {
+    "name": "Roombook::Edges_GetFromRoom",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 3436
+  },
+  {
+    "name": "Roombook::ClearZoneGUID",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 3505
+  },
+  {
+    "name": "Roombook::OpeningReveals_Create_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 3543
+  },
+  {
+    "name": "Roombook::OtdWall_Delim_All",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 3700
+  },
+  {
+    "name": "Roombook::OtdWall_Delim_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 3834
+  },
+  {
+    "name": "Roombook::SetMaterialByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 3901
+  },
+  {
+    "name": "Roombook::SetMaterialFinish_ByComposite",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4011
+  },
+  {
+    "name": "Roombook::SetMaterialFinish",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4022
+  },
+  {
+    "name": "Roombook::Edge_FindOnEdge",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4051
+  },
+  {
+    "name": "Roombook::Edge_FindEdge",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4082
+  },
+  {
+    "name": "Roombook::Draw_Elements",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4099
+  },
+  {
+    "name": "Roombook::OtdWall_Draw",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4234
+  },
+  {
+    "name": "Roombook::OtdBeam_Draw_Beam",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4263
+  },
+  {
+    "name": "Roombook::OtdBeam_GetDefult_Beam",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4319
+  },
+  {
+    "name": "Roombook::OtdBeam_Draw_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4338
+  },
+  {
+    "name": "Roombook::OtdBeam_GetDefult_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4349
+  },
+  {
+    "name": "Roombook::OtdWall_Draw_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4376
+  },
+  {
+    "name": "Roombook::OtdWall_GetDefult_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4505
+  },
+  {
+    "name": "Roombook::OtdWall_Draw_Wall",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4532
+  },
+  {
+    "name": "Roombook::OtdWall_GetDefult_Wall",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4585
+  },
+  {
+    "name": "Roombook::Opening_Draw",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4614
+  },
+  {
+    "name": "Roombook::Opening_GetDefult",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4673
+  },
+  {
+    "name": "Roombook::Floor_Draw",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4695
+  },
+  {
+    "name": "Roombook::Floor_Draw_Slab",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4726
+  },
+  {
+    "name": "Roombook::Floor_Draw_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4826
+  },
+  {
+    "name": "Roombook::Floor_GetDefult_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4971
+  },
+  {
+    "name": "Roombook::Floor_GetDefult_Slab",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 4995
+  },
+  {
+    "name": "Roombook::Class_SetClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5022
+  },
+  {
+    "name": "Roombook::Class_SetClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5033
+  },
+  {
+    "name": "Roombook::Class_SetClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5046
+  },
+  {
+    "name": "Roombook::Class_GetClassGuid",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5054
+  },
+  {
+    "name": "Roombook::Class_GetOtdTypeByClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5101
+  },
+  {
+    "name": "Roombook::Class_FindFinClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5145
+  },
+  {
+    "name": "Roombook::SetSyncOtdWall",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5216
+  },
+  {
+    "name": "Roombook::Class_IsElementFinClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5316
+  },
+  {
+    "name": "Roombook::Param_AddUnicElementByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5331
+  },
+  {
+    "name": "Roombook::Param_AddUnicGUIDByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5359
+  },
+  {
+    "name": "Roombook::Favorite_GetType",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5371
+  },
+  {
+    "name": "Roombook::Favorite_GetDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5386
+  },
+  {
+    "name": "Roombook::Favorite_ReadComposite",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5495
+  },
+  {
+    "name": "Roombook::Favorite_FindName",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5532
+  },
+  {
+    "name": "Roombook::Favorite_GetByName",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5632
+  },
+  {
+    "name": "Roombook::Favorite_GetByName",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5650
+  },
+  {
+    "name": "Roombook::Check",
+    "kind": "Function",
+    "file": "Sources/AddOn/Roombook.cpp",
+    "module": "Roombook",
+    "line": 5672
+  },
+  {
+    "name": "TableRenderer::kMinWidthMm",
+    "kind": "Variable",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 14
+  },
+  {
+    "name": "TableRenderer::kMaxWrappedLines",
+    "kind": "Variable",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 15
+  },
+  {
+    "name": "TableRenderer::AttrIndex",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 22
+  },
+  {
+    "name": "TableRenderer::ToApiJust",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 25
+  },
+  {
+    "name": "TableRenderer::ResolveHAlign",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 38
+  },
+  {
+    "name": "TableRenderer::ResolveVAlign",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 42
+  },
+  {
+    "name": "TableRenderer::RangesOverlap",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 46
+  },
+  {
+    "name": "TableRenderer::VerticalShiftFactor",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 50
+  },
+  {
+    "name": "TableRenderer::HorizontalShiftFactor",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 62
+  },
+  {
+    "name": "TableRenderer::FindFirstFillIndex",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 76
+  },
+  {
+    "name": "TableRenderer::TableRenderer::SetCells",
     "kind": "Method",
-    "file": "Sources/AddOn/json_commands/SyncAllCommand.cpp",
-    "module": "json_commands",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 98
+  },
+  {
+    "name": "TableRenderer::TableRenderer::SetFormattingRules",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 103
+  },
+  {
+    "name": "TableRenderer::TableRenderer::SetDrawingScale",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 108
+  },
+  {
+    "name": "TableRenderer::TableRenderer::IsLayoutComputed",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 110
+  },
+  {
+    "name": "TableRenderer::TableRenderer::ToModel",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 115
+  },
+  {
+    "name": "TableRenderer::TableRenderer::TotalWidthMm",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 117
+  },
+  {
+    "name": "TableRenderer::TableRenderer::TotalHeightMm",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 124
+  },
+  {
+    "name": "TableRenderer::TableRenderer::GetTotalWidth",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 131
+  },
+  {
+    "name": "TableRenderer::TableRenderer::GetTotalHeight",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 133
+  },
+  {
+    "name": "TableRenderer::TableRenderer::GetColumnWidth",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 135
+  },
+  {
+    "name": "TableRenderer::TableRenderer::GetRowHeight",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 141
+  },
+  {
+    "name": "TableRenderer::TableRenderer::SlotIndex",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 150
+  },
+  {
+    "name": "TableRenderer::TableRenderer::SlotLayout",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 152
+  },
+  {
+    "name": "TableRenderer::TableRenderer::SlotLayout",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 156
+  },
+  {
+    "name": "TableRenderer::TableRenderer::FindCell",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 160
+  },
+  {
+    "name": "TableRenderer::TableRenderer::IsSlotCoveredByMerge",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 168
+  },
+  {
+    "name": "TableRenderer::TableRenderer::ResolveFontIndex",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 186
+  },
+  {
+    "name": "TableRenderer::TableRenderer::MeasureWidthMm",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 210
+  },
+  {
+    "name": "TableRenderer::TableRenderer::WrapText",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 220
+  },
+  {
+    "name": "TableRenderer::TableRenderer::ComputeLayout",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 295
+  },
+  {
+    "name": "TableRenderer::TableRenderer::BuildCellLayouts",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 361
+  },
+  {
+    "name": "TableRenderer::TableRenderer::ComputeColumnWidthsMm",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 393
+  },
+  {
+    "name": "TableRenderer::TableRenderer::WrapCellLayouts",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 483
+  },
+  {
+    "name": "TableRenderer::TableRenderer::ComputeRowHeightsMm",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 528
+  },
+  {
+    "name": "TableRenderer::TableRenderer::Draw",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 615
+  },
+  {
+    "name": "TableRenderer::TableRenderer::DrawFills",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 635
+  },
+  {
+    "name": "TableRenderer::TableRenderer::DrawGrid",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 658
+  },
+  {
+    "name": "TableRenderer::TableRenderer::DrawTexts",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 728
+  },
+  {
+    "name": "TableRenderer::TableRenderer::CreateLineElement",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 786
+  },
+  {
+    "name": "TableRenderer::TableRenderer::CreateFillElement",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 807
+  },
+  {
+    "name": "TableRenderer::TableRenderer::CreateTextElement",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 863
+  },
+  {
+    "name": "TableRenderer::TableRenderer::SetPrototypeContent",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 971
+  },
+  {
+    "name": "TableRenderer::TableRenderer::RunSelfTest",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TableRenderer.cpp",
+    "module": "table",
+    "line": 1032
+  },
+  {
+    "name": "isEng",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 12
+  },
+  {
+    "name": "TablesNavigator::kEnableNavigatorRegistration",
+    "kind": "Variable",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 17
+  },
+  {
+    "name": "TablesNavigator::kNavigatorRootGuid",
+    "kind": "Variable",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 18
+  },
+  {
+    "name": "TablesNavigator::kNavigatorRootDisplayId",
+    "kind": "Variable",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 19
+  },
+  {
+    "name": "TablesNavigator::kScheduleDisplayIdPrefix",
+    "kind": "Variable",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 20
+  },
+  {
+    "name": "TablesNavigator::GetNavigatorRootDisplayName",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 22
+  },
+  {
+    "name": "TablesNavigator::GetDefaultScheduleName",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
     "line": 26
   },
   {
-    "name": "SyncAllCommand::GetResponseSchema",
-    "kind": "Method",
-    "file": "Sources/AddOn/json_commands/SyncAllCommand.cpp",
-    "module": "json_commands",
-    "line": 31
+    "name": "TablesNavigator::ScheduleSettingsDialog::ScheduleSettingsDialog",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 35
   },
   {
-    "name": "SyncAllCommand::Execute",
+    "name": "TablesNavigator::ScheduleSettingsDialog::GetDisplayId",
     "kind": "Method",
-    "file": "Sources/AddOn/json_commands/SyncAllCommand.cpp",
-    "module": "json_commands",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 37
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog::GetDisplayName",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 38
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog::(anonymous enum)",
+    "kind": "Enum",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 41
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog.okButton",
+    "kind": "Field",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 43
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog.cancelButton",
+    "kind": "Field",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 44
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog.displayIdEdit",
+    "kind": "Field",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 45
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog.displayNameEdit",
+    "kind": "Field",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 46
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog::PanelCloseRequested",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 48
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog::ButtonClicked",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 49
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::OpenView",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 54
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::OpenSettings",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 55
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::ExecuteMergePostProcess",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 56
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::CreateIDFStore",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 57
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::GetElemsForDrawingCheck",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 66
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::NewItem",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 67
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::DeleteItem",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 68
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::RenameItem",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 69
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::GetIcon",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 70
+  },
+  {
+    "name": "TablesNavigator::GetNavigatorCallback",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 77
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog::ScheduleSettingsDialog",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 85
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog::GetDisplayId",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 99
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog::GetDisplayName",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 101
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog::PanelCloseRequested",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 103
+  },
+  {
+    "name": "TablesNavigator::ScheduleSettingsDialog::ButtonClicked",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 108
+  },
+  {
+    "name": "TablesNavigator::GetViewPointData",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 116
+  },
+  {
+    "name": "TablesNavigator::GetNewItemParentGuid",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 125
+  },
+  {
+    "name": "TablesNavigator::GetNavigatorChildren",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 136
+  },
+  {
+    "name": "TablesNavigator::BuildUniqueScheduleDefaults",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 146
+  },
+  {
+    "name": "TablesNavigator::ApiWindowGuard::ApiWindowGuard",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 196
+  },
+  {
+    "name": "TablesNavigator::ApiWindowGuard::~ApiWindowGuard",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 199
+  },
+  {
+    "name": "TablesNavigator::RenderScheduleIntoWindow",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 213
+  },
+  {
+    "name": "TablesNavigator::RegenerateScheduleContent",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 234
+  },
+  {
+    "name": "TablesNavigator::GetWindowValidatorInfo",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 261
+  },
+  {
+    "name": "TablesNavigator::ScheduleWindowHandlerProc",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 287
+  },
+  {
+    "name": "TablesNavigator::OpenScheduleWindow",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 331
+  },
+  {
+    "name": "TablesNavigator::MergeViewPointData",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 411
+  },
+  {
+    "name": "TablesNavigator::SaveOldFormatViewPointData",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 424
+  },
+  {
+    "name": "TablesNavigator::ConvertNewFormatViewPointData",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 437
+  },
+  {
+    "name": "TablesNavigator::TablesNavigator::IsNavigatorRegistrationEnabled",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 447
+  },
+  {
+    "name": "TablesNavigator::TablesNavigator::RegisterInterface",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 449
+  },
+  {
+    "name": "TablesNavigator::TablesNavigator::Initialize",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 460
+  },
+  {
+    "name": "TablesNavigator::EnsureNavigatorRootImpl",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 500
+  },
+  {
+    "name": "TablesNavigator::TablesNavigator::EnsureNavigatorRoot",
+    "kind": "Function",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 572
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::OpenView",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 589
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::OpenSettings",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 604
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::ExecuteMergePostProcess",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 626
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::CreateIDFStore",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 633
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::GetElemsForDrawingCheck",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 704
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::NewItem",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 716
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::DeleteItem",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 760
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::RenameItem",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 782
+  },
+  {
+    "name": "TablesNavigator::NavigatorCallback::GetIcon",
+    "kind": "Method",
+    "file": "Sources/AddOn/table/TablesNavigator.cpp",
+    "module": "table",
+    "line": 784
+  },
+  {
+    "name": "qrcodegen::QrSegment::Mode::Mode",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 44
+  },
+  {
+    "name": "qrcodegen::QrSegment::Mode::getModeBits",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 50
+  },
+  {
+    "name": "qrcodegen::QrSegment::Mode::numCharCountBits",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 52
+  },
+  {
+    "name": "qrcodegen::QrSegment::Mode::NUMERIC",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 54
+  },
+  {
+    "name": "qrcodegen::QrSegment::Mode::ALPHANUMERIC",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 55
+  },
+  {
+    "name": "qrcodegen::QrSegment::Mode::BYTE",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 56
+  },
+  {
+    "name": "qrcodegen::QrSegment::Mode::KANJI",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 57
+  },
+  {
+    "name": "qrcodegen::QrSegment::Mode::ECI",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 58
+  },
+  {
+    "name": "qrcodegen::QrSegment::makeBytes",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 60
+  },
+  {
+    "name": "qrcodegen::QrSegment::makeNumeric",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 69
+  },
+  {
+    "name": "qrcodegen::QrSegment::makeAlphanumeric",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 91
+  },
+  {
+    "name": "qrcodegen::QrSegment::makeSegments",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 113
+  },
+  {
+    "name": "qrcodegen::QrSegment::makeEci",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 131
+  },
+  {
+    "name": "qrcodegen::QrSegment::QrSegment",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 148
+  },
+  {
+    "name": "qrcodegen::QrSegment::QrSegment",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 154
+  },
+  {
+    "name": "qrcodegen::QrSegment::getTotalBits",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 160
+  },
+  {
+    "name": "qrcodegen::QrSegment::isNumeric",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 176
+  },
+  {
+    "name": "qrcodegen::QrSegment::isAlphanumeric",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 185
+  },
+  {
+    "name": "qrcodegen::QrSegment::getMode",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 193
+  },
+  {
+    "name": "qrcodegen::QrSegment::getNumChars",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 195
+  },
+  {
+    "name": "qrcodegen::QrSegment::getData",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 197
+  },
+  {
+    "name": "qrcodegen::QrSegment::ALPHANUMERIC_CHARSET",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 199
+  },
+  {
+    "name": "qrcodegen::QrCode::getFormatBits",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 203
+  },
+  {
+    "name": "qrcodegen::QrCode::encodeText",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 218
+  },
+  {
+    "name": "qrcodegen::QrCode::encodeBinary",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 223
+  },
+  {
+    "name": "qrcodegen::QrCode::encodeSegments",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 228
+  },
+  {
+    "name": "qrcodegen::QrCode::QrCode",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 289
+  },
+  {
+    "name": "qrcodegen::QrCode::getVersion",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 329
+  },
+  {
+    "name": "qrcodegen::QrCode::getSize",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 331
+  },
+  {
+    "name": "qrcodegen::QrCode::getErrorCorrectionLevel",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 333
+  },
+  {
+    "name": "qrcodegen::QrCode::getMask",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 335
+  },
+  {
+    "name": "qrcodegen::QrCode::getModule",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 337
+  },
+  {
+    "name": "qrcodegen::QrCode::drawFunctionPatterns",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 339
+  },
+  {
+    "name": "qrcodegen::QrCode::drawFormatBits",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 367
+  },
+  {
+    "name": "qrcodegen::QrCode::drawVersion",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 393
+  },
+  {
+    "name": "qrcodegen::QrCode::drawFinderPattern",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 414
+  },
+  {
+    "name": "qrcodegen::QrCode::drawAlignmentPattern",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 425
+  },
+  {
+    "name": "qrcodegen::QrCode::setFunctionModule",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 432
+  },
+  {
+    "name": "qrcodegen::QrCode::module",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 439
+  },
+  {
+    "name": "qrcodegen::QrCode::addEccAndInterleave",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 443
+  },
+  {
+    "name": "qrcodegen::QrCode::drawCodewords",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 482
+  },
+  {
+    "name": "qrcodegen::QrCode::applyMask",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 508
+  },
+  {
+    "name": "qrcodegen::QrCode::getPenaltyScore",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 548
+  },
+  {
+    "name": "qrcodegen::QrCode::getAlignmentPatternPositions",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 623
+  },
+  {
+    "name": "qrcodegen::QrCode::getNumRawDataModules",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 637
+  },
+  {
+    "name": "qrcodegen::QrCode::getNumDataCodewords",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 651
+  },
+  {
+    "name": "qrcodegen::QrCode::reedSolomonComputeDivisor",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 656
+  },
+  {
+    "name": "qrcodegen::QrCode::reedSolomonComputeRemainder",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 680
+  },
+  {
+    "name": "qrcodegen::QrCode::reedSolomonMultiply",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 692
+  },
+  {
+    "name": "qrcodegen::QrCode::finderPenaltyCountPatterns",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 703
+  },
+  {
+    "name": "qrcodegen::QrCode::finderPenaltyTerminateAndCount",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 712
+  },
+  {
+    "name": "qrcodegen::QrCode::finderPenaltyAddHistory",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 724
+  },
+  {
+    "name": "qrcodegen::QrCode::getBit",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 731
+  },
+  {
+    "name": "qrcodegen::QrCode::PENALTY_N1",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 735
+  },
+  {
+    "name": "qrcodegen::QrCode::PENALTY_N2",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 736
+  },
+  {
+    "name": "qrcodegen::QrCode::PENALTY_N3",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 737
+  },
+  {
+    "name": "qrcodegen::QrCode::PENALTY_N4",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 738
+  },
+  {
+    "name": "qrcodegen::QrCode::ECC_CODEWORDS_PER_BLOCK",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 740
+  },
+  {
+    "name": "qrcodegen::QrCode::NUM_ERROR_CORRECTION_BLOCKS",
+    "kind": "Field",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 754
+  },
+  {
+    "name": "qrcodegen::data_too_long::data_too_long",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 768
+  },
+  {
+    "name": "qrcodegen::BitBuffer::BitBuffer",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 772
+  },
+  {
+    "name": "qrcodegen::BitBuffer::appendBits",
+    "kind": "Method",
+    "file": "Sources/AddOn/third_party/qrcodegen.cpp",
+    "module": "third_party",
+    "line": 774
+  },
+  {
+    "name": "TestFunc::TestStringSplt",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestCore.cpp",
+    "module": "tests",
+    "line": 14
+  },
+  {
+    "name": "TestFunc::TestBuildOtdByParent",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestCore.cpp",
+    "module": "tests",
+    "line": 79
+  },
+  {
+    "name": "TestFunc::TestCalc",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestFormat.cpp",
+    "module": "tests",
+    "line": 15
+  },
+  {
+    "name": "TestFunc::TestFormula",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestFormat.cpp",
+    "module": "tests",
+    "line": 63
+  },
+  {
+    "name": "TestFunc::TestFormatString",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestFormat.cpp",
+    "module": "tests",
+    "line": 159
+  },
+  {
+    "name": "TestFunc::Groups::Spec",
+    "kind": "Variable",
+    "file": "Sources/AddOn/tests/TestFunc.cpp",
+    "module": "tests",
+    "line": 24
+  },
+  {
+    "name": "TestFunc::Groups::Sync",
+    "kind": "Variable",
+    "file": "Sources/AddOn/tests/TestFunc.cpp",
+    "module": "tests",
+    "line": 25
+  },
+  {
+    "name": "TestFunc::Groups::Param",
+    "kind": "Variable",
+    "file": "Sources/AddOn/tests/TestFunc.cpp",
+    "module": "tests",
+    "line": 26
+  },
+  {
+    "name": "TestFunc::Groups::Format",
+    "kind": "Variable",
+    "file": "Sources/AddOn/tests/TestFunc.cpp",
+    "module": "tests",
+    "line": 27
+  },
+  {
+    "name": "TestFunc::Groups::Renum",
+    "kind": "Variable",
+    "file": "Sources/AddOn/tests/TestFunc.cpp",
+    "module": "tests",
+    "line": 28
+  },
+  {
+    "name": "TestFunc::Groups::Core",
+    "kind": "Variable",
+    "file": "Sources/AddOn/tests/TestFunc.cpp",
+    "module": "tests",
+    "line": 29
+  },
+  {
+    "name": "TestFunc::Test",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestFunc.cpp",
+    "module": "tests",
+    "line": 32
+  },
+  {
+    "name": "TestKit::Entry.name",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
     "line": 36
+  },
+  {
+    "name": "TestKit::Entry.group",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 37
+  },
+  {
+    "name": "TestKit::Entry.fn",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 38
+  },
+  {
+    "name": "TestKit::Registry",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 45
+  },
+  {
+    "name": "TestKit::Stats.passed",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 51
+  },
+  {
+    "name": "TestKit::Stats.failed",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 52
+  },
+  {
+    "name": "TestKit::Stats.suppressed",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 53
+  },
+  {
+    "name": "TestKit::Stats.suites",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 54
+  },
+  {
+    "name": "TestKit::Stats.failedSuites",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 55
+  },
+  {
+    "name": "TestKit::Stats.aborted",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 56
+  },
+  {
+    "name": "TestKit::Stats.skipped",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 57
+  },
+  {
+    "name": "TestKit::g_stats",
+    "kind": "Variable",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 60
+  },
+  {
+    "name": "TestKit::g_file",
+    "kind": "Variable",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 61
+  },
+  {
+    "name": "TestKit::ReportPath",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 64
+  },
+  {
+    "name": "TestKit::Open",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 76
+  },
+  {
+    "name": "TestKit::Emit",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 89
+  },
+  {
+    "name": "TestKit::Matches",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 105
+  },
+  {
+    "name": "TestKit::GetConfig",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 65
+  },
+  {
+    "name": "TestKit::Register",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 138
+  },
+  {
+    "name": "TestKit::SkipTest",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 140
+  },
+  {
+    "name": "TestKit::Info",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 146
+  },
+  {
+    "name": "TestKit::detail::FmtBool",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 153
+  },
+  {
+    "name": "TestKit::detail::FmtInt",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 155
+  },
+  {
+    "name": "TestKit::detail::FmtDbl",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 161
+  },
+  {
+    "name": "TestKit::detail::FmtStr",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 167
+  },
+  {
+    "name": "TestKit::detail::Report",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 169
+  },
+  {
+    "name": "TestKit::Run",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestKit.cpp",
+    "module": "tests",
+    "line": 205
+  },
+  {
+    "name": "TestFunc::TestConvertToParamValue",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 18
+  },
+  {
+    "name": "TestFunc::TestConvertAttributeToParamValue",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 113
+  },
+  {
+    "name": "TestFunc::TestConvertPropertyToParamValue",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 192
+  },
+  {
+    "name": "TestFunc::TestConvertPropertyDefinitionToParamValue",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 350
+  },
+  {
+    "name": "TestFunc::TestSetParamValueSourseByName",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 415
+  },
+  {
+    "name": "TestFunc::TestSetrawNameFromProperty",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 569
+  },
+  {
+    "name": "TestFunc::TestCheckIgnoreVal",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 647
+  },
+  {
+    "name": "TestFunc::TestReadProperty",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 777
+  },
+  {
+    "name": "TestFunc::TestAddProperty",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 832
+  },
+  {
+    "name": "TestFunc::TestPropertyHelpersToString",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 956
+  },
+  {
+    "name": "TestFunc::TestGetPropertyRuleFlag",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 1118
+  },
+  {
+    "name": "TestFunc::TestPropertyRuleFlagOnProjectElements",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestParam.cpp",
+    "module": "tests",
+    "line": 1204
+  },
+  {
+    "name": "TestFunc::TestRenumPosLogic",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRenum.cpp",
+    "module": "tests",
+    "line": 19
+  },
+  {
+    "name": "TestFunc::SpecFixture.first",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 20
+  },
+  {
+    "name": "TestFunc::SpecFixture.second",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 21
+  },
+  {
+    "name": "TestFunc::SpecFixture.old",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 22
+  },
+  {
+    "name": "TestFunc::SpecFixture.extra",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 23
+  },
+  {
+    "name": "TestFunc::SpecFixture.key",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 24
+  },
+  {
+    "name": "TestFunc::SpecFixture.text",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 25
+  },
+  {
+    "name": "TestFunc::SpecFixture.quantity",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 26
+  },
+  {
+    "name": "TestFunc::SpecFixture.flag",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 27
+  },
+  {
+    "name": "TestFunc::SpecFixture.outText",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 28
+  },
+  {
+    "name": "TestFunc::SpecFixture.outQuantity",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 29
+  },
+  {
+    "name": "TestFunc::SpecFixture.rule",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 30
+  },
+  {
+    "name": "TestFunc::SpecFixture.context",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 32
+  },
+  {
+    "name": "TestFunc::SpecFixture.created",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 33
+  },
+  {
+    "name": "TestFunc::SpecFixture.modified",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 34
+  },
+  {
+    "name": "TestFunc::SpecFixture.deleted",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 35
+  },
+  {
+    "name": "TestFunc::SpecFixture.errors",
+    "kind": "Field",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 36
+  },
+  {
+    "name": "TestFunc::SpecFixture::SpecFixture",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 38
+  },
+  {
+    "name": "TestFunc::SpecFixture::Text",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 51
+  },
+  {
+    "name": "TestFunc::SpecFixture::Number",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 60
+  },
+  {
+    "name": "TestFunc::SpecFixture::Source",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 69
+  },
+  {
+    "name": "TestFunc::SpecFixture::Existing",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 76
+  },
+  {
+    "name": "TestFunc::SpecFixture::Run",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 83
+  },
+  {
+    "name": "TestFunc::SpecFixture::Shape",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 91
+  },
+  {
+    "name": "TestFunc::TestSpecGetParamValue",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 105
+  },
+  {
+    "name": "TestFunc::TestSpecGrouping",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 192
+  },
+  {
+    "name": "TestFunc::TestSpecReconcile",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 322
+  },
+  {
+    "name": "TestFunc::TestSpecMergeAndKey",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 394
+  },
+  {
+    "name": "TestFunc::TestSpecRuleDedup",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 523
+  },
+  {
+    "name": "TestFunc::TestSpecReadPlan",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 628
+  },
+  {
+    "name": "TestFunc::TestSpecRuleDependencies",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 685
+  },
+  {
+    "name": "TestFunc::TestSpecFavoriteResolution",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 877
+  },
+  {
+    "name": "TestFunc::TestSpecValueReader",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 1109
+  },
+  {
+    "name": "TestFunc::TestSpecValueEdges",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 1737
+  },
+  {
+    "name": "TestFunc::TestSpecOutSlots",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 1808
+  },
+  {
+    "name": "TestFunc::TestSpecSlotBindings",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 1861
+  },
+  {
+    "name": "TestFunc::TestSpecExpandGroup",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 1993
+  },
+  {
+    "name": "TestFunc::TestSpecGroups",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 2114
+  },
+  {
+    "name": "TestFunc::TestSpecOutputSchema",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 2198
+  },
+  {
+    "name": "TestFunc::TestSpecPolicy",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 2258
+  },
+  {
+    "name": "TestFunc::TestSpecNormalize",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 2321
+  },
+  {
+    "name": "TestFunc::TestSpecParser",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 2396
+  },
+  {
+    "name": "TestFunc::TestSpecAddRule",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 2546
+  },
+  {
+    "name": "TestFunc::TestSpecParseError",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 2624
+  },
+  {
+    "name": "TestFunc::TestSpecSizes",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 2734
+  },
+  {
+    "name": "TestFunc::TestName2Rawname",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSync.cpp",
+    "module": "tests",
+    "line": 75
+  },
+  {
+    "name": "TestFunc::TestName2RawnameWithBrackets",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSync.cpp",
+    "module": "tests",
+    "line": 110
+  },
+  {
+    "name": "TestFunc::TestSyncString",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSync.cpp",
+    "module": "tests",
+    "line": 137
+  },
+  {
+    "name": "TestFunc::TestSyncStringRealRules",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSync.cpp",
+    "module": "tests",
+    "line": 328
+  },
+  {
+    "name": "TestFunc::TestParsePrefixes",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSync.cpp",
+    "module": "tests",
+    "line": 602
+  },
+  {
+    "name": "TestFunc::TestParsePropertyDescription",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSync.cpp",
+    "module": "tests",
+    "line": 615
+  },
+  {
+    "name": "TestFunc::TestParseSyncStringIndependent",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSync.cpp",
+    "module": "tests",
+    "line": 738
+  },
+  {
+    "name": "TestFunc::TestParsePropertyDescriptionToRules",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSync.cpp",
+    "module": "tests",
+    "line": 863
+  },
+  {
+    "name": "TestFunc::TestSyncAddSubelement",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSync.cpp",
+    "module": "tests",
+    "line": 982
+  },
+  {
+    "name": "TestFunc::TestDescToRulesSubGuid",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSync.cpp",
+    "module": "tests",
+    "line": 1144
+  },
+  {
+    "name": "TestFunc::TestGetTextLineLength",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestUtil.cpp",
+    "module": "tests",
+    "line": 16
+  },
+  {
+    "name": "TestFunc::DumpAllBuiltInProperties",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestUtil.cpp",
+    "module": "tests",
+    "line": 57
+  },
+  {
+    "name": "TestFunc::ResetSyncPropertyArray",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestUtil.cpp",
+    "module": "tests",
+    "line": 80
+  },
+  {
+    "name": "TestFunc::ResetSyncPropertyOne",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestUtil.cpp",
+    "module": "tests",
+    "line": 84
+  },
+  {
+    "name": "TestFunc::ResetSyncPropertyOne",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestUtil.cpp",
+    "module": "tests",
+    "line": 84
   }
 ]
