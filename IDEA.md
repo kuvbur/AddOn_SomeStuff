@@ -796,8 +796,7 @@ LNK1168** — не Archicad держит `.apx`, а смесь старых и �
 
 
 ### Last Checkpoint
-R5.1 — коммит этого шага (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md,
-Refs: #228).
+R5.1 — `e4c6dee` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md, Refs: #228).
 Предыдущий: R4.6 — `e87736d` (Spec.cpp/.hpp, TestFunc.cpp, Spec.md, IDEA.md).
 Предыдущий: R4.5 — `a4a9f54` (TestFunc.cpp, +290) + docs `74ade79` (Spec.md).
 Предыдущий: R4.4 — `9e151c0`; #229 — `f15653e` + docs `a33ec11`.
