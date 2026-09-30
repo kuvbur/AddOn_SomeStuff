@@ -890,6 +890,151 @@ namespace TestFunc {
         DBprnt ("SpecRegression out slots", "end");
     }
 
+    // Привязка слотов группы к полям: Spec::PrepareSlotBindings (). Это ОДИН
+    // проход до цикла по элементам, поэтому контракт проверяется здесь, а не
+    // по итогу GetElementsForRule. Ключевые свойства:
+    //   - ровно одна привязка на каждую группу, в том же порядке;
+    //   - имена НЕ копируются (хранится указатель на поле группы), поэтому
+    //     правка поля группы после подготовки видна в привязке;
+    //   - признак isSumLiteral ставится по имени "1" ОДИН раз, а не в цикле;
+    //   - sizesMatchSchema отражает число ПОЛЕЙ группы, а не число
+    //     фактически набранных значений элемента.
+    void TestSpecSlotBindings () {
+        DBprnt ("SpecRegression slot bindings", "start");
+
+        // Пустое правило: ни групп, ни привязок.
+        {
+            Spec::SpecRule rule;
+            const GS::Array<Spec::GroupSlotBinding> bindings = Spec::PrepareSlotBindings (rule);
+            DBtest (bindings.GetSize (), 0, "empty rule no bindings");
+        }
+
+        // Обычная группа: одно выходное поле, одно поле суммы.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push ("{@property:out-a}");
+            rule.out_paramrawname.Push ("{@property:out-b}");
+            rule.out_sum_paramrawname.Push ("{@property:sum-a}");
+            Spec::GroupSpec group;
+            group.out_paramrawname.Push ("{@property:text}");
+            group.sum_paramrawname.Push ("{@property:quantity}");
+            rule.groups.Push (group);
+            const GS::Array<Spec::GroupSlotBinding> bindings = Spec::PrepareSlotBindings (rule);
+            DBtest (bindings.GetSize (), 1, "one group one binding");
+            if (!bindings.IsEmpty ()) {
+                const Spec::GroupSlotBinding &b = bindings[0];
+                DBtest (b.outSlots.GetSize (), 1, "group has one out field");
+                DBtest (b.sumSlots.GetSize (), 1, "group has one sum field");
+                DBtest (b.schemaOutSlots, 2, "schema out slots");
+                DBtest (b.schemaSumSlots, 1, "schema sum slots");
+                // Одно поле против двух слотов схемы - группа не наполнит схему
+                // целиком, но это предупреждение, а не запрет в цикле.
+                DBtest (b.sizesMatchSchema, false, "field count differs from schema");
+                if (!b.outSlots.IsEmpty ()) {
+                    DBtest (b.outSlots[0].isSumLiteral, false, "out slot is not literal");
+                    DBtest (*b.outSlots[0].rawname, GS::UniString ("{@property:text}"), "out slot name");
+                }
+                if (!b.sumSlots.IsEmpty ())
+                    DBtest (b.sumSlots[0].isSumLiteral, false, "sum slot is not literal");
+            }
+        }
+
+        // Совпадение числа полей со схемой + константная сумма "1".
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push ("{@property:out-a}");
+            rule.out_sum_paramrawname.Push ("{@property:sum-a}");
+            rule.out_sum_paramrawname.Push ("{@property:sum-b}");
+            Spec::GroupSpec group;
+            group.out_paramrawname.Push ("{@property:text}");
+            group.sum_paramrawname.Push ("1");
+            group.sum_paramrawname.Push ("{@property:quantity}");
+            rule.groups.Push (group);
+            const GS::Array<Spec::GroupSlotBinding> bindings = Spec::PrepareSlotBindings (rule);
+            if (!bindings.IsEmpty ()) {
+                const Spec::GroupSlotBinding &b = bindings[0];
+                DBtest (b.sizesMatchSchema, true, "field count equals schema");
+                DBtest (b.outSlots.GetSize (), 1, "matched out fields");
+                DBtest (b.sumSlots.GetSize (), 2, "matched sum fields");
+                if (b.sumSlots.GetSize () == 2) {
+                    DBtest (b.sumSlots[0].isSumLiteral, true, "literal one detected");
+                    DBtest (b.sumSlots[1].isSumLiteral, false, "real sum not literal");
+                    DBtest (*b.sumSlots[0].rawname, GS::UniString ("1"), "literal name kept");
+                    DBtest (*b.sumSlots[1].rawname, GS::UniString ("{@property:quantity}"), "sum name kept");
+                }
+            }
+        }
+
+        // Несколько групп: порядок привязок совпадает с порядком групп,
+        // в том числе для групп, созданных ExpandGroup по слоям.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push ("{@property:out-a}");
+            rule.out_sum_paramrawname.Push ("{@property:sum-a}");
+            for (UInt32 layer = 0; layer < 3; layer++) {
+                Spec::GroupSpec group;
+                group.n_layer = layer;
+                group.fromMaterial = true;
+                group.out_paramrawname.Push ("{@material:layer-auto-" + GS::UniString::Printf ("%u", layer) + "}");
+                group.sum_paramrawname.Push ("{@property:quantity}");
+                rule.groups.Push (group);
+            }
+            const GS::Array<Spec::GroupSlotBinding> bindings = Spec::PrepareSlotBindings (rule);
+            DBtest (bindings.GetSize (), 3, "layered groups bindings");
+            for (UInt32 i = 0; i < bindings.GetSize (); i++) {
+                DBtest (bindings[i].sizesMatchSchema, true, "layered group sizes match");
+                if (!bindings[i].outSlots.IsEmpty ()) {
+                    const GS::UniString expected = "{@material:layer-auto-" + GS::UniString::Printf ("%u", i) + "}";
+                    DBtest (*bindings[i].outSlots[0].rawname, expected, "layered group name order");
+                }
+            }
+        }
+
+        // Имена не копируются: привязка ссылается на поле группы, поэтому
+        // изменение поля после PrepareSlotBindings видно в привязке. Это
+        // контракт, а не оптимизация - цикл исполнения группы не меняет.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push ("{@property:out-a}");
+            rule.out_sum_paramrawname.Push ("{@property:sum-a}");
+            Spec::GroupSpec group;
+            group.out_paramrawname.Push ("{@property:text}");
+            group.sum_paramrawname.Push ("{@property:quantity}");
+            rule.groups.Push (group);
+            GS::Array<Spec::GroupSlotBinding> bindings = Spec::PrepareSlotBindings (rule);
+            rule.groups[0].out_paramrawname[0] = "{@property:changed}";
+            if (!bindings.IsEmpty () && !bindings[0].outSlots.IsEmpty ()) {
+                DBtest (
+                    *bindings[0].outSlots[0].rawname, GS::UniString ("{@property:changed}"), "binding is not a copy");
+            }
+            // Повторная подготовка обязана увидеть изменённое поле.
+            bindings = Spec::PrepareSlotBindings (rule);
+            if (!bindings.IsEmpty () && !bindings[0].outSlots.IsEmpty ()) {
+                DBtest (
+                    *bindings[0].outSlots[0].rawname, GS::UniString ("{@property:changed}"), "reprepare sees new name");
+            }
+        }
+
+        // Пустые поля группы: ни одного слота, схема при этом может быть
+        // непустой - sizesMatchSchema ложно, цикл элемент не примет.
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push ("{@property:out-a}");
+            rule.out_sum_paramrawname.Push ("{@property:sum-a}");
+            Spec::GroupSpec group;
+            rule.groups.Push (group);
+            const GS::Array<Spec::GroupSlotBinding> bindings = Spec::PrepareSlotBindings (rule);
+            DBtest (bindings.GetSize (), 1, "group without fields binding");
+            if (!bindings.IsEmpty ()) {
+                DBtest (bindings[0].outSlots.IsEmpty (), true, "no out slots");
+                DBtest (bindings[0].sumSlots.IsEmpty (), true, "no sum slots");
+                DBtest (bindings[0].sizesMatchSchema, false, "empty group does not match schema");
+            }
+        }
+
+        DBprnt ("SpecRegression slot bindings", "end");
+    }
+
     void TestSpecExpandGroup () {
         DBprnt ("SpecRegression expand group", "start");
 
@@ -1718,6 +1863,7 @@ namespace TestFunc {
         TestSpecMergeAndKey ();
         TestSpecRuleDedup ();
         TestSpecOutSlots ();
+        TestSpecSlotBindings ();
         TestSpecExpandGroup ();
         TestSpecGroups ();
         TestSpecOutputSchema ();

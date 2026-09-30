@@ -228,6 +228,33 @@ namespace Spec {
 
     // Выбирает из параметров групп имена свойств, которые нужно прочитать в начале обработки.
     bool OutSlotsMatchSchema (const Element &element, UInt32 outSlots, UInt32 sumSlots);
+
+    // Привязка одного выходного слота к полю группы, из которого он наполняется.
+    // Имя НЕ копируется: rule.groups на время исполнения не меняется, поэтому
+    // хранится указатель на элемент массива группы (R4.3 — привязка готовится
+    // один раз до цикла по элементам, а не на каждый источник).
+    struct SlotBinding {
+        const GS::UniString *rawname = nullptr; // Поле группы, наполняющее слот
+        bool isSumLiteral = false;              // Слот суммы начисляется константой "1"
+    };
+
+    // Привязка выходных слотов ОДНОЙ группы к её полям и к схеме правила.
+    // sizesMatchSchema — предупреждение «группа не может наполнить схему», а НЕ
+    // замена проверки внутри цикла: Push () выполняется только при успешном
+    // чтении, поэтому фактическое число слотов элемента известно лишь в цикле.
+    struct GroupSlotBinding {
+        GS::Array<SlotBinding> outSlots = {}; // Поля, наполняющие element.out_param
+        GS::Array<SlotBinding> sumSlots = {}; // Поля, наполняющие element.out_sum_param
+        UInt32 schemaOutSlots = 0;            // Сколько слотов выхода объявлено схемой правила
+        UInt32 schemaSumSlots = 0;            // Сколько слотов сумм объявлено схемой правила
+        bool sizesMatchSchema = false;        // Совпадает ли число полей группы со схемой
+    };
+
+    // Связывает поля всех групп правила с выходными слотами ОДИН раз до цикла по
+    // элементам. Возвращает ровно одну привязку на каждую группу, в том же
+    // порядке, поэтому размер равен rule.groups.GetSize ().
+    GS::Array<GroupSlotBinding> PrepareSlotBindings (const SpecRule &rule);
+
     void GetParamToReadFromRule (SpecRule &rules, ParamDictElement &paramToRead, ParamDictValue &paramToWrite);
 
     // Создаёт или настраивает элемент, который будет размещён согласно правилу.

@@ -1591,17 +1591,48 @@ namespace Spec {
     // Возвращает: количество элементов для создания/модификации
     // Примечание: при stop_on_error = true и ошибке чтения возвращает 0
     // --------------------------------------------------------------------
-    // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
     // Привязка выходных слотов элемента к схеме правила
     // Слоты заполняются позиционно, по порядку Push (), поэтому сверять их можно
     // только по ЧИСЛУ набранных значений против размеров схемы. Размеры схемы не
     // меняются во время исполнения, поэтому вычисляются один раз ДО внутреннего
     // цикла, а не на каждом элементе.
-    // --------------------------------------------------------------------
+    // ---------------------------------------------------------------------
     bool OutSlotsMatchSchema (const Element &element, UInt32 outSlots, UInt32 sumSlots) {
         if (element.out_sum_param.IsEmpty () || element.out_param.IsEmpty ())
             return false;
         return element.out_sum_param.GetSize () == sumSlots && element.out_param.GetSize () == outSlots;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Связывает поля групп с выходными слотами ОДИН раз до цикла по элементам.
+    // Типы SlotBinding / GroupSlotBinding объявлены в Spec.hpp — они же нужны
+    // тестам, которые закрепляют контракт привязки отдельно от цикла.
+    // ---------------------------------------------------------------------
+    GS::Array<GroupSlotBinding> PrepareSlotBindings (const SpecRule &rule) {
+        GS::Array<GroupSlotBinding> bindings = {};
+        const UInt32 schemaOutSlots = rule.out_paramrawname.GetSize ();
+        const UInt32 schemaSumSlots = rule.out_sum_paramrawname.GetSize ();
+        for (const GroupSpec &group : rule.groups) {
+            GroupSlotBinding binding = {};
+            binding.schemaOutSlots = schemaOutSlots;
+            binding.schemaSumSlots = schemaSumSlots;
+            for (const GS::UniString &rawname : group.out_paramrawname) {
+                SlotBinding slot = {};
+                slot.rawname = &rawname;
+                binding.outSlots.Push (slot);
+            }
+            for (const GS::UniString &rawname : group.sum_paramrawname) {
+                SlotBinding slot = {};
+                slot.rawname = &rawname;
+                slot.isSumLiteral = rawname.IsEqual ("1");
+                binding.sumSlots.Push (slot);
+            }
+            binding.sizesMatchSchema =
+                binding.outSlots.GetSize () == schemaOutSlots && binding.sumSlots.GetSize () == schemaSumSlots;
+            bindings.Push (binding);
+        }
+        return bindings;
     }
 
     // -----------------------------------------------------------------------------
@@ -1627,13 +1658,21 @@ namespace Spec {
         // во время исполнения, а сверять его приходится для каждого элемента.
         const UInt32 out_slots = rule.out_paramrawname.GetSize ();
         const UInt32 sum_slots = rule.out_sum_paramrawname.GetSize ();
+        // Привязка слотов группы к полям готовится ОДИН раз до цикла по элементам
+        // (R4.3): дальше используются только готовые указатели на имена, поэтому
+        // ни имя поля, ни признак константной суммы не вычисляются заново для
+        // каждого источника. Размер равен rule.groups.GetSize (), группы идут в
+        // том же порядке, поэтому индексы сопоставимы.
+        const GS::Array<GroupSlotBinding> slot_bindings = PrepareSlotBindings (rule);
         for (const API_Guid &elemguid : rule.elements) {
             if (rule.only_visible) {
                 if (!ACAPI_Element_Filter (
                         elemguid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay))
                     continue;
             }
-            for (const GroupSpec &group : rule.groups) {
+            for (UInt32 group_index = 0; group_index < rule.groups.GetSize (); group_index++) {
+                const GroupSpec &group = rule.groups[group_index];
+                const GroupSlotBinding &binding = slot_bindings[group_index];
                 Element element = {};
                 GS::UniString key;
                 if (!group.is_Valid)
@@ -1687,9 +1726,10 @@ namespace Spec {
                 if (!hasunic) {
                     continue;
                 }
-                for (const GS::UniString &rawname : group.sum_paramrawname) {
+                for (const SlotBinding &slot : binding.sumSlots) {
+                    const GS::UniString &rawname = *slot.rawname;
                     ParamValue pvalue = {};
-                    if (rawname.IsEqual ("1")) {
+                    if (slot.isSumLiteral) {
                         ParamHelpers::ConvertIntToParamValue (pvalue, rawname, 1);
                         element.out_sum_param.Push (pvalue);
                     } else {
@@ -1729,7 +1769,8 @@ namespace Spec {
                     }
                 } else {
                     GS::UniString key_out;
-                    for (const GS::UniString &rawname : group.out_paramrawname) {
+                    for (const SlotBinding &slot : binding.outSlots) {
+                        const GS::UniString &rawname = *slot.rawname;
                         ParamValue pvalue = {};
                         if (GetParamValue (elemguid,
                                            rawname,
