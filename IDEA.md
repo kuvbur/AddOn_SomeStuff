@@ -1040,10 +1040,9 @@ sha256 фикстуры `db1690f…` (совпал).
   `ParamHelpers::Convert*` задаёт `rawName` только если он пуст — ключ `Put`
   задавать ДО вызова.
 ### Last Checkpoint
-R6.2 — коммит этого шага (Spec.cpp, spec/SpecPlanning.hpp/.cpp,
-tests/TestSpec.cpp, tests/TestFunc.cpp, tests/TestFunc.hpp,
-Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md, IDEA.md,
-Refs: #228).
+R6.2 — `2e0433c` (Spec.cpp, spec/SpecPlanning.hpp/.cpp, tests/TestSpec.cpp,
+tests/TestFunc.cpp, tests/TestFunc.hpp, Docs/modules/spec/Spec.md,
+Docs/modules/spec/SpecPlanning.md, IDEA.md, Refs: #228).
 Предыдущий: R6.1 — `8417c0d` (Spec.cpp/.hpp, tests/TestSpec.cpp,
 tests/TestFunc.cpp, tests/TestFunc.hpp, Spec.md, IDEA.md, Refs: #228). (tests/TestSpec.cpp, tests/TestFunc.cpp,
 tests/TestFunc.hpp, Spec.md, TestFunc.md, IDEA.md, Refs: #228).
