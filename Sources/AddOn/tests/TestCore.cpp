@@ -6,8 +6,8 @@
 
     #include "Helpers.hpp"
     #include "Roombook.hpp"
-    #include "TestFunc.hpp"
-    #include "TestKit.hpp"
+    #include "tests/TestFunc.hpp"
+    #include "tests/TestKit.hpp"
 
 namespace TestFunc {
 

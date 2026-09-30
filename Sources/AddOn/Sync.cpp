@@ -16,7 +16,7 @@
 #include "pk/ResetProperty.hpp"
 #include "Propertycache.hpp"
 #ifdef TESTING
-    #include "TestFunc.hpp"
+    #include "tests/TestFunc.hpp"
 #endif
 #ifdef ServerMainVers_2800
     #include <ACAPI/MEPAdapter.hpp>

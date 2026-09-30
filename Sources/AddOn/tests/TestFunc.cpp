@@ -6,9 +6,9 @@
 
     #include "api_headers/APIEnvir.h"
 
-    #include "TestFunc.hpp"
+    #include "tests/TestFunc.hpp"
 
-    #include "TestKit.hpp"
+    #include "tests/TestKit.hpp"
 
 namespace TestFunc {
 

@@ -28,7 +28,7 @@
     #include "MEPv1.hpp"
 #endif // AC_27
 #ifdef TESTING
-    #include "TestFunc.hpp"
+    #include "tests/TestFunc.hpp"
 #endif
 
 //-----------------------------------------------------------------------------

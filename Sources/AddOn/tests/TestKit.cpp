@@ -10,7 +10,7 @@
     #include <cstdlib>
     #include <vector>
 
-    #include "TestKit.hpp"
+    #include "tests/TestKit.hpp"
 
     // Вывод в панель «Отладка» идёт тем же каналом, что и у прод-DBprnt:
     // DBPrintf (AC24+), DBPrint (AC22-23). Канал зеркалит отчёт, поэтому

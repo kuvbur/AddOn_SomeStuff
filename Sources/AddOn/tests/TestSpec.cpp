@@ -8,8 +8,8 @@
     #include "Propertycache.hpp"
     #include "spec/Spec.hpp"
     #include "Sync.hpp"
-    #include "TestFunc.hpp"
-    #include "TestKit.hpp"
+    #include "tests/TestFunc.hpp"
+    #include "tests/TestKit.hpp"
 
 namespace TestFunc {
 

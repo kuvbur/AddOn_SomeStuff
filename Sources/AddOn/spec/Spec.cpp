@@ -7,7 +7,7 @@
 
 #include "Sync.hpp"
 #ifdef TESTING
-    #include "TestFunc.hpp"
+    #include "tests/TestFunc.hpp"
 #endif
 #include "dialogs/DG4rule.hpp"
 #include "Propertycache.hpp"
