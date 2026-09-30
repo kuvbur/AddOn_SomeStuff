@@ -442,6 +442,10 @@
   функция.** Эти эффекты не тронуты: `Helpers.cpp` под замком (#228), правка
   заделала бы 26 включающих единиц. Устранение — отдельная задача с A/B по
   счётчикам формул. [по коду]
+  Ambient-путь не только существует, но и исполняется под тестами: проверки
+  `TestSpecGetParamValue` «lib formula success / result» проходят через
+  `ReadFormula` → `EvalExpression`, то есть формульный путь покрыт, а
+  `formulaCacheStats` — нет (счётчики не заведены как регрессионный признак).
 - Проверка эквивалентности мультимножеством (код без комментариев, HEAD vs
   текущий): ушли только `paramToRead`/`paramCompositeToRead`/`paramListDataToRead`
   (19/16/14) вместе с типами `ParamDictElement`/`ParamDictCompositeElement`/
