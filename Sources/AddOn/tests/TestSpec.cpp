@@ -3319,6 +3319,200 @@ namespace TestFunc {
     // прошла бы сверку чисел, и суммирование сложило бы ВЫХОДНОЙ слот вместо
     // суммарного — тихо. Это статический риск, а не наблюдавшаяся регрессия:
     // производственный BuildOutputSlots порядок соблюдает.
+    // R3.5: сценарии S01 / S17 / S24 — МЕХАНИКА ВЫБОРА. Ключевое утверждение
+    // всех трёх сценариев общее: «невыбранное корректное правило не становится
+    // ошибкой парсинга, следующий запуск не наследует прошлый выбор»
+    // (Reviews/2026-09-27_174500, строки S01/S17/S24).
+    //
+    // Обе части проверяются на подставной фикстуре, без модели и без диалога:
+    //   - «не ошибка парсинга»: parseValid выставляется РАЗБОРОМ описания, а не
+    //     выбором; снятие выбора не должно его трогать;
+    //   - «не наследует выбор»: правило создаётся заново на каждый запуск с
+    //     default-инициализацией (selected = true), и гейт IsRunnableForRun
+    //     отделён от признаков готовности.
+    //
+    // Что набор НЕ покрывает (эти части требуют модели или UI, см. IDEA.md):
+    //   - S01 «выделение» и настоящий default-правило из UI;
+    //   - S17 снятие правила в диалоге и отмена диалога/точки;
+    //   - S24 повторный запуск на одной модели, смена проекта, приостановка
+    //     групп и отсутствие роста retained memory.
+    // Эти пункты не выдаются за закрытые.
+    void TestSpecSelectionPolicy () {
+        // Рабочий синтаксис взят из существующих наборов (TestSpecParser и др.),
+        // а не придуман здесь: Fav — имя избранного, g@@u;p;f;q — группа
+        // (уникальный, читаемый, флаг, количество), s@@x;y — выходная схема.
+        const GS::UniString validDesc = "Spec_rule{Fav;g@@u;p;f;q@@s@@x;y}";
+
+        // --- S17: снятие выбора НЕ делает правило ошибкой парсинга ---
+        {
+            Spec::SpecRule rule = Spec::GetRuleFromDescription (validDesc);
+            DBtest (rule.parseValid, true, "S17 valid rule parses");
+            rule.selected = false;
+            DBtest (rule.parseValid, true, "S17 deselected rule still parses");
+            DBtest (rule.selected, false, "S17 deselection recorded");
+            // Совместимый адаптер: правило выпадает из запуска, но разбор не
+            // инвалидируется — иначе следующий запуск увидит ошибку парсинга.
+            DBtest (rule.IsRunnableForRun (), false, "S17 deselected rule not runnable");
+        }
+
+        // --- S01: невыбранное правило не влияет на выбранное ---
+        {
+            Spec::SpecRule kept = Spec::GetRuleFromDescription (validDesc);
+            Spec::SpecRule dropped = Spec::GetRuleFromDescription (validDesc);
+            dropped.selected = false;
+            DBtest (kept.IsRunnableForRun (), true, "S01 selected rule runnable");
+            DBtest (dropped.IsRunnableForRun (), false, "S01 unselected rule skipped");
+            // Снятие выбора одного правила не меняет прочие — обход идёт по
+            // словарю правил, а выбор принадлежит правилу.
+            DBtest (kept.selected, true, "S01 neighbour selection intact");
+            DBtest (kept.parseValid, true, "S01 neighbour parse intact");
+        }
+
+        // --- S24: следующий запуск не наследует прошлый выбор ---
+        {
+            // Первый «запуск»: правило создано заново, выбрано, затем снято в UI.
+            Spec::SpecRule first = Spec::GetRuleFromDescription (validDesc);
+            first.selected = false;
+            DBtest (first.selected, false, "S24 first run deselected");
+
+            // Второй «запуск»: словарь правил создаётся заново, поэтому прежний
+            // выбор не восстанавливается из переиспользованной структуры.
+            Spec::SpecRule second = Spec::GetRuleFromDescription (validDesc);
+            DBtest (second.selected, true, "S24 second run does not inherit deselection");
+            DBtest (second.parseValid, true, "S24 second run parses");
+        }
+
+        // --- S24: гейт запуска отделён от признаков готовности ---
+        {
+            Spec::SpecRule rule = Spec::GetRuleFromDescription (validDesc);
+            DBtest (rule.selected, true, "S24 default selection is true");
+            DBtest (rule.destinationReady, true, "S24 destination ready by default");
+            DBtest (rule.IsRunnableForRun (), true, "S24 fresh rule runnable");
+
+            // Находка инвентаря R3: две стадии используют РАЗНЫЕ гейты.
+            // Стадия планирования (:632) требует готовности назначения, а
+            // стадия сбора избранного (:678) — нет. Обе комбинации обязаны
+            // вести себя предсказуемо, иначе смена гейта молча сузит план чтения.
+            rule.destinationReady = false;
+            DBtest (rule.IsRunnableForRun (), false, "S24 not-ready rule blocked by run gate");
+
+            rule.destinationReady = true;
+            rule.selected = false;
+            rule.parseValid = false;
+            DBtest (rule.IsRunnableForRun (), false, "S24 invalid+unselected still blocked");
+            rule.parseValid = true;
+            DBtest (rule.IsRunnableForRun (), false, "S24 unselected blocked after parse fixed");
+        }
+
+        // --- S17/S24: выбор отделён от валидности в обе стороны ---
+        {
+            // Невалидное, но ВЫБРАННОЕ правило не должно попасть в запуск:
+            // выбор не превращает отказ разбора в успех.
+            // Отказ здесь берётся из таблицы TestSpecParseError — группа,
+            // отброшенная по несовпадению размеров со схемой (NoGroupsAccepted).
+            // Отсутствие маркера g@@ для этой цели НЕ годится: StringSplt
+            // основан на UniString::Split и всегда возвращает хотя бы одну
+            // часть, поэтому такое описание разбирается успешно (проверено в
+            // TestSpecParseError как контракт).
+            const GS::UniString brokenDesc = "Spec_rule{Fav;g@@u;p1,p2;f;q@@s@@x;y}";
+            Spec::SpecRule rule = Spec::GetRuleFromDescription (brokenDesc);
+            DBtest (rule.selected, true, "S24 broken rule selected by default");
+            DBtest (rule.parseValid, false, "S24 broken rule reported invalid");
+            DBtest (rule.IsRunnableForRun (), false, "S24 broken rule never runnable");
+            // Причина отказа не None — парсер сообщил, о чём речь.
+            DBtest (rule.parseError == Spec::ParseError::NoGroupsAccepted, true, "S24 parse error recorded");
+        }
+
+        // --- S24: выбор и разбор независимы и в обратную сторону ---
+        {
+            // Не выбранное, но вполне разобранное правило — обычное состояние
+            // запуска, а не поломка: именно это проверяет S01/S17/S24.
+            Spec::SpecRule rule = Spec::GetRuleFromDescription (validDesc);
+            DBtest (rule.parseValid, true, "S24 unselected-but-parsed parses");
+            rule.selected = false;
+            DBtest (rule.parseValid, true, "S24 unselected-but-parsed still parses");
+            DBtest (rule.parseError == Spec::ParseError::None, true, "S24 unselected-but-parsed reason None");
+        }
+
+        // --- путь «сырое описание из UI → нормализация → разбор» на реальном
+        // описании владельца (файл кгду.txt, 2026-10-01).
+        // Смысл проверки: в описании свойства знаков @ НЕТ — имена идут как
+        // `Property:АР_.../Имя`. Префикс {@property: / {@gdl: появляется только на
+        // ВЫХОДЕ разбора (ParamHelpers::NameToRawName), а NormalizeRuleDescription
+        // переписывает лишь g(/s(/gl(/gm( в g@@/s@@/... и убирает пробельный мусор.
+        // Закрепляем, что это два разных места: подстановка @ не происходит в
+        // нормализации, и описание реального вида разбирается без ручной правки.
+        {
+            const GS::UniString rawDescription =
+                "Spec_rule {\"АР_Спец_Перемычки\";"
+                " g(perem_naen[4],Property:АР_Перемычки/Собственный этаж;param_name_out[4], perem_obozn[4], perem_naen[4],"
+                " perem_ves[4],Property:АР_Перемычки/Собственный этаж;perem_nagr[4];perem_nagr[4])"
+                " s(pos,Property:АР_Перемычки/Обозначение,Property:АР_Перемычки/Наименование,Property:АР_Перемычки/Масса ед,"
+                "Property:АР_Перемычки/Собственный этаж;Property:АР_Перемычки/Количество (на этаж))}";
+
+            // 1) Нормализация сама по себе НЕ добавляет знаков @.
+            const GS::UniString normalized = Spec::NormalizeRuleDescription (rawDescription);
+            DBtest (normalized.Contains ("g@@"), true, "R3.5 real desc group normalized");
+            DBtest (normalized.Contains ("s@@"), true, "R3.5 real desc summary normalized");
+            DBtest (normalized.Contains ("Property:"), true, "R3.5 real desc keeps typed prefix");
+            DBtest (normalized.Contains ("@property:"), false, "R3.5 normalize adds no raw prefix");
+            // Пробельный мусор ("Spec_rule {" с пробелом) снят.
+            DBtest (normalized.Contains ("Spec_rule {"), false, "R3.5 real desc space trimmed");
+
+            // 2) Разбор нормализованного описания даёт правило, и префикс
+            // {@property: появляется только здесь.
+            // Числа взяты с кода, а не придуманы:
+            //   - схема s() в этом описании: выходов 5 (pos + четыре Property:),
+            //     сумм 1 (после точки с запятой). Первый выход `pos` — параметр
+            //     GDL, поэтому префикс у него {@gdl:, а не {@property:;
+            //   - группа несёт [4], поэтому ExpandGroup заменяет её ЧЕТЫРЬМЯ
+            //     группами по одной строке на каждую, и исходная группа в
+            //     rule.groups НЕ попадает (Spec.cpp:2143-2144 против :2175).
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (normalized);
+            DBtest (rule.parseValid, true, "R3.5 real desc parses");
+            DBtest (rule.groups.GetSize () == 4, true, "R3.5 real desc array expanded to 4 groups");
+            DBtest (rule.out_paramrawname.GetSize () == 5, true, "R3.5 real desc output count");
+            DBtest (rule.out_sum_paramrawname.GetSize () == 1, true, "R3.5 real desc sum count");
+            DBtest (rule.parseError == Spec::ParseError::None, true, "R3.5 real desc reason None");
+
+            // 3) Имена приходят УЖЕ с префиксом {@property: / {@gdl: — это работа
+            // NameToRawName, а не результат нормализации. Тип префикса выбирается
+            // по наличию ":" в имени описания: `pos` без двоеточия → {@gdl:.
+            DBtest (rule.out_paramrawname[0], GS::UniString ("{@gdl:pos}"), "R3.5 real desc untyped becomes gdl");
+            DBtest (rule.out_paramrawname[1].BeginsWith ("{@property:"), true, "R3.5 real desc typed keeps property");
+            DBtest (rule.out_sum_paramrawname[0].BeginsWith ("{@property:"), true, "R3.5 real desc sum raw prefix");
+
+            // 4) Ключ правила = имя выбранного элемента из кавычек.
+            DBtest (rule.favorite_name, GS::UniString ("АР_Спец_Перемычки"), "R3.5 real desc favorite name");
+        }
+
+        // --- S01/S17/S24 на ОДНОМ правиле в реальной форме описания: снятие
+        // выбора не ломает ни разбор, ни признаки готовности, а следующий
+        // запуск снова выбирает правило. Склейка предыдущих проверок в сценарий.
+        {
+            // Тот же реальный вид, что выше, но компактнее: без кириллицы и
+            // скобок в имени — форма значения та же (g( ... ) s( ... )).
+            const GS::UniString rawDescOne =
+                "Spec_rule {\"Fav\"; g(perem_naen[4],Property:S/Story;perem_nagr[4];perem_nagr[4])"
+                " s(pos,Property:S/Mark,Property:S/Name;Property:S/Qty)}";
+
+            Spec::SpecRule rule = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescOne));
+            DBtest (rule.parseValid, true, "S01 scenario parses");
+            DBtest (rule.selected, true, "S01 scenario selected by default");
+            DBtest (rule.IsRunnableForRun (), true, "S01 scenario runnable");
+
+            rule.selected = false;
+            DBtest (rule.parseValid, true, "S17 scenario deselect keeps parse");
+            DBtest (rule.IsRunnableForRun (), false, "S17 scenario deselect blocks run");
+            DBtest (rule.destinationReady, true, "S17 scenario readiness intact");
+
+            // Следующий запуск: правило создаётся заново и снова выбрано.
+            Spec::SpecRule next = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescOne));
+            DBtest (next.selected, true, "S24 scenario next run reselects");
+            DBtest (next.IsRunnableForRun (), true, "S24 scenario next run runnable");
+        }
+    }
+
     // R3.5: ГРАНИЦА ТИПОВ. Первым вынесено exsist_elements (R3.4), у него один
     // писатель. Набор фиксирует, что:
     //   - состояние запуска — отдельный тип, а не поле в SpecRule;
