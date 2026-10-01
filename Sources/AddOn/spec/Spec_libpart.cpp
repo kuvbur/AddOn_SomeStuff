@@ -47,7 +47,7 @@ namespace ListData {
     }
 
     GS::UniString GetKey (const Arm &p) {
-        GS::UniString key = "10@"; // Контрольная сумма
+        GS::UniString key = "10@";
         key.Append (p.pos);
         key.Append (ATSIGN);
         key.Append (p.klass);
@@ -65,7 +65,7 @@ namespace ListData {
     }
 
     GS::UniString GetKey (const Prokat &p) {
-        GS::UniString key = "20@"; // Контрольная сумма
+        GS::UniString key = "20@";
         key.Append (p.pos);
         key.Append (ATSIGN);
         key.Append (p.tip_konstr);
@@ -199,8 +199,8 @@ namespace ListData {
         GS::UniString pos;   // Позиция
         GS::UniString obozn; // ГОСТ
         GS::UniString naen;  // Наименование
-        double _qty = 0;          // Количество
-        double ves = 0;           // Масса ед.
+        double _qty = 0;     // Количество
+        double ves = 0;      // Масса ед.
         GS::UniString unit;  // Ед. измерения
         if (version == 3) {
             if (partstring.GetSize () < 10) {

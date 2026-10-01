@@ -7,6 +7,7 @@
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "spec/Spec.hpp"
+    #include "spec/SpecHelpers.hpp"
     #include "spec/SpecPlanning.hpp"
     #include "Sync.hpp"
     #include "tests/TestFunc.hpp"

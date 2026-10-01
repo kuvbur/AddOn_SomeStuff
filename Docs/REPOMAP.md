@@ -34,7 +34,7 @@ D:/SomeStuff_addon/
 │   │   ├── CommandBase.*, JsonCommandRegistrar.*
 │   │   ├── RoomBookCommand.*, SpecCommand.*, SyncAllCommand.*, HealthCommand.*
 │   │   └── How JSON Commands work.md
-│   ├── spec/                   # Spec engine
+│   ├── spec/                   # Spec engine (Spec.*, SpecPlanning.*, SpecHelpers.*, Spec_libpart.*)
 │   ├── table/                  # Table renderer, navigator
 │   ├── pk/                     # Automation, reset, revision
 │   ├── api_headers/            # AC API headers

@@ -33,9 +33,9 @@
 | `GetElementsForRule` | 1559 | Формирование элементов для одного правила [из комментария] |
 | `GetParamToReadFromRule` | 1294 | Параметры для предварительного чтения [из комментария] |
 | `GetElementForPlace` | 2391 | Создание/настройка элемента для размещения [из комментария] |
-| `GetSizePlaceElement` | 2436 | Размер элемента по сетке [из комментария] |
+| ~~`GetSizePlaceElement`~~ | — | **вынесен** в `spec/SpecHelpers.cpp`, карточка `SpecHelpers.md` |
 | `PlaceElements` | 2518 | Размещение сформированных элементов и заполнение параметров [из комментария] — карточка |
-| `ParamValueToDumpString` / `FillDumpFromParamDict` / `FillDumpGDLParameter` | 2757, 2779, 2799 | Сборка дампа значений элемента для #227 [по коду] |
+| ~~`ParamValueToDumpString` / `FillDumpFromParamDict` / `FillDumpGDLParameter`~~ | — | **вынесены** в `spec/SpecHelpers.cpp`, карточка `SpecHelpers.md` |
 
 ### R4.1 — нормализация описания выделена в проверяемую единицу (#228)
 - `NormalizeRuleDescription (const GS::UniString &source)` — `Spec.cpp:1222`, объявление
@@ -1145,6 +1145,7 @@
 
 ## Зависимости
 - `Helpers.hpp`, `Propertycache.hpp`, `CommonFunction.hpp` [по include]
+- `spec/SpecHelpers.hpp` — шаг сетки размещения и сборка дампа значений [по include]
 
 ## Зависимости (используется в)
 - `SomeStuff_Main.cpp` [по коду]

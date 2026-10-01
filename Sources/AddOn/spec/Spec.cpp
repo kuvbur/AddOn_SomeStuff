@@ -4,7 +4,8 @@
 #include "api_headers/APIEnvir.h"
 
 #include "spec/Spec.hpp"
-// R6.2: вклад источника (RuleContribution) — отдельный внутренний модуль.
+// вклад источника (RuleContribution) — отдельный внутренний модуль.
+#include "spec/SpecHelpers.hpp"
 #include "spec/SpecPlanning.hpp"
 #include "Sync.hpp"
 #ifdef TESTING
@@ -14,12 +15,6 @@
 #include "Propertycache.hpp"
 
 namespace Spec {
-    // Вспомогательные функции дампа (определены в конце файла) — нужны
-    // раньше по тексту, в :PlaceElements.
-    static GS::UniString ParamValueToDumpString (const ParamValue &pvalue);
-    static void FillDumpFromParamDict (const ParamDictValue &param, SpecElementDump &dump);
-    static void FillDumpGDLParameter (const API_AddParType &actParam, SpecElementDump &dump);
-
     // --------------------------------------------------------------------
     // Получение правил из свойств элемента по умолчанию
     // Назначение: ищет правила спецификации в пользовательских свойствах объекта по умолчанию
@@ -224,7 +219,7 @@ namespace Spec {
     void SpecFilter (API_Guid &elemguid, API_DatabaseInfo &homedatabaseInfo) {
         GSErrCode err = NoError;
         API_ElemTypeID elementType = GetElemTypeID (elemguid);
-        // TODO переписать на switch-case
+
         if (elementType == API_ZombieElemID) {
             elemguid = APINULLGuid;
             return;
@@ -376,7 +371,7 @@ namespace Spec {
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
             API_Guid elemguid = guidArray[i];
             API_ElemTypeID elementType = GetElemTypeID (elemguid);
-            // TODO переписать на switch-case
+
             if (elementType == API_ZombieElemID)
                 continue;
             if (elementType == API_DimensionID)
@@ -545,8 +540,7 @@ namespace Spec {
                          SpecRunResult *runResult) {
         const bool showUserInterface = placementPoint == nullptr;
         if (runResult != nullptr) {
-            // includeDetails задаётся вызывающим ДО вызова - полный сброс стёр бы
-            // его вместе со счётчиками, и дамп остался бы пустым.
+            // includeDetails задан вызывающим; сохраняем его при сбросе счётчиков.
             const bool includeDetails = runResult->includeDetails;
             *runResult = {};
             runResult->includeDetails = includeDetails;
@@ -563,7 +557,7 @@ namespace Spec {
 #else
         short i = 1;
 #endif
-        // R5.3: набор прочитанных словарей один на весь запуск. До чтения
+        // набор прочитанных словарей один на весь запуск. До чтения
         // заполняется только поле read (запросы), composite/listData — выход
         // ParamHelpers::ElementsRead.
         SpecReadContext readContext = {};
@@ -687,14 +681,12 @@ namespace Spec {
             if (pRuleFavorite == nullptr)
                 continue;
             // Сверка выходной схемы с избранным. Признак готовности ставится
-            // функцией, а не вызывающим: иначе проверка «есть ли все имена»
-            // осталась бы размазанной по SpecArray.
+            // функцией MatchDestinationProperties.
             if (!MatchDestinationProperties (rule, *pRuleFavorite, error_name))
                 continue;
             // Поиск у избранного двух служебных свойств: носителя имени правила
-            // и носителя GUID. Прежде это был один проход с двумя проверками и
-            // ранним выходом, когда найдены оба; порядок прохода и момент
-            // чтения из кэша сохранены.
+            // и носителя GUID. Поиск проверяет оба свойства и
+            // завершает обход после обнаружения обоих; значения читаются из кэша.
             const bool guidFound = ResolveFavoriteLinks (rule, *pRuleFavorite, paramToWrite);
             // Поиск существующих объектов
             if (!rule.delete_old)
@@ -750,8 +742,7 @@ namespace Spec {
                 return APIERR_CANCEL;
             }
         }
-        // R5.3: пакетное чтение остаётся здесь, на прежнем месте относительно
-        // SpecDG — переносить его в этом шаге нельзя.
+        // Пакетное чтение выполняется после SpecDG.
         ParamHelpers::ElementsRead (readContext.read, readContext.composite, readContext.listData, true, true);
         // Массив со словарями элементов для создания по правилам
         Int32 n_elements = 0; // Количество создаваемых элементов для отчёта
@@ -885,9 +876,7 @@ namespace Spec {
                             param.Add (el.subguid_rulename, paramTo);
                         }
                     }
-                    // R6.4: слот несёт и имя, и значение, поэтому индексной
-                    // рассылки больше нет — один проход по схеме. Порядок и
-                    // условия те же, что были у двух отдельных циклов.
+                    // Слот содержит имя и значение; свойства записываются в порядке схемы.
                     for (const OutputSlot &slot : el.out_slots) {
                         if (slot.isSum)
                             continue;
@@ -964,7 +953,7 @@ namespace Spec {
                 has_action = true;
         }
         // Совпадение с уже существующими объектами без изменений — это штатный no-op,
-        // а не «правило ничего не дало». Раньше такой случай попадал в APIERR_GENERAL.
+        // а не «правило ничего не дало».
         bool rule_produced_rows = false;
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
 #ifdef ServerMainVers_2800
@@ -1095,7 +1084,7 @@ namespace Spec {
                 continue;
             bool flagfindspec = false;
             // Проверяем - включено ли свойство
-            // TODO Вынести это в отдельную функцию, убрать повторение в GetElemState
+
             API_Property propertyflag = {};
             if (ACAPI_Element_GetPropertyValue (elemguid, definitions[i].guid, propertyflag) == NoError) {
 #ifndef ServerMainVers_2400
@@ -1142,7 +1131,7 @@ namespace Spec {
     // --------------------------------------------------------------------
     // -----------------------------------------------------------------------------
     // Приводит описание правила к виду, который понимает парсер.
-    // Что здесь существенно (проверено перестановками в R4.1, не умозрительно):
+    // Значимые ограничения порядка замен:
     //   - каждый блок замен ИДЁТ В ТАКОМ ПОРЯДКЕ, но ВНУТРИ блоков порядок
     //     неважен: "g(" не входит в "gl(" и "gm(" (после "g" идёт "l"/"m",
     //     а не скобка), поэтому перестановка g(/gl(/gm( ничего не меняет;
@@ -1152,7 +1141,7 @@ namespace Spec {
     //     перестанет разбираться;
     //   - шесть проходов "  " -> " " схлопывают серию пробелов до одного лишь
     //     для серий длиной до 64; более длинная серия останется не до конца
-    //     свёрнутой. Это историческая норма, менять её в этом шаге не нужно.
+    //     свёрнутой. Это ограничение нормализации.
     // Возвращает копию: исходное описание свойства не изменяется.
     // -----------------------------------------------------------------------------
     GS::UniString NormalizeRuleDescription (const GS::UniString &source) {
@@ -1161,7 +1150,7 @@ namespace Spec {
         description.ReplaceAll (LINEBRAKE, EMPTYSTRING);
         description.ReplaceAll (LINEBRAKER, EMPTYSTRING);
         description.ReplaceAll (TABSTRING, EMPTYSTRING);
-        // Схлопываем кратные пробелы (шесть проходов - историческая норма).
+        // Схлопываем кратные пробелы (шесть проходов - действующее ограничение).
         description.ReplaceAll ("  ", SPACESTRING);
         description.ReplaceAll ("  ", SPACESTRING);
         description.ReplaceAll ("  ", SPACESTRING);
@@ -1232,7 +1221,7 @@ namespace Spec {
             } else {
                 // Исходное описание печатается ЗДЕСЬ, а не берётся из парсера:
                 // парсер работает на нормализованной копии и наружу её не отдаёт
-                // (R4.4), а правило может быть отвергнуто и в AddRule-канале.
+                // а правило может быть отвергнуто и в AddRule-канале.
                 // Текст причины — константа ParseErrorText, описание не копируется
                 // повторно, сообщение собирается только для невалидного правила.
                 msg_rep ("Spec",
@@ -1246,14 +1235,9 @@ namespace Spec {
 
     // --------------------------------------------------------------------
     // Зависимости правила: что читать у источников и что потом записывать
-    // Исходная функция GetParamToReadFromRule делала три разных дела вперемешку:
-    // перечисляла зависимости, разворачивала имена в словарь одного элемента и
-    // сливала результат в общие словари запуска. R5.1 разносит их на
-    // CollectRuleDependencies (что нужно), BuildReadParamDict (как из имён
-    // получаются служебные свойства материалов и формул) и адаптер
-    // GetParamToReadFromRule (слияние, прежняя форма вызова).
-    // Порядок и кратность чтения прежние: объединение запросов между
-    // правилами не менялось.
+    // CollectRuleDependencies перечисляет зависимости, BuildReadParamDict
+    // разворачивает имена в словарь элемента, GetParamToReadFromRule
+    // объединяет запросы для всего запуска. Порядок и кратность чтения значимы.
     //
     // Сбор зависимостей не обращается к модели - это объявление данных, а не
     // их чтение. Объединение запросов делает вызывающий, потому что словари
@@ -1355,10 +1339,10 @@ namespace Spec {
         }
     }
 
-    // Адаптер прежней формы: собирает зависимости правила и сливает их в общие
+    // Адаптер: собирает зависимости правила и сливает их в общие
     // словари запуска. Объединение запросов между правилами остаётся здесь
     // (AddParamDictValue2ParamDictElement не трогает уже набранное), поэтому
-    // кратность чтения компонентов и порядок добавления прежние.
+    // кратность чтения компонентов и порядок добавления значимы.
     void GetParamToReadFromRule (SpecRule &rule, ParamDictElement &paramToRead, ParamDictValue &paramToWrite) {
         const RuleDependencies dependencies = CollectRuleDependencies (rule);
         ParamDictValue paramDict = {}; // Словарь параметров для чтения для одного элемента
@@ -1380,14 +1364,9 @@ namespace Spec {
     }
 
     // --------------------------------------------------------------------
-    // R5.2: разрешение избранного, служебных полей и старых объектов.
-    // Прежде это был один плотный блок внутри SpecArray, где смешаны сверка
-    // выходной схемы с избранным, поиск двух служебных свойств по описанию,
-    // отбор ранее созданных элементов и добавление запросов на их чтение.
-    // Вынесено по одной операции на функцию; МОМЕНТ вызова относительно диалога
-    // НЕ менялся (разрешение осталось до SpecDG) — это требование плана.
-    // Порядок чтений и все ранние выходы сохранены дословно, включая отказ
-    // кэшировать неудачное чтение (см. ResolveFavoriteLinks).
+    // Разрешение избранного, служебных полей и существующих объектов
+    // выполняется до SpecDG. Неудачное чтение не кэшируется
+    // (см. ResolveFavoriteLinks).
     // --------------------------------------------------------------------
 
     // Сверяет выходную схему правила с набором свойств избранного: все имена
@@ -1418,9 +1397,8 @@ namespace Spec {
     //       (свойство, найденное по маркеру и слову "sync_guid");
     //   описание со словом "spec_rule_name"      -> subguid_rulename.
     // Значения берутся из кэша свойств; при неудаче чтение НЕ кэшируется и
-    // переход к следующему свойству сохраняется — кэшировать неудачу по новой
-    // политике запрещено без F (R5.2 плана). Возвращает признак, что
-    // носитель GUID найден; прежде это был локальный flag_find.
+    // переход к следующему свойству выполняется без кэширования неудачи.
+    // Возвращает признак, что носитель GUID найден.
     bool ResolveFavoriteLinks (SpecRule &rule,
                                const GS::HashTable<GS::UniString, GS::UniString> &favorite,
                                ParamDictValue &paramToWrite) {
@@ -1482,7 +1460,7 @@ namespace Spec {
             rule.runState.exsist_elements = found;
             return;
         }
-        // Не присваивание, а ДОПИСЫВАНИЕ: прежде здесь был Push, и поле к
+        // Не присваивание, а ДОПИСЫВАНИЕ: поле к
         // этому моменту не очищается. Присваивание изменило бы поведение в
         // случае непустого runState.exsist_elements на входе (сейчас безопасен только
         // тем, что словарь правил создаётся заново на каждый запуск).
@@ -1522,7 +1500,7 @@ namespace Spec {
     // Параметры:
     //   elemguid - GUID элемента
     //   rawname - "сырое" имя параметра (с префиксами @property:, @material:, @formula:, @gdl:)
-    //   context - набор прочитанных словарей (R5.3; заполняется ElementsRead)
+    //   context - набор прочитанных словарей (заполняется ElementsRead)
     //   pvalue - [OUT] полученное значение
     //   fromMaterial - флаг: читать из материалов слоев конструкции
     //   n_layer - номер слоя материала
@@ -1540,8 +1518,7 @@ namespace Spec {
     // Читает одно значение параметра для конкретного элемента.
     // Поддерживаются обычные свойства, формулы, материалы слоёв и данные из list-data.
     // -----------------------------------------------------------------------------
-    // Тело прежней GetParamValue перенесено дословно; изменились только сигнатура
-    // и обращения к словарям (context -> context поля контекста, без изменений).
+    // Значения читаются из полей контекста.
     bool SpecValueReader::Read (const API_Guid &elemguid,
                                 const GS::UniString &rawname,
                                 ParamValue &pvalue,
@@ -1658,7 +1635,7 @@ namespace Spec {
     // Назначение: обрабатывает элементы согласно правилу и группирует их
     // Параметры:
     //   rule - правило спецификации (содержит группы, параметры для чтения/записи)
-    //   context - набор прочитанных словарей (R5.3)
+    //   context - набор прочитанных словарей
     //   elements - [OUT] словарь создаваемых элементов (ключ - уникальная комбинация)
     //   elements_mod - [OUT] словарь модифицируемых элементов (для delete_old)
     //   elements_delete - [OUT] массив удаляемых устаревших элементов
@@ -1683,7 +1660,7 @@ namespace Spec {
     // цикла, а не на каждом элементе.
     // ---------------------------------------------------------------------
     bool OutSlotsMatchSchema (const Element &element, UInt32 outSlots, UInt32 sumSlots) {
-        // R7.4: сверка по СХЕМЕ СЛОТОВ, а не по прежним массивам. Условие прежнее
+        // Сверка по схеме слотов; условие
         // (ни один набор не пуст, числа совпадают).
         if (element.out_slots.IsEmpty ())
             return false;
@@ -1718,8 +1695,7 @@ namespace Spec {
 
     // -----------------------------------------------------------------------------
     // Связывает поля групп с выходными слотами ОДИН раз до цикла по элементам.
-    // Типы SlotBinding / GroupSlotBinding объявлены в Spec.hpp — они же нужны
-    // тестам, которые закрепляют контракт привязки отдельно от цикла.
+    // Типы SlotBinding / GroupSlotBinding объявлены в Spec.hpp.
     // ---------------------------------------------------------------------
     GS::Array<GroupSlotBinding> PrepareSlotBindings (const SpecRule &rule) {
         GS::Array<GroupSlotBinding> bindings = {};
@@ -1749,8 +1725,8 @@ namespace Spec {
 
     // -----------------------------------------------------------------------------
     // Видимость источника на момент расчёта.
-    // Прежде это был встроенный if прямо в заголовеке цикла по элементам. Вызов,
-    // флаги и порядок не изменились (R5.4): тот же ACAPI_Element_Filter, те же три
+    // Проверка видимости выполняется в цикле по элементам: ACAPI_Element_Filter
+    // вызывается с тремя
     // флага, по одному разу на элемент, до чтения любых значений.
     // -----------------------------------------------------------------------------
     bool IsSourceVisible (const API_Guid &elemguid, bool onlyVisible) {
@@ -1760,13 +1736,8 @@ namespace Spec {
                                      APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
     }
 
-    // R6.1: расчётная часть правила — всё, что происходит ДО сверки
-    // существующих строк. Контейнеры прежние (out_param, elements, счётчики),
-    // ключи не тронуты: это чистый вынос, а не изменение модели.
-    // Единственное отличие — точка возврата: раньше тело доходило до
-    // delete_old внутри функции, теперь вызывающая решает, идти ли дальше.
-    // Ничего не создаётся и не удаляется здесь: только чтение и наполнение
-    // словарей. Именно это делает результат проверяемым без модели (выход R6).
+    // Расчётная часть правила заполняет out_param, elements и счётчики до
+    // сверки существующих строк. Здесь нет создания или удаления в модели.
     // ----------------------------------------------------------------------------
     Int32 PlanRuleRows (SpecRule &rule,
                         const SpecReadContext &context,
@@ -1779,25 +1750,24 @@ namespace Spec {
         ParamDict not_found_unic = {};
         Int32 n_elements = 0;
         FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
-        // out_param передан вызывающим (R6.1): ключ - уникальные значения,
-        // значение - выходящие параметры. Локального объявления больше нет,
-        // иначе оно затеняло бы параметр и молча обнуляло словарь на каждый вызов.
+        // out_param передан вызывающим: ключ - уникальные значения,
+        // значение - выходящие параметры. Словарь передаётся вызывающим кодом.
         // Число выходных слотов берётся из схемы правила ОДИН раз: оно не меняется
         // во время исполнения, а сверять его приходится для каждого элемента.
         const UInt32 out_slots = rule.out_paramrawname.GetSize ();
         const UInt32 sum_slots = rule.out_sum_paramrawname.GetSize ();
         // Привязка слотов группы к полям готовится ОДИН раз до цикла по элементам
-        // (R4.3): дальше используются только готовые указатели на имена, поэтому
+        // Далее используются готовые указатели на имена, поэтому
         // ни имя поля, ни признак константной суммы не вычисляются заново для
         // каждого источника. Размер равен rule.groups.GetSize (), группы идут в
         // том же порядке, поэтому индексы сопоставимы.
         const GS::Array<GroupSlotBinding> slot_bindings = PrepareSlotBindings (rule);
-        // R5.4: единственный reader на всё правило. Значения он только читает, а
+        // Один reader на всё правило. Значения он только читает, а
         // число чтений задаёт вычислитель, поэтому изменить прочитанные данные
         // «по ходу» нельзя.
         const SpecValueReader reader (context);
         for (const API_Guid &elemguid : rule.elements) {
-            // Видимость проверяется до чтения любых значений, как и до выноса.
+            // Видимость проверяется до чтения любых значений, как и начала расчёта.
             if (!IsSourceVisible (elemguid, rule.only_visible))
                 continue;
             for (UInt32 group_index = 0; group_index < rule.groups.GetSize (); group_index++) {
@@ -1805,16 +1775,15 @@ namespace Spec {
                 const GroupSlotBinding &binding = slot_bindings[group_index];
                 if (!group.is_Valid)
                     continue;
-                // R6.2: вклад одного источника (новый внутренний модуль
-                // SpecPlanning). Фаза 1 — флаг, уникальные параметры, ключ и
+                // Вклад одного источника: фаза 1 — флаг, уникальные параметры, ключ и
                 // суммируемые слоты; фаза 2 (выходные слоты) вызывается ниже,
                 // только для первого представителя ключа. Число и порядок
-                // чтений не изменились: флаг -> уникальные -> суммы -> выход.
+                // чтений: флаг -> уникальные -> суммы -> выход.
                 const RuleContribution contribution = BuildContribution (
                     elemguid, group_index, group, binding, reader, not_found_paramname, not_found_unic);
                 GS::UniString key = contribution.key;
-                // R7.3: полнота чтения считается по САМОМУ вкладу, а не по
-                // словарям not_found_*. Те хранят только засобочённые поля
+                // полнота чтения считается по САМОМУ вкладу, а не по
+                // словарям not_found_*. Те хранят только поля, по которым выведено сообщение
                 // (политика повторов, зависит от stop_on_error), поэтому при
                 // stop_on_error = false показали бы «полное чтение» там, где
                 // поля действительно не прочитаны. Ни одно условие ниже этого
@@ -1827,9 +1796,8 @@ namespace Spec {
                 // SchemaMismatch инкремент не делается вовсе.
                 bool partialThisContribution = false;
                 // ВСЕ вклады, включая отклонённые: непрочитанное уникальное поле
-                // делает чтение неполным, и это должен видеть план. Раньше здесь
-                // стояло «!= Excluded», из-за чего пропадало ровно то, что F1
-                // запрещает молчать.
+                // делает чтение неполным; это отражается в плане. Здесь
+                // учитывается даже для исключённых вкладов.
                 if (plan) {
                     plan->contributionsTotal += 1;
                     plan->notFoundUnicCount += contribution.missingUnic.GetSize ();
@@ -1842,7 +1810,7 @@ namespace Spec {
                     // missingOut уже заполнен.
                     // Неполнота РАСЧЁТА засчитывается только для вкладов, дошедших
                     // до фазы сумм. Вклад без уникального ключа возвращается
-                    // раньше, и его hasSumSlots остался невыставленным — считать
+                    // до чтения сумм, и его hasSumSlots не выставлен — считать
                     // его «неполным расчётом» значило бы задваивать одну и ту же
                     // неполноту, уже учтённую в notFoundUnicCount. Здесь речь о
                     // схеме и суммах, там — о чтении: признаки разные.
@@ -1856,9 +1824,9 @@ namespace Spec {
                         plan->contributionsPartial += 1;
                     }
                 }
-                // Политика отказов осталась здесь, снаружи вклада: вклад лишь
+                // Политика отказов задаётся здесь: вклад лишь
                 // сообщает, ЧТО не прочитано, а решение (писать ли отчёт, вести
-                // ли счётчик, останавливать ли правило) — по-прежнему здесь.
+                // ли счётчик, останавливать ли правило) — здесь.
                 if (contribution.status == ContributionStatus::Excluded) {
                     if (!contribution.missingUnic.IsEmpty ()) {
                         for (const Spec::MissingField &field : contribution.missingUnic) {
@@ -1873,9 +1841,7 @@ namespace Spec {
                     }
                     continue;
                 }
-                // Отчёт по непрочитанным полям суммы. Раньше он стоял в ветке
-                // отказа чтения суммы; теперь чтение живёт во вкладе, а решение
-                // (писать ли отчёт, вести ли счётчик) осталось здесь.
+                // Отчёт по непрочитанным полям суммы формируется здесь при stop_on_error.
                 for (const Spec::MissingField &field : contribution.missingSum) {
                     if (field.isError && rule.stop_on_error &&
                         !not_found_paramname.ContainsKey ("sum:" + field.rawname)) {
@@ -1886,7 +1852,7 @@ namespace Spec {
                     }
                 }
 
-                // R6.2 фаза 2: выходные слоты читаются ТОЛЬКО для первого
+                // выходные слоты читаются ТОЛЬКО для первого
                 // представителя ключа. Решение «первый ли это ключ» принимает
                 // раскладка ниже, поэтому фаза 2 вызывается лишь когда ключа
                 // ещё нет в словаре строк.
@@ -1894,7 +1860,7 @@ namespace Spec {
                 if (!elements.ContainsKey (key))
                     ReadContributionOutputs (elemguid, group, binding, reader, fstr, rowContribution);
                 // Отчёт по непрочитанным полям выхода: только для первого
-                // представителя, как и раньше.
+                // представителя ключа.
                 if (plan)
                     plan->notFoundParamCount += rowContribution.missingOut.GetSize ();
                 for (const Spec::MissingField &field : rowContribution.missingOut) {
@@ -1905,8 +1871,7 @@ namespace Spec {
                     }
                 }
 
-                // R6.3: раскладка вклада в строку — вынесена и проверяема
-                // отдельно. Суммирование неполных массивов сохранено дословно.
+                // Раскладка вклада в строку суммирует только общие допустимые слоты.
                 const RowAddition addition =
                     AddContributionToRow (elements, rowContribution, rule, out_slots, sum_slots, out_param);
                 if (addition == RowAddition::Created) {
@@ -1915,7 +1880,7 @@ namespace Spec {
                     // contributionsPartial здесь НЕ инкрементится: вклад с
                     // несовпадением схемы уже помечен partialThisContribution,
                     // потому что несовпадение и есть следствие неполного чтения.
-                    // schemaMismatchCount — отдельная причина, для F1.
+                    // schemaMismatchCount отдельно учитывает несовпадение со схемой.
                     if (plan) {
                         plan->schemaMismatchCount += 1;
                         if (!partialThisContribution)
@@ -1983,9 +1948,8 @@ namespace Spec {
                 return 0;
             }
         }
-        // Прежде расчёт был частью GetElementsForRule и возвращал n_elements
-        // перед веткой delete_old. Возврат сохранён: без него число созданных
-        // строк потерялось бы на пути без отказов.
+        // Возвращаем число рассчитанных строк
+        // независимо от необходимости сверки существующих объектов.
         return n_elements;
     }
 
@@ -1998,29 +1962,22 @@ namespace Spec {
                               bool showUserInterface,
                               SpecChangePlan *plan) {
         Int32 n_elements = 0;
-        // R6.1: расчёт вынесен. out_param — тот же словарь, что и раньше: он
+        // out_param — словарь рассчитанных строк: он
         // строится в расчётной части и читается в сверке существующих строк.
-        // Ключи строк и порядок не менялись.
+
         GS::HashTable<GS::UniString, GS::UniString> out_param = {};
-        // Сверка существующих строк читает значения тем же reader и печатает тем
-        // же форматом, что и расчётная часть. Локальные reader/fstr переехали
-        // вместе с вынесенным телом, поэтому здесь объявляются свои — объекты
-        // те же по составу (контекст один на правило, формат ".2m" разбирается
-        // из одной и той же строки), читателей у контекста по-прежнему много,
-        // писателей нет. R7 вынесет саму сверку и сведёт их в одно место.
+        // Для сверки существующих строк используется тот же контекст чтения
+        // и формат ".2m"; расчёт и сверка не изменяют контекст.
         const SpecValueReader reader (context);
         FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
-        // R7.3: план получает полноту чтения/расчёта из расчётной части.
+        // план получает полноту чтения/расчёта из расчётной части.
         // Передаётся и когда сверка не пойдёт (delete_old = false): неполное
         // чтение делает расчёт недостоверным независимо от того, удаляются ли
-        // старые строки. Политика — дело F1, здесь только факт.
+        // существующие строки. Здесь фиксируется полнота без решения о применении.
         n_elements = PlanRuleRows (rule, context, elements, error_element, showUserInterface, out_param, plan);
         if (!rule.delete_old)
             return n_elements;
-        // R7.2: сверка вынесена в SpecPlanning (ReconcileExistingRows) без
-        // изменения порядка операций. Число чтений то же: 4 здесь были и там
-        // остались; reader и fstr — те же объекты по составу, что и до переноса.
-        // R7.3: план наблюдает решение сверки, но не становится вторым
+        // Сверка заполняет фактические списки и план; план не становится вторым
         // источником истины — тот же вызов пишет и фактические списки.
         SpecChangePlan localPlan = {};
         if (plan == nullptr)
@@ -2029,7 +1986,7 @@ namespace Spec {
         ReconcileExistingRows (rule, reader, fstr, out_param, elements, elements_mod, elements_delete, plan);
         if (!plan->Matches (elements_mod, elements_delete)) {
             // Страховка: план и фактические списки пишутся из одних точек, так
-            // что расхождение означало бы правку кода, а не гонку.
+            // что расхождение указывает на нарушение согласованности списков.
             msg_rep ("Spec", "SpecChangePlan mismatch", NoError, APINULLGuid);
         }
         n_elements = 0;
@@ -2061,8 +2018,7 @@ namespace Spec {
     // --------------------------------------------------------------------
     // -----------------------------------------------------------------------------
     // Причина отказа в разборе описания правила.
-    // Заполняется в тех же точках, где сбрасывается parseValid, поэтому набор
-    // значений и число точек сброса обязаны совпадать (закреплено тестом).
+    // Код ошибки устанавливается при сбросе parseValid.
     // Текст — константа, а не собранная строка: при разборе большой модели
     // описание правила не должно копироваться ради сообщения.
     // -----------------------------------------------------------------------------
@@ -2093,7 +2049,7 @@ namespace Spec {
     // Имя проверяется в нижнем регистре и по МЕСТУ "pec_rule", а не по префиксу
     // целиком: сравнение с "pec_rule_km" описывает вхождение в любой части строки,
     // поэтому правило вида "Spec_rule_my_km_data" тоже получит политику KM.
-    // Порядок ветвления значим: v2 проверяется раньше v3, а v3 раньше KM/KZH, и
+    // Порядок ветвления значим: v2 проверяется перед v3, а v3 перед KM/KZH, и
     // первый совпавший вариант выигрывает. Политика KM/KZH затем перекрывает
     // значения v2/v3 (delete_old=false, stop_on_error=false, only_visible=true).
     // Всё остальное - разбор групп и полей - делает GetRuleFromDescription.
@@ -2390,7 +2346,7 @@ namespace Spec {
                     msg_rep ("Spec", "Check if the number of quantity parameters matches", NoError, APINULLGuid);
                 }
             }
-            // Раскрытие группы - вынесено в ExpandGroup ()
+            // ExpandGroup раскрывает поля группы в схему правила.
             ExpandGroup (group, min_row, rule);
         }
         return true;
@@ -2485,13 +2441,13 @@ namespace Spec {
         }
         if (!ParseOutputSchema (rulestring_summ[1], local_scratch, rule))
             return rule;
-        // Разбор групп g() - вынесено в ParseGroups ()
+        // ParseGroups разбирает группы g() правила.
         if (!ParseGroups (rulestring_summ[0], local_scratch, rule))
             return rule;
         // Финальные проверки идут каскадом и не прерываются: пустое описание
         // нарушает все три условия сразу. Поэтому пишется ПОСЛЕДНЯЯ сработавшая
         // причина, а не первая. Порядок проверок менять нельзя, не меняя эту
-        // договорённость (закреплено тестом на пустой выходной схеме).
+        // договорённость.
         if (rule.groups.IsEmpty ()) {
             rule.parseValid = false;
             rule.parseError = ParseError::NoGroupsAccepted;
@@ -2663,84 +2619,6 @@ namespace Spec {
     }
 
     // --------------------------------------------------------------------
-    // Определение размеров элемента для размещения по сетке
-    // Назначение: читает GDL-параметры элемента и определяет шаг сетки при размещении
-    // Параметры:
-    //   elementt - элемент (не используется, но нужен для совместимости с сигнатурой)
-    //   memot - memo-структура элемента (содержит GDL-параметры)
-    //   dx - [OUT] шаг по горизонтали
-    //   dy - [OUT] шаг по вертикали
-    // Алгоритм:
-    //   1. Ищет параметры "somestuff_spec_hrow" (высота строки) и "somestuff_spec_bcol" (ширина колонки)
-    //   2. Ищет параметр "show_type" (тип отображения)
-    //   3. Если show_type=1 - размещение сверху вниз (dx=0, dy=somestuff_spec_hrow)
-    //   4. Если show_type=2 или 3 - размещение по сетке (dx=somestuff_spec_bcol, dy=somestuff_spec_hrow)
-    //   5. Если нет show_type - пытается использовать параметры "A" и "B" как размеры
-    // Возвращает: true, если элементы размещаются сверху вниз (show_type=1 или есть somestuff_spec_hrow)
-    // --------------------------------------------------------------------
-    bool GetSizePlaceElement (const API_Element &elementt, const API_ElementMemo &memot, double &dx, double &dy) {
-        bool flag_find_dx = false;
-        bool flag_find_dy = false;
-        bool flag_find_type = false;
-        double somestuff_spec_hrow = 0;
-        double somestuff_spec_bcol = 0;
-        Int32 show_type = 0;
-        if (memot.params == nullptr)
-            return false;
-        const GSSize nParams = BMGetHandleSize ((GSHandle)memot.params) / sizeof (API_AddParType);
-        for (GSIndex ii = 0; ii < nParams; ++ii) {
-            API_AddParType &actParam = (*memot.params)[ii];
-            GS::UniString name = GS::UniString (actParam.name);
-            if (name.IsEqual ("somestuff_spec_hrow")) {
-                somestuff_spec_hrow = actParam.value.real;
-                flag_find_dx = true;
-            }
-            if (name.IsEqual ("somestuff_spec_bcol")) {
-                somestuff_spec_bcol = actParam.value.real;
-                flag_find_dy = true;
-            }
-            if (name.IsEqual ("show_type")) {
-                show_type = DoubleToInt32 (actParam.value.real, "Spec", "параметр show_type");
-                flag_find_type = true;
-            }
-            if (flag_find_dx && flag_find_dy && flag_find_type)
-                break;
-        }
-        if (flag_find_type) {
-            if (show_type == 1) {
-                dx = 0;
-                dy = somestuff_spec_hrow;
-                return true;
-            }
-            if (show_type == 2 || show_type == 3) {
-                dx = somestuff_spec_bcol;
-                dy = somestuff_spec_hrow;
-                return false;
-            }
-        }
-        if (flag_find_dx) {
-            dx = 0;
-            dy = somestuff_spec_hrow;
-            return true;
-        }
-        for (GSIndex ii = 0; ii < nParams; ++ii) {
-            API_AddParType &actParam = (*memot.params)[ii];
-            GS::UniString name = GS::UniString (actParam.name);
-            if (name.IsEqual ("A") && !flag_find_dx) {
-                dx = actParam.value.real;
-                flag_find_dx = true;
-            }
-            if (name.IsEqual ("B") && !flag_find_dy) {
-                dy = actParam.value.real;
-                flag_find_dy = true;
-            }
-            if (flag_find_dx && flag_find_dy)
-                return false;
-        }
-        return false;
-    }
-
-    // --------------------------------------------------------------------
     // Размещение создаваемых элементов спецификации
     // Назначение: создаёт элементы на чертеже на основе словаря elementstocreate
     // Параметры:
@@ -2844,9 +2722,7 @@ namespace Spec {
                         }
                     }
                     // GDL параметры сразу запишем в memo
-                    // R6.4: слот несёт и имя, и значение, поэтому индексной
-                    // рассылки больше нет — один проход по схеме. Порядок и
-                    // условия те же, что были у двух отдельных циклов.
+                    // Слот содержит имя и значение; свойства записываются в порядке схемы.
                     for (const OutputSlot &slot : el.out_slots) {
                         if (slot.isSum)
                             continue;
@@ -2999,70 +2875,6 @@ namespace Spec {
                 msg_rep ("Spec", "APIAny_RunGDLParScriptID", err, APINULLGuid);
         }
         return NoError;
-    }
-
-    // -----------------------------------------------------------------------------
-    // Перевод значения параметра в строку для дампа.
-    // Повторяет формат ParamHelpers::ToString, но без DBBREAK в ветке неизвестного
-    // типа: дамп — диагностический вывод и не должен прерывать построение.
-    // -----------------------------------------------------------------------------
-    static GS::UniString ParamValueToDumpString (const ParamValue &pvalue) {
-        switch (pvalue.val.type) {
-        case API_PropertyIntegerValueType:
-            return FormatStringFunc::NumToString (pvalue.val.intValue, pvalue.val.formatstring);
-        case API_PropertyRealValueType:
-            return FormatStringFunc::NumToString (pvalue.val.doubleValue, pvalue.val.formatstring);
-        case API_PropertyStringValueType:
-            return pvalue.val.uniStringValue;
-        case API_PropertyBooleanValueType:
-            return GS::ValueToUniString (pvalue.val.boolValue);
-        case API_PropertyGuidValueType:
-            return APIGuidToString (pvalue.val.guidval);
-        default:
-            return EMPTYSTRING;
-        }
-    }
-
-    // -----------------------------------------------------------------------------
-    // Заполняет дамп элемента по словарю записываемых параметров.
-    // GDL-параметры (rawname с префиксом {@gdl:}) в properties не попадают — они
-    // пишутся в memo и в paramOut отсутствуют, их пишет :FillDumpGDLParameter.
-    // -----------------------------------------------------------------------------
-    static void FillDumpFromParamDict (const ParamDictValue &param, SpecElementDump &dump) {
-        for (ParamDictValue::ConstPairIterator cIt = param.EnumeratePairs (); cIt != NULL; ++cIt) {
-#ifdef ServerMainVers_2800
-            const GS::UniString rawname = cIt->key;
-            const ParamValue &pvalue = cIt->value;
-#else
-            const GS::UniString rawname = *cIt->key;
-            const ParamValue &pvalue = *cIt->value;
-#endif
-            if (!pvalue.isValid || rawname.BeginsWith (GDLNAMEPREFIX))
-                continue;
-            dump.properties.Add (rawname, ParamValueToDumpString (pvalue));
-        }
-    }
-
-    // -----------------------------------------------------------------------------
-    // Записывает в дамп фактическое значение GDL-параметра - то, что кладётся
-    // в API_AddParType перед ACAPI_Element_Create, а не то, что было в ParamValue:
-    // приведение к типу параметра может изменить значение.
-    // -----------------------------------------------------------------------------
-    static void FillDumpGDLParameter (const API_AddParType &actParam, SpecElementDump &dump) {
-        GS::UniString rawname = GDLNAMEPREFIX + GS::UniString (actParam.name).ToLowerCase () + BRACEEND;
-        GS::UniString value;
-        switch (actParam.typeID) {
-        case APIParT_CString:
-        case APIParT_Title:
-            value = GS::UniString (actParam.value.uStr);
-            break;
-        default:
-            // Остальные типы хранятся в объединении как double, включая
-            // целочисленные и логические (проверено по коду записи в memo).
-            value = GS::UniString::Printf ("%g", actParam.value.real);
-            break;
-        }
-        dump.gdlParameters.Add (rawname, value);
     }
 
 } // namespace Spec

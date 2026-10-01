@@ -159,8 +159,7 @@ broken/unverified state.
 
 Code changes only: every user wish and every bug (found or fixed) →
 GitHub issue in `kuvbur/AddOn_SomeStuff` FIRST (`gh` CLI; workflow —
-skill `addon-somestuff-issues`). Backlink in `IDEA.md` and
-`Reviews/*.tracker.csv` (column `issue`). Dedup check before creating —
+skill `addon-somestuff-issues`). Backlink in `IDEA.md`. Dedup check before creating —
 an existing issue may already cover it (comment there instead). Commit
 that closes it: `Refs: #N`.
 
@@ -319,7 +318,7 @@ and `_generated/`.
 
 Landmine — docs live in `master` only, there is no separate doc
 branch, and don't name one when looking for missing docs: if a
-`Docs/` change isn't in `master`, verify the *content*
+`Docs/` change isn't in `master`, verify the _content_
 (`git log --oneline -1 master -- Docs/`, or whether a card mentions
 recent work) instead of hunting for another branch.
 

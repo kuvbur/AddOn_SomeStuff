@@ -2646,27 +2646,6 @@
     "line": 1011
   },
   {
-    "name": "Spec::ParamValueToDumpString",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 18
-  },
-  {
-    "name": "Spec::FillDumpFromParamDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 19
-  },
-  {
-    "name": "Spec::FillDumpGDLParameter",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 20
-  },
-  {
     "name": "Spec::GetRuleFromDefaultElem",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
@@ -2686,13 +2665,6 @@
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 222
-  },
-  {
-    "name": "Spec::SpecFilter",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 366
   },
   {
     "name": "Spec::SpecDG",
@@ -2814,39 +2786,11 @@
     "line": 2537
   },
   {
-    "name": "Spec::GetSizePlaceElement",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2582
-  },
-  {
     "name": "Spec::PlaceElements",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
     "line": 2664
-  },
-  {
-    "name": "Spec::ParamValueToDumpString",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2903
-  },
-  {
-    "name": "Spec::FillDumpFromParamDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2925
-  },
-  {
-    "name": "Spec::FillDumpGDLParameter",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2945
   },
   {
     "name": "ListData::GetSubposKey",
@@ -6587,10 +6531,31 @@
     "line": 84
   },
   {
-    "name": "TestFunc::ResetSyncPropertyOne",
+    "name": "Spec::GetSizePlaceElement",
     "kind": "Function",
-    "file": "Sources/AddOn/tests/TestUtil.cpp",
-    "module": "tests",
-    "line": 84
+    "file": "Sources/AddOn/spec/SpecHelpers.cpp",
+    "module": "spec",
+    "line": 27
+  },
+  {
+    "name": "Spec::ParamValueToDumpString",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecHelpers.cpp",
+    "module": "spec",
+    "line": 92
+  },
+  {
+    "name": "Spec::FillDumpFromParamDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecHelpers.cpp",
+    "module": "spec",
+    "line": 112
+  },
+  {
+    "name": "Spec::FillDumpGDLParameter",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecHelpers.cpp",
+    "module": "spec",
+    "line": 130
   }
 ]
