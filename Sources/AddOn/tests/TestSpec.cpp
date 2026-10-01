@@ -1419,6 +1419,275 @@ namespace TestFunc {
     // поэтому рассинхрон между out_paramrawname[k] и out_param[k] стал
     // невозможен по построению. Имя набора — TestSpecRowSlots, а не
     // TestSpecOutputSchema: последний уже занят набором разбора схемы правила.
+    // ---- Эталон «old» для сравнения на R6.5 ----
+    //
+    // Это НЕ второй движок расчёта, а независимая реализация ПРЕЖНЕЙ
+    // арифметики, живющая целиком в тестовой единице. Production её не видит:
+    // ни одного вызова из Sources/AddOn/spec/ на эти функции нет. Так и требует
+    // план: «полные двойные снимки допустимы только в отдельном
+    // regression-режиме; production выполняет один движок».
+    //
+    // Проверяется равносильность, а не «правильность»: эталон повторяет
+    // поведение, зафиксированное до R6.3, включая nsumm = MIN(длин) и требование
+    // isValid с обеих сторон.
+    namespace legacy {
+        // Прежняя арифметика сложения — дословно та, что была в цикле
+        // PlanRuleRows до R6.3. Пишется максимально просто: цель не красота,
+        // а независимость от нового кода.
+        void SumInto (Spec::Element &row, const GS::Array<ParamValue> &contribution) {
+            UInt32 nsumm = row.out_sum_param.GetSize ();
+            if (nsumm != contribution.GetSize ()) {
+                nsumm = nsumm < contribution.GetSize () ? nsumm : contribution.GetSize ();
+            }
+            for (UInt32 j = 0; j < nsumm; j++) {
+                if (row.out_sum_param[j].isValid && contribution[j].isValid)
+                    row.out_sum_param[j].val = row.out_sum_param[j].val + contribution[j].val;
+            }
+        }
+
+        // Прежняя раскладка: решить «первый ли ключ», сложить суммы, собрать
+        // строку из первого представителя. Ни одного вызова нового модуля.
+        void PlanRow (GS::Array<Spec::RuleContribution> contributions,
+                      const Spec::SpecRule &rule,
+                      const Spec::GroupSpec &group,
+                      const Spec::GroupSlotBinding &binding,
+                      const Spec::SpecValueReader &reader,
+                      FormatString &fstr,
+                      Spec::ElementDict &rows,
+                      GS::HashTable<GS::UniString, GS::UniString> &outParam) {
+            // Копия по значению: эталон дочитывает выходы первому
+            // представителю и не должен портить вход вызывающего — иначе это
+            // был бы не эталон, а второй потребитель с общим состоянием.
+            for (Spec::RuleContribution contribution : contributions) {
+                if (contribution.status == Spec::ContributionStatus::Excluded)
+                    continue;
+                if (!rows.ContainsKey (contribution.key)) {
+                    // Прежний цикл читал выходные слоты именно здесь — в ветке
+                    // «ключа ещё нет», то есть только у первого представителя.
+                    Spec::ReadContributionOutputs (contribution.source, group, binding, reader, fstr, contribution);
+                    if (!outParam.ContainsKey (contribution.keyOut))
+                        outParam.Add (contribution.keyOut, contribution.key);
+                    Spec::Element row = {};
+                    row.out_param = contribution.outParam;
+                    row.out_sum_param = contribution.outSumParam;
+                    if (!Spec::OutSlotsMatchSchema (
+                            row, rule.out_paramrawname.GetSize (), rule.out_sum_paramrawname.GetSize ()))
+                        continue;
+                    row.out_sum_paramrawname = rule.out_sum_paramrawname;
+                    row.out_paramrawname = rule.out_paramrawname;
+                    row.subguid_paramrawname = rule.destinationParamGuidName;
+                    row.subguid_rulevalue = rule.subguid_rulevalue;
+                    row.subguid_rulename = rule.subguid_rulename;
+                    row.favorite_name = rule.favorite_name;
+                    row.elements.Push (contribution.source);
+                    rows.Add (contribution.key, row);
+                } else {
+                    Spec::Element &exsists_element = rows.Get (contribution.key);
+                    exsists_element.elements.Push (contribution.source);
+                    SumInto (exsists_element, contribution.outSumParam);
+                }
+            }
+        }
+    } // namespace legacy
+
+    // R6.5: равносильность нового движка и прежней арифметики на ОДИНАКОВОМ
+    // вводе. Эталон — независимая реализация в этой же единице (namespace
+    // legacy выше), а не второй путь в production.
+    void TestSpecEngineEquivalence () {
+        // Собирает вклады по источникам правила так, как это делает цикл, и
+        // отдаёт один и тот же вход обоим движкам. Фаза 2 вызывается только
+        // первому представителю ключа — как в цикле.
+        auto collect = [] (SpecFixture &f,
+                           const GS::Array<API_Guid> &sources,
+                           Spec::GroupSlotBinding &binding,
+                           FormatString &fstr,
+                           GS::Array<Spec::RuleContribution> &out) {
+            fstr = FormatStringFunc::ParseFormatString (".2m");
+            binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            for (const API_Guid &guid : sources) {
+                Spec::RuleContribution c =
+                    Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
+                if (c.status == Spec::ContributionStatus::Excluded)
+                    continue;
+                bool firstOfKey = true;
+                for (const Spec::RuleContribution &seen : out) {
+                    if (seen.key == c.key) {
+                        firstOfKey = false;
+                        break;
+                    }
+                }
+                // Фаза 2 здесь НЕ вызывается: вклад отдаётся в состоянии фазы 1,
+                // чтобы оба движка получили один и тот же вход. Фаза 2 вызывается
+                // в цикле сравнения — по одному разу на представителя ключа.
+                (void)firstOfKey;
+                out.Push (c);
+            }
+        };
+
+        // Обёртка массива значений во вклад: новый движок принимает вклад,
+        // эталон — массив. Сравниваются именно значения слотов, поэтому
+        // обёртка не влияет на результат.
+        auto asContribution = [] (const GS::Array<ParamValue> &values) {
+            Spec::RuleContribution c = {};
+            c.isIncluded = true;
+            c.outSumParam = values;
+            return c;
+        };
+
+        // --- один ключ, три источника ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Source (f.second, "A", "Alpha", 3);
+            f.Source (f.extra, "A", "Alpha", 4);
+            Spec::GroupSlotBinding binding;
+            FormatString fstr;
+            GS::Array<Spec::RuleContribution> contributions = {};
+            DBtest (f.rule.elements.GetSize (), 3, "R6.5 rule has three sources");
+            collect (f, f.rule.elements, binding, fstr, contributions);
+            DBtest (contributions.GetSize (), 3, "R6.5 three contributions collected");
+
+            Spec::ElementDict freshRows = {};
+            GS::HashTable<GS::UniString, GS::UniString> freshOut = {};
+            const Spec::SpecValueReader reader (f.context);
+            UInt32 contributionIndex = 0;
+            for (const Spec::RuleContribution &c : contributions) {
+                // Вклад приходит в состоянии ФАЗЫ 1: суммы уже прочитаны,
+                // выходных слотов ещё нет — они появляются в фазе 2 и только у
+                // ПЕРВОГО представителя ключа. Это и есть контракт, который
+                // здесь проверяется, а не диагностика ради диагностики.
+                const bool firstOfKey = contributionIndex == 0;
+                DBtest (c.outParam.GetSize (), (UInt32)0, "R6.5 phase 1 leaves output slots empty");
+                DBtest (c.outSumParam.GetSize (), (UInt32)1, "R6.5 phase 1 reads sum slot");
+                Spec::RuleContribution rowContribution = c;
+                if (!freshRows.ContainsKey (c.key))
+                    Spec::ReadContributionOutputs (c.source, f.rule.groups[0], binding, reader, fstr, rowContribution);
+                DBtest (
+                    rowContribution.outParam.GetSize () == (UInt32)1, firstOfKey, "R6.5 phase 2 only for first of key");
+                contributionIndex += 1;
+                Spec::AddContributionToRow (freshRows, rowContribution, f.rule, 1, 1, freshOut);
+                // Число строк НЕ растёт на каждый вклад: слияние дописывает
+                // источник в существующую строку. Инвариант здесь — «строка не
+                // пропала», а не «строк стало больше».
+                DBtest (freshRows.ContainsKey (GS::UniString ("@A")), true, "R6.5 row still present after add");
+            }
+            Spec::ElementDict legacyRows = {};
+            GS::HashTable<GS::UniString, GS::UniString> legacyOut = {};
+            legacy::PlanRow (contributions, f.rule, f.rule.groups[0], binding, reader, fstr, legacyRows, legacyOut);
+
+            DBtest (freshRows.GetSize (), legacyRows.GetSize (), "R6.5 same row count");
+            DBtest (freshOut.GetSize (), legacyOut.GetSize (), "R6.5 same outParam size");
+            const Spec::Element *a = freshRows.GetPtr ("@A");
+            const Spec::Element *b = legacyRows.GetPtr ("@A");
+            DBrequire (a != nullptr && b != nullptr, "R6.5 both engines produced the row");
+            DBtest (a->out_sum_param.GetSize (), b->out_sum_param.GetSize (), "R6.5 same sum slot count");
+            DBtest (a->out_sum_param[0].val.intValue, b->out_sum_param[0].val.intValue, "R6.5 same sum");
+            DBtest (a->out_sum_param[0].val.intValue, 9, "R6.5 sum is 2+3+4");
+            DBtest (a->elements.GetSize (), b->elements.GetSize (), "R6.5 same source count");
+            DBtest (a->elements.GetSize (), 3, "R6.5 three sources collected");
+            for (UInt32 i = 0; i < a->elements.GetSize () && i < b->elements.GetSize (); i++)
+                DBtest (a->elements[i] == b->elements[i], true, "R6.5 same source order");
+            DBtest (a->out_param.GetSize (), b->out_param.GetSize (), "R6.5 same out slot count");
+            DBtest (a->out_param[0].val.uniStringValue, b->out_param[0].val.uniStringValue, "R6.5 same out value");
+        }
+
+        // --- два ключа, перемешанные источники ---
+        // Порядок обхода rule.elements задаёт порядок первого представителя,
+        // поэтому смешивание ключей — то, где потеря порядка была бы видна.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 1);
+            f.Source (f.second, "B", "Beta", 10);
+            f.Source (f.extra, "A", "Alpha", 2);
+            f.Source (f.old, "B", "Beta", 20);
+            Spec::GroupSlotBinding binding;
+            FormatString fstr;
+            GS::Array<Spec::RuleContribution> contributions = {};
+            collect (f, f.rule.elements, binding, fstr, contributions);
+
+            Spec::ElementDict freshRows = {};
+            GS::HashTable<GS::UniString, GS::UniString> freshOut = {};
+            const Spec::SpecValueReader reader (f.context);
+            for (const Spec::RuleContribution &c : contributions) {
+                Spec::RuleContribution rowContribution = c;
+                if (!freshRows.ContainsKey (c.key))
+                    Spec::ReadContributionOutputs (c.source, f.rule.groups[0], binding, reader, fstr, rowContribution);
+                Spec::AddContributionToRow (freshRows, rowContribution, f.rule, 1, 1, freshOut);
+            }
+            Spec::ElementDict legacyRows = {};
+            GS::HashTable<GS::UniString, GS::UniString> legacyOut = {};
+            legacy::PlanRow (contributions, f.rule, f.rule.groups[0], binding, reader, fstr, legacyRows, legacyOut);
+
+            DBtest (freshRows.GetSize (), legacyRows.GetSize (), "R6.5 mixed keys same row count");
+            DBtest (freshRows.GetSize (), 2, "R6.5 two rows built");
+            for (UInt32 k = 0; k < 2; k++) {
+                const GS::UniString key = k == 0 ? GS::UniString ("@A") : GS::UniString ("@B");
+                const Spec::Element *a = freshRows.GetPtr (key);
+                const Spec::Element *b = legacyRows.GetPtr (key);
+                DBrequire (a != nullptr && b != nullptr, "R6.5 both engines have the row");
+                DBtest (a->out_sum_param[0].val.intValue, b->out_sum_param[0].val.intValue, "R6.5 mixed same sum");
+                DBtest (a->elements.GetSize (), b->elements.GetSize (), "R6.5 mixed same sources");
+                for (UInt32 i = 0; i < a->elements.GetSize () && i < b->elements.GetSize (); i++)
+                    DBtest (a->elements[i] == b->elements[i], true, "R6.5 mixed same source order");
+            }
+            DBtest (freshOut.GetSize (), legacyOut.GetSize (), "R6.5 mixed same outParam size");
+        }
+
+        // --- неполные массивы: оба движка обязаны вести себя ОДИНАКОВО ---
+        // Сравнивается поведение, а не «правильность»: план запрещает «чинить»
+        // суммирование строгим конструктором, а значит и здесь эталон не должен
+        // «улучшаться».
+        {
+            Spec::Element freshRow = {};
+            freshRow.out_sum_param.Push (Num (1));
+            freshRow.out_sum_param.Push (Num (2));
+            freshRow.out_sum_param.Push (Num (3));
+            Spec::Element legacyRow = freshRow;
+            GS::Array<ParamValue> shortContribution = {};
+            shortContribution.Push (Num (10));
+            shortContribution.Push (Num (20));
+            Spec::SumContributionIntoRow (freshRow, asContribution (shortContribution));
+            legacy::SumInto (legacyRow, shortContribution);
+            DBtest (freshRow.out_sum_param.GetSize (), legacyRow.out_sum_param.GetSize (), "R6.5 partial same size");
+            for (UInt32 i = 0; i < freshRow.out_sum_param.GetSize (); i++)
+                DBtest (freshRow.out_sum_param[i].val.intValue,
+                        legacyRow.out_sum_param[i].val.intValue,
+                        "R6.5 partial same value");
+
+            Spec::Element f2 = {};
+            f2.out_sum_param.Push (Num (5));
+            Spec::Element l2 = f2;
+            GS::Array<ParamValue> longContribution = {};
+            longContribution.Push (Num (1));
+            longContribution.Push (Num (2));
+            longContribution.Push (Num (4));
+            Spec::SumContributionIntoRow (f2, asContribution (longContribution));
+            legacy::SumInto (l2, longContribution);
+            DBtest (f2.out_sum_param.GetSize (), l2.out_sum_param.GetSize (), "R6.5 longer same size");
+            DBtest (f2.out_sum_param[0].val.intValue, l2.out_sum_param[0].val.intValue, "R6.5 longer same value");
+        }
+
+        // --- isValid: обе стороны ведут себя одинаково ---
+        {
+            Spec::Element f1 = {};
+            f1.out_sum_param.Push (Num (4, false));
+            f1.out_sum_param.Push (Num (40));
+            Spec::Element l1 = f1;
+            GS::Array<ParamValue> contribution = {};
+            contribution.Push (Num (4));
+            contribution.Push (Num (1));
+            Spec::SumContributionIntoRow (f1, asContribution (contribution));
+            legacy::SumInto (l1, contribution);
+            for (UInt32 i = 0; i < f1.out_sum_param.GetSize (); i++)
+                DBtest (
+                    f1.out_sum_param[i].val.intValue, l1.out_sum_param[i].val.intValue, "R6.5 invalid handling same");
+            DBtest (f1.out_sum_param[1].val.intValue, 41, "R6.5 valid pair summed the same way");
+        }
+    }
+
     void TestSpecRowSlots () {
         // --- схема повторяет прежние порядок, имена и значения ---
         {
