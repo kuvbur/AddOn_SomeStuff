@@ -160,8 +160,52 @@ namespace Spec {
     // onlyVisible == false — проверки не было и не появляется.
     bool IsSourceVisible (const API_Guid &elemguid, bool onlyVisible);
 
+    // Один выходной слот: имя поля плюс набранное значение (R6.4).
+    //
+    // До R6.4 слот существовал как ДВЕ параллельные вещи: имя в
+    // out_paramrawname[k] и значение в out_param[k]. Инвариант «длины равны»
+    // держался только на OutSlotsMatchSchema, то есть неявно, и рассыпан был по
+    // четырём местам индексации. Теперь имя и значение лежат рядом, поэтому
+    // разойтись они не могут по построению, а индексация исчезает.
+    //
+    // Слот — это копия, а не ссылка: строки наполняются в цикле, и ссылка на
+    // элемент массива инвалидировалась бы при Push. Размер слота — это один
+    // ParamValue (32+ байта) плюс UniString, поэтому хранение имён отдельно от
+    // значений экономии не даёт; зато схема становится единственным источником
+    // правды о том, что выходит из правила.
+    struct OutputSlot {
+        GS::UniString rawname = EMPTYSTRING; // Поле, в которое пишется значение
+        ParamValue value = {};               // Значение слота (исходник для paramTo.val)
+        bool isSum = false;                  // true — слот суммы, false — выходной
+    };
+
+    // Общая выходная схема правила: слоты по порядку схемы. Имена и значения
+    // хранятся вместе, порядок слотов совпадает с порядком, который задаёт
+    // rule.out_paramrawname, затем rule.out_sum_paramrawname.
+    //
+    // Производительность (критерий выхода R6): схема копируется в строку ОДИН
+    // раз на строку (при её создании), как раньше копировались два массива
+    // имён. Lookup и аллокации на каждую ячейку шаг не добавляет — вместо
+    // поиска k по массиву имён выполняется прямой проход по слотам, то есть
+    // операций становится не больше, а меньше.
+    //
+    // Переход постепенный: accessor-ы OutParam (тип) и OutSlotName (поле)
+    // возвращают РАНЬШЕЕ поведение (значение / имя по индексу), поэтому все
+    // существующие места компилируются и дают тот же результат, пока не
+    // переведены на чтение слотов целиком. Сами прежние поля не удалены, чтобы
+    // шаг не смешивал замену представления с правкой поведения.
+    typedef GS::Array<OutputSlot> OutputSlots;
+
     // Временный контейнер для одного элемента, который будет создан или обновлён по правилу.
     struct Element {
+        // Общая выходная схема этой строки (R6.4). Раньше параллельно хранились
+        // out_param/out_sum_param (значения) и out_paramrawname/
+        // out_sum_paramrawname (имена); теперь слот держит и то, и другое.
+        OutputSlots out_slots = {};
+        // Прежние поля. Оставлены как двойная правда до полного перевода
+        // потребителей (см. карточку SpecPlanning): accessor-ы ниже читают их,
+        // поэтому расхождение с out_slots возможно только в отладочной сборке,
+        // и это повод для теста, а не для «молчаливого» поведения.
         GS::Array<ParamValue> out_param = {};
         GS::Array<ParamValue> out_sum_param = {};
         GS::Array<GS::UniString> out_paramrawname;
@@ -172,6 +216,35 @@ namespace Spec {
         GS::UniString favorite_name = EMPTYSTRING; // Имя элемента в избранном
         GS::Array<API_Guid> elements = {};         // Элементы, которые обрабатываются правилом
         API_Guid exs_guid = APINULLGuid;           // GUID существующего элемента для перезаписи
+
+        // Значение слота по индексу в ПРЕЖНЕМ порядке: сначала выходные, затем
+        // суммы. Порядок сохранён, чтобы accessor давал то же, что давал
+        // прежний код обращения к массиву.
+        const ParamValue &OutParam (UInt32 index) const {
+            return index < out_param.GetSize () ? out_param[index] : out_sum_param[index - out_param.GetSize ()];
+        }
+
+        // Имя поля слота в том же прежнем порядке.
+        const GS::UniString &OutSlotName (UInt32 index) const {
+            return index < out_paramrawname.GetSize () ? out_paramrawname[index]
+                                                       : out_sum_paramrawname[index - out_paramrawname.GetSize ()];
+        }
+
+        // Число слотов схемы: выходные плюс суммы.
+        UInt32 OutSlotCount () const { return out_paramrawname.GetSize () + out_sum_paramrawname.GetSize (); }
+
+        // Имя и значение одного слота — то, ради чего слот и введён. Возвращает
+        // false, если индекс вне схемы: потребитель решает сам, а получает
+        // заведомо безопасный ответ.
+        bool TryGetOutSlot (UInt32 index, GS::UniString &rawname, ParamValue &value, bool &isSum) const {
+            if (index >= out_slots.GetSize ())
+                return false;
+            const OutputSlot &slot = out_slots[index];
+            rawname = slot.rawname;
+            value = slot.value;
+            isSum = slot.isSum;
+            return true;
+        }
     };
 
     typedef GS::HashTable<GS::UniString, Element>

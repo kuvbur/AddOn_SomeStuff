@@ -878,22 +878,29 @@ namespace Spec {
                             param.Add (el.subguid_rulename, paramTo);
                         }
                     }
-                    for (UInt32 k = 0; k < el.out_paramrawname.GetSize (); k++) {
-                        GS::UniString rawname = el.out_paramrawname[k];
+                    // R6.4: слот несёт и имя, и значение, поэтому индексной
+                    // рассылки больше нет — один проход по схеме. Порядок и
+                    // условия те же, что были у двух отдельных циклов.
+                    for (const OutputSlot &slot : el.out_slots) {
+                        if (slot.isSum)
+                            continue;
+                        const GS::UniString &rawname = slot.rawname;
                         if (paramToWrite.ContainsKey (rawname) && !param.ContainsKey (rawname)) {
                             FormatString stringformat;
-                            ParamValue paramFrom = el.out_param[k];
+                            ParamValue paramFrom = slot.value;
                             ParamValue paramTo = paramToWrite.Get (rawname);
                             paramTo.val = paramFrom.val;
                             paramTo.isValid = true;
                             param.Add (rawname, paramTo);
                         }
                     }
-                    for (UInt32 k = 0; k < el.out_sum_paramrawname.GetSize (); k++) {
-                        GS::UniString rawname = el.out_sum_paramrawname[k];
+                    for (const OutputSlot &slot : el.out_slots) {
+                        if (!slot.isSum)
+                            continue;
+                        const GS::UniString &rawname = slot.rawname;
                         if (paramToWrite.ContainsKey (rawname) && !param.ContainsKey (rawname)) {
                             FormatString stringformat;
-                            ParamValue paramFrom = el.out_sum_param[k];
+                            ParamValue paramFrom = slot.value;
                             ParamValue paramTo = paramToWrite.Get (rawname);
                             paramTo.val = paramFrom.val;
                             if (paramTo.fromPropertyDefinition) {
@@ -1952,10 +1959,17 @@ namespace Spec {
                 continue;
             }
             bool flag_change = false;
-            for (UInt32 i = 0; i < rule.out_paramrawname.GetSize (); i++) {
-                GS::UniString rawname = rule.out_paramrawname[i];
+            // R6.4: имена берутся из схемы СТРОКИ, а не из rule. Значения и
+            // имена лежат рядом, поэтому сверка больше не зависит от того,
+            // совпадают ли размеры rule и накопленной строки: раньше индекс
+            // i шёл по массиву правила и читал из массива строки, и совпадение
+            // размеров было условием безопасности доступа.
+            for (const OutputSlot &slot : el.out_slots) {
+                if (slot.isSum)
+                    continue;
+                const GS::UniString &rawname = slot.rawname;
                 ParamValue pvalue = {};
-                ParamValue elvalue = el.out_param[i];
+                ParamValue elvalue = slot.value;
                 if (!reader.Read (elemguid, rawname, pvalue, 0)) {
                     msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                     flag_change = true;
@@ -1978,10 +1992,12 @@ namespace Spec {
                     flag_change = true;
                 }
             }
-            for (UInt32 i = 0; i < rule.out_sum_paramrawname.GetSize (); i++) {
-                GS::UniString rawname = rule.out_sum_paramrawname[i];
+            for (const OutputSlot &slot : el.out_slots) {
+                if (!slot.isSum)
+                    continue;
+                const GS::UniString &rawname = slot.rawname;
                 ParamValue pvalue = {};
-                ParamValue elvalue = el.out_sum_param[i];
+                ParamValue elvalue = slot.value;
                 if (!reader.Read (elemguid, rawname, pvalue, 0)) {
                     msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                     flag_change = true;
@@ -2845,22 +2861,29 @@ namespace Spec {
                         }
                     }
                     // GDL параметры сразу запишем в memo
-                    for (UInt32 k = 0; k < el.out_paramrawname.GetSize (); k++) {
-                        GS::UniString rawname = el.out_paramrawname[k];
+                    // R6.4: слот несёт и имя, и значение, поэтому индексной
+                    // рассылки больше нет — один проход по схеме. Порядок и
+                    // условия те же, что были у двух отдельных циклов.
+                    for (const OutputSlot &slot : el.out_slots) {
+                        if (slot.isSum)
+                            continue;
+                        const GS::UniString &rawname = slot.rawname;
                         if (paramToWrite.ContainsKey (rawname) && !param.ContainsKey (rawname)) {
                             FormatString stringformat;
-                            ParamValue paramFrom = el.out_param[k];
+                            ParamValue paramFrom = slot.value;
                             ParamValue paramTo = paramToWrite.Get (rawname);
                             paramTo.val = paramFrom.val;
                             paramTo.isValid = true;
                             param.Add (rawname, paramTo);
                         }
                     }
-                    for (UInt32 k = 0; k < el.out_sum_paramrawname.GetSize (); k++) {
-                        GS::UniString rawname = el.out_sum_paramrawname[k];
+                    for (const OutputSlot &slot : el.out_slots) {
+                        if (!slot.isSum)
+                            continue;
+                        const GS::UniString &rawname = slot.rawname;
                         if (paramToWrite.ContainsKey (rawname) && !param.ContainsKey (rawname)) {
                             FormatString stringformat;
-                            ParamValue paramFrom = el.out_sum_param[k];
+                            ParamValue paramFrom = slot.value;
                             ParamValue paramTo = paramToWrite.Get (rawname);
                             paramTo.val = paramFrom.val;
                             if (paramTo.fromPropertyDefinition) {

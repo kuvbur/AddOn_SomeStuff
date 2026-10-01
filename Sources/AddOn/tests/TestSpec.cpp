@@ -1415,6 +1415,143 @@ namespace TestFunc {
     // nsumm = MIN(длин), слот складывается только при isValid с обеих сторон,
     // слоты сверх nsumm не трогаются. План прямо запрещает заменять это
     // строгим конструктором: найденное расхождение оформляется F.
+    // R6.4: общая выходная схема строки. Слот держит имя и значение вместе,
+    // поэтому рассинхрон между out_paramrawname[k] и out_param[k] стал
+    // невозможен по построению. Имя набора — TestSpecRowSlots, а не
+    // TestSpecOutputSchema: последний уже занят набором разбора схемы правила.
+    void TestSpecRowSlots () {
+        // --- схема повторяет прежние порядок, имена и значения ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 6);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c);
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            Spec::AddContributionToRow (rows, c, f.rule, 1, 1, outParam);
+
+            const Spec::Element *row = rows.GetPtr ("@A");
+            DBrequire (row != nullptr, "R6.4 row present");
+            // Порядок прежний: выходной слот, затем слот суммы.
+            DBtest (row->out_slots.GetSize (), 2, "R6.4 schema has both slots");
+            DBtest (row->out_slots[0].isSum, false, "R6.4 first slot is output");
+            DBtest (row->out_slots[1].isSum, true, "R6.4 second slot is sum");
+            DBtest (row->out_slots[0].rawname, f.outText, "R6.4 output slot name");
+            DBtest (row->out_slots[1].rawname, f.outQuantity, "R6.4 sum slot name");
+            DBtest (row->out_slots[0].value.val.uniStringValue, GS::UniString ("Alpha"), "R6.4 output slot value");
+            DBtest (row->out_slots[1].value.val.intValue, 6, "R6.4 sum slot value");
+
+            // Схема совпадает с прежними параллельными массивами: это есть
+            // инвариант до полного перевода потребителей.
+            DBtest (row->out_slots.GetSize (), row->OutSlotCount (), "R6.4 schema size equals accessor count");
+            for (UInt32 i = 0; i < row->out_slots.GetSize (); i++) {
+                GS::UniString rawname;
+                ParamValue value;
+                bool isSum = false;
+                DBtest (row->TryGetOutSlot (i, rawname, value, isSum), true, "R6.4 slot readable by index");
+                DBtest (rawname, row->OutSlotName (i), "R6.4 slot name equals accessor name");
+                DBtest (value.val.uniStringValue,
+                        row->OutParam (i).val.uniStringValue,
+                        "R6.4 slot value equals accessor value");
+                DBtest (isSum, i > 0, "R6.4 slot kind matches position");
+            }
+            // Индекс вне схемы даёт безопасный ответ, а не выход за границу.
+            GS::UniString name;
+            ParamValue val;
+            bool sumFlag = true;
+            DBtest (row->TryGetOutSlot (99, name, val, sumFlag), false, "R6.4 out-of-range slot reported");
+        }
+
+        // --- после слияния значения сумм в схеме АКТУАЛЬНЫ ---
+        // Главная проверка шага: схема не должна устареть там, где сумма
+        // меняется. Обновление сделано в том же цикле суммирования.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Source (f.second, "A", "Alpha", 3);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            Spec::RuleContribution c1 =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c1);
+            Spec::RuleContribution c2 =
+                Spec::BuildContribution (f.second, 0, f.rule.groups[0], binding, reader, none1, none2);
+            Spec::ReadContributionOutputs (f.second, f.rule.groups[0], binding, reader, fstr, c2);
+
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            Spec::AddContributionToRow (rows, c1, f.rule, 1, 1, outParam);
+            Spec::AddContributionToRow (rows, c2, f.rule, 1, 1, outParam);
+
+            const Spec::Element *row = rows.GetPtr ("@A");
+            DBrequire (row != nullptr, "R6.4 merged row present");
+            DBtest (row->out_sum_param[0].val.intValue, 5, "R6.4 merged sum in legacy array");
+            DBtest (row->out_slots[1].value.val.intValue, 5, "R6.4 merged sum reflected in schema");
+            DBtest (row->out_slots[1].value.val.intValue,
+                    row->out_sum_param[0].val.intValue,
+                    "R6.4 schema matches legacy sum");
+            // Выходной слот первого представителя НЕ меняется при слиянии.
+            DBtest (row->out_slots[0].value.val.uniStringValue,
+                    GS::UniString ("Alpha"),
+                    "R6.4 output slot keeps first representative");
+        }
+
+        // --- схема не строится для отброшенной строки ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.context.read.Get (f.first).Delete (f.text); // выход не прочитается
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c);
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            // Схема заявлена шире фактического: строка отбрасывается.
+            const Spec::RowAddition r = Spec::AddContributionToRow (rows, c, f.rule, 2, 1, outParam);
+            DBtest (r, Spec::RowAddition::SchemaMismatch, "R6.4 mismatch when output slot missing");
+            DBtest (rows.GetSize (), 0, "R6.4 mismatch adds no row");
+        }
+
+        // --- размер схемы стабилен при многих слияниях ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 1);
+            f.Source (f.second, "A", "Alpha", 1);
+            f.Source (f.extra, "A", "Alpha", 1);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            for (const API_Guid &guid : f.rule.elements) {
+                Spec::RuleContribution c =
+                    Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
+                Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, c);
+                Spec::AddContributionToRow (rows, c, f.rule, 1, 1, outParam);
+            }
+            const Spec::Element *row = rows.GetPtr ("@A");
+            DBrequire (row != nullptr, "R6.4 row after three merges");
+            DBtest (row->out_slots.GetSize (), 2, "R6.4 schema size stable across merges");
+            DBtest (row->out_slots[1].value.val.intValue, 3, "R6.4 schema sum after three merges");
+        }
+    }
+
     void TestSpecRowLayout () {
         // --- суммирование равных массивов ---
         {

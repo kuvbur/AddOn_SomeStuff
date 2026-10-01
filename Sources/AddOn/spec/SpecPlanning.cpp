@@ -161,6 +161,28 @@ namespace Spec {
         return ContributionStatus::Partial;
     }
 
+    // Сборка общей схемы слотов строки. Внутренняя функция модуля: наружу она не
+    // нужна, потому что схема всегда строится сама при создании строки.
+    namespace {
+        void BuildOutputSlots (Element &row, const SpecRule &rule, const RuleContribution &contribution) {
+            row.out_slots.Clear ();
+            for (UInt32 i = 0; i < row.out_param.GetSize (); i++) {
+                OutputSlot slot = {};
+                slot.rawname = i < rule.out_paramrawname.GetSize () ? rule.out_paramrawname[i] : EMPTYSTRING;
+                slot.value = row.out_param[i];
+                slot.isSum = false;
+                row.out_slots.Push (slot);
+            }
+            for (UInt32 i = 0; i < row.out_sum_param.GetSize (); i++) {
+                OutputSlot slot = {};
+                slot.rawname = i < rule.out_sum_paramrawname.GetSize () ? rule.out_sum_paramrawname[i] : EMPTYSTRING;
+                slot.value = row.out_sum_param[i];
+                slot.isSum = true;
+                row.out_slots.Push (slot);
+            }
+        }
+    } // namespace
+
     void SumContributionIntoRow (Element &row, const RuleContribution &contribution) {
         // Перенос дословно из цикла PlanRuleRows (R6.3). Именно эта арифметика
         // и её поведение на неполных массивах закреплены тестом, а не
@@ -172,6 +194,16 @@ namespace Spec {
         for (UInt32 j = 0; j < nsumm; j++) {
             if (row.out_sum_param[j].isValid && contribution.outSumParam[j].isValid)
                 row.out_sum_param[j].val = row.out_sum_param[j].val + contribution.outSumParam[j].val;
+        }
+        // R6.4: значения слотов суммы в общей схеме обязаны совпадать с
+        // out_sum_param, иначе схема разошлась бы со строкой именно там, где
+        // сумма и должна меняться. Обновление идёт в том же цикле — новых
+        // lookup и аллокаций на слот это не добавляет, а чтение схемы вместо
+        // параллельных массивов экономит обращение к имени по индексу.
+        const UInt32 outSlotCount = row.out_param.GetSize ();
+        if (row.out_slots.GetSize () == outSlotCount + row.out_sum_param.GetSize ()) {
+            for (UInt32 j = 0; j < nsumm; j++)
+                row.out_slots[outSlotCount + j].value = row.out_sum_param[j];
         }
     }
 
@@ -204,6 +236,12 @@ namespace Spec {
         // представителя, они не вычисляются заново для последующих вкладов.
         row.out_sum_paramrawname = rule.out_sum_paramrawname;
         row.out_paramrawname = rule.out_paramrawname;
+        // R6.4: общая выходная схема собирается ОДИН раз, здесь — при создании
+        // строки. Порядок прежний: сначала выходные слоты, затем суммы, и в том
+        // же порядке, что и у правила. Значения берутся из вклада как есть, без
+        // пересчёта — иначе суммы первого представителя были бы посчитаны иначе,
+        // чем суммы второго.
+        BuildOutputSlots (row, rule, contribution);
         row.subguid_paramrawname = rule.destinationParamGuidName;
         row.subguid_rulevalue = rule.subguid_rulevalue;
         row.subguid_rulename = rule.subguid_rulename;
