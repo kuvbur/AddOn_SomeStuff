@@ -1190,10 +1190,9 @@ C=2/M=12/D=2, 14 строк, `diff_rows` = 0 против пяти эталон�
 - **Неполные снимки только в TESTING:** новый агрегатор сравнения ставится под
   `#ifdef TESTING`, в production-сборку не попадает.
 ### Last Checkpoint
-R6.4 — коммит этого шага (Spec.cpp/.hpp, spec/SpecPlanning.cpp,
-tests/TestSpec.cpp, tests/TestFunc.cpp, tests/TestFunc.hpp,
-Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md, IDEA.md,
-Refs: #228).
+R6.4 — `a3b34b5` (Spec.cpp/.hpp, spec/SpecPlanning.cpp, tests/TestSpec.cpp,
+tests/TestFunc.cpp, tests/TestFunc.hpp, Docs/modules/spec/Spec.md,
+Docs/modules/spec/SpecPlanning.md, IDEA.md, Refs: #228).
 Предыдущий: R6.3 — `b1f00ae` (Spec.cpp, spec/SpecPlanning.hpp/.cpp,
 tests/TestSpec.cpp, tests/TestFunc.cpp, tests/TestFunc.hpp,
 Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md, IDEA.md,
