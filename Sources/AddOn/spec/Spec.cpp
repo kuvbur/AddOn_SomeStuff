@@ -596,7 +596,7 @@ namespace Spec {
 #else
                 SpecRule &rule = *cIt->value;
 #endif
-                if (!rule.parseValid || !rule.destinationReady)
+                if (!rule.parseValid || !rule.runState.destinationReady)
                     continue;
                 rule.runState.selected = ruleNames->Contains (rule.rule_name);
                 hasSelectedRule = hasSelectedRule || rule.runState.selected;
@@ -1345,19 +1345,19 @@ namespace Spec {
                                      ParamDict &error_name) {
         for (const auto &rawname : rule.out_paramrawname) {
             if (!favorite.ContainsKey (rawname)) {
-                rule.destinationReady = false;
+                rule.runState.destinationReady = false;
                 if (!error_name.ContainsKey (rawname))
                     error_name.Add (rawname, true);
             }
         }
         for (const auto &rawname : rule.out_sum_paramrawname) {
             if (!favorite.ContainsKey (rawname)) {
-                rule.destinationReady = false;
+                rule.runState.destinationReady = false;
                 if (!error_name.ContainsKey (rawname))
                     error_name.Add (rawname, true);
             }
         }
-        return rule.destinationReady;
+        return rule.runState.destinationReady;
     }
 
     // Ищет у избранного два служебных свойства и пишет их в правило:
@@ -1410,7 +1410,7 @@ namespace Spec {
                         }
                         paramToWrite.Add (rawname, chpvalue);
                     }
-                    rule.destinationParamGuidName = rawname;
+                    rule.runState.destinationParamGuidName = rawname;
                     guidFound = true;
                 }
             }
@@ -1455,7 +1455,7 @@ namespace Spec {
             if (!paramDict.ContainsKey (rawname))
                 ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
         }
-        ParamHelpers::AddValueToParamDictValue (paramDict, rule.destinationParamGuidName);
+        ParamHelpers::AddValueToParamDictValue (paramDict, rule.runState.destinationParamGuidName);
         // Добавляем параметры для каждого элемента
         for (const API_Guid elemguid : elements) {
             ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);

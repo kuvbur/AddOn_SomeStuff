@@ -260,7 +260,7 @@ namespace TestFunc {
             // Маркер из описания правила и разрешённое свойство избранного - разные
             // В Element копируется разрешённое
             f.rule.subguid_paramrawname = "fixture-link-marker";
-            f.rule.destinationParamGuidName = "fixture-link";
+            f.rule.runState.destinationParamGuidName = "fixture-link";
             f.rule.subguid_rulename = "fixture-rule";
             f.rule.subguid_rulevalue = "fixture-value";
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec single");
@@ -276,7 +276,7 @@ namespace TestFunc {
                 DBtest (row->elements.GetSize (), 1, "Spec single source count");
                 DBtest (!row->elements.IsEmpty () && row->elements[0] == f.first, "Spec single source GUID");
                 DBtest (row->favorite_name, f.rule.favorite_name, "Spec favorite copied");
-                DBtest (row->subguid_paramrawname, f.rule.destinationParamGuidName, "Spec link copied");
+                DBtest (row->subguid_paramrawname, f.rule.runState.destinationParamGuidName, "Spec link copied");
                 DBtest (row->subguid_rulename, f.rule.subguid_rulename, "Spec rule name copied");
                 DBtest (row->subguid_rulevalue, f.rule.subguid_rulevalue, "Spec rule value copied");
                 DBtest (row->OutParamName (0), f.outText, "Spec text target copied");
@@ -950,7 +950,7 @@ namespace TestFunc {
             favorite.Add (SumName, EMPTYSTRING);
             ParamDict errors;
             DBtest (Spec::MatchDestinationProperties (rule, favorite, errors), true, "favorite complete ready");
-            DBtest (rule.destinationReady, true, "favorite complete flag kept");
+            DBtest (rule.runState.destinationReady, true, "favorite complete flag kept");
             DBtest (errors.IsEmpty (), true, "favorite complete problem list empty");
         }
 
@@ -963,7 +963,7 @@ namespace TestFunc {
             favorite.Add (OutName, EMPTYSTRING);
             ParamDict errors;
             DBtest (Spec::MatchDestinationProperties (rule, favorite, errors), false, "missing sum not ready");
-            DBtest (rule.destinationReady, false, "missing sum clears flag");
+            DBtest (rule.runState.destinationReady, false, "missing sum clears flag");
             DBtest (errors.GetSize (), 1, "missing sum recorded once");
             DBtest (errors.ContainsKey (SumName), true, "missing sum name recorded");
             DBtest (errors.ContainsKey (OutName), false, "present name not recorded");
@@ -1065,7 +1065,7 @@ namespace TestFunc {
             Spec::SpecRule rule;
             rule.out_paramrawname.Push (OutName);
             rule.out_sum_paramrawname.Push (SumName);
-            rule.destinationParamGuidName = "{@property:Spec-Guid}";
+            rule.runState.destinationParamGuidName = "{@property:Spec-Guid}";
             const API_Guid elem = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
             GS::Array<API_Guid> elements;
             elements.Push (elem);
@@ -1086,7 +1086,7 @@ namespace TestFunc {
             Spec::SpecRule rule;
             rule.out_paramrawname.Push (OutName);
             rule.out_sum_paramrawname.Push (SumName);
-            rule.destinationParamGuidName = "{@property:Spec-Guid}";
+            rule.runState.destinationParamGuidName = "{@property:Spec-Guid}";
             const API_Guid elem = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
             GS::Array<API_Guid> elements;
             elements.Push (elem);
@@ -1126,7 +1126,7 @@ namespace TestFunc {
             const bool found = Spec::ResolveFavoriteLinks (rule, favorite, write);
             DBtest (found, false, "cache miss reports no guid link");
             DBtest (rule.subguid_rulename.IsEmpty (), true, "cache miss keeps rulename empty");
-            DBtest (rule.destinationParamGuidName.IsEmpty (), true, "cache miss keeps guid name empty");
+            DBtest (rule.runState.destinationParamGuidName.IsEmpty (), true, "cache miss keeps guid name empty");
             DBtest (write.IsEmpty (), true, "cache miss writes nothing");
         }
 
@@ -1528,7 +1528,7 @@ namespace TestFunc {
                     if (!Spec::OutSlotsMatchSchema (
                             row, rule.out_paramrawname.GetSize (), rule.out_sum_paramrawname.GetSize ()))
                         continue;
-                    row.subguid_paramrawname = rule.destinationParamGuidName;
+                    row.subguid_paramrawname = rule.runState.destinationParamGuidName;
                     row.subguid_rulevalue = rule.subguid_rulevalue;
                     row.subguid_rulename = rule.subguid_rulename;
                     row.favorite_name = rule.favorite_name;
@@ -1886,7 +1886,7 @@ namespace TestFunc {
             SpecFixture f;
             f.Source (f.first, "A", "Alpha", 4);
             f.Source (f.second, "A", "Alpha", 6);
-            f.rule.destinationParamGuidName = f.text;
+            f.rule.runState.destinationParamGuidName = f.text;
             f.rule.subguid_rulename = f.text;
             f.rule.subguid_rulevalue = GS::UniString ("RuleValue");
             Spec::ElementDict rows = {};
@@ -2332,7 +2332,7 @@ namespace TestFunc {
             SpecFixture f;
             f.Source (f.first, "A", "Alpha", 5);
             f.Existing (f.old, "Alpha", 5);
-            f.rule.destinationParamGuidName = f.text;
+            f.rule.runState.destinationParamGuidName = f.text;
             // В словаре НЕТ этого поля для старого объекта: чтение не удастся,
             // но результат всё равно не влияет на решение.
             f.context.read.Get (f.old).Delete (f.text);
@@ -3598,15 +3598,15 @@ namespace TestFunc {
             // Первое правило проверяется ДО второго: его признак не должен сброситься.
             DBtest (Spec::MatchDestinationProperties (good, favorite, errors), true, "first rule ready");
             DBtest (Spec::MatchDestinationProperties (bad, favorite, errors), false, "second rule not ready");
-            DBtest (good.destinationReady, true, "first rule destinationReady survives neighbour");
-            DBtest (bad.destinationReady, false, "second rule destinationReady cleared");
+            DBtest (good.runState.destinationReady, true, "first rule destinationReady survives neighbour");
+            DBtest (bad.runState.destinationReady, false, "second rule destinationReady cleared");
             DBtest (good.out_paramrawname.GetSize (), 1, "first rule schema intact");
             DBtest (good.out_sum_paramrawname.GetSize (), 1, "first rule sum schema intact");
             // Обратный порядок: неполное правило не должно влиять на полное.
             ParamDict errors2;
             Spec::MatchDestinationProperties (bad, favorite, errors2);
             DBtest (Spec::MatchDestinationProperties (good, favorite, errors2), true, "good ready after bad");
-            DBtest (good.destinationReady, true, "complete rule destinationReady kept after incomplete one");
+            DBtest (good.runState.destinationReady, true, "complete rule destinationReady kept after incomplete one");
             // Отсутствие избранного целиком: оба правила не готовы, ошибка одна.
             ParamDict errors3;
             GS::HashTable<GS::UniString, GS::UniString> emptyFavorite;
@@ -3852,17 +3852,17 @@ namespace TestFunc {
         {
             Spec::SpecRule rule = Spec::GetRuleFromDescription (validDesc);
             DBtest (rule.runState.selected, true, "default selection is true");
-            DBtest (rule.destinationReady, true, "destination ready by default");
+            DBtest (rule.runState.destinationReady, true, "destination ready by default");
             DBtest (rule.IsRunnableForRun (), true, "fresh rule runnable");
 
             // Находка инвентаря R3: две стадии используют РАЗНЫЕ гейты.
             // Стадия планирования (:632) требует готовности назначения, а
             // стадия сбора избранного (:678) — нет. Обе комбинации обязаны
             // вести себя предсказуемо, иначе смена гейта молча сузит план чтения.
-            rule.destinationReady = false;
+            rule.runState.destinationReady = false;
             DBtest (rule.IsRunnableForRun (), false, "not-ready rule blocked by run gate");
 
-            rule.destinationReady = true;
+            rule.runState.destinationReady = true;
             rule.runState.selected = false;
             rule.parseValid = false;
             DBtest (rule.IsRunnableForRun (), false, "invalid+unselected still blocked");
@@ -3970,7 +3970,7 @@ namespace TestFunc {
             rule.runState.selected = false;
             DBtest (rule.parseValid, true, "scenario deselect keeps parse");
             DBtest (rule.IsRunnableForRun (), false, "scenario deselect blocks run");
-            DBtest (rule.destinationReady, true, "scenario readiness intact");
+            DBtest (rule.runState.destinationReady, true, "scenario readiness intact");
 
             // Следующий запуск: правило создаётся заново и снова выбрано.
             Spec::SpecRule next = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescOne));
@@ -4236,7 +4236,7 @@ namespace TestFunc {
             const UInt32 outBefore = rule.out_paramrawname.GetSize ();
             const UInt32 sumBefore = rule.out_sum_paramrawname.GetSize ();
             const bool parseBefore = rule.parseValid;
-            const bool readyBefore = rule.destinationReady;
+            const bool readyBefore = rule.runState.destinationReady;
             const bool selectedBefore = rule.runState.selected;
             const UInt32 groupsBefore = rule.groups.GetSize ();
 
@@ -4250,7 +4250,7 @@ namespace TestFunc {
             DBtest (rule.out_sum_paramrawname.GetSize (), sumBefore, "sum schema untouched");
             DBtest (rule.groups.GetSize (), groupsBefore, "groups untouched");
             DBtest (rule.parseValid, parseBefore, "parse flag untouched");
-            DBtest (rule.destinationReady, readyBefore, "readiness untouched");
+            DBtest (rule.runState.destinationReady, readyBefore, "readiness untouched");
             DBtest (rule.runState.selected, selectedBefore, "selection untouched");
         }
 

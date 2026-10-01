@@ -14,7 +14,7 @@
 | Тип | Описание |
 |-----|----------|
 | `GroupSpec` | unic_paramrawname, out_paramrawname, sum_paramrawname, flag_paramrawname, fromMaterial, fromLibData, n_layer [из комментария, Spec.hpp:13-23] |
-| `SpecRule` | rule_name, groups, out_paramrawname, subguid_paramrawname (маркер), destinationParamGuidName (разрешённое свойство), subguid_rulename/rulevalue, runState.elements, runState.exsist_elements, rule_definitions, favorite_name, флаги политики [см. карточку ниже] |
+| `SpecRule` | rule_name, groups, out_paramrawname, subguid_paramrawname (маркер), subguid_rulename/rulevalue, runState.{elements, selected, destinationReady, destinationParamGuidName, exsist_elements}, rule_definitions, favorite_name, флаги политики [см. карточку ниже] |
 | `Element` / `ElementDict` | Временный контейнер создаваемого элемента / словарь по сцепке уникальных параметров [из комментария] |
 | `SpecRuleDict` | HashTable<string, SpecRule> [из комментария] |
 | `SpecElementDump` | Дамп одного созданного/изменённого элемента: `guid`, `favorite_name`, `sourceElements`, `properties`, `gdlParameters` (#227, Spec.hpp) |
@@ -1262,6 +1262,42 @@
   AC26–29 — `status=success`. **A/B:** `r3a3-selected` против
   `r3a2-elements`/`r75-opmatrix`/`r4-final`/`r35-multiline`/`r3-final` —
   **0 во всех пяти**. [по стенду]
+
+### R3.A4 — `destinationReady` и `destinationParamGuidName` в `SpecRuleRunState` (#228)
+- **Оба поля перенесены** из `SpecRule` в `SpecRuleRunState` одним шагом: они
+  принадлежат одной стадии (разрешение избранного), и по отдельности возникло
+  бы промежуточное состояние, где готовность уже переехала, а имя свойства ещё
+  нет. Промежуточного дубля не вводилось. [по коду]
+- **`IsRunnableForRun ()`** теперь `parseValid && runState.selected &&
+  runState.destinationReady` — все три признака состояния в `runState`, признак
+  разбора остаётся в `SpecRule` как свойство определения. [по коду]
+- **Писатели и читатели (перенесены все):**
+  `MatchDestinationProperties` (`:1348`, `:1355` — снятие готовности;
+  `:1360` — возврат значения), `ResolveFavoriteLinks` (`:1413` — имя
+  свойства), читатели `SpecArray` (`:599`), `AddExistingReadRequests`
+  (`:1458`), `AddContributionToRow` (`SpecPlanning.cpp:238` — перенос в
+  `row.subguid_paramrawname`), `ReconcileExistingRows`
+  (`SpecPlanning.cpp:371` — чтение GUID-связи). [по коду: поиск
+  `.destinationReady`/`.destinationParamGuidName` без `runState` — 0 совпадений]
+- **Неизменяемый маркер `subguid_paramrawname` остался в `SpecRule`** — это
+  свойство описания, а не результат разрешения; переносить его было бы уже
+  другим решением. [по коду]
+- Пробная сборка прошла без `LNK1168` (Archicad закрыт заранее).
+  [по сборке]
+- Прогон (AC25): `suites=65 passed=2661 failed=1` — без изменений относительно
+  R3.A2/R3.A3; `TestSpecFavoriteResolution` 33/33, `TestSpecGrouping` 131/131
+  (проверяет перенос имени в `row.subguid_paramrawname`), `TestSpecOperationMatrix`
+  216/216; провал прежний и вне области. [по отчёту, runtime AC25 2026-10-01]
+- Проверка: clang-format на 4 файла; AC25 — `Build succeeded!`; sweep
+  AC26–29 — `status=success`. **A/B:** `r3a4-favorite` против
+  `r3a3-selected`/`r3a2-elements`/`r75-opmatrix`/`r4-final`/`r35-multiline`/
+  `r3-final` — **0 во всех шести**. [по стенду]
+- **Итог R3-остатка:** `SpecRule` больше не хранит ни одного поля состояния
+  запуска; `SpecRuleRunState` содержит `elements`, `selected`,
+  `destinationReady`, `destinationParamGuidName`, `exsist_elements`.
+  Определение правила — `groups`, схема выходов, `parseValid`/`parseError`,
+  `favorite_name`, `subguid_*` (маркер и носители), `rule_definitions`, флаги
+  политики. Сигнатуры публичных функций не менялись ни в одном из шагов.
 
 ## Карточки
 

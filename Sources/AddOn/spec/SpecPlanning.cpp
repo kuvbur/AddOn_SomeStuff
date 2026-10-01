@@ -235,7 +235,7 @@ namespace Spec {
         if (!OutSlotsMatchSchema (row, schemaOutSlots, schemaSumSlots))
             return RowAddition::SchemaMismatch;
         // Значения первого источника берутся из уже собранной схемы.
-        row.subguid_paramrawname = rule.destinationParamGuidName;
+        row.subguid_paramrawname = rule.runState.destinationParamGuidName;
         row.subguid_rulevalue = rule.subguid_rulevalue;
         row.subguid_rulename = rule.subguid_rulename;
         row.favorite_name = rule.favorite_name;
@@ -368,7 +368,7 @@ namespace Spec {
             }
 
             // GUID-связь читается из разрешённого свойства правила.
-            GS::UniString rawname = rule.destinationParamGuidName;
+            GS::UniString rawname = rule.runState.destinationParamGuidName;
             if (!rawname.IsEmpty ()) {
                 ParamValue pvalue = {};
                 if (!reader.Read (elemguid, rawname, pvalue, 0)) {

@@ -52,8 +52,8 @@ namespace Spec {
     // Готовность правила к запуску задают три независимых признака:
     //   parseValid        - описание правила разобрано без ошибок (GetRuleFromDescription);
     //                       неизменно после разбора, снимается только парсером;
-    //   selected          - правило выбрано пользователем (SpecDG) или перечислено в ruleNames;
-    //   destinationReady  - у элемента избранного есть все выходные свойства и суммы.
+    //   runState.selected          - выбрано пользователем (SpecDG) или перечислено в ruleNames;
+    //   runState.destinationReady  - у элемента избранного есть все выходные свойства и суммы.
     // Каждый признак пишется своей стадией и не затирает остальные.
     //
     // Состояние запуска правила: результат конкретного прогона, а не его
@@ -81,6 +81,20 @@ namespace Spec {
         // не зависит.
         bool selected = true;
 
+        // Готовность назначения: у элемента избранного нашлись все выходные
+        // свойства и суммы. Стадия разрешения избранного, там же находится
+        // destinationParamGuidName. MatchDestinationProperties только снимает
+        // признак (и делает это повторно безопасно: уже снятое не пишется
+        // заново), поэтому восстановить его в том же запуске нельзя - проверка
+        // назначения не повторяется.
+        bool destinationReady = true;
+
+        // Имя свойства избранного, найденное по неизменяемому маркеру
+        // subguid_paramrawname (вид «Sync_GUID+Имя правила»). До разрешения
+        // пустое, и тогда GUID-связь не пишется, а чтение её поля в сверке
+        // не выполняется.
+        GS::UniString destinationParamGuidName = EMPTYSTRING;
+
         // Существующие элементы этого правила, в порядке обхода.
         //
         // ПРАВИЛО ЗАПОЛНЕНИЯ (не менять): при пустом отборе — ПРИСВАИВАНИЕ
@@ -98,13 +112,11 @@ namespace Spec {
         GS::Array<GS::UniString> out_paramrawname = {};     // Массив имён параметров новых элементов
         GS::Array<GS::UniString> out_sum_paramrawname = {}; // Массив имён параметров сумм новых элементов
         // Маркер GUID-связи из описания правила (вида Sync_GUID+Имя правила). НЕизменяем:
-        // разрешённое свойство избранного пишется в destinationParamGuidName.
+        // разрешённое свойство избранного хранится в runState.
         GS::UniString subguid_paramrawname = "";
-        // Имя свойства избранного, найденное по маркеру выше (заполняется в SpecArray).
-        GS::UniString destinationParamGuidName = EMPTYSTRING;
         GS::UniString subguid_rulename = EMPTYSTRING; // Имя свойства с правилом, на основании которого созданы элементы
         GS::UniString subguid_rulevalue = EMPTYSTRING;
-        SpecRuleRunState runState; // Состояние текущего запуска: источники, найденные объекты, выбор.
+        SpecRuleRunState runState; // Состояние текущего запуска: источники, объекты, выбор, разрешение.
         API_PropertyDefinition rule_definitions =
             {}; // Определение свойства с правилом для поиска элементов, в которых оно доступно
         GS::UniString favorite_name = EMPTYSTRING; // Имя элемента в избранном
@@ -112,8 +124,7 @@ namespace Spec {
         // только вместе с parseValid == false; вызывающий печатает её вместе с
         // исходным описанием свойства (AddRule).
         ParseError parseError = ParseError::None;
-        bool parseValid = true;       // Разбор описания правила удался
-        bool destinationReady = true; // Избранное содержит все выходные свойства
+        bool parseValid = true; // Разбор описания правила удался
         bool delete_old = false;
         bool stop_on_error = true;
         bool only_visible = true;
@@ -122,7 +133,7 @@ namespace Spec {
 
         // Совместимый адаптер: правило участвует в текущем запуске, если разобрано,
         // выбрано и его назначение готово.
-        bool IsRunnableForRun () const { return parseValid && runState.selected && destinationReady; }
+        bool IsRunnableForRun () const { return parseValid && runState.selected && runState.destinationReady; }
     };
 
     // Один набор прочитанных словарей на весь запуск.
