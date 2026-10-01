@@ -1403,8 +1403,9 @@ ContainsKey (key_out)` оставлен без изменений намерен
 - **S09-коллизия и кандидат в F1 остаются не тронутыми** — это отдельные
   согласования, R7 не должен их решать попутно.
 ### Last Checkpoint
-R7.2 — коммит этого шага (spec/Spec.cpp, spec/SpecPlanning.cpp,
-spec/SpecPlanning.hpp, Docs/modules/spec/SpecPlanning.md, IDEA.md, Refs: #228).
+R7.2 — `b1bd9ae` (spec/Spec.cpp, spec/SpecPlanning.cpp, spec/SpecPlanning.hpp,
+Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md, IDEA.md,
+Refs: #228).
 Предыдущий: R7.1 — `0ce39d2`; пользователь — `f0ddbe6`/`a139b88` (#231).
 Предыдущий: R6.6 — `18cbe4b`; пользователь — `f0ddbe6`/`a139b88` (#231).
 Предыдущий: R6.5 — `d3a91c9` (tests/TestSpec.cpp, tests/TestFunc.cpp,
