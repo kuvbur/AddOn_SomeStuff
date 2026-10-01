@@ -3813,9 +3813,9 @@ namespace TestFunc {
         {
             Spec::SpecRule rule = Spec::GetRuleFromDescription (validDesc);
             DBtest (rule.parseValid, true, "valid rule parses");
-            rule.selected = false;
+            rule.runState.selected = false;
             DBtest (rule.parseValid, true, "deselected rule still parses");
-            DBtest (rule.selected, false, "deselection recorded");
+            DBtest (rule.runState.selected, false, "deselection recorded");
             // Совместимый адаптер: правило выпадает из запуска, но разбор не
             // инвалидируется — иначе следующий запуск увидит ошибку парсинга.
             DBtest (rule.IsRunnableForRun (), false, "deselected rule not runnable");
@@ -3825,12 +3825,12 @@ namespace TestFunc {
         {
             Spec::SpecRule kept = Spec::GetRuleFromDescription (validDesc);
             Spec::SpecRule dropped = Spec::GetRuleFromDescription (validDesc);
-            dropped.selected = false;
+            dropped.runState.selected = false;
             DBtest (kept.IsRunnableForRun (), true, "selected rule runnable");
             DBtest (dropped.IsRunnableForRun (), false, "unselected rule skipped");
             // Снятие выбора одного правила не меняет прочие — обход идёт по
             // словарю правил, а выбор принадлежит правилу.
-            DBtest (kept.selected, true, "neighbour selection intact");
+            DBtest (kept.runState.selected, true, "neighbour selection intact");
             DBtest (kept.parseValid, true, "neighbour parse intact");
         }
 
@@ -3838,20 +3838,20 @@ namespace TestFunc {
         {
             // Первый «запуск»: правило создано заново, выбрано, затем снято в UI.
             Spec::SpecRule first = Spec::GetRuleFromDescription (validDesc);
-            first.selected = false;
-            DBtest (first.selected, false, "first run deselected");
+            first.runState.selected = false;
+            DBtest (first.runState.selected, false, "first run deselected");
 
             // Второй «запуск»: словарь правил создаётся заново, поэтому прежний
             // выбор не восстанавливается из переиспользованной структуры.
             Spec::SpecRule second = Spec::GetRuleFromDescription (validDesc);
-            DBtest (second.selected, true, "second run does not inherit deselection");
+            DBtest (second.runState.selected, true, "second run does not inherit deselection");
             DBtest (second.parseValid, true, "second run parses");
         }
 
         // --- гейт запуска отделён от признаков готовности ---
         {
             Spec::SpecRule rule = Spec::GetRuleFromDescription (validDesc);
-            DBtest (rule.selected, true, "default selection is true");
+            DBtest (rule.runState.selected, true, "default selection is true");
             DBtest (rule.destinationReady, true, "destination ready by default");
             DBtest (rule.IsRunnableForRun (), true, "fresh rule runnable");
 
@@ -3863,7 +3863,7 @@ namespace TestFunc {
             DBtest (rule.IsRunnableForRun (), false, "not-ready rule blocked by run gate");
 
             rule.destinationReady = true;
-            rule.selected = false;
+            rule.runState.selected = false;
             rule.parseValid = false;
             DBtest (rule.IsRunnableForRun (), false, "invalid+unselected still blocked");
             rule.parseValid = true;
@@ -3882,7 +3882,7 @@ namespace TestFunc {
             // TestSpecParseError как контракт).
             const GS::UniString brokenDesc = "Spec_rule{Fav;g@@u;p1,p2;f;q@@s@@x;y}";
             Spec::SpecRule rule = Spec::GetRuleFromDescription (brokenDesc);
-            DBtest (rule.selected, true, "broken rule selected by default");
+            DBtest (rule.runState.selected, true, "broken rule selected by default");
             DBtest (rule.parseValid, false, "broken rule reported invalid");
             DBtest (rule.IsRunnableForRun (), false, "broken rule never runnable");
             // Причина отказа не None — парсер сообщил, о чём речь.
@@ -3895,7 +3895,7 @@ namespace TestFunc {
             // запуска, а не поломка: именно это проверяет этот набор.
             Spec::SpecRule rule = Spec::GetRuleFromDescription (validDesc);
             DBtest (rule.parseValid, true, "unselected-but-parsed parses");
-            rule.selected = false;
+            rule.runState.selected = false;
             DBtest (rule.parseValid, true, "unselected-but-parsed still parses");
             DBtest (rule.parseError == Spec::ParseError::None, true, "unselected-but-parsed reason None");
         }
@@ -3964,17 +3964,17 @@ namespace TestFunc {
 
             Spec::SpecRule rule = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescOne));
             DBtest (rule.parseValid, true, "scenario parses");
-            DBtest (rule.selected, true, "scenario selected by default");
+            DBtest (rule.runState.selected, true, "scenario selected by default");
             DBtest (rule.IsRunnableForRun (), true, "scenario runnable");
 
-            rule.selected = false;
+            rule.runState.selected = false;
             DBtest (rule.parseValid, true, "scenario deselect keeps parse");
             DBtest (rule.IsRunnableForRun (), false, "scenario deselect blocks run");
             DBtest (rule.destinationReady, true, "scenario readiness intact");
 
             // Следующий запуск: правило создаётся заново и снова выбрано.
             Spec::SpecRule next = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescOne));
-            DBtest (next.selected, true, "scenario next run reselects");
+            DBtest (next.runState.selected, true, "scenario next run reselects");
             DBtest (next.IsRunnableForRun (), true, "scenario next run runnable");
         }
 
@@ -4194,13 +4194,13 @@ namespace TestFunc {
                 "}";
             Spec::SpecRule rule = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescription));
             const bool readyBefore = rule.IsRunnableForRun ();
-            rule.selected = false;
+            rule.runState.selected = false;
             DBtest (rule.parseValid, true, "multiline: deselect keeps parse");
             DBtest (rule.IsRunnableForRun (), false, "multiline: deselect blocks run");
             DBtest (rule.groups.GetSize () == 5, true, "multiline: groups survive deselect");
 
             Spec::SpecRule next = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescription));
-            DBtest (next.selected, true, "multiline: next run reselects");
+            DBtest (next.runState.selected, true, "multiline: next run reselects");
             DBtest (next.IsRunnableForRun (), readyBefore, "multiline: runnability restored");
         }
     }
@@ -4237,7 +4237,7 @@ namespace TestFunc {
             const UInt32 sumBefore = rule.out_sum_paramrawname.GetSize ();
             const bool parseBefore = rule.parseValid;
             const bool readyBefore = rule.destinationReady;
-            const bool selectedBefore = rule.selected;
+            const bool selectedBefore = rule.runState.selected;
             const UInt32 groupsBefore = rule.groups.GetSize ();
 
             GS::Array<API_Guid> found;
@@ -4251,7 +4251,7 @@ namespace TestFunc {
             DBtest (rule.groups.GetSize (), groupsBefore, "groups untouched");
             DBtest (rule.parseValid, parseBefore, "parse flag untouched");
             DBtest (rule.destinationReady, readyBefore, "readiness untouched");
-            DBtest (rule.selected, selectedBefore, "selection untouched");
+            DBtest (rule.runState.selected, selectedBefore, "selection untouched");
         }
 
         // --- наполнение состояния не меняет готовность правила к запуску ---

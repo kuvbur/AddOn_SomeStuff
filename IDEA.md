@@ -158,6 +158,15 @@ macOS — `not verified`.
 стадии, поэтому переносим оба и проверяем, что выбор одного правила не влияет
 на соседние. *Критерий приёмки:* `TestSpecSelectionPolicy` (65/65) остаётся
 зелёным без правок ожиданий, дельта 0, A/B = 0.
+**Статус: выполнено 2026-10-01.** `IsRunnableForRun ()` переписан на
+`runState.selected`; гейт по-прежнему требует трёх признаков, поэтому набор
+остался зелёным без правок ожиданий — это и было главным риском шага. Промежуточный
+дубль поля в `SpecRule` был заведён и отменён в том же шаге (clangd показал
+`Duplicate member 'selected'`). Валидация: clang-format на 3 файла, AC25
+`Build succeeded!`, sweep AC26-29 `success`, `suites=65 passed=2661 failed=1`
+(без изменений относительно A2), A/B `r3a3-selected` `diff_rows=0` против
+пяти баз. Карточка `Spec.md` дополнена разделом R3.A3. AC22-24, macOS —
+`not verified`.
 
 **A4 — `destinationReady` и `destinationParamGuidName` в `runState`.** Два
 поля одной стадии (разрешение избранного) — переносятся вместе, потому что
@@ -309,6 +318,9 @@ R3.5 закрыт на подставной фикстуре; интеграци
 
 ### Last Checkpoint
 
+- R3.A3 — `selected` перенесён в `SpecRuleRunState`, `IsRunnableForRun` на
+  `runState.selected`; A/B `r3a3-selected` = 0 против пяти баз,
+  `TestSpecSelectionPolicy` 65/65 без правок ожиданий. Refs: #228.
 - R3.A2 — `elements` перенесён в `SpecRuleRunState`; карточка `Spec.md`
   раздел R3.A2. A/B `r3a2-elements` = 0 против четырёх баз,
   `suites=65 passed=2661 failed=1` (предсуществующий провал), sweep AC26-29

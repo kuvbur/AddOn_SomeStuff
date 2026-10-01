@@ -73,6 +73,14 @@ namespace Spec {
         // молчаливый обход части источников.
         GS::Array<API_Guid> elements = {};
 
+        // Правило выбрано для текущего запуска. Стадия выбора: SpecDG после
+        // показа списка либо перечисление в ruleNames при агентском запуске.
+        // Оба писателя принадлежат этой стадии и не затирают друг друга:
+        // выбор пишется в то правило, к которому он относится. Плану чтения
+        // (до диалога) это поле недоступно — список источников от выбора
+        // не зависит.
+        bool selected = true;
+
         // Существующие элементы этого правила, в порядке обхода.
         //
         // ПРАВИЛО ЗАПОЛНЕНИЯ (не менять): при пустом отборе — ПРИСВАИВАНИЕ
@@ -96,7 +104,7 @@ namespace Spec {
         GS::UniString destinationParamGuidName = EMPTYSTRING;
         GS::UniString subguid_rulename = EMPTYSTRING; // Имя свойства с правилом, на основании которого созданы элементы
         GS::UniString subguid_rulevalue = EMPTYSTRING;
-        SpecRuleRunState runState; // Состояние текущего запуска: источники и найденные объекты.
+        SpecRuleRunState runState; // Состояние текущего запуска: источники, найденные объекты, выбор.
         API_PropertyDefinition rule_definitions =
             {}; // Определение свойства с правилом для поиска элементов, в которых оно доступно
         GS::UniString favorite_name = EMPTYSTRING; // Имя элемента в избранном
@@ -105,7 +113,6 @@ namespace Spec {
         // исходным описанием свойства (AddRule).
         ParseError parseError = ParseError::None;
         bool parseValid = true;       // Разбор описания правила удался
-        bool selected = true;         // Правило выбрано для текущего запуска
         bool destinationReady = true; // Избранное содержит все выходные свойства
         bool delete_old = false;
         bool stop_on_error = true;
@@ -115,7 +122,7 @@ namespace Spec {
 
         // Совместимый адаптер: правило участвует в текущем запуске, если разобрано,
         // выбрано и его назначение готово.
-        bool IsRunnableForRun () const { return parseValid && selected && destinationReady; }
+        bool IsRunnableForRun () const { return parseValid && runState.selected && destinationReady; }
     };
 
     // Один набор прочитанных словарей на весь запуск.

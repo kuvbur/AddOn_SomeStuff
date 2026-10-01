@@ -450,7 +450,7 @@ namespace Spec {
     // Алгоритм:
     //   1. Формирует данные для диалога (RuleSelectData) из словаря правил
     //   2. Показывает диалог (RuleSelectDialog)
-    //   3. Если пользователь нажал OK - обновляет выбор правил (rule.selected)
+    //   3. Если пользователь нажал OK - обновляет выбор правил (rule.runState.selected)
     // Возвращает: true, если пользователь выбрал хотя бы одно правило и нажал OK
     // Примечание: если пользователь отменил диалог - возвращает false
     // --------------------------------------------------------------------
@@ -463,7 +463,7 @@ namespace Spec {
 #else
             const SpecRule &rule = *cIt->value;
 #endif
-            if (!rule.parseValid || !rule.selected)
+            if (!rule.parseValid || !rule.runState.selected)
                 continue;
             if (rules.rules.ContainsKey (rule.rule_name))
                 continue;
@@ -485,12 +485,12 @@ namespace Spec {
 #else
             SpecRule &rule = *cIt->value;
 #endif
-            if (!rule.parseValid || !rule.selected)
+            if (!rule.parseValid || !rule.runState.selected)
                 continue;
             if (!rules.rules.ContainsKey (rule.rule_name))
                 continue;
-            rule.selected = rules.rules.Get (rule.rule_name);
-            if (rule.selected)
+            rule.runState.selected = rules.rules.Get (rule.rule_name);
+            if (rule.runState.selected)
                 has_true_state = true;
         }
         return has_true_state;
@@ -598,8 +598,8 @@ namespace Spec {
 #endif
                 if (!rule.parseValid || !rule.destinationReady)
                     continue;
-                rule.selected = ruleNames->Contains (rule.rule_name);
-                hasSelectedRule = hasSelectedRule || rule.selected;
+                rule.runState.selected = ruleNames->Contains (rule.rule_name);
+                hasSelectedRule = hasSelectedRule || rule.runState.selected;
             }
             if (!hasSelectedRule) {
                 msg_rep ("Spec", "Requested rules not found", APIERR_BADPARS, APINULLGuid);
@@ -654,7 +654,7 @@ namespace Spec {
 #else
             SpecRule &rule = *cIt->value;
 #endif
-            if (!rule.parseValid || !rule.selected)
+            if (!rule.parseValid || !rule.runState.selected)
                 continue;
             GS::HashTable<GS::UniString, GS::UniString> *pRuleFavorite = paramdict_favorite.GetPtr (rule.favorite_name);
             if (pRuleFavorite == nullptr) {
