@@ -1295,8 +1295,9 @@ Archicad с `test_25`.
 - **S09-коллизия и кандидат в F1 остаются не тронутыми** — это отдельные
   согласования, R7 не должен их решать попутно.
 ### Last Checkpoint
-R6.6 — коммит этого шага (tests/TestSpec.cpp, tests/TestFunc.cpp,
-tests/TestFunc.hpp, Docs/modules/spec/Spec.md, IDEA.md, Refs: #228).
+R6.6 — `18cbe4b` (tests/TestSpec.cpp, tests/TestFunc.cpp, tests/TestFunc.hpp,
+Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md, IDEA.md,
+Refs: #228).
 Предыдущий: R6.5 — `d3a91c9` (tests/TestSpec.cpp, tests/TestFunc.cpp,
 tests/TestFunc.hpp, Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md,
 IDEA.md, Refs: #228).
