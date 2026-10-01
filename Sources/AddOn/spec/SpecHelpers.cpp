@@ -1,12 +1,13 @@
 //------------ kuvbur 2022 ------------
 #include "SpecHelpers.hpp"
 
-// Шаг сетки размещения и дамп значений элемента. Тела перенесены из Spec.cpp
-// дословно: порядок разбора GDL-параметров, ветвление по show_type, состав
-// дампа и формат записи GDL-значений не менялись.
+// Шаг сетки размещения и дамп значений элемента. Обе функции обращаются только
+// к уже загруженному memo, поэтому вызываются и из PlaceElements, и из наборов
+// тестов без модели.
 
 namespace Spec {
 
+    // --------------------------------------------------------------------
     // Определение размеров элемента для размещения по сетке.
     // Назначение: читает GDL-параметры элемента и определяет шаг сетки при размещении.
     // Параметры:
@@ -24,6 +25,7 @@ namespace Spec {
     // Примечание: при show_type = 0 (параметр есть, но значение не 1/2/3) и отсутствии
     // somestuff_spec_hrow размеры берутся из "A"/"B" - то есть ветка show_type
     // проверяется на 1 и на 2/3, но не выходит при другом значении.
+    // --------------------------------------------------------------------
     bool GetSizePlaceElement (const API_Element &elementt, const API_ElementMemo &memot, double &dx, double &dy) {
         bool flag_find_dx = false;
         bool flag_find_dy = false;
@@ -86,9 +88,11 @@ namespace Spec {
         return false;
     }
 
+    // --------------------------------------------------------------------
     // Перевод значения параметра в строку для дампа.
     // Повторяет формат ParamHelpers::ToString, но без DBBREAK в ветке неизвестного
     // типа: дамп — диагностический вывод и не должен прерывать построение.
+    // --------------------------------------------------------------------
     GS::UniString ParamValueToDumpString (const ParamValue &pvalue) {
         switch (pvalue.val.type) {
         case API_PropertyIntegerValueType:
@@ -106,9 +110,11 @@ namespace Spec {
         }
     }
 
+    // --------------------------------------------------------------------
     // Заполняет дамп элемента по словарю записываемых параметров.
     // GDL-параметры (rawname с префиксом {@gdl:}) в properties не попадают — они
     // пишутся в memo и в paramOut отсутствуют, их пишет FillDumpGDLParameter.
+    // --------------------------------------------------------------------
     void FillDumpFromParamDict (const ParamDictValue &param, SpecElementDump &dump) {
         for (ParamDictValue::ConstPairIterator cIt = param.EnumeratePairs (); cIt != NULL; ++cIt) {
 #ifdef ServerMainVers_2800
@@ -124,9 +130,11 @@ namespace Spec {
         }
     }
 
+    // --------------------------------------------------------------------
     // Записывает в дамп фактическое значение GDL-параметра - то, что кладётся
     // в API_AddParType перед ACAPI_Element_Create, а не то, что было в ParamValue:
     // приведение к типу параметра может изменить значение.
+    // --------------------------------------------------------------------
     void FillDumpGDLParameter (const API_AddParType &actParam, SpecElementDump &dump) {
         GS::UniString rawname = GDLNAMEPREFIX + GS::UniString (actParam.name).ToLowerCase () + BRACEEND;
         GS::UniString value;

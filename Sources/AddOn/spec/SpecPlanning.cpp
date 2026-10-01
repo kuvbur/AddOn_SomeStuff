@@ -104,9 +104,11 @@ namespace Spec {
         return contribution;
     }
 
+    // --------------------------------------------------------------------
     // Дополняет вклад выходными значениями и ключом выхода. Вызывающий делает
     // это только для первого источника с данным ключом строки; ошибки чтения
     // остаются во вкладе, а решение о сообщении принимает PlanRuleRows.
+    // --------------------------------------------------------------------
     void ReadContributionOutputs (const API_Guid &elemguid,
                                   const GroupSpec &group,
                                   const GroupSlotBinding &binding,
@@ -150,8 +152,8 @@ namespace Spec {
         // добавляет ни источника, ни нулевого слота.
         if (contribution.outParam.IsEmpty () && contribution.outSumParam.IsEmpty ())
             return ContributionStatus::Empty;
-        // Сравнение со схемой — предупреждение, а НЕ замена проверки в цикле:
-        // фактическое число слотов известно лишь после чтения.
+        // Сравнение со схемой даёт статус вклада, но не отменяет проверку в
+        // цикле: фактическое число слотов известно лишь после чтения.
         if (contribution.outParam.GetSize () == schemaOutSlots && contribution.outSumParam.GetSize () == schemaSumSlots)
             return ContributionStatus::Complete;
         return ContributionStatus::Partial;
@@ -181,9 +183,11 @@ namespace Spec {
         }
     } // namespace
 
+    // --------------------------------------------------------------------
     // Добавляет суммы очередного источника в уже существующую строку.
     // При разных длинах складывает только общую начальную часть суммарных
     // слотов; невалидные пары и оставшиеся слоты не меняет.
+    // --------------------------------------------------------------------
     void SumContributionIntoRow (Element &row, const RuleContribution &contribution) {
         // Суммируются первые общие суммарные слоты; при неполном вкладе
         // отсутствующие слоты не создаются и оставшиеся значения не меняются.
@@ -240,10 +244,12 @@ namespace Spec {
         return RowAddition::Created;
     }
 
+    // --------------------------------------------------------------------
     // Сопоставляет рассчитанные строки с ранее размещёнными объектами правила.
     // Сопоставленные строки вынимает из elements; изменённые добавляет в
     // elementsMod, лишние GUID — в elementsDelete, остальные строки оставляет
     // для создания. plan, если передан, наблюдает те же решения, но не управляет ими.
+    // --------------------------------------------------------------------
     void ReconcileExistingRows (const SpecRule &rule,
                                 const SpecValueReader &reader,
                                 const FormatString &fstr,
