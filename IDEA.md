@@ -20,9 +20,8 @@ JSON (зафиксировано в #226).
 
 ### Status
 IN_PROGRESS — P0-P3, R3 (целиком), R4.1-R4.6, R5 (целиком), R6 (целиком),
-R7.1 закрыты. Следующий — R7.2-R7.4 (извлечь сверку, SpecChangePlan, один
-владелец payload).
-Последний прогон (R7.1): AC25 build success, sweep AC26-29 success, по схеме
+R7.2 закрыты. Следующий — R7.3-R7.4 (SpecChangePlan, один владелец payload).
+Последний прогон (R7.2): AC25 build success, sweep AC26-29 success, по схеме
 #231 `suites=58 passed=2250 failed=1` (предсуществующая
 `TestConvertPropertyToParamValue`), новый `TestSpecReconcileFixtures` 37/37,
 `TestSpecReconcile` 57/57, `TestSpecRowSlots` 28/28, `TestSpecRowLayout` 54/54,
@@ -177,7 +176,10 @@ exit code 0. Покрыто: каждое из пяти полей summary, от
   грабля нечислового суффикса формата, первое совпадение в `out_param`, дубли
   старых объектов, кандидат с израсходованной строкой, no-op, update с
   сохранением `exs_guid`, неиспользуемая GUID-связь. См. «R7.1 — ЗАКРЫТ».
-- [ ] R7.2-R7.6: сверка существующих строк и SpecChangePlan (см. Next Step).
+- [x] R7.2: сверка вынесена в `ReconcileExistingRows` (SpecPlanning.cpp) — порядок
+  операций, 8 чтений и тексты `msg_rep` сохранены; представление
+  create/update/delete/unchanged ещё не введено. См. «R7.2 — ЗАКРЫТ».
+- [ ] R7.3-R7.6: SpecChangePlan, один владелец payload (см. Next Step).
 
 ### Грабли этой сессии (записать в skill при случае, если уже не записано)
 
@@ -1332,6 +1334,43 @@ unchanged (это делает R7.2). Зафиксировано ТЕКУЩЕЕ 
 `%LOCALAPPDATA%\GRAPHISOFT\ARCHICAD__*` не чистить самостоятельно — среди них
 могут быть нужные проекты; записано в `AGENTS.md` §9 и в память.
 
+### R7.2 — ЗАКРЫТ (сверка существующих строк вынесена из GetElementsForRule)
+
+**Что сделано.** Тело сверки (бывшие строки 1922-2051 `Spec.cpp`, 130 строк)
+перенесено в `ReconcileExistingRows` в `SpecPlanning.cpp`. Представление
+create/update/delete/unchanged **ещё НЕ введено** — это R7.4/R7.3; здесь только
+перенос, как требует план («только после сравнения заменить представление»).
+
+**Что сохранено (это и было целью шага):**
+- **Порядок операций целиком:** обход `exsist_elements` -> сборка `key_out` из полей
+  ВЫХОДА -> три ветви удаления по порядку (`!hasunic` -> `!out_param.ContainsKey` ->
+  `!elements.ContainsKey`, каждая пишет в `guids` false) -> сверка значений
+  (несуммарные слоты, затем суммарные, в порядке схемы, затем непрочитанное
+  GUID-поле) -> `elements_mod.Add` при `flag_change` -> `elements.Delete (key)` и
+  `guids.Add (elemguid, true)` -> второй обход с удалением всего, чего нет в `guids`.
+- **Число чтений: 8** (4 в сверке + 4 в расчёте) — было и осталось; `Spec.cpp`
+  теперь содержит 0 `reader.Read`, `SpecPlanning.cpp` — 8.
+- **Тексты `msg_rep` без изменений** (все 9), потому что они разбираются отчётом.
+  Внутри перенесённой функции вызовы свёрнуты в `report (...)` — лямбда с ТЕМ ЖЕ
+  `msg_rep ("Spec", text, NoError, APINULLGuid)`; это косметика, не изменение.
+- **Имена параметров** переименованы по стилю нового модуля: `out_param` -> `outParam`,
+  `elements_delete` -> `elementsDelete`, `elements_mod` -> `elementsMod`. Тексты
+  сообщений с упоминанием `out_param` оставлены как есть — это данные отчёта.
+
+**Проверки:** clang-format на 3 файла; AC25 — `Build succeeded!`; sweep AC26-29 —
+`status=success`; схема #231: `suites=58 passed=2250 failed=1` — **числа ровно те
+же, что до переноса**, что и есть главное доказательство: `TestSpecReconcile` 57/57,
+`TestSpecReconcileFixtures` 37/37, `TestSpecScenarioMatrix` 75/75,
+`TestSpecEngineEquivalence` 49/49, `TestSpecRowSlots` 28/28, `TestSpecRowLayout` 54/54,
+`TestSpecContribution` 51/51, `TestSpecReadBoundary` 49/49, `TestSpecPlanning` 33/33;
+`FAILED_SUITE TestConvertPropertyToParamValue` — предсуществующая вне области;
+раннер exit_code=70 корректно. A/B `r72-final` — C=2/M=12/D=2, 14 строк,
+`diff_rows` = 0 против `p0-smoke`/`r66-final`/`r71-final`; sha256 `db1690f…` совпал.
+
+**Две ошибки компиляции — мои:** обращения к `out_param` внутри перенесённого тела
+(параметр новой функции называется `outParam`); текст сообщения `out_param.
+ContainsKey (key_out)` оставлен без изменений намеренно.
+
 ### Next Step
 Блок R6 закрыт целиком (R6.1-R6.6). Следующий — **R7: выделить сверку
 существующих строк и `SpecChangePlan`** (строка 281+ выписки
@@ -1364,9 +1403,9 @@ unchanged (это делает R7.2). Зафиксировано ТЕКУЩЕЕ 
 - **S09-коллизия и кандидат в F1 остаются не тронутыми** — это отдельные
   согласования, R7 не должен их решать попутно.
 ### Last Checkpoint
-R7.1 — `0ce39d2` (tests/TestSpec.cpp, tests/TestFunc.hpp, AGENTS.md,
-Docs/modules/spec/Spec.md, IDEA.md, Refs: #228). Регистрация набора попала в
-`f0ddbe6` (пользовательский коммит #231) — оттуда же TestKit::Note.
+R7.2 — коммит этого шага (spec/Spec.cpp, spec/SpecPlanning.cpp,
+spec/SpecPlanning.hpp, Docs/modules/spec/SpecPlanning.md, IDEA.md, Refs: #228).
+Предыдущий: R7.1 — `0ce39d2`; пользователь — `f0ddbe6`/`a139b88` (#231).
 Предыдущий: R6.6 — `18cbe4b`; пользователь — `f0ddbe6`/`a139b88` (#231).
 Предыдущий: R6.5 — `d3a91c9` (tests/TestSpec.cpp, tests/TestFunc.cpp,
 tests/TestFunc.hpp, Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md,

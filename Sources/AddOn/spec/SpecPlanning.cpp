@@ -250,4 +250,146 @@ namespace Spec {
         rows.Add (contribution.key, row);
         return RowAddition::Created;
     }
+
+    void ReconcileExistingRows (const SpecRule &rule,
+                                const SpecValueReader &reader,
+                                const FormatString &fstr,
+                                const GS::HashTable<GS::UniString, GS::UniString> &outParam,
+                                ElementDict &elements,
+                                ElementDict &elementsMod,
+                                GS::Array<API_Guid> &elementsDelete) {
+        // Тот же msg_rep ("Spec", текст, NoError, APINULLGuid), что и до переноса:
+        // тексты ветвей участвуют в разборе отчёта и не должны измениться.
+        auto report = [&rule] (const GS::UniString &text) { msg_rep ("Spec", text, NoError, APINULLGuid); };
+
+        UnicGuid guids = {};
+        for (const API_Guid &elemguid : rule.exsist_elements) {
+            GS::UniString key_out;
+            bool hasunic = true;
+            // Принадлежность субэлемента к группе определим по ключу - сцепке значений уникальных параметров
+            for (const GS::UniString &rawname : rule.out_paramrawname) {
+                ParamValue pvalue = {};
+                if (!reader.Read (elemguid, rawname, pvalue, 0))
+                    hasunic = false;
+                key_out = key_out + ATSIGN + ParamHelpers::ToString (pvalue, fstr);
+            }
+            if (!hasunic) {
+                report ("!hasunic " + key_out);
+                elementsDelete.Push (elemguid);
+                guids.Add (elemguid, false);
+                continue;
+            }
+            if (!outParam.ContainsKey (key_out)) {
+                report ("out_param.ContainsKey (key_out) " + key_out);
+                elementsDelete.Push (elemguid);
+                guids.Add (elemguid, false);
+                continue;
+            }
+            GS::UniString key = outParam.Get (key_out);
+            if (!elements.ContainsKey (key)) {
+                report ("!elements.ContainsKey (key) " + key_out);
+                elementsDelete.Push (elemguid);
+                guids.Add (elemguid, false);
+                continue;
+            }
+            // Нашли в создаваемых элементах уже существующую комбинацию значений
+            // Такой элемент можно модифицировать
+            Element el = elements.Get (key);
+            if (elementsMod.ContainsKey (key)) {
+                report ("elementsMod.ContainsKey (key) " + key_out);
+                elementsDelete.Push (elemguid);
+                guids.Add (elemguid, false);
+                continue;
+            }
+            bool flag_change = false;
+            // R6.4: имена берутся из схемы СТРОКИ, а не из rule. Значения и
+            // имена лежат рядом, поэтому сверка больше не зависит от того,
+            // совпадают ли размеры rule и накопленной строки: раньше индекс
+            // i шёл по массиву правила и читал из массива строки, и совпадение
+            // размеров было условием безопасности доступа.
+            for (const OutputSlot &slot : el.out_slots) {
+                if (slot.isSum)
+                    continue;
+                const GS::UniString &rawname = slot.rawname;
+                ParamValue pvalue = {};
+                ParamValue elvalue = slot.value;
+                if (!reader.Read (elemguid, rawname, pvalue, 0)) {
+                    report ("Param not valid: " + rawname);
+                    flag_change = true;
+                }
+                elvalue.val.formatstring = pvalue.val.formatstring;
+                ParamHelpers::ConvertByFormatString (elvalue);
+                if (elvalue != pvalue) {
+                    GS::UniString old_s = "old ";
+                    GS::UniString new_s;
+                    if (pvalue.type != API_PropertyStringValueType) {
+                        old_s += FormatStringFunc::NumToString (pvalue.val.doubleValue, pvalue.val.formatstring);
+                        new_s += FormatStringFunc::NumToString (elvalue.val.doubleValue, pvalue.val.formatstring);
+                    } else {
+                        old_s += pvalue.val.uniStringValue;
+                        new_s += elvalue.val.uniStringValue;
+                    }
+                    new_s += " new";
+                    report ("Param diff: " + rawname + SPACESTRING + old_s + " <=> " + new_s);
+                    flag_change = true;
+                }
+            }
+            for (const OutputSlot &slot : el.out_slots) {
+                if (!slot.isSum)
+                    continue;
+                const GS::UniString &rawname = slot.rawname;
+                ParamValue pvalue = {};
+                ParamValue elvalue = slot.value;
+                if (!reader.Read (elemguid, rawname, pvalue, 0)) {
+                    report ("Param not valid: " + rawname);
+                    flag_change = true;
+                }
+                elvalue.val.formatstring = pvalue.val.formatstring;
+                ParamHelpers::ConvertByFormatString (elvalue);
+                if (elvalue != pvalue) {
+                    GS::UniString old_s = "old ";
+                    GS::UniString new_s;
+                    if (pvalue.type != API_PropertyStringValueType) {
+                        old_s += FormatStringFunc::NumToString (pvalue.val.doubleValue, pvalue.val.formatstring);
+                        new_s += FormatStringFunc::NumToString (elvalue.val.doubleValue, pvalue.val.formatstring);
+                    } else {
+                        old_s += pvalue.val.uniStringValue;
+                        new_s += elvalue.val.uniStringValue;
+                    }
+                    report ("Sum diff: " + rawname + SPACESTRING + old_s + " <=> " + new_s);
+                    flag_change = true;
+                }
+            }
+
+            // Читаем GUID-связь ИМЕННО РАЗРЕШЁННОГО свойства. Раньше здесь читалось
+            // подменённое поле subguid_paramrawname, к тому моменту уже хранившее
+            // найденное имя; после разделения маркер и результат — разные поля.
+            GS::UniString rawname = rule.destinationParamGuidName;
+            if (!rawname.IsEmpty ()) {
+                ParamValue pvalue = {};
+                if (!reader.Read (elemguid, rawname, pvalue, 0)) {
+                    report ("Param not valid: " + rawname);
+                    flag_change = true;
+                }
+                GS::UniString instring = APIGuidToString (el.elements[0]);
+                for (UInt32 k = 1; k < el.elements.GetSize (); k++) {
+                    instring = instring + SEMICOLON + APIGuid2GSGuid (el.elements[k]).ToUniString ();
+                }
+            }
+            // Если нашли изменения - добавим в список модифицированных
+            if (flag_change) {
+                el.exs_guid = elemguid;
+                elementsMod.Add (key, el);
+            }
+            // Удаляем из списка новых элементов и добавляем в словарь обработанных
+            elements.Delete (key);
+            guids.Add (elemguid, true);
+        }
+        // Удаляем все существующие устаревшие элементы
+        for (const API_Guid &elemguid : rule.exsist_elements) {
+            if (!guids.ContainsKey (elemguid))
+                elementsDelete.Push (elemguid);
+        }
+    }
+
 } // namespace Spec

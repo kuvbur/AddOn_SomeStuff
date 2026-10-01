@@ -929,6 +929,32 @@
   `status=success`. **A/B:** `r71-final` — C=2/M=12/D=2, 14 строк; `diff_rows` = **0**
   против `p0-smoke`, `r65-final`, `r66-final`; sha256 фикстуры `db1690f…` совпал.
 
+### R7.2 — сверка существующих строк вынесена из GetElementsForRule (#228)
+- **Тело сверки (130 строк) перенесено в `ReconcileExistingRows`
+  (`SpecPlanning.cpp`).** Представление create/update/delete/unchanged **ещё не
+  введено** — план требует менять его только ПОСЛЕ сравнения. [по коду]
+- **Порядок операций сохранён целиком:** обход `exsist_elements` -> `key_out` из полей
+  ВЫХОДА -> три ветви удаления по порядку -> сверка значений (несуммарные, затем
+  суммарные, затем GUID-поле) -> `elements_mod.Add` -> `elements.Delete (key)` и
+  `guids.Add (elemguid, true)` -> второй обход по `guids`. [по коду + прогону]
+- **Инвариант чтений держится: 8** (4 расчёт + 4 сверка); в `Spec.cpp` осталось 0
+  `reader.Read`, в `SpecPlanning.cpp` — 8. [по коду]
+- **Тексты `msg_rep` не изменены** (все 9) — они разбираются отчётом; внутри
+  функции вызовы свёрнуты в `report (...)`, лямбда вызывает тот же `msg_rep`.
+  [по коду]
+- **Ключевое доказательство шага — числа прогона не изменились:** `suites=58
+  passed=2250 failed=1` ровно как до переноса. `TestSpecReconcile` 57/57,
+  `TestSpecReconcileFixtures` 37/37, `TestSpecScenarioMatrix` 75/75,
+  `TestSpecEngineEquivalence` 49/49, `TestSpecRowSlots` 28/28, `TestSpecRowLayout`
+  54/54, `TestSpecContribution` 51/51, `TestSpecReadBoundary` 49/49,
+  `TestSpecPlanning` 33/33; `FAILED_SUITE TestConvertPropertyToParamValue` —
+  предсуществующая вне области. [по отчёту, runtime AC25 2026-10-01]
+- **Две ошибки компиляции были мои:** обращения к `out_param` в перенесённом теле
+  (параметр новой функции — `outParam`). [по компиляции]
+- Проверка: clang-format на 3 файла; AC25 — `Build succeeded!`; sweep AC26–29 —
+  `status=success`. **A/B:** `r72-final` — C=2/M=12/D=2, 14 строк; `diff_rows` = **0**
+  против `p0-smoke`, `r66-final`, `r71-final`; sha256 фикстуры `db1690f…` совпал.
+
 ## Карточки
 
 ### R3 — `SpecRule`: разведение определения и состояния запуска (#228)

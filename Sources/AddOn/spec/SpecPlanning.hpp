@@ -188,6 +188,44 @@ namespace Spec {
     //   2. при Merged источник дописывается ДО суммирования;
     //   3. выходные слоты берутся из вклада как есть; пересчёта и фильтрации
     //      не производится.
+    // -----------------------------------------------------------------------------
+    // Сверка существующих строк (R7.2).
+    //
+    // Перенос тела из GetElementsForRule без изменения ПОРЯДКА операций. Порядок
+    // здесь и есть контракт, а не деталь реализации:
+    //
+    //   1) обход rule.exsist_elements в исходном порядке;
+    //   2) сборка key_out из полей ВЫХОДА правила (rule.out_paramrawname);
+    //   3) три ветви удаления по порядку: !hasunic -> !out_param.ContainsKey ->
+    //      !elements.ContainsKey; каждая пишет в guids значение false;
+    //   4) сверка значений: сначала НЕсуммарные слоты, потом суммарные, в
+    //      порядке схемы строки, и только потом непрочитанное GUID-поле;
+    //   5) при flag_change -> elements_mod.Add под ключом key строки;
+    //   6) elements.Delete (key) и guids.Add (elemguid, true) — строка
+    //      израсходована, объект сопоставлен (НЕ удалён);
+    //   7) второй обход: всё из exsist_elements, чего нет в guids, удаляется.
+    //
+    // Что менять нельзя (закреплено TestSpecReconcileFixtures, 37 проверок):
+    //   - out_param отдаёт ПЕРВЫЙ ключ для выходного значения; поэтому дубль
+    //     старого объекта приходит по ветке «строка израсходована» и удаляется,
+    //     а сопоставленный объект в elements_delete не попадает;
+    //   - при полном совпадении значений строка всё равно удаляется из
+    //     elements (no-op не оставляет строку «на будущее»);
+    //   - key_out собирается из ВЫХОДНЫХ полей, а не из уникальных;
+    //   - последняя ветка сверки читает destinationParamGuidName, но результат
+    //     не используется (собирается instring и теряется).
+    //
+    // Число чтений не меняется: сверка делает 4 reader.Read (key_out плюс
+    // два прохода по схеме и GUID-поле), расчёт — 4 в SpecPlanning. Всего 8.
+    // -----------------------------------------------------------------------------
+    void ReconcileExistingRows (const SpecRule &rule,
+                                const SpecValueReader &reader,
+                                const FormatString &fstr,
+                                const GS::HashTable<GS::UniString, GS::UniString> &outParam,
+                                ElementDict &elements,
+                                ElementDict &elementsMod,
+                                GS::Array<API_Guid> &elementsDelete);
+
     RowAddition AddContributionToRow (ElementDict &rows,
                                       const RuleContribution &contribution,
                                       const SpecRule &rule,
