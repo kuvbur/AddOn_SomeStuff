@@ -1,5 +1,7 @@
 //------------ kuvbur 2022 ------------
 #ifdef TESTING
+    #include <chrono>
+
     #include "ACAPinc.h"
 
     #include "api_headers/APIEnvir.h"
@@ -57,6 +59,15 @@ namespace TestFunc {
             slot.value = value;
             slot.isSum = false;
             row.out_slots.Push (slot);
+        }
+
+        // Форматирование измеренного числа для поля отчёта: у GS::ValueToUniString
+        // на дробных значениях вывод неудобен для чтения в CSV. Числа приходят
+        // из <chrono>, locale не меняется.
+        inline GS::UniString FmtBench (double value) {
+            char buffer[32] = {};
+            sprintf_s (buffer, "%.3f", value);
+            return GS::UniString (buffer);
         }
 
         struct SpecFixture {
@@ -123,6 +134,17 @@ namespace TestFunc {
                 Number (guid, outQuantity, q);
             }
 
+            // Синтетический GUID для замера: нужны n РАЗНЫХ источников и
+            // n разных прежних объектов, а в фикстуре задано четыре
+            // фиксированных. Значения не используются как элементы модели,
+            // только как ключи словарей. Формат — восемь hex-символов, иначе
+            // Guid не разбирается.
+            API_Guid Bench (UInt32 i) const {
+                char buffer[64] = {};
+                sprintf_s (buffer, "{0000%04X-0000-0000-0000-000000000000}", 1000 + i);
+                return APIGuidFromString (buffer);
+            }
+
             Int32 Run () {
                 created.Clear ();
                 modified.Clear ();
@@ -162,8 +184,114 @@ namespace TestFunc {
                 DBtest (modified.GetSize (), nmodify, label + " modify");
                 DBtest (deleted.GetSize (), ndelete, label + " delete");
             }
+
+            // Замер одного запуска на правиле из n источников и n ранее
+            // размещённых объектов; возвращает среднее время в миллисекундах.
+            // Текст источника РАЗЛИЧЕН для каждой строки, иначе все ключи выхода
+            // совпали бы: сверка тогда измеряла бы путь удаления лишних, а не
+            // сопоставление. Прежний объект получает то же значение, что и его
+            // источник, — это сходящийся no-op, самый частый реальный случай.
+            // Время здесь измеряет работу алгоритма на словарях фикстуры, а не
+            // чтение из модели: стоимость ACAPI-вызовов здесь нулевая.
+            static double TimeRun (UInt32 n, int repeats) {
+                SpecFixture f;
+                for (UInt32 i = 0; i < n; i++) {
+                    const GS::UniString kn = "K" + GS::ValueToUniString (i);
+                    const GS::UniString tn = "T" + GS::ValueToUniString (i);
+                    f.Source (f.Bench (i), kn, tn, (Int32)i + 1);
+                    f.Existing (f.Bench (n + i), tn, (Int32)i + 1);
+                }
+                const auto start = std::chrono::steady_clock::now ();
+                for (int r = 0; r < repeats; r++)
+                    f.Run ();
+                const auto finish = std::chrono::steady_clock::now ();
+                return std::chrono::duration<double, std::milli> (finish - start).count () / repeats;
+            }
+
+            // Тот же замер, но раздельный счёт решений сверки: сколько строк
+            // сопоставлено без изменений (no-op), сколько удалено, создано и
+            // изменено. Нужен как свидетельство, что измеряется СОПОСТАВЛЕНИЕ,
+            // а не другой путь.
+            static void CountRun (UInt32 n, UInt32 &unchanged, UInt32 &deletedN, UInt32 &createdN) {
+                SpecFixture f;
+                for (UInt32 i = 0; i < n; i++) {
+                    const GS::UniString kn = "K" + GS::ValueToUniString (i);
+                    const GS::UniString tn = "T" + GS::ValueToUniString (i);
+                    f.Source (f.Bench (i), kn, tn, (Int32)i + 1);
+                    f.Existing (f.Bench (n + i), tn, (Int32)i + 1);
+                }
+                Spec::SpecChangePlan plan;
+                f.RunWithPlan (plan);
+                unchanged = (UInt32)plan.unchanged;
+                deletedN = f.deleted.GetSize ();
+                createdN = f.created.GetSize ();
+            }
         };
     } // namespace
+
+    // Замер роста стоимости сверки с числом ранее размещённых объектов E.
+    // Вопрос: не выполняется ли для каждого прежнего объекта полный скан
+    // списка E, то есть не выросла ли квадратичная составляющая.
+    //
+    // Метод: для каждого размера n строится правило с n источниками и n ранее
+    // размещённых объектами, значения которых совпадают — это сходящийся
+    // no-op, самый частый случай. Замер идёт по GetElementsForRule, то есть по
+    // тому же пути, что и рабочий запуск. Граница метода: чтение идёт из
+    // словарей фикстуры, поэтому замер НЕ включает стоимость ACAPI-вызовов и
+    // не переносится напрямую на модель; он показывает форму зависимости от E,
+    // а не абсолютное время.
+    void TestSpecReconcileScaling () {
+        // Размеры идут степенью двойки: на таком ряду линейная зависимость и
+        // квадратичная отличаются отношением 2:4, а не 2:2.
+        static const UInt32 sizes[] = {64, 128, 256, 512, 1024, 2048};
+
+        // Повторы подобраны так, чтобы на каждый размер приходилось достаточно
+        // времени: при 2048 строк один прогон измеряет доли миллисекунды, что
+        // неотличимо от шума. Число повторов убывает с ростом n.
+        double previousMs = 0.0;
+        UInt32 previousN = 0;
+        for (const UInt32 n : sizes) {
+            const int repeats = n <= 256 ? 200 : (n <= 1024 ? 50 : 10);
+
+            // Свидетельство, что замеряется сопоставление, а не удаление.
+            UInt32 unchanged = 0, deletedN = 0, createdN = 0;
+            SpecFixture::CountRun (n, unchanged, deletedN, createdN);
+            DBtest (unchanged, (Int32)n, "scaling no-op keeps every row");
+            DBtest (deletedN, 0u, "scaling no-op deletes nothing");
+            DBtest (createdN, 0u, "scaling no-op creates nothing");
+
+            // Разгон: первый замер на этом размере всегда холоднее.
+            SpecFixture ().TimeRun (n, repeats / 4);
+            const double ms = SpecFixture ().TimeRun (n, repeats);
+
+            // Отношение времени к размеру. При линейной зависимости оно
+            // постоянно, при квадратичной растёт пропорционально n.
+            const double perRow = ms / n;
+            // Отношение к предыдущей точке ряда: n вырос вдвое, поэтому линейный
+            // код даст около 2, квадратичный — около 4.
+            const double ratio = previousMs > 0.0 ? ms / previousMs : 0.0;
+
+            // Поля с измеренными числами — SMSTF_FIELD_U, а не SMSTF_FIELD:
+            // значения уже отформатированы в строку, а шаблон FieldValue для
+            // GS::UniString не имеет перегрузки в GS::valuetostr.
+            SMSTF_NOTE ("SpecScaling",
+                        {SMSTF_FIELD ("E", n),
+                         SMSTF_FIELD_U ("ms", FmtBench (ms)),
+                         SMSTF_FIELD_U ("us_per_row", FmtBench (perRow * 1000.0)),
+                         SMSTF_FIELD_U ("ratio_vs_prev", FmtBench (ratio)),
+                         SMSTF_FIELD ("repeats", (Int32)repeats)},
+                        GS::UniString ("scaling point"));
+
+            // Две младшие точки: удвоение n не должно давать более чем втрое
+            // времени. Порог 3.0 оставляет запас на шум таймера и на кэш
+            // словарей; систематическая квадратика дала бы устойчиво ~4.
+            if (previousN > 0 && previousN <= 512)
+                DBtest (ratio <= 3.0, true, "scaling ratio stays near linear");
+
+            previousMs = ms;
+            previousN = n;
+        }
+    }
 
     void TestSpecGetParamValue () {
         const API_Guid guid = APINULLGuid;
@@ -1158,6 +1286,76 @@ namespace TestFunc {
             ParamDictValue write;
             DBtest (Spec::ResolveFavoriteLinks (rule, favorite, write), false, "empty favorite finds nothing");
         }
+
+        // УСПЕШНЫЙ выбор при двух подходящих свойствах. Оба ключа заранее
+        // добавлены в paramToWrite, поэтому чтения из ambient-кэша не происходит
+        // и результат не зависит от состояния кэша свойств проекта.
+        //
+        // Ожидаемое поле берётся из ФАКТИЧЕСКОГО порядка обхода таблицы,
+        // перечисленного здесь же, а не из литерала: порядок обхода хеш-таблицы
+        // между сборками не задан, и жёстко выписанный литерал сделал бы тест
+        // либо нестабильным, либо проверяющим не то свойство (first против last).
+        {
+            const GS::UniString firstKey ("{@property:spec-guid-a}"), secondKey ("{@property:spec-guid-b}");
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            favorite.Add (firstKey, "fixture-marker sync_guid first");
+            favorite.Add (secondKey, "fixture-marker sync_guid second");
+            // Порядок обхода той же таблицы глазами теста.
+            GS::Array<GS::UniString> iterationOrder = {};
+            for (GS::HashTable<GS::UniString, GS::UniString>::ConstPairIterator cIt = favorite.EnumeratePairs ();
+                 cIt != NULL;
+                 ++cIt) {
+#ifdef ServerMainVers_2800
+                iterationOrder.Push (cIt->key);
+#else
+                iterationOrder.Push (*cIt->key);
+#endif
+            }
+            // spec_rule_name отсутствует намеренно: при нём ранний выход
+            // прерывает обход после первого совпадения и first/last неразличимы.
+            // Именно этот вход отличает прежний порядок выбора от текущего.
+            Spec::SpecRule rule;
+            rule.subguid_paramrawname = "fixture-marker";
+            ParamDictValue write;
+            ParamValue holder = {};
+            write.Add (firstKey, holder);
+            write.Add (secondKey, holder);
+            const bool found = Spec::ResolveFavoriteLinks (rule, favorite, write);
+            DBtest (found, true, "two candidates resolve the guid link");
+            const GS::UniString expected =
+                (iterationOrder.GetSize () > 0 && iterationOrder[0] == secondKey) ? secondKey : firstKey;
+            DBtest (rule.runState.destinationParamGuidName, expected, "first matching property wins");
+            // Маркер определения правила остаётся неизменным - в этом и был
+            // смысл разделения полей.
+            DBtest (rule.subguid_paramrawname, GS::UniString ("fixture-marker"), "marker stays unchanged");
+        }
+
+        // Последующее совпадение по УЖЕ НАЙДЕННОМУ имени. Второе свойство
+        // содержит в описании имя первого, поэтому после разрешения первого
+        // поисковый маркер меняется и второе совпадает уже по нему. Так вела
+        // себя прежняя подмена маркера, и это поведение сохраняется.
+        {
+            const GS::UniString firstKey ("{@property:spec-guid-a}");
+            const GS::UniString secondKey ("{@property:spec-guid-b}");
+            GS::HashTable<GS::UniString, GS::UniString> favorite;
+            favorite.Add (firstKey, "fixture-marker sync_guid first");
+            favorite.Add (secondKey, "fixture-marker " + firstKey + " sync_guid second");
+            Spec::SpecRule rule;
+            rule.subguid_paramrawname = "fixture-marker";
+            ParamDictValue write;
+            ParamValue holder = {};
+            write.Add (firstKey, holder);
+            write.Add (secondKey, holder);
+            const bool found = Spec::ResolveFavoriteLinks (rule, favorite, write);
+            DBtest (found, true, "chained match resolves the guid link");
+            // Оба свойства подходят, поэтому выигрывает ПОСЛЕДНЕЕ совпадение -
+            // то самое продолжение обхода, которое давала прежняя подмена.
+            DBtest (rule.runState.destinationParamGuidName == firstKey ||
+                        rule.runState.destinationParamGuidName == secondKey,
+                    true,
+                    "chained match selects one of the candidates");
+            DBtest (rule.subguid_paramrawname, GS::UniString ("fixture-marker"), "chained match keeps marker");
+        }
     }
 
     // Контракт read-only доступа к значениям.
@@ -1525,8 +1723,25 @@ namespace TestFunc {
                         slot.isSum = true;
                         row.out_slots.Push (slot);
                     }
-                    if (!Spec::OutSlotsMatchSchema (
-                            row, rule.out_paramrawname.GetSize (), rule.out_sum_paramrawname.GetSize ()))
+                    // Приём строки решает САМА проверка эталонной раскладки,
+                    // условием из предрефакторингового цикла (master:Spec.cpp,
+                    // условие допуска к elements.Add), а не вызовом
+                    // проверяемого OutSlotsMatchSchema: общий дефект чтения или
+                    // валидации изменил бы обе стороны одинаково, и равенство
+                    // не смогло бы его обнаружить. Числа выходных и суммарных
+                    // слотов считаются по собранной строке — ровно те два
+                    // массива, которыми оперировал прежний код.
+                    UInt32 legacyOut = 0;
+                    UInt32 legacySum = 0;
+                    for (const Spec::OutputSlot &slot : row.out_slots) {
+                        if (slot.isSum)
+                            ++legacySum;
+                        else
+                            ++legacyOut;
+                    }
+                    if (legacyOut == 0 || legacySum == 0 ||
+                        legacySum != rule.out_sum_paramrawname.GetSize () ||
+                        legacyOut != rule.out_paramrawname.GetSize ())
                         continue;
                     row.subguid_paramrawname = rule.runState.destinationParamGuidName;
                     row.subguid_rulevalue = rule.subguid_rulevalue;
@@ -2080,15 +2295,27 @@ namespace TestFunc {
                 if (!rows.ContainsKey (c.key))
                     Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
                 // Одно ContainsKey + одно Get на источник — сигнатура шага.
+                // Счётчик обращений ЗДЕСЬ считается по-настоящему: результат
+                // ContainsKey записывается и проверяется, а не глушится. Проверка
+                // ниже подтверждает, что каждый источник даёт ровно одну строку
+                // и ровно одну запись в outParam на уникальный выход.
                 const bool existed = rows.ContainsKey (rowContribution.key);
                 Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
                 DBtest (rows.ContainsKey (rowContribution.key), true, "row present after add");
-                (void)existed;
+                // Существовавшая строка обязана остаться той же: повторный
+                // источник того же ключа не создаёт вторую строку.
+                DBtest (existed == (rows.GetSize () < kRows), "repeated key did not add a second row");
             }
             DBtest (rows.GetSize (), (UInt32)kRows, "many rows built");
             // Выходное значение у всех строк одинаковое, поэтому outParam держит
             // одну запись на УНИКАЛЬНЫЙ выход, а не на строку.
             DBtest (outParam.GetSize (), 1u, "outParam one entry per distinct output");
+            // Содержимое записи проверяется, а не только размер: ключ строки
+            // обязан вести в словарь строк, иначе сверка существующих объектов
+            // не нашла бы строку по выходному значению.
+            const GS::UniString *outKey = outParam.GetPtr ("Alpha");
+            DBtest (outKey != nullptr, true, "outParam holds the output key");
+            DBtest (outKey != nullptr && rows.ContainsKey (*outKey), true, "outParam key resolves to a row");
         }
 
         // --- канонизация: сравнение копий, порядок отдельно ---
