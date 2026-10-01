@@ -13,6 +13,7 @@
 #ifdef TESTING
 
     #include <functional>
+    #include <initializer_list>
     #include <string>
     #include <type_traits>
 
@@ -27,6 +28,13 @@ namespace TestKit {
         std::string reportPath;      // UTF-8; пусто -> каталог TEMP
         // Куда дублировать отклонения и сводку (панель «Отладка»).
         std::function<void (const GS::UniString &)> mirror;
+        // Уровень записей Note как целое (0/1/2 = NoteLevel) — на момент
+        // объявления Config тип NoteLevel ещё не определён, поэтому поле
+        // хранит номер уровня, а NoteLevel печатается по нему.
+        int noteLevel = 1;
+        // noteLevel задан вызывающим явно: переменная окружения SMSTF_VERBOSE
+        // его не перекрывает. Ставится из SetNoteLevel.
+        bool noteLevelExplicit = false;
     };
 
     Config &GetConfig ();
@@ -55,8 +63,72 @@ namespace TestKit {
     // Пропустить весь набор с причиной (нет проекта, нет элемента).
     [[noreturn]] void SkipTest (const GS::UniString &reason);
 
-    // Замена содержательных DBprnt (измерения и т.п.) — только в файл.
-    void Info (const char *key, const GS::UniString &value);
+    // Аналог DBprnt для тестов (#231). Прод-DBprnt не годится: печатает
+    // "== ERROR ==" префикс, если текст случайно содержит "err"/"ERROR"
+    // (CommonFunction.cpp:310) — измерение выглядит как ошибка; склеивает
+    // аргументы через " : " без структуры; пишет только в панель «Отладка»,
+    // мимо файла отчёта, поэтому прогон без IDE ничего не показывает.
+    //
+    // Форма строки отчёта (парная ключ=значение — читается и глазом, и grep'ом):
+    //
+    //   NOTE [Verbose] suite | key=value | key=value | текст
+    //
+    // Именованные поля идут перед свободным текстом и всегда разобраны по '=',
+    // поэтому значение, содержащее '=', остаётся однозначным.
+    // -------------------------------------------------------------------------
+
+    // Уровни записи, меняются через Config::noteLevel до Run.
+    enum class NoteLevel {
+        Quiet,   // только сводка и отклонения
+        Normal,  // измерения, осмысленные на фиксированном наборе
+        Verbose, // всё, включая заведомо шумные замеры по элементам проекта
+    };
+
+    // Явная установка уровня из кода: после неё SMSTF_VERBOSE не перекрывает
+    // значение (иначе «по умолчанию 1» не отличить от «явно попросили Normal»).
+    void SetNoteLevel (NoteLevel level);
+
+    // Именованное поле: структурная замена позиционного "msg : value".
+    struct Field {
+        const char *key;
+        GS::UniString value;
+    };
+
+    // Запись измерения; suite подставляет раннер (набор известен текущим прогоном).
+    // fields/count — ноль, если полей нет; text — свободный текст в конце.
+    // minLevel — минимальный уровень, при котором запись печатается. Normal
+    // печатается всегда, Verbose — только при SMSTF_VERBOSE=2: заведомо шумные
+    // замеры (тексты описаний по 24 штуки на элемент) на фиксированном наборе
+    // бесполезны и забивают отчёт.
+    void Note (const char *subject, const Field *fields, USize count, const GS::UniString &text, NoteLevel minLevel);
+
+    inline void Note (const char *subject, const GS::UniString &text) {
+        Note (subject, nullptr, 0, text, NoteLevel::Normal);
+    }
+
+    // Пара «ключ = значение» для Note. Арифметика приводится продовым
+    // GS::ValueToUniString, поэтому у вызывающего нет возни с форматом.
+    // Квалификация — с оператором глобальной области (::TestKit), а не просто
+    // TestKit: вызовы идут изнутри namespace TestFunc, и короткое имя искалось бы
+    // как TestFunc::TestKit (MSVC C2039). Без квалификации вовсе — C2065:
+    // пространства TestKit и TestFunc соседние, не вложенные.
+    #define SMSTF_FIELD(key, value)                                                                                    \
+        ::TestKit::Field { key, ::TestKit::detail::FieldValue (value) }
+    #define SMSTF_FIELD_U(key, value)                                                                                  \
+        ::TestKit::Field { key, value }
+
+    // Переменное число полей: принимает список SMSTF_FIELD через initializer_list,
+    // поэтому последним аргументом можно передать текст — тип определяет перегрузка.
+    void NoteFields (const char *subject, std::initializer_list<Field> fields, NoteLevel minLevel = NoteLevel::Normal);
+
+    inline void NoteFields (const char *subject,
+                            std::initializer_list<Field> fields,
+                            const GS::UniString &text,
+                            NoteLevel minLevel = NoteLevel::Normal) {
+        Note (subject, fields.begin (), (USize)fields.size (), text, minLevel);
+    }
+
+    #define SMSTF_NOTE(subject, ...) ::TestKit::NoteFields (subject, __VA_ARGS__)
 
     // Проверка, продолжающая набор при падении / прерывающая его (предусловия,
     // разыменование указателей).
@@ -72,6 +144,17 @@ namespace TestKit {
         std::string FmtInt (long long v);
         std::string FmtDbl (double v);
         std::string FmtStr (const GS::UniString &v);
+
+        // Приведение значения поля к строке. GS::ValueToUniString — шаблон поверх
+        // GS::valuetostr, у которого нет перегрузок для bool и USize
+        // (DevKit/APIDevKit-25/Support/Modules/GSRoot/CH.hpp:524-558): поэтому
+        // bool печатается как true/false, а USize (= UInt32, Definitions.hpp:387)
+        // приводится явно. Точные перегрузки выигрывают у шаблона.
+        inline GS::UniString FieldValue (bool v) { return v ? GS::UniString ("true") : GS::UniString ("false"); }
+
+        inline GS::UniString FieldValue (USize v) { return GS::ValueToUniString ((UInt32)v); }
+
+        template <class T> GS::UniString FieldValue (const T &v) { return GS::ValueToUniString (v); }
 
         template <class T>
         struct IsNum : std::integral_constant<bool, std::is_arithmetic<T>::value || std::is_enum<T>::value> {};

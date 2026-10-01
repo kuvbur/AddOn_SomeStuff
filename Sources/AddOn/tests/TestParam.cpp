@@ -1154,7 +1154,6 @@ namespace TestFunc {
         DBtest (!GetPropertyRuleFlag (definition), "RuleFlag cleared after Spec -> false");
 
         // Проверяем сохранение результата без повторного чтения определений из Archicad.
-        DBprnt ("TEST", "RuleCache content checks start");
         definition.description = "Sync_from{Property:TestSource}";
         const ParsePropertyResult expected = ParsePropertyDescriptionToRules (definition.description);
         GetPropertyRuleFlag (definition);
@@ -1199,7 +1198,7 @@ namespace TestFunc {
     //   prop.definition — то, что использовал мост;
     //   definitions[i]  — тот же источник, что в рабочем пути Sync.cpp:690/1099.
     // Без этого нельзя отличить «описание не приходит от API» от «в описании нет правил».
-    // Только DBprnt: это измерение, а не проверка — провалов теста оно не создаёт.
+    // Только Note: это измерение, а не проверка — провалов теста оно не создаёт.
     // -----------------------------------------------------------------------------
     void TestPropertyRuleFlagOnProjectElements () {
         GS::Array<API_Guid> elements;
@@ -1208,10 +1207,10 @@ namespace TestFunc {
         if (err != NoError || elements.IsEmpty ()) {
             err = ACAPI_Element_GetElemList (API_SlabID, &elements);
         }
-        DBprnt ("TEST",
-                GS::UniString ("RuleFlagProj list: elements=") + GS::ValueToUniString ((Int32)elements.GetSize ()) +
-                    GS::UniString (" wallCode=") + GS::ValueToUniString (wallListError) + GS::UniString (" slabCode=") +
-                    GS::ValueToUniString ((Int32)err));
+        ::TestKit::NoteFields ("RuleFlagProj.list",
+                               {SMSTF_FIELD ("elements", (Int32)elements.GetSize ()),
+                                SMSTF_FIELD ("wallCode", wallListError),
+                                SMSTF_FIELD ("slabCode", (Int32)err)});
         if (err != NoError || elements.IsEmpty ())
             return;
 
@@ -1227,9 +1226,11 @@ namespace TestFunc {
             err =
                 ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
             if (err != NoError || definitions.IsEmpty ()) {
-                DBprnt ("TEST",
-                        GS::UniString ("RuleFlagProj definitions: code=") + GS::ValueToUniString ((Int32)err) +
-                            GS::UniString (" count=") + GS::ValueToUniString ((Int32)definitions.GetSize ()));
+                ::TestKit::NoteFields ("RuleFlagProj.definitions",
+                                       {SMSTF_FIELD_U ("elem", APIGuidToString (elemGuid)),
+                                        SMSTF_FIELD ("code", (Int32)err),
+                                        SMSTF_FIELD ("count", (Int32)definitions.GetSize ())},
+                                       GS::UniString ("нет определений пользователя"));
                 continue;
             }
 
@@ -1275,23 +1276,25 @@ namespace TestFunc {
                         prop.definition.description.GetLength () > descriptionLimit
                             ? prop.definition.description.GetSubstring (0, descriptionLimit) + GS::UniString ("...")
                             : prop.definition.description;
-                    DBprnt ("TEST",
-                            GS::UniString ("RuleFlagProj desc ") + prop.definition.name + GS::UniString (" len=") +
-                                GS::ValueToUniString ((Int32)prop.definition.description.GetLength ()) +
-                                GS::UniString (" dArray=") + GS::ValueToUniString ((Int32)arrayDescriptionLength) +
-                                GS::UniString (" rule=") + GS::ValueToUniString (ruleFromPropertyDefinition) +
-                                GS::UniString (" [") + descriptionText + GS::UniString ("]"));
+                    ::TestKit::NoteFields ("RuleFlagProj.desc",
+                                           {SMSTF_FIELD_U ("name", prop.definition.name),
+                                            SMSTF_FIELD ("len", (Int32)prop.definition.description.GetLength ()),
+                                            SMSTF_FIELD ("dArray", (Int32)arrayDescriptionLength),
+                                            SMSTF_FIELD ("rule", ruleFromPropertyDefinition),
+                                            SMSTF_FIELD_U ("text", descriptionText)},
+                                           GS::UniString (),
+                                           ::TestKit::NoteLevel::Verbose);
                 }
             }
 
-            DBprnt ("TEST",
-                    GS::UniString ("RuleFlagProj elem=") + APIGuidToString (elemGuid) + GS::UniString (" defs=") +
-                        GS::ValueToUniString ((Int32)definitions.GetSize ()) + GS::UniString (" defsWithDesc=") +
-                        GS::ValueToUniString ((Int32)definitionsWithDescription) + GS::UniString (" props=") +
-                        GS::ValueToUniString ((Int32)properties.GetSize ()) + GS::UniString (" propsWithDesc=") +
-                        GS::ValueToUniString ((Int32)propertiesWithDescription) + GS::UniString (" rulesFromPropDef=") +
-                        GS::ValueToUniString ((Int32)rulesFromPropertyDefinition) +
-                        GS::UniString (" rulesFromArrayDef=") + GS::ValueToUniString ((Int32)rulesFromArrayDefinition));
+            ::TestKit::NoteFields ("RuleFlagProj.elem",
+                                   {SMSTF_FIELD_U ("elem", APIGuidToString (elemGuid)),
+                                    SMSTF_FIELD ("defs", (Int32)definitions.GetSize ()),
+                                    SMSTF_FIELD ("defsWithDesc", (Int32)definitionsWithDescription),
+                                    SMSTF_FIELD ("props", (Int32)properties.GetSize ()),
+                                    SMSTF_FIELD ("propsWithDesc", (Int32)propertiesWithDescription),
+                                    SMSTF_FIELD ("rulesFromPropDef", (Int32)rulesFromPropertyDefinition),
+                                    SMSTF_FIELD ("rulesFromArrayDef", rulesFromArrayDefinition)});
         }
         return;
     }

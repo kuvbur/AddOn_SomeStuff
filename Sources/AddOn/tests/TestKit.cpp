@@ -30,6 +30,10 @@
 
 namespace TestKit {
 
+    // Текущий набор: подставляется в каждую строку Note, чтобы измерение
+    // читалось без контекста. Обновляется раннером перед вызовом набора.
+    static const char *g_suite = "<none>";
+
     namespace {
 
         struct Entry {
@@ -53,6 +57,7 @@ namespace TestKit {
             int suppressed = 0;
             int suites = 0;
             int failedSuites = 0;
+            int notes = 0;        // записанные измерения (в том числе заглушённые)
             bool aborted = false; // набор упал через DBrequire
             bool skipped = false; // набор пропущен через DBskip
         };
@@ -135,6 +140,11 @@ namespace TestKit {
         return config;
     }
 
+    void SetNoteLevel (NoteLevel level) {
+        GetConfig ().noteLevel = static_cast<int> (level);
+        GetConfig ().noteLevelExplicit = true;
+    }
+
     void Register (const char *name, const char *group, TestFn fn) { Registry ().push_back (Entry{name, group, fn}); }
 
     void SkipTest (const GS::UniString &reason) {
@@ -143,9 +153,68 @@ namespace TestKit {
         throw AbortTest ();
     }
 
-    void Info (const char *key, const GS::UniString &value) {
+    namespace detail {
+        // Имя уровня в отчёте: при уровне Normal метка не печатается, чтобы
+        // строка не обрастала лишним словом в обычном прогоне.
+        const char *LevelTag (int level) {
+            if (level >= static_cast<int> (NoteLevel::Verbose))
+                return " [Verbose]";
+            if (level <= static_cast<int> (NoteLevel::Quiet))
+                return " [Quiet]";
+            return "";
+        }
+    } // namespace detail
+
+    void Note (const char *subject, const Field *fields, USize count, const GS::UniString &text, NoteLevel minLevel) {
+        ++g_stats.notes;
+        const int level = GetConfig ().noteLevel;
+        // Quiet глушит всё: измерение — не результат, а на фиксированном наборе
+        // оно превращает отчёт в простыню. Запись с minLevel=Verbose не проходит,
+        // пока уровень прогона ниже Verbose (то есть без SMSTF_VERBOSE=2).
+        if (level < static_cast<int> (minLevel) || level <= static_cast<int> (NoteLevel::Quiet))
+            return;
         Open ();
-        Emit ("INFO " + std::string (key) + " = " + value.ToCStr (0, MaxUSize, CC_UTF8).Get ());
+        std::string line = "NOTE";
+        // Метка печатается только для нестандартного уровня: на обычном прогоне
+        // слово «Verbose» в строке было бы шумом.
+        if (minLevel > NoteLevel::Normal)
+            line += detail::LevelTag (static_cast<int> (minLevel));
+        line += " ";
+        line += g_suite;
+        if (subject != nullptr && *subject != '\0') {
+            line += " | ";
+            line += subject;
+        }
+        for (USize i = 0; i < count; ++i) {
+            line += " | ";
+            line += fields[i].key;
+            line += "=";
+            line += fields[i].value.ToCStr (0, MaxUSize, CC_UTF8).Get ();
+        }
+        if (!text.IsEmpty ()) {
+            line += " | ";
+            line += text.ToCStr (0, MaxUSize, CC_UTF8).Get ();
+        }
+        Emit (line);
+    }
+
+    void NoteFields (const char *subject, std::initializer_list<Field> fields, NoteLevel minLevel) {
+        Note (subject, fields.begin (), (USize)fields.size (), GS::UniString (), minLevel);
+    }
+
+    NoteLevel LevelFromEnv () {
+        const char *v = std::getenv ("SMSTF_VERBOSE");
+        if (v == nullptr || *v == '\0')
+            return NoteLevel::Normal;
+        switch (*v) {
+        case '0':
+            return NoteLevel::Quiet;
+        case '2':
+        case '3':
+            return NoteLevel::Verbose;
+        default:
+            return NoteLevel::Normal;
+        }
     }
 
     namespace detail {
@@ -204,6 +273,10 @@ namespace TestKit {
 
     int Run (const char *filter) {
         const std::string sel = filter ? filter : "";
+        // Уровень измерений задаётся окружением один раз на прогон; поле в
+        // Config остаётся для вызывающего, который хочет задать уровень сам.
+        if (!GetConfig ().noteLevelExplicit)
+            GetConfig ().noteLevel = static_cast<int> (LevelFromEnv ());
         Open ();
         g_stats = Stats ();
         Emit ("=== somestuff tests begin ===");
@@ -217,6 +290,7 @@ namespace TestKit {
             ++g_stats.suites;
             g_stats.skipped = false;
             Emit ("BEGIN " + std::string (entry.name));
+            g_suite = entry.name;
             try {
                 entry.fn ();
             } catch (const AbortTest &) {
@@ -238,8 +312,13 @@ namespace TestKit {
             }
         }
 
+        // Хвостовые записи вызывающего не должны наследовать имя последнего
+        // набора: после прогона текущим считается уже «никто».
+        g_suite = "<run>";
+
         Emit ("SUMMARY suites=" + detail::FmtInt (g_stats.suites) + " passed=" + detail::FmtInt (g_stats.passed) +
-              " failed=" + detail::FmtInt (g_stats.failed) + " suppressed=" + detail::FmtInt (g_stats.suppressed));
+              " failed=" + detail::FmtInt (g_stats.failed) + " suppressed=" + detail::FmtInt (g_stats.suppressed) +
+              " notes=" + detail::FmtInt (g_stats.notes));
         for (const std::string &name : failedNames)
             Emit ("FAILED_SUITE " + name);
         // exit-код для скрипта: ненулевой при любом провале.

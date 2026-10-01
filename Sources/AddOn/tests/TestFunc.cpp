@@ -50,6 +50,7 @@ namespace TestFunc {
         TestKit::Register ("TestSpecContribution", Groups::Spec, TestSpecContribution);
         TestKit::Register ("TestSpecRowLayout", Groups::Spec, TestSpecRowLayout);
         TestKit::Register ("TestSpecRowSlots", Groups::Spec, TestSpecRowSlots);
+        TestKit::Register ("TestSpecReconcileFixtures", Groups::Spec, TestSpecReconcileFixtures);
         TestKit::Register ("TestSpecScenarioMatrix", Groups::Spec, TestSpecScenarioMatrix);
         TestKit::Register ("TestSpecEngineEquivalence", Groups::Spec, TestSpecEngineEquivalence);
         TestKit::Register ("TestSpecOutputSchema", Groups::Spec, TestSpecOutputSchema);
@@ -104,7 +105,11 @@ namespace TestFunc {
         const char *filter = std::getenv ("SMSTF_TEST");
         const int failed = TestKit::Run (filter);
         if (failed > 0)
-            TestKit::Info ("RESULT", GS::UniString::Printf ("%d failed assertions, see report", failed));
+            // Хвост прогона дублируется через Note: в файле отчёта строка SUMMARY
+            // уже есть, а без IDE её негде увидеть.
+            ::TestKit::NoteFields ("run",
+                                   {SMSTF_FIELD ("failedAssertions", failed)},
+                                   GS::UniString::Printf ("%d failed assertions, see report", failed));
     }
 
 } // namespace TestFunc

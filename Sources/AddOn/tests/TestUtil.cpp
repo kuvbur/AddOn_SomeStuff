@@ -83,9 +83,6 @@ namespace TestFunc {
         for (UInt32 j = 0; j < guidArray.GetSize (); j++) {
             ResetSyncPropertyOne (guidArray[j]);
         }
-    #if defined(TESTING)
-        DBprnt ("TEST", "ResetSyncPropertyArray");
-    #endif
     }
 
     void ResetSyncPropertyOne (const API_Guid &elemGuid) {

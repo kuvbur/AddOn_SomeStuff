@@ -863,10 +863,8 @@ namespace TestFunc {
     void TestParsePropertyDescriptionToRules () {
         // Тест 1: простое Sync_from описание
         {
-            DBprnt ("DescToRules", "Test 1 start");
             GS::UniString desc = "Sync_from{Property:TestProperty}";
             ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
-            DBprnt ("DescToRules", "Test 1 after call");
             DBtest (result.hasSyncRules, "DescToRules Sync_from -> hasSyncRules");
             DBtest (result.syncRules.GetSize () > 0, "DescToRules Sync_from -> rules not empty");
             if (result.syncRules.GetSize () > 0) {
