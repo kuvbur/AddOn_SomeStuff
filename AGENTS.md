@@ -101,6 +101,12 @@ if behavior was actually executed and observed. C++ test/debug output
 (`DBprnt`/`DBtest`) is read from the Visual Studio «Отладка» output pane
 via VS MCP `output_read`, not from a results file.
 
+**Landmine — не чистить профили Archicad.** `%LOCALAPPDATA%\GRAPHISOFT\ARCHICAD__*`
+не удалять самостоятельно: среди временных каталогов могут лежать нужные
+проекты. Если Archicad не доходит до окна (пустой `MainWindowTitle`, порт 19723
+молчит) — сообщить и попросить пользователя почистить, а не чистить самостоятельно
+(решение пользователя, 2026-10-01).
+
 **Debug (Visual Studio MCP)** — for live investigation (breakpoints,
 locals, call stack), use skill `visualstudio-cpp-debugger`. For this
 repo's loading path, the debugger/runner conflict, and how to confirm a

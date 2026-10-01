@@ -2095,6 +2095,215 @@ namespace TestFunc {
         }
     }
 
+    // R7.1: fixtures для reconciliation — те случаи, что перечислены в плане и
+    // которые должен зафиксировать шаг ДО замены представления на
+    // create/update/delete/unchanged (R7.2).
+    //
+    // Здесь закрепляется ТЕКУЩЕЕ поведение, включая те его особенности, которые
+    // выглядят подозрительно (S09-коллизия, потеря строки при совпадении
+    // выходных значений, лишний GUID-связь без проверки). План требует, чтобы
+    // представление менялось только ПОСЛЕ сравнения — значит, чтобы было с чем
+    // сравнивать, нужен эталон до изменения.
+    void TestSpecReconcileFixtures () {
+        // --- fixture 1: key_out и формат .2m ---
+        // Ключ выхода склеивается из значений полей ВЫХОДА правила (не сумм) по
+        // ATSIGN, значения приведены форматом ".2m". Обе вещи должны быть
+        // закреплены, иначе изменение формата тихо меняет сопоставление.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c);
+            // Ключ выхода = только выходные слоты, с префиксом ATSIGN.
+            DBtest (c.keyOut, GS::UniString ("@Alpha"), "R7.1 key_out from output slots only");
+            DBtest (c.key, GS::UniString ("@A"), "R7.1 row key from unic slots only");
+            DBtest (c.keyOut != c.key, true, "R7.1 key_out differs from row key");
+            // Формат ".2m" в Archicad: точка — РАЗДЕЛИТЕЛЬ единицы измерения,
+            // а не десятичный разделитель (Helpers.cpp:201-207: точки временно
+            // убираются перед разбором). Поэтому ".2m" тождественно "2m" —
+            // две знаковые цифры с обрезкой нулей, а НЕ два знака после запятой.
+            // Это и есть причина, почему ключ выхода не зависит от разрядности.
+            DBtest (fstr.n_zero, 2, "R7.1 .2m means two significant decimals");
+            DBtest (fstr.trim_zero, true, "R7.1 .2m trims trailing zeros");
+            DBtest (
+                FormatStringFunc::ParseFormatString ("2m").n_zero, fstr.n_zero, "R7.1 dot prefix is unit separator");
+            ParamValue num = {};
+            ParamHelpers::ConvertDoubleToParamValue (num, EMPTYSTRING, 2.5);
+            DBtest (ParamHelpers::ToString (num, fstr), GS::UniString ("2,5"), "R7.1 .2m trims to one decimal");
+            ParamValue whole = {};
+            ParamHelpers::ConvertDoubleToParamValue (whole, EMPTYSTRING, 7.0);
+            DBtest (
+                ParamHelpers::ToString (whole, fstr), GS::UniString ("7"), "R7.1 .2m trims whole number to integer");
+            // ГРАБЛЯ, а не контраст: нечисловой суффикс молча становится нулём
+            // разрядов (Helpers.cpp: n_zero = std::atoi (outstringformat)), а не
+            // ошибкой. "F2" -> n_zero 0 -> округление до целого. Закреплено,
+            // потому что от разрядности зависит key_out, а значит и сопоставление
+            // существующих объектов: смена формата молча переставит ключи.
+            FormatString bogus = FormatStringFunc::ParseFormatString ("F2");
+            DBtest (bogus.n_zero, 0, "R7.1 non-numeric format suffix parses as zero decimals");
+            ParamValue num2 = {};
+            ParamHelpers::ConvertDoubleToParamValue (num2, EMPTYSTRING, 2.5);
+            DBtest (ParamHelpers::ToString (num2, bogus), GS::UniString ("3"), "R7.1 zero decimals rounds to integer");
+        }
+
+        // --- fixture 2: поиск ПЕРВОГО совпадения ---
+        // out_param хранит ПЕРВЫЙ ключ для данного выходного значения
+        // (запись не перезаписывается). Поэтому при двух строках с одинаковым
+        // выходом сверка находит только первую, а вторая остаётся в elements
+        // как будто новая. Это старое поведение, и оно же — механизм потери
+        // строки из S09.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Same", 1);
+            f.Source (f.second, "B", "Same", 2);
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            for (const API_Guid &guid : f.rule.elements) {
+                Spec::RuleContribution c =
+                    Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
+                Spec::RuleContribution rowContribution = c;
+                if (!rows.ContainsKey (c.key))
+                    Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
+                Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
+            }
+            DBtest (outParam.GetSize (), 1u, "R7.1 one entry for identical out value");
+            // Первый источник в порядке обхода задаёт значение словаря.
+            DBtest (outParam.Get (GS::UniString ("@Same")), GS::UniString ("@A"), "R7.1 first match wins");
+            DBtest (rows.ContainsKey (GS::UniString ("@B")), true, "R7.1 second row still built");
+            // Именно поэтому вторая строка при сверке не найдётся по key_out.
+            DBtest (outParam.ContainsKey (GS::UniString ("@Same")), true, "R7.1 out value present");
+        }
+
+        // --- fixture 3: ДУБЛИ старых объектов ---
+        // Два существующих элемента с одинаковыми выходными значениями. Первый
+        // забирает строку (elements.Delete), второй видит, что ключа больше нет
+        // (в elements) — но проходит по elements_mod, если первый был
+        // модифицирован. Проверяем оба исхода: порядок и то, что дубль не
+        // приводит к повторной записи в elements_mod.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Alpha", 5); // значения старого совпадают с новыми
+            // Второй дубль старого объекта с тем же выходным значением.
+            API_Guid dupGuid = APIGuidFromString ("{55555555-5555-5555-5555-555555555555}");
+            f.rule.exsist_elements.Push (dupGuid);
+            f.Text (dupGuid, f.outText, "Alpha");
+            f.Number (dupGuid, f.outQuantity, 5);
+
+            f.Shape (f.Run (), 1, 0, 0, 1, "R7.1 duplicate old handled once");
+            // Ровно один из двух дублей удалён, второй — тоже (не найден в guids
+            // после обработки первого, т.к. ключ строки уже израсходован).
+            // Первый дубль сопоставлен со строкой (guids = true, удаления нет),
+            // второй уходит по ветке «строка уже израсходована» и удаляется.
+            DBtest (f.deleted.GetSize (), 1, "R7.1 one duplicate deleted");
+            DBtest (f.created.GetSize (), 0, "R7.1 no row left for duplicates");
+        }
+
+        // --- fixture 4: кандидат уже удалён из словаря новых ---
+        // Строка, которую нашёл первый старый объект, УДАЛЯЕТСЯ из elements, и
+        // второй старый объект с тем же key_out приходит по ветке
+        // «!elements.ContainsKey (key)». Строка @B не имеет старого объекта и
+        // остаётся как новая.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Source (f.second, "B", "Beta", 9);
+            // Оба старых объекта имеют ОДНО выходное значение, поэтому
+            // out_param отображает его на первый ключ; второй старый объект
+            // попадает в ветку «строка уже удалена».
+            f.Existing (f.old, "Alpha", 5);
+            API_Guid second = APIGuidFromString ("{66666666-6666-6666-6666-666666666666}");
+            f.rule.exsist_elements.Push (second);
+            f.Text (second, f.outText, "Alpha");
+            f.Number (second, f.outQuantity, 5);
+
+            f.Run ();
+            // Механизм по коду: первый старый объект находит строку @A по
+            // key_out и ПОМЕЧАЕТСЯ ОБРАБОТАННЫМ (guids.Add (elemguid, true)),
+            // но в elements_delete НЕ попадает — он сопоставлен, а не удалён.
+            // Строка @A при этом УДАЛЯЕТСЯ из elements (elements.Delete (key)).
+            // Второй старый объект имеет тот же key_out, поэтому out_param
+            // отдаёт ему уже израсходованный ключ @A, и он уходит по ветке
+            // «!elements.ContainsKey (key)» — вот она и удаляется.
+            //
+            // Итог: удалён ровно ОДИН объект — второй, чья строка была
+            // захвачена первым. Это и есть случай «кандидат уже удалён из
+            // словаря новых», который план R7.1 просит зафиксировать.
+            DBtest (f.deleted.GetSize (), 1, "R7.1 candidate with consumed row deleted");
+            DBtest (f.created.GetSize (), 1, "R7.1 unmatched row survives as create");
+            DBtest (f.created.ContainsKey (GS::UniString ("@B")), true, "R7.1 row B kept as create");
+        }
+
+        // --- fixture 5: no-op (совпадение целиком) ---
+        // Значения старого объекта равны новым: flag_change не поднимается,
+        // объект не модифицируется, но из elements строка УДАЛЯЕТСЯ — то есть
+        // повторный запуск ничего не создаёт и не меняет. Это текущий контракт
+        // no-op; новый статус «unchanged» его не должен подменять.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Alpha", 5);
+            const Int32 n = f.Run ();
+            DBtest (n, 0, "R7.1 no-op yields zero operations");
+            DBtest (f.created.GetSize (), 0, "R7.1 no-op creates nothing");
+            DBtest (f.modified.GetSize (), 0, "R7.1 no-op modifies nothing");
+            DBtest (f.deleted.GetSize (), 0, "R7.1 no-op deletes nothing");
+        }
+
+        // --- fixture 6: изменение суммы при неизменном выходе ---
+        // Сумма отличается — значит flag_change, объект уходит в modified с
+        // сохранением exs_guid (это то, что не должно ломаться при замене
+        // представления на update).
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 9);
+            f.Existing (f.old, "Alpha", 5);
+            const Int32 n = f.Run ();
+            DBtest (n, 1, "R7.1 changed sum counts as one operation");
+            DBtest (f.modified.GetSize (), 1, "R7.1 changed sum goes to modified");
+            const Spec::Element *mod = f.modified.GetPtr (GS::UniString ("@A"));
+            DBrequire (mod != nullptr, "R7.1 modified row found");
+            DBtest (mod->exs_guid == f.old, true, "R7.1 modified row keeps existing GUID");
+            DBtest (f.created.GetSize (), 0, "R7.1 nothing created on update");
+            DBtest (f.deleted.GetSize (), 0, "R7.1 nothing deleted on update");
+        }
+
+        // --- fixture 7: GUID-связь читается, но результат не используется ---
+        // Строки 2026-2037: читается destinationParamGuidName, строится
+        // instring из GUID источников — и НИКУДА не пишется. При отсутствии
+        // поля меняется только флаг. Это подозрительно (вероятно, недописанная
+        // связь), но менять поведение здесь нельзя: фиксируем как есть.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Alpha", 5);
+            f.rule.destinationParamGuidName = f.text;
+            // В словаре НЕТ этого поля для старого объекта: чтение не удастся,
+            // но результат всё равно не влияет на решение.
+            f.context.read.Get (f.old).Delete (f.text);
+            const Int32 n = f.Run ();
+            // flag_change поднимается из-за непрочитанного поля.
+            DBtest (n, 1, "R7.1 unread guid link counts as change");
+            DBtest (f.modified.GetSize (), 1, "R7.1 unread guid link forces update");
+            // Если бы связь записывалась, сумма была бы другой — значит её
+            // отсутствие не влияет на результат расчёта строки.
+            const Spec::Element *mod = f.modified.GetPtr (GS::UniString ("@A"));
+            DBrequire (mod != nullptr, "R7.1 modified row present after guid link");
+            DBtest (mod->out_sum_param[0].val.intValue, 5, "R7.1 guid link does not alter computed row");
+        }
+    }
+
     void TestSpecRowSlots () {
         // --- схема повторяет прежние порядок, имена и значения ---
         {
