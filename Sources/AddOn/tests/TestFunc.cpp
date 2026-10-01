@@ -17,7 +17,7 @@ namespace TestFunc {
     // тем же каналом, что и раньше. Прод-DBtest/DBprnt из CommonFunction.hpp
     // здесь НЕ используются: они объявлены в общем заголовке и вызываются
     // также из Helpers.cpp/CommonFunction.cpp, где вывод остаётся прежним.
-    // Тег функции-владельца (#230) формирует сам TestKit - см. TestKit::Loc.
+    // Тег функции-владельца формирует сам TestKit - см. TestKit::Loc.
 
     // Группы наборов: по ним работает отбор SMSTF_TEST (TestKit::Run).
     namespace Groups {

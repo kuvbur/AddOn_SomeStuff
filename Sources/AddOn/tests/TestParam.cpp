@@ -1126,7 +1126,7 @@ namespace TestFunc {
         // ---- Второй вызов с тем же описанием: кэш, результат тот же ----
         DBtest (GetPropertyRuleFlag (definition), "RuleFlag Sync_from cached -> true");
 
-        // ---- Инвалидация: описание изменилось -> признак пересчитан (#159: Renum тоже правило) ----
+        // ---- Инвалидация: описание изменилось -> признак пересчитан ----
         definition.description = "Renum_flag{Property:RenumRule; NULL}";
         DBtest (GetPropertyRuleFlag (definition), "RuleFlag changed to Renum_flag -> true");
 
@@ -1191,7 +1191,7 @@ namespace TestFunc {
     }
 
     // -----------------------------------------------------------------------------
-    // Диагностика #184/#185: почему мост отдаёт hasRule=false для всех свойств.
+    // Диагностика моста: почему он отдаёт hasRule=false для всех свойств.
     // Повторяет путь BrowserPalette::GetPropertiesList на реальных элементах проекта
     // (ACAPI_Element_GetPropertyDefinitions -> ACAPI_Element_GetPropertyValues) и
     // печатает длины описаний из двух источников определения:
@@ -1214,7 +1214,7 @@ namespace TestFunc {
         if (err != NoError || elements.IsEmpty ())
             return;
 
-        // #184/#185: добавляем один объект — правила координат/углов живут на объектах.
+        // Добавляем один объект — правила координат/углов живут на объектах.
         GS::Array<API_Guid> objectElements;
         if (ACAPI_Element_GetElemList (API_ObjectID, &objectElements) == NoError && !objectElements.IsEmpty ())
             elements.Push (objectElements[0]);
@@ -1268,7 +1268,7 @@ namespace TestFunc {
 
                 // Печатаем сами описания первого элемента: длины у обоих источников
                 // совпадают, поэтому отличить «описание без правила» от «правило другого
-                // формата» можно только по тексту (#184/#185).
+                // формата» можно только по тексту.
                 if (descriptionsDumped < 24 && !prop.definition.description.IsEmpty ()) {
                     ++descriptionsDumped;
                     const USize descriptionLimit = 160;

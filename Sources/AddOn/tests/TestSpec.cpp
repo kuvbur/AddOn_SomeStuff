@@ -17,10 +17,10 @@ namespace TestFunc {
 
     namespace {
         // Синтетические GUID используются только как ключи словарей, не как элементы модели.
-        // Числовой ParamValue для проверок суммирования (R6.3). valid=false
-        // даёт невалидный слот — на нём держится правило «isValid с обеих
-        // сторон». Локальной функцией быть не может: определение в теле
-        // функции запрещено, поэтому хелпер живёт здесь.
+        // Числовой ParamValue для проверок суммирования. valid=false даёт
+        // невалидный слот — на нём держится правило «isValid с обеих сторон».
+        // Локальной функцией быть не может: определение в теле функции
+        // запрещено, поэтому хелпер живёт здесь.
         ParamValue Num (Int32 v, bool valid = true) {
             ParamValue p = {};
             ParamHelpers::ConvertIntToParamValue (p, EMPTYSTRING, v);
@@ -28,11 +28,9 @@ namespace TestFunc {
             return p;
         }
 
-        // R7.4: построение строки сумм вручную для тестов суммирования.
-        // Прежде тесты писали в отдельный массив сумм, а поля удалены —
-        // теперь добавляется СЛОТ. isSum обязателен: по нему SumContributionIntoRow
-        // находит накопленные слоты, а без него строка выглядела бы состоящей
-        // только из выходных.
+        // Добавление слота суммы вручную, для тестов суммирования.
+        // isSum обязателен: по нему SumContributionIntoRow находит накопленные
+        // слоты, а без него строка выглядела бы состоящей только из выходных.
         void PushSumSlot (Spec::Element &row, const ParamValue &value) {
             Spec::OutputSlot slot = {};
             slot.rawname = EMPTYSTRING;
@@ -41,9 +39,9 @@ namespace TestFunc {
             row.out_slots.Push (slot);
         }
 
-        // R7.4-инвариант: слот с произвольным флагом — нужен, чтобы собрать
-        // ПЕРЕМЕШАННУЮ схему (сумма раньше выхода). Схема — публичные данные
-        // элемента, поэтому нельзя полагаться на единственного автора.
+        // Слот с произвольным флагом — нужен, чтобы собрать ПЕРЕМЕШАННУЮ
+        // схему (сумма раньше выхода). Схема — публичные данные элемента,
+        // поэтому нельзя полагаться на единственного автора.
         void PushRawSlot (Spec::Element &row, bool isSum, const ParamValue &value) {
             Spec::OutputSlot slot = {};
             slot.rawname = isSum ? GS::UniString ("S") : GS::UniString ("O");
@@ -73,7 +71,7 @@ namespace TestFunc {
             const GS::UniString outText = "{@property:spec-out-text}";
             const GS::UniString outQuantity = "{@property:spec-out-quantity}";
             Spec::SpecRule rule;
-            // R5.3: набор прочитанных словарей — один объект, как в SpecArray.
+            // Набор прочитанных словарей — один объект, как в SpecArray.
             Spec::SpecReadContext context;
             Spec::ElementDict created;
             Spec::ElementDict modified;
@@ -249,8 +247,7 @@ namespace TestFunc {
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec empty");
             f.Source (f.first, "A", "Alpha", 2);
             // Маркер из описания правила и разрешённое свойство избранного - разные
-            // поля после R3.3. В Element копируется разрешённое (destinationParamGuidName),
-            // маркер остаётся в правиле и в строку не попадает.
+            // В Element копируется разрешённое
             f.rule.subguid_paramrawname = "fixture-link-marker";
             f.rule.destinationParamGuidName = "fixture-link";
             f.rule.subguid_rulename = "fixture-rule";
@@ -432,7 +429,7 @@ namespace TestFunc {
         }
     }
 
-    // R4.5: сверка S03-S09/S13 и действующей дедупликации.
+    // Объединение строк и построение ключа: действующая дедупликация.
     // Ничего не меняется и не "исправляется": здесь закрепляются контракты
     // объединения строк и построения ключа, потому что именно их сломает
     // любая будущая правка. Ожидания рассчитаны воспроизведением цикла
@@ -446,7 +443,7 @@ namespace TestFunc {
     //   n_elements растёт только при СОЗДАНИИ строки, поэтому объединение на
     //   существующем ключе не увеличивает результат.
     void TestSpecMergeAndKey () {
-        // S08: две группы с ОДИНАКОВЫМ ключом от одного элемента дают одну
+        // Две группы с ОДИНАКОВЫМ ключом от одного элемента дают одну строку.
         // строку. Сумма складывается (2 + 2 = 4), а список источников получает
         // ОДИН И ТОТ ЖЕ GUID дважды - объединение дописывает источник, не
         // проверяя его новизну. Первый представитель сохраняет свои выходные.
@@ -486,11 +483,11 @@ namespace TestFunc {
             DBtest (f.created.ContainsKey ("@A") && f.created.ContainsKey ("@B"), "Spec distinct keys both present");
         }
 
-        // S09: КОЛЛИЗИЯ КЛЮЧА. Один уникальный параметр со значением "A@B"
-        // даёт ключ "@A@B" - ровно как ДВА параметра со значениями "A" и "B",
+        // КОЛЛИЗИЯ КЛЮЧА. Один уникальный параметр со значением "A@B" даёт
+        // ключ "@A@B" - ровно как ДВА параметра со значениями "A" и "B",
         // потому что разделителя между параметрами нет. Строки схлопываются,
-        // суммы складываются. Это старый контракт, он НЕ исправляется здесь:
-        // менять кодировку ключа в R запрещено планом (S09 - оформить как F).
+        // суммы складываются. Это зафиксированный контракт: кодировка ключа
+        // разделителем не экранируется.
         {
             SpecFixture f;
             f.Source (f.first, "A@B", "Alpha", 2);
@@ -522,8 +519,8 @@ namespace TestFunc {
             DBtest (f.created.GetSize (), 2, "Spec no collision control two rows");
         }
 
-        // S07 (часть): пропущенная сумма подставляется литералом "1", и этот
-        // литерал начисляется на КАЖДЫЙ источник. Два источника с одинаковым
+        // Пропущенная сумма подставляется литералом "1", и этот литерал
+        // начисляется на КАЖДЫЙ источник.
         // ключом дают 1 + 1 = 2, а не 1. Это принципиально отличается от
         // настоящей суммы, поэтому закреплено отдельно.
         {
@@ -541,9 +538,9 @@ namespace TestFunc {
                 DBtest (row->OutSumValue (0).val.intValue, 2, "Spec literal count per source");
         }
 
-        // S07 (часть): отказ по размеру группы сделан в ExpandGroup, поэтому
-        // при расчёте строк отказ локален для группы - её снимает один флаг
-        // is_Valid, а остальные группы правила обрабатываются как обычно.
+        // Отказ по размеру группы сделан в ExpandGroup, поэтому при расчёте
+        // строк отказ локален для группы - её снимает один флаг is_Valid,
+        // а остальные группы правила обрабатываются как обычно.
         {
             SpecFixture f;
             f.Source (f.first, "A", "Alpha", 2);
@@ -555,9 +552,9 @@ namespace TestFunc {
             DBtest (f.created.ContainsKey ("@A"), "Spec invalid group kept valid key");
         }
 
-        // S07 (часть): неполный выход отвергается сверкой слотов. Элемент, у
-        // которого не набрано всех выходных значений, в словарь не попадает,
-        // а n_elements обнуляется - но только при stop_on_error.
+        // Неполный выход отвергается сверкой слотов. Элемент, у которого не
+        // набрано всех выходных значений, в словарь не попадает, а n_elements
+        // обнуляется - но только при stop_on_error.
         {
             SpecFixture f;
             f.Source (f.first, "A", "Alpha", 2);
@@ -569,7 +566,7 @@ namespace TestFunc {
         }
     }
 
-    // R4.5: дедупликация AddRule по ключу = текст ВНУТРИ фигурных скобок.
+    // Дедупликация AddRule по ключу = текст ВНУТРИ фигурных скобок.
     // Префикс правила ("Spec_rule", "_v2", "_v3", "_km") в ключ НЕ входит,
     // поэтому описания с одинаковым телом и разной политикой схлопываются, и
     // выигрывает ТО, ЧТО ПРИШЛО ПЕРВЫМ. Закрепляется как контракт: описания
@@ -732,7 +729,7 @@ namespace TestFunc {
         }
     }
 
-    // R5.1: сбор зависимостей правила - что нужно прочитать у источников и что
+    // Сбор зависимостей правила
     // потом записать. Сбор отделён от разворачивания имён в словарь элемента,
     // поэтому проверяется сам перечень (без обращения к модели), а сличение в
     // общие словари запуска остаётся отдельным контрактом адаптера.
@@ -922,12 +919,12 @@ namespace TestFunc {
         }
     }
 
-    // R5.2: разрешение избранного, служебных полей и старых объектов. Четыре
-    // вынесенные операции проверяются раздельно; MatchDestinationProperties,
+    // Разрешение избранного, служебных полей и старых объектов. Четыре
+    // операции проверяются раздельно; MatchDestinationProperties,
     // SelectExistingElements и AddExistingReadRequests чисты, а
     // ResolveFavoriteLinks упирается в ambient-кэш свойств, поэтому для него
     // закреплён именно ПРОМАХ чтения: неудачное чтение не кэшируется и не
-    // подменяет поля правила (R5.2 запрещает новую политику кэша без F).
+    // подменяет поля правила.
     void TestSpecFavoriteResolution () {
         const GS::UniString OutName ("{@property:spec-out}"), SumName ("{@property:spec-sum}");
 
@@ -1105,8 +1102,8 @@ namespace TestFunc {
 
         // ResolveFavoriteLinks: чтение из кэша свойств на синтетическом имени
         // промахивается, поэтому поля правила НЕ заполняются, а paramToWrite
-        // остаётся пустым. Это и есть требование R5.2: неудачное чтение не
-        // кэшируется и не подменяет результат.
+        // остаётся пустым: неудачное чтение не кэшируется и не подменяет
+        // результат.
         {
             Spec::SpecRule rule;
             rule.subguid_paramrawname = "fixture-marker";
@@ -1151,7 +1148,7 @@ namespace TestFunc {
         }
     }
 
-    // R5.4: контракт read-only доступа к значениям.
+    // Контракт read-only доступа к значениям.
     //
     // Закрепляются три вещи, которые иначе остались бы незамеченными:
     //   1) reader только читает — прочитанные словари не меняются при чтении;
@@ -1241,39 +1238,30 @@ namespace TestFunc {
         DBtest (again.val.uniStringValue, GS::UniString ("Alpha"), "reader repeat same value");
     }
 
-    // R5.5: граница выделения чтения. Оценочный набор — он не добавляет нового
-    // поведения, а проверяет, что R5.1-R5.4 не изменили наблюдаемое поведение.
+    // Граница выделения чтения: чтение значений не обязано менять словари.
     //
-    // Покрытие сценариев плана по состоянию на этот шаг:
-    //   S10 материалы (один слой, многослойная, конец слоя) - TestSpecGetParamValue
-    //       и TestSpecValueEdges;
-    //   S11 отрицательный индекс / за концом / пустое-числовое-текстовое - там же;
-    //   S12 listdata (нет данных, позиция, конец списка, невычисленная формула) -
-    //       TestSpecGetParamValue;
-    //   S13 GDL-массивы на ЧТЕНИИ - не покрыт: разбор @arr живёт в Helpers
-    //       (ConvertStringToParamValue, Helpers.cpp:6220) и читает через ACAPI.
-    //       R5 запрещает трогать Helpers, поэтому здесь закрепляется только
-    //       спец-семантика СОБСТВЕННО чтения (первый ряд - ошибка строки);
-    //   S14 формулы - частично (значение результата покрыто, отсутствие утечки
-    //       значений между элементами - нет);
-    //   S15 флаг и отсутствия полей - TestSpecGrouping;
-    //   S16 два правила на одном избранном - см. блок S16 ниже.
-    //
-    // Главный критерий шага: ИСХОДНЫЕ СЛОВАРИ ДО/ПОСЛЕ ЧТЕНИЯ совпадают.
+    // Главный критерий: ИСХОДНЫЕ СЛОВАРИ ДО/ПОСЛЕ ЧТЕНИЯ совпадают.
     // Чтение не обязано быть безопасно идемпотентным по значению (формулы
     // пересчитываются), но не обязано менять СЛОВАРИ - это проверяется здесь.
-    // R6.1: расчётная часть вынесена в PlanRuleRows. Набор проверяет НОВУЮ
-    // границу: расчёт считается БЕЗ сверки существующих строк и без модели —
-    // это и есть выход блока R6 («вычисленные строки можно проверить без
-    // создания объектов»).
     //
+    // Материалы (один слой, многослойная, конец слоя), отрицательный индекс,
+    // за концом, пустое-числовое-текстовое и listdata (нет данных, позиция,
+    // конец списка, невычисленная формула) покрыты наборами TestSpecGetParamValue
+    // и TestSpecValueEdges. GDL-массивы на ЧТЕНИИ не покрыты: разбор @arr живёт
+    // в Helpers (ConvertStringToParamValue, Helpers.cpp:6220) и читает через
+    // ACAPI, поэтому здесь закрепляется только спец-семантика СОБСТВЕННО
+    // чтения (первый ряд - ошибка строки).
+    //
+    // Расчётная часть PlanRuleRows считается БЕЗ сверки существующих строк и
+    // без модели: вычисленные строки проверяются без создания объектов.
     // Сверка сравнивается с расчётом: delete_old = true у PlanRuleRows не
     // меняет ничего (сверка живёт в GetElementsForRule), а delete_old = false
     // у GetElementsForRule означает «не идти в сверку вообще».
-    // R6.2: вклад источника (RuleContribution) проверяется БЕЗ словаря
-    // элементов и без запуска GetElementsForRule — ровно то разделение, которое
-    // шаг и вводил. Вклад описывает, что вносит ОДИН источник; раскладка в
-    // агрегат — это R6.3 и здесь не проверяется.
+    //
+    // Вклад источника (RuleContribution) проверяется БЕЗ словаря элементов и
+    // без запуска GetElementsForRule. Вклад описывает, что вносит ОДИН
+    // источник; раскладка в агрегат проверяется набором TestSpecRowLayout.
+
     void TestSpecContribution () {
         // --- полный вклад: все слоты прочитаны ---
         {
@@ -1286,30 +1274,28 @@ namespace TestFunc {
             const Spec::SpecValueReader reader (f.context);
             const Spec::RuleContribution c =
                 Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
-            DBtest (c.isIncluded, true, "R6.2 full contribution included");
-            DBtest (c.status, Spec::ContributionStatus::Partial, "R6.2 phase 1 stops before outputs");
-            DBtest (c.source == f.first, true, "R6.2 contribution carries source");
-            DBtest (c.groupIndex, 0u, "R6.2 contribution carries group index");
-            DBtest (c.hasKey, true, "R6.2 key assembled");
-            DBtest (c.key, GS::UniString ("@A"), "R6.2 key value");
-            DBtest (c.outSumParam.GetSize (), 1, "R6.2 sum slot read in phase 1");
-            DBtest (c.outSumParam[0].val.intValue, 7, "R6.2 sum slot value");
-            DBtest (c.outParam.GetSize (), 0, "R6.2 outputs not read in phase 1");
-            DBtest (c.outputsRead, false, "R6.2 phase 2 flag unset");
-            DBtest (c.missingUnic.IsEmpty (), true, "R6.2 nothing missing");
-            DBtest (c.missingSum.IsEmpty (), true, "R6.2 nothing missing in sum");
-            DBtest (c.missingOut.IsEmpty (), true, "R6.2 nothing missing in out");
+            DBtest (c.isIncluded, true, "full contribution included");
+            DBtest (c.status, Spec::ContributionStatus::Partial, "phase 1 stops before outputs");
+            DBtest (c.source == f.first, true, "contribution carries source");
+            DBtest (c.groupIndex, 0u, "contribution carries group index");
+            DBtest (c.hasKey, true, "hasKey set on assembled key");
+            DBtest (c.key, GS::UniString ("@A"), "key value");
+            DBtest (c.outSumParam.GetSize (), 1, "sum slot read in phase 1");
+            DBtest (c.outSumParam[0].val.intValue, 7, "sum slot value");
+            DBtest (c.outParam.GetSize (), 0, "outputs not read in phase 1");
+            DBtest (c.outputsRead, false, "outputsRead stays unset until phase 2");
+            DBtest (c.missingUnic.IsEmpty (), true, "nothing missing");
+            DBtest (c.missingSum.IsEmpty (), true, "nothing missing in sum");
+            DBtest (c.missingOut.IsEmpty (), true, "nothing missing in out");
             // Фаза 2: выходные слоты появляются только здесь.
             Spec::RuleContribution full = c;
             Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, full);
-            DBtest (full.outputsRead, true, "R6.2 phase 2 flag set");
-            DBtest (full.outParam.GetSize (), 1, "R6.2 out slot read in phase 2");
-            DBtest (full.outParam[0].val.uniStringValue, GS::UniString ("Alpha"), "R6.2 out slot value");
-            DBtest (full.keyOut, GS::UniString ("@Alpha"), "R6.2 out key value");
-            DBtest (full.isComplete, true, "R6.2 complete when all slots read");
-            DBtest (Spec::ClassifyContribution (full, 1, 1),
-                    Spec::ContributionStatus::Complete,
-                    "R6.2 classified complete");
+            DBtest (full.outputsRead, true, "outputsRead set by phase 2");
+            DBtest (full.outParam.GetSize (), 1, "out slot read in phase 2");
+            DBtest (full.outParam[0].val.uniStringValue, GS::UniString ("Alpha"), "out slot value");
+            DBtest (full.keyOut, GS::UniString ("@Alpha"), "out key value");
+            DBtest (full.isComplete, true, "complete when all slots read");
+            DBtest (Spec::ClassifyContribution (full, 1, 1), Spec::ContributionStatus::Complete, "classified complete");
         }
 
         // --- сумма-константа "1": слот есть, чтения не было ---
@@ -1319,16 +1305,16 @@ namespace TestFunc {
             f.rule.groups[0].sum_paramrawname[0] = "1";
             f.rule.out_sum_paramrawname[0] = "1";
             const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
-            DBtest (binding.sumSlots[0].isSumLiteral, true, "R6.2 literal slot recognised");
+            DBtest (binding.sumSlots[0].isSumLiteral, true, "sum literal marked isSumLiteral");
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             ParamDict none1 = {};
             ParamDict none2 = {};
             const Spec::SpecValueReader reader (f.context);
             Spec::RuleContribution c =
                 Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
-            DBtest (c.outSumParam.GetSize (), 1, "R6.2 literal produces a slot");
-            DBtest (c.outSumParam[0].val.intValue, 1, "R6.2 literal value is one");
-            DBtest (c.missingSum.IsEmpty (), true, "R6.2 literal is not a missing field");
+            DBtest (c.outSumParam.GetSize (), 1, "literal produces a slot");
+            DBtest (c.outSumParam[0].val.intValue, 1, "literal value is one");
+            DBtest (c.missingSum.IsEmpty (), true, "literal is not a missing field");
         }
 
         // --- выключенный флаг: вклад создан, но НЕ включён ---
@@ -1349,11 +1335,10 @@ namespace TestFunc {
             const Spec::SpecValueReader reader (f.context);
             const Spec::RuleContribution c =
                 Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
-            DBtest (c.isIncluded, false, "R6.2 disabled flag excludes contribution");
-            DBtest (c.status, Spec::ContributionStatus::Excluded, "R6.2 disabled flag status");
-            DBtest (c.outSumParam.GetSize (), 0, "R6.2 excluded reads no slots");
-            DBtest (
-                Spec::ClassifyContribution (c, 1, 1), Spec::ContributionStatus::Excluded, "R6.2 excluded classified");
+            DBtest (c.isIncluded, false, "disabled group flag clears isIncluded");
+            DBtest (c.status, Spec::ContributionStatus::Excluded, "status Excluded for disabled group");
+            DBtest (c.outSumParam.GetSize (), 0, "excluded reads no slots");
+            DBtest (Spec::ClassifyContribution (c, 1, 1), Spec::ContributionStatus::Excluded, "excluded classified");
         }
 
         // --- непрочитанный уникальный параметр: вклад исключён, поле помечено ---
@@ -1367,14 +1352,14 @@ namespace TestFunc {
             const Spec::SpecValueReader reader (f.context);
             const Spec::RuleContribution c =
                 Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
-            DBtest (c.status, Spec::ContributionStatus::Excluded, "R6.2 missing unic excludes");
-            DBtest (c.missingUnic.GetSize (), 1, "R6.2 missing unic recorded");
-            DBtest (c.missingUnic[0].rawname, f.key, "R6.2 missing unic name");
-            DBtest (c.missingUnic[0].isError, true, "R6.2 missing unic is an error");
-            DBtest (c.hasReadError, true, "R6.2 read error flagged");
+            DBtest (c.status, Spec::ContributionStatus::Excluded, "missing unic excludes");
+            DBtest (c.missingUnic.GetSize (), 1, "missing unic recorded");
+            DBtest (c.missingUnic[0].rawname, f.key, "missing unic name");
+            DBtest (c.missingUnic[0].isError, true, "missing unic is an error");
+            DBtest (c.hasReadError, true, "read error flagged");
             // Ключ склеивается ДАЖЕ при отказе — пустое значение плюс ATSIGN.
-            DBtest (c.key, GS::UniString ("@"), "R6.2 key still gets sign on failure");
-            DBtest (c.hasKey, false, "R6.2 key marked unusable");
+            DBtest (c.key, GS::UniString ("@"), "key still gets sign on failure");
+            DBtest (c.hasKey, false, "hasKey cleared on unusable key");
         }
 
         // --- fromMaterial снимает ошибку у непрочитанного поля ---
@@ -1389,9 +1374,9 @@ namespace TestFunc {
             const Spec::SpecValueReader reader (f.context);
             const Spec::RuleContribution c =
                 Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
-            DBtest (c.missingUnic.GetSize (), 1, "R6.2 fromMaterial still records field");
-            DBtest (c.missingUnic[0].isError, false, "R6.2 fromMaterial clears error flag");
-            DBtest (c.hasReadError, false, "R6.2 fromMaterial clears read error");
+            DBtest (c.missingUnic.GetSize (), 1, "fromMaterial still records field");
+            DBtest (c.missingUnic[0].isError, false, "fromMaterial clears missingUnic isError");
+            DBtest (c.hasReadError, false, "fromMaterial clears read error");
         }
 
         // --- неполный выход: вклад частичный, isError хранится ПО ПОЛЮ ---
@@ -1407,13 +1392,13 @@ namespace TestFunc {
             Spec::RuleContribution c =
                 Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
             Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c);
-            DBtest (c.outParam.GetSize (), 0, "R6.2 missing out yields no slot");
-            DBtest (c.missingOut.GetSize (), 1, "R6.2 missing out recorded");
-            DBtest (c.missingOut[0].rawname, f.text, "R6.2 missing out name");
-            DBtest (c.missingOut[0].isError, true, "R6.2 missing out is an error");
-            DBtest (c.isComplete, false, "R6.2 partial contribution incomplete");
-            DBtest (Spec::ClassifyContribution (c, 1, 1), Spec::ContributionStatus::Partial, "R6.2 partial classified");
-            DBtest (c.keyOut, GS::UniString (EMPTYSTRING), "R6.2 empty out key on failure");
+            DBtest (c.outParam.GetSize (), 0, "missing out yields no slot");
+            DBtest (c.missingOut.GetSize (), 1, "missing out recorded");
+            DBtest (c.missingOut[0].rawname, f.text, "missing out name");
+            DBtest (c.missingOut[0].isError, true, "missing out is an error");
+            DBtest (c.isComplete, false, "partial contribution incomplete");
+            DBtest (Spec::ClassifyContribution (c, 1, 1), Spec::ContributionStatus::Partial, "partial classified");
+            DBtest (c.keyOut, GS::UniString (EMPTYSTRING), "empty out key on failure");
         }
 
         // --- схема шире фактического числа слотов: тоже частичный ---
@@ -1425,15 +1410,13 @@ namespace TestFunc {
             c.outputsRead = true;
             c.outSumParam.Push (ParamValue ());
             c.outParam.Push (ParamValue ());
-            DBtest (
-                Spec::ClassifyContribution (c, 2, 2), Spec::ContributionStatus::Partial, "R6.2 short slots vs schema");
-            DBtest (
-                Spec::ClassifyContribution (c, 1, 1), Spec::ContributionStatus::Complete, "R6.2 exact slots complete");
+            DBtest (Spec::ClassifyContribution (c, 2, 2), Spec::ContributionStatus::Partial, "short slots vs schema");
+            DBtest (Spec::ClassifyContribution (c, 1, 1), Spec::ContributionStatus::Complete, "exact slots complete");
         }
 
         // --- два вклада одного ключа строятся независимо друг от друга ---
-        // Основа для R6.3: раскладка в агрегат не должна зависеть от того,
-        // в каком порядке вклады дошли до словаря.
+        // Раскладка в агрегат не должна зависеть от того, в каком порядке
+        // вклады дошли до словаря.
         {
             SpecFixture f;
             f.Source (f.first, "A", "Alpha", 2);
@@ -1446,38 +1429,36 @@ namespace TestFunc {
                 Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
             const Spec::RuleContribution c2 =
                 Spec::BuildContribution (f.second, 0, f.rule.groups[0], binding, reader, none1, none2);
-            DBtest (c1.key, c2.key, "R6.2 same key from both sources");
-            DBtest (c1.source == f.first, true, "R6.2 first contribution source");
-            DBtest (c2.source == f.second, true, "R6.2 second contribution source");
-            DBtest (c1.outSumParam[0].val.intValue, 2, "R6.2 first contribution sum");
-            DBtest (c2.outSumParam[0].val.intValue, 3, "R6.2 second contribution sum");
+            DBtest (c1.key, c2.key, "same key from both sources");
+            DBtest (c1.source == f.first, true, "first contribution source");
+            DBtest (c2.source == f.second, true, "second contribution source");
+            DBtest (c1.outSumParam[0].val.intValue, 2, "first contribution sum");
+            DBtest (c2.outSumParam[0].val.intValue, 3, "second contribution sum");
         }
     }
 
-    // R6.3: раскладка вклада в строку. Главное здесь — НЕ «улучшить»
-    // суммирование неполных массивов, а зафиксировать его как поведение.
-    // nsumm = MIN(длин), слот складывается только при isValid с обеих сторон,
-    // слоты сверх nsumm не трогаются. План прямо запрещает заменять это
-    // строгим конструктором: найденное расхождение оформляется F.
-    // R6.4: общая выходная схема строки. Слот держит имя и значение вместе,
-    // поэтому рассинхрон между out_paramrawname[k] и out_param[k] стал
-    // невозможен по построению. Имя набора — TestSpecRowSlots, а не
-    // TestSpecOutputSchema: последний уже занят набором разбора схемы правила.
-    // ---- Эталон «old» для сравнения на R6.5 ----
+    // Раскладка вклада в строку. Главное здесь — НЕ «улучшить» суммирование
+    // неполных массивов, а зафиксировать его как поведение: nsumm = MIN(длин),
+    // слот складывается только при isValid с обеих сторон, слоты сверх nsumm
+    // не трогаются.
     //
-    // Это НЕ второй движок расчёта, а независимая реализация ПРЕЖНЕЙ
-    // арифметики, живющая целиком в тестовой единице. Production её не видит:
-    // ни одного вызова из Sources/AddOn/spec/ на эти функции нет. Так и требует
-    // план: «полные двойные снимки допустимы только в отдельном
-    // regression-режиме; production выполняет один движок».
+    // Общая выходная схема строки: слот держит имя и значение вместе, поэтому
+    // рассинхрон между out_paramrawname[k] и out_param[k] невозможен по
+    // построению. Имя набора — TestSpecRowSlots, а не TestSpecOutputSchema:
+    // последний уже занят набором разбора схемы правила.
+    //
+    // ---- Независимый эталон арифметики сложения ----
+    //
+    // Это НЕ второй движок расчёта, а реализация той же арифметики, живущая
+    // целиком в тестовой единице. Production её не видит: ни одного вызова из
+    // Sources/AddOn/spec/ на эти функции нет.
     //
     // Проверяется равносильность, а не «правильность»: эталон повторяет
-    // поведение, зафиксированное до R6.3, включая nsumm = MIN(длин) и требование
+    // зафиксированное поведение, включая nsumm = MIN(длин) и требование
     // isValid с обеих сторон.
     namespace legacy {
-        // Прежняя арифметика сложения — дословно та, что была в цикле
-        // PlanRuleRows до R6.3. Пишется максимально просто: цель не красота,
-        // а независимость от нового кода.
+        // Арифметика сложения эталонной раскладки. Пишется максимально просто:
+        // цель не красота, а независимость от проверяемого кода.
         void SumInto (Spec::Element &row, const GS::Array<ParamValue> &contribution) {
             UInt32 nsumm = row.OutSumCount ();
             if (nsumm != contribution.GetSize ()) {
@@ -1509,16 +1490,14 @@ namespace TestFunc {
                 if (contribution.status == Spec::ContributionStatus::Excluded)
                     continue;
                 if (!rows.ContainsKey (contribution.key)) {
-                    // Прежний цикл читал выходные слоты именно здесь — в ветке
-                    // «ключа ещё нет», то есть только у первого представителя.
+                    // Выходные слоты читаются именно здесь — в ветке «ключа ещё
+                    // нет», то есть только у первого представителя.
                     Spec::ReadContributionOutputs (contribution.source, group, binding, reader, fstr, contribution);
                     if (!outParam.ContainsKey (contribution.keyOut))
                         outParam.Add (contribution.keyOut, contribution.key);
                     Spec::Element row = {};
-                    // Эталон «old» тоже строит строку через out_slots: прежних
-                    // полей больше нет, а сам принцип эталон не нарушает — он
-                    // по-прежнему НЕ вызывает новый модуль (BuildOutputSlots),
-                    // а раскладывает вклад сам, своими руками.
+                    // Эталон строит строку через out_slots и НЕ вызывает
+                    // BuildOutputSlots: вклад раскладывается им самим.
                     for (UInt32 i = 0; i < contribution.outParam.GetSize (); i++) {
                         Spec::OutputSlot slot = {};
                         slot.rawname = i < rule.out_paramrawname.GetSize () ? rule.out_paramrawname[i] : EMPTYSTRING;
@@ -1552,8 +1531,8 @@ namespace TestFunc {
         }
     } // namespace legacy
 
-    // R6.5: равносильность нового движка и прежней арифметики на ОДИНАКОВОМ
-    // вводе. Эталон — независимая реализация в этой же единице (namespace
+    // Равносильность проверяемой арифметики и независимого эталона на
+    // ОДИНАКОВОМ вводе. Эталон — реализация в этой же единице (namespace
     // legacy выше), а не второй путь в production.
     void TestSpecEngineEquivalence () {
         // Собирает вклады по источникам правила так, как это делает цикл, и
@@ -1608,9 +1587,9 @@ namespace TestFunc {
             Spec::GroupSlotBinding binding;
             FormatString fstr;
             GS::Array<Spec::RuleContribution> contributions = {};
-            DBtest (f.rule.elements.GetSize (), 3, "R6.5 rule has three sources");
+            DBtest (f.rule.elements.GetSize (), 3, "rule has three sources");
             collect (f, f.rule.elements, binding, fstr, contributions);
-            DBtest (contributions.GetSize (), 3, "R6.5 three contributions collected");
+            DBtest (contributions.GetSize (), 3, "three contributions collected");
 
             Spec::ElementDict freshRows = {};
             GS::HashTable<GS::UniString, GS::UniString> freshOut = {};
@@ -1622,40 +1601,37 @@ namespace TestFunc {
                 // ПЕРВОГО представителя ключа. Это и есть контракт, который
                 // здесь проверяется, а не диагностика ради диагностики.
                 const bool firstOfKey = contributionIndex == 0;
-                DBtest (c.outParam.GetSize (), (UInt32)0, "R6.5 phase 1 leaves output slots empty");
-                DBtest (c.outSumParam.GetSize (), (UInt32)1, "R6.5 phase 1 reads sum slot");
+                DBtest (c.outParam.GetSize (), (UInt32)0, "phase 1 leaves output slots empty");
+                DBtest (c.outSumParam.GetSize (), (UInt32)1, "phase 1 reads sum slot");
                 Spec::RuleContribution rowContribution = c;
                 if (!freshRows.ContainsKey (c.key))
                     Spec::ReadContributionOutputs (c.source, f.rule.groups[0], binding, reader, fstr, rowContribution);
-                DBtest (
-                    rowContribution.outParam.GetSize () == (UInt32)1, firstOfKey, "R6.5 phase 2 only for first of key");
+                DBtest (rowContribution.outParam.GetSize () == (UInt32)1, firstOfKey, "phase 2 only for first of key");
                 contributionIndex += 1;
                 Spec::AddContributionToRow (freshRows, rowContribution, f.rule, 1, 1, freshOut);
                 // Число строк НЕ растёт на каждый вклад: слияние дописывает
                 // источник в существующую строку. Инвариант здесь — «строка не
                 // пропала», а не «строк стало больше».
-                DBtest (freshRows.ContainsKey (GS::UniString ("@A")), true, "R6.5 row still present after add");
+                DBtest (freshRows.ContainsKey (GS::UniString ("@A")), true, "row still present after add");
             }
             Spec::ElementDict legacyRows = {};
             GS::HashTable<GS::UniString, GS::UniString> legacyOut = {};
             legacy::PlanRow (contributions, f.rule, f.rule.groups[0], binding, reader, fstr, legacyRows, legacyOut);
 
-            DBtest (freshRows.GetSize (), legacyRows.GetSize (), "R6.5 same row count");
-            DBtest (freshOut.GetSize (), legacyOut.GetSize (), "R6.5 same outParam size");
+            DBtest (freshRows.GetSize (), legacyRows.GetSize (), "same row count");
+            DBtest (freshOut.GetSize (), legacyOut.GetSize (), "same outParam size");
             const Spec::Element *a = freshRows.GetPtr ("@A");
             const Spec::Element *b = legacyRows.GetPtr ("@A");
-            DBrequire (a != nullptr && b != nullptr, "R6.5 both engines produced the row");
-            DBtest (a->OutSumCount (), b->OutSumCount (), "R6.5 same sum slot count");
-            DBtest (a->OutSumValue (0).val.intValue, b->OutSumValue (0).val.intValue, "R6.5 same sum");
-            DBtest (a->OutSumValue (0).val.intValue, 9, "R6.5 sum is 2+3+4");
-            DBtest (a->elements.GetSize (), b->elements.GetSize (), "R6.5 same source count");
-            DBtest (a->elements.GetSize (), 3, "R6.5 three sources collected");
+            DBrequire (a != nullptr && b != nullptr, "both engines produced the row");
+            DBtest (a->OutSumCount (), b->OutSumCount (), "same sum slot count");
+            DBtest (a->OutSumValue (0).val.intValue, b->OutSumValue (0).val.intValue, "same sum");
+            DBtest (a->OutSumValue (0).val.intValue, 9, "sum is 2+3+4");
+            DBtest (a->elements.GetSize (), b->elements.GetSize (), "same source count");
+            DBtest (a->elements.GetSize (), 3, "three sources collected");
             for (UInt32 i = 0; i < a->elements.GetSize () && i < b->elements.GetSize (); i++)
-                DBtest (a->elements[i] == b->elements[i], true, "R6.5 same source order");
-            DBtest (a->OutParamCount (), b->OutParamCount (), "R6.5 same out slot count");
-            DBtest (a->OutParamValue (0).val.uniStringValue,
-                    b->OutParamValue (0).val.uniStringValue,
-                    "R6.5 same out value");
+                DBtest (a->elements[i] == b->elements[i], true, "same source order");
+            DBtest (a->OutParamCount (), b->OutParamCount (), "same out slot count");
+            DBtest (a->OutParamValue (0).val.uniStringValue, b->OutParamValue (0).val.uniStringValue, "same out value");
         }
 
         // --- два ключа, перемешанные источники ---
@@ -1685,25 +1661,24 @@ namespace TestFunc {
             GS::HashTable<GS::UniString, GS::UniString> legacyOut = {};
             legacy::PlanRow (contributions, f.rule, f.rule.groups[0], binding, reader, fstr, legacyRows, legacyOut);
 
-            DBtest (freshRows.GetSize (), legacyRows.GetSize (), "R6.5 mixed keys same row count");
-            DBtest (freshRows.GetSize (), 2, "R6.5 two rows built");
+            DBtest (freshRows.GetSize (), legacyRows.GetSize (), "mixed keys same row count");
+            DBtest (freshRows.GetSize (), 2, "two rows built");
             for (UInt32 k = 0; k < 2; k++) {
                 const GS::UniString key = k == 0 ? GS::UniString ("@A") : GS::UniString ("@B");
                 const Spec::Element *a = freshRows.GetPtr (key);
                 const Spec::Element *b = legacyRows.GetPtr (key);
-                DBrequire (a != nullptr && b != nullptr, "R6.5 both engines have the row");
-                DBtest (a->OutSumValue (0).val.intValue, b->OutSumValue (0).val.intValue, "R6.5 mixed same sum");
-                DBtest (a->elements.GetSize (), b->elements.GetSize (), "R6.5 mixed same sources");
+                DBrequire (a != nullptr && b != nullptr, "both engines have the row");
+                DBtest (a->OutSumValue (0).val.intValue, b->OutSumValue (0).val.intValue, "mixed same sum");
+                DBtest (a->elements.GetSize (), b->elements.GetSize (), "mixed same sources");
                 for (UInt32 i = 0; i < a->elements.GetSize () && i < b->elements.GetSize (); i++)
-                    DBtest (a->elements[i] == b->elements[i], true, "R6.5 mixed same source order");
+                    DBtest (a->elements[i] == b->elements[i], true, "mixed same source order");
             }
-            DBtest (freshOut.GetSize (), legacyOut.GetSize (), "R6.5 mixed same outParam size");
+            DBtest (freshOut.GetSize (), legacyOut.GetSize (), "mixed same outParam size");
         }
 
         // --- неполные массивы: оба движка обязаны вести себя ОДИНАКОВО ---
-        // Сравнивается поведение, а не «правильность»: план запрещает «чинить»
-        // суммирование строгим конструктором, а значит и здесь эталон не должен
-        // «улучшаться».
+        // Сравнивается поведение, а не «правильность»: эталон не должен
+        // «улучшать» суммирование.
         {
             Spec::Element freshRow = {};
             PushSumSlot (freshRow, Num (1));
@@ -1715,11 +1690,11 @@ namespace TestFunc {
             shortContribution.Push (Num (20));
             Spec::SumContributionIntoRow (freshRow, asContribution (shortContribution));
             legacy::SumInto (legacyRow, shortContribution);
-            DBtest (freshRow.OutSumCount (), legacyRow.OutSumCount (), "R6.5 partial same size");
+            DBtest (freshRow.OutSumCount (), legacyRow.OutSumCount (), "partial same size");
             for (UInt32 i = 0; i < freshRow.OutSumCount (); i++)
                 DBtest (freshRow.OutSumValue (i).val.intValue,
                         legacyRow.OutSumValue (i).val.intValue,
-                        "R6.5 partial same value");
+                        "partial same value");
 
             Spec::Element f2 = {};
             PushSumSlot (f2, Num (5));
@@ -1730,8 +1705,8 @@ namespace TestFunc {
             longContribution.Push (Num (4));
             Spec::SumContributionIntoRow (f2, asContribution (longContribution));
             legacy::SumInto (l2, longContribution);
-            DBtest (f2.OutSumCount (), l2.OutSumCount (), "R6.5 longer same size");
-            DBtest (f2.OutSumValue (0).val.intValue, l2.OutSumValue (0).val.intValue, "R6.5 longer same value");
+            DBtest (f2.OutSumCount (), l2.OutSumCount (), "longer same size");
+            DBtest (f2.OutSumValue (0).val.intValue, l2.OutSumValue (0).val.intValue, "longer same value");
         }
 
         // --- isValid: обе стороны ведут себя одинаково ---
@@ -1746,12 +1721,12 @@ namespace TestFunc {
             Spec::SumContributionIntoRow (f1, asContribution (contribution));
             legacy::SumInto (l1, contribution);
             for (UInt32 i = 0; i < f1.OutSumCount (); i++)
-                DBtest (f1.OutSumValue (i).val.intValue, l1.OutSumValue (i).val.intValue, "R6.5 invalid handling same");
-            DBtest (f1.OutSumValue (1).val.intValue, 41, "R6.5 valid pair summed the same way");
+                DBtest (f1.OutSumValue (i).val.intValue, l1.OutSumValue (i).val.intValue, "invalid handling same");
+            DBtest (f1.OutSumValue (1).val.intValue, 41, "valid pair summed the same way");
         }
     }
 
-    // R6.6: сведение сценариев S08-S15/S19/S25-S28 к общему виду сравнения —
+    // Сведение сценариев объединения строк к общему виду сравнения —
     // число строк, ключи, значения, суммы, provenance.
     //
     // Канонизация применяется ТОЛЬКО к сравниваемым копиям: словарь
@@ -1792,9 +1767,9 @@ namespace TestFunc {
             return s;
         };
 
-        // --- S08: несколько ГРУПП с одинаковым ключом ---
-        // Объединение между группами — то, чего не покрывают прежние наборы:
-        // там источники различались, а здесь группы.
+        // --- несколько ГРУПП с одинаковым ключом ---
+        // Объединение между группами: в других наборах различались источники,
+        // а здесь группы.
         {
             SpecFixture f;
             f.rule.groups.Clear ();
@@ -1814,7 +1789,7 @@ namespace TestFunc {
             Spec::ElementDict rows = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             const GS::Array<Spec::GroupSlotBinding> bindings = Spec::PrepareSlotBindings (f.rule);
-            DBtest (bindings.GetSize (), 2u, "S08 two group bindings");
+            DBtest (bindings.GetSize (), 2u, "two group bindings");
             const Spec::SpecValueReader reader (f.context);
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             ParamDict none1 = {};
@@ -1833,19 +1808,18 @@ namespace TestFunc {
                 }
             }
             // Один ключ, четыре вклада (2 источника × 2 группы), одна строка.
-            DBtest (rows.GetSize (), 1, "S08 groups merged into one row");
+            DBtest (rows.GetSize (), 1, "groups merged into one row");
             const Spec::Element *row = rows.GetPtr ("@A");
-            DBrequire (row != nullptr, "S08 row present");
-            DBtest (row->OutSumValue (0).val.intValue, 24, "S08 sum across groups 2*(5+7)");
-            DBtest (row->elements.GetSize (), 4, "S08 four source entries");
+            DBrequire (row != nullptr, "row present");
+            DBtest (row->OutSumValue (0).val.intValue, 24, "sum across groups 2*(5+7)");
+            DBtest (row->elements.GetSize (), 4, "four source entries");
             // Первый представитель задаётся первым вкладом в порядке обхода.
-            DBtest (row->out_slots.GetSize (), 2, "S08 schema built once");
-            DBtest (
-                row->out_slots[0].value.val.uniStringValue, GS::UniString ("Alpha"), "S08 first representative value");
+            DBtest (row->out_slots.GetSize (), 2, "schema built once");
+            DBtest (row->out_slots[0].value.val.uniStringValue, GS::UniString ("Alpha"), "first representative value");
         }
 
-        // --- S09: дубликаты выходных значений и разделители в ключе ---
-        // Старое поведение закрепляется, коллизия НЕ «исправляется».
+        // --- дубликаты выходных значений и разделители в ключе ---
+        // Коллизия закрепляется как есть и НЕ «исправляется».
         {
             SpecFixture f;
             // Оба источника дают разные уникальные ключи, но ОДИНАКОВОЕ выходное
@@ -1869,12 +1843,12 @@ namespace TestFunc {
                     Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
                 Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
             }
-            DBtest (rows.GetSize (), 2, "S09 two rows kept");
-            DBtest (outParam.GetSize (), 1, "S09 duplicate out value collapses to one entry");
+            DBtest (rows.GetSize (), 2, "two rows kept");
+            DBtest (outParam.GetSize (), 1, "duplicate out value collapses to one entry");
             // Второй ключ НЕ попадает в outParam — это старое поведение, и оно
             // означает потерю строки при поиске. Не «исправляется» здесь.
-            DBtest (rows.ContainsKey (GS::UniString ("@A")), true, "S09 row A kept");
-            DBtest (rows.ContainsKey (GS::UniString ("@B")), true, "S09 row B kept");
+            DBtest (rows.ContainsKey (GS::UniString ("@A")), true, "row A kept");
+            DBtest (rows.ContainsKey (GS::UniString ("@B")), true, "row B kept");
 
             // разделитель ключа: значение уникального параметра с '@' внутри.
             SpecFixture g;
@@ -1889,14 +1863,13 @@ namespace TestFunc {
                 Spec::BuildContribution (g.first, 0, g.rule.groups[0], gbinding, greader, g1, g2);
             Spec::ReadContributionOutputs (g.first, g.rule.groups[0], gbinding, greader, fstr, gc);
             Spec::AddContributionToRow (grows, gc, g.rule, 1, 1, gout);
-            // Ключ склеен как есть, '@' внутри значения не экранируется —
-            // это заметный признак возможной коллизии, но менять кодировку
-            // план запрещает (S09: оформить отдельным F).
-            DBtest (gc.key, GS::UniString ("@A@B"), "S09 separator in key not escaped (legacy)");
-            DBtest (grows.ContainsKey (GS::UniString ("@A@B")), true, "S09 row keyed by raw value");
+            // Ключ склеен как есть: '@' внутри значения не экранируется —
+            // признак возможной коллизии в кодировке ключа.
+            DBtest (gc.key, GS::UniString ("@A@B"), "separator in key not escaped (legacy)");
+            DBtest (grows.ContainsKey (GS::UniString ("@A@B")), true, "row keyed by raw value");
         }
 
-        // --- S19: родительские GUID в provenance ---
+        // --- родительские GUID в provenance ---
         {
             SpecFixture f;
             f.Source (f.first, "A", "Alpha", 4);
@@ -1920,19 +1893,19 @@ namespace TestFunc {
                 Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
             }
             const Spec::Element *row = rows.GetPtr ("@A");
-            DBrequire (row != nullptr, "S19 row present");
+            DBrequire (row != nullptr, "row present");
             const auto snap = snapshot (*row);
             // provenance: источники в порядке обхода, признаки правила из
             // первого представителя.
-            DBtest (snap.sourceOrder.GetSize (), 2, "S19 two sources in provenance");
-            DBtest (snap.sourceOrder[0] == snap.sourceOrder[1], false, "S19 sources distinct and ordered");
-            DBtest (snap.favorite, f.rule.favorite_name, "S19 favorite carried");
-            DBtest (snap.subguidValue, GS::UniString ("RuleValue"), "S19 rule value carried");
-            DBtest (row->OutSumValue (0).val.intValue, 10, "S19 sum across sources");
-            DBtest (row->out_slots[1].value.val.intValue, 10, "S19 schema sum matches");
+            DBtest (snap.sourceOrder.GetSize (), 2, "two sources in provenance");
+            DBtest (snap.sourceOrder[0] == snap.sourceOrder[1], false, "sources distinct and ordered");
+            DBtest (snap.favorite, f.rule.favorite_name, "favorite carried");
+            DBtest (snap.subguidValue, GS::UniString ("RuleValue"), "rule value carried");
+            DBtest (row->OutSumValue (0).val.intValue, 10, "sum across sources");
+            DBtest (row->out_slots[1].value.val.intValue, 10, "schema sum matches");
         }
 
-        // --- S25: малая модель — накладные расходы не мешают результату ---
+        // --- малая модель — накладные расходы не мешают результату ---
         // Проверяется результат и то, что счётчик чтений не вырос: создание
         // объектов схемы не должно добавлять чтений.
         {
@@ -1949,13 +1922,13 @@ namespace TestFunc {
                 Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
             Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c);
             Spec::AddContributionToRow (rows, c, f.rule, 1, 1, outParam);
-            DBtest (rows.GetSize (), 1, "S25 small model single row");
+            DBtest (rows.GetSize (), 1, "small model single row");
             const Spec::Element *row = rows.GetPtr ("@A");
-            DBrequire (row != nullptr, "S25 row present");
-            DBtest (row->out_slots.GetSize (), 2, "S25 small model slots minimal");
+            DBrequire (row != nullptr, "row present");
+            DBtest (row->out_slots.GetSize (), 2, "small model slots minimal");
         }
 
-        // --- S26/S27: масштабирование агрегации без лишнего чтения ---
+        // --- масштабирование агрегации без лишнего чтения ---
         // Ключевой проверяемый факт: число чтений на источник НЕ зависит от
         // того, встречался ли ключ раньше. Выходные слоты читаются только у
         // первого представителя, поэтому при N источниках с повторяющимся
@@ -1968,7 +1941,7 @@ namespace TestFunc {
                     APIGuidFromString (GS::UniString::Printf ("{40000000-0000-0000-0000-%012X}", i).ToCStr ());
                 f.Source (guid, "A", "Alpha", 1);
             }
-            DBtest (f.rule.elements.GetSize (), (UInt32)kSources, "S26 sources registered");
+            DBtest (f.rule.elements.GetSize (), (UInt32)kSources, "sources registered");
 
             Spec::ElementDict rows = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
@@ -1988,17 +1961,17 @@ namespace TestFunc {
                 }
                 Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
             }
-            DBtest (rows.GetSize (), 1, "S26 repeated keys collapse to one row");
+            DBtest (rows.GetSize (), 1, "repeated keys collapse to one row");
             // Чтение выхода ровно один раз, независимо от числа источников.
-            DBtest (readOutputPasses, 1, "S26 output read once for repeated key");
+            DBtest (readOutputPasses, 1, "output read once for repeated key");
             const Spec::Element *row = rows.GetPtr ("@A");
-            DBrequire (row != nullptr, "S26 row present");
-            DBtest (row->OutSumValue (0).val.intValue, kSources, "S26 sum over all sources");
-            DBtest (row->elements.GetSize (), (UInt32)kSources, "S26 provenance keeps every source");
-            DBtest (row->out_slots.GetSize (), 2, "S26 schema size does not grow with sources");
+            DBrequire (row != nullptr, "row present");
+            DBtest (row->OutSumValue (0).val.intValue, kSources, "sum over all sources");
+            DBtest (row->elements.GetSize (), (UInt32)kSources, "provenance keeps every source");
+            DBtest (row->out_slots.GetSize (), 2, "schema size does not grow with sources");
         }
 
-        // --- S27: уникальные ключи и много выходных слотов — пик строк ---
+        // --- уникальные ключи и много выходных слотов — пик строк ---
         {
             SpecFixture f;
             f.rule.out_paramrawname.Clear ();
@@ -2050,23 +2023,23 @@ namespace TestFunc {
                     Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
                 Spec::AddContributionToRow (rows, rowContribution, f.rule, 6, 3, outParam);
             }
-            DBtest (rows.GetSize (), (UInt32)kRows, "S27 unique keys one row each");
-            // Выходные значения у всех строк ОДИНАКОВЫ (V0..V5), поэтому ключ выхода
-            // совпадает и outParam схлопывается в одну запись. Это то же поведение,
-            // что закреплено в S09 выше (задокументированная коллизия, кандидат в
+            DBtest (rows.GetSize (), (UInt32)kRows, "unique keys one row each");
+            // Выходные значения у всех строк ОДИНАКОВЫ (V0..V5), поэтому ключ
+            // выхода совпадает и outParam схлопывается в одну запись: та же
+            // коллизия дубликатов выходных значений, что закреплена выше.
             // F), а не особенность этого шага.
-            DBtest (outParam.GetSize (), 1u, "S27 outParam collapses on identical output values");
+            DBtest (outParam.GetSize (), 1u, "outParam collapses on identical output values");
             // Схема на 9 слотов, размер не зависит от числа строк.
             const Spec::Element *row = rows.GetPtr (GS::UniString ("@K0"));
-            DBrequire (row != nullptr, "S27 first row present");
-            DBtest (row->out_slots.GetSize (), 9, "S27 schema covers six out and three sum slots");
-            DBtest (row->out_slots[6].isSum, true, "S27 first sum slot flagged");
-            DBtest (row->out_slots[8].isSum, true, "S27 last sum slot flagged");
-            DBtest (row->out_slots[5].isSum, false, "S27 last output slot not flagged");
-            DBtest (row->out_slots[0].value.val.uniStringValue, GS::UniString ("V0"), "S27 first output value");
+            DBrequire (row != nullptr, "first row present");
+            DBtest (row->out_slots.GetSize (), 9, "schema covers six out and three sum slots");
+            DBtest (row->out_slots[6].isSum, true, "first sum slot flagged");
+            DBtest (row->out_slots[8].isSum, true, "last sum slot flagged");
+            DBtest (row->out_slots[5].isSum, false, "last output slot not flagged");
+            DBtest (row->out_slots[0].value.val.uniStringValue, GS::UniString ("V0"), "first output value");
         }
 
-        // --- S28: много правил — нет квадратичного поиска по правилам ---
+        // --- много правил — нет квадратичного поиска по правилам ---
         // Проверяемо то, что можно проверить без профилировщика: каждый вклад
         // добавляется в уже существующую строку за одно обращение к словарю,
         // то есть стоимость на источник не зависит от числа уже собранных
@@ -2097,13 +2070,13 @@ namespace TestFunc {
                 // Одно ContainsKey + одно Get на источник — сигнатура шага.
                 const bool existed = rows.ContainsKey (rowContribution.key);
                 Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
-                DBtest (rows.ContainsKey (rowContribution.key), true, "S28 row present after add");
+                DBtest (rows.ContainsKey (rowContribution.key), true, "row present after add");
                 (void)existed;
             }
-            DBtest (rows.GetSize (), (UInt32)kRows, "S28 many rows built");
-            // Как и в S27: выходное значение у всех строк одинаковое, поэтому
-            // outParam держит одну запись на УНИКАЛЬНЫЙ выход, а не на строку.
-            DBtest (outParam.GetSize (), 1u, "S28 outParam one entry per distinct output");
+            DBtest (rows.GetSize (), (UInt32)kRows, "many rows built");
+            // Выходное значение у всех строк одинаковое, поэтому outParam держит
+            // одну запись на УНИКАЛЬНЫЙ выход, а не на строку.
+            DBtest (outParam.GetSize (), 1u, "outParam one entry per distinct output");
         }
 
         // --- канонизация: сравнение копий, порядок отдельно ---
@@ -2135,7 +2108,7 @@ namespace TestFunc {
                 keys.Push (*it->key);
     #endif
             }
-            DBtest (keys.GetSize (), 2, "R6.6 two keys in comparison list");
+            DBtest (keys.GetSize (), 2, "two keys in comparison list");
             // Сортировка копии даёт воспроизводимый порядок сравнения.
             GS::Array<GS::UniString> sorted = keys;
             const GSSize sortedSize = static_cast<GSSize> (sorted.GetSize ());
@@ -2148,24 +2121,23 @@ namespace TestFunc {
                     }
                 }
             }
-            DBtest (sorted[0], GS::UniString ("@A"), "R6.6 sorted keys canonical");
-            DBtest (sorted[1], GS::UniString ("@B"), "R6.6 sorted keys canonical");
+            DBtest (sorted[0], GS::UniString ("@A"), "sorted keys canonical");
+            DBtest (sorted[1], GS::UniString ("@B"), "sorted keys canonical");
             // Порядок источников остаётся порядком обхода, не сортируется.
             const Spec::Element *rowB = rows.GetPtr (GS::UniString ("@B"));
-            DBrequire (rowB != nullptr, "R6.6 row B present");
+            DBrequire (rowB != nullptr, "row B present");
             const auto snapB = snapshot (*rowB);
-            DBtest (snapB.sourceOrder.GetSize (), 1, "R6.6 provenance order kept");
+            DBtest (snapB.sourceOrder.GetSize (), 1, "provenance order kept");
         }
     }
 
-    // R7.1: fixtures для reconciliation — те случаи, что перечислены в плане и
-    // которые должен зафиксировать шаг ДО замены представления на
-    // create/update/delete/unchanged (R7.2).
+    // Фикстуры для сверки с существующими объектами: случаи, которые надо
+    // зафиксировать ДО смены представления на create/update/delete/unchanged.
     //
-    // Здесь закрепляется ТЕКУЩЕЕ поведение, включая те его особенности, которые
-    // выглядят подозрительно (S09-коллизия, потеря строки при совпадении
-    // выходных значений, лишний GUID-связь без проверки). План требует, чтобы
-    // представление менялось только ПОСЛЕ сравнения — значит, чтобы было с чем
+    // Закрепляется ТЕКУЩЕЕ поведение, включая те его особенности, которые
+    // выглядят подозрительно (коллизия ключа, потеря строки при совпадении
+    // выходных значений, лишний GUID-связь без проверки). Чтобы было с чем
+    // сравнивать, нужен эталон текущего поведения.
     // сравнивать, нужен эталон до изменения.
     void TestSpecReconcileFixtures () {
         // --- fixture 1: key_out и формат .2m ---
@@ -2184,43 +2156,41 @@ namespace TestFunc {
                 Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
             Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c);
             // Ключ выхода = только выходные слоты, с префиксом ATSIGN.
-            DBtest (c.keyOut, GS::UniString ("@Alpha"), "R7.1 key_out from output slots only");
-            DBtest (c.key, GS::UniString ("@A"), "R7.1 row key from unic slots only");
-            DBtest (c.keyOut != c.key, true, "R7.1 key_out differs from row key");
+            DBtest (c.keyOut, GS::UniString ("@Alpha"), "key_out from output slots only");
+            DBtest (c.key, GS::UniString ("@A"), "row key from unic slots only");
+            DBtest (c.keyOut != c.key, true, "key_out differs from row key");
             // Формат ".2m" в Archicad: точка — РАЗДЕЛИТЕЛЬ единицы измерения,
             // а не десятичный разделитель (Helpers.cpp:201-207: точки временно
             // убираются перед разбором). Поэтому ".2m" тождественно "2m" —
             // две знаковые цифры с обрезкой нулей, а НЕ два знака после запятой.
             // Это и есть причина, почему ключ выхода не зависит от разрядности.
-            DBtest (fstr.n_zero, 2, "R7.1 .2m means two significant decimals");
-            DBtest (fstr.trim_zero, true, "R7.1 .2m trims trailing zeros");
-            DBtest (
-                FormatStringFunc::ParseFormatString ("2m").n_zero, fstr.n_zero, "R7.1 dot prefix is unit separator");
+            DBtest (fstr.n_zero, 2, ".2m means two significant decimals");
+            DBtest (fstr.trim_zero, true, ".2m trims trailing zeros");
+            DBtest (FormatStringFunc::ParseFormatString ("2m").n_zero, fstr.n_zero, "dot prefix is unit separator");
             ParamValue num = {};
             ParamHelpers::ConvertDoubleToParamValue (num, EMPTYSTRING, 2.5);
-            DBtest (ParamHelpers::ToString (num, fstr), GS::UniString ("2,5"), "R7.1 .2m trims to one decimal");
+            DBtest (ParamHelpers::ToString (num, fstr), GS::UniString ("2,5"), ".2m trims to one decimal");
             ParamValue whole = {};
             ParamHelpers::ConvertDoubleToParamValue (whole, EMPTYSTRING, 7.0);
-            DBtest (
-                ParamHelpers::ToString (whole, fstr), GS::UniString ("7"), "R7.1 .2m trims whole number to integer");
+            DBtest (ParamHelpers::ToString (whole, fstr), GS::UniString ("7"), ".2m trims whole number to integer");
             // ГРАБЛЯ, а не контраст: нечисловой суффикс молча становится нулём
             // разрядов (Helpers.cpp: n_zero = std::atoi (outstringformat)), а не
             // ошибкой. "F2" -> n_zero 0 -> округление до целого. Закреплено,
             // потому что от разрядности зависит key_out, а значит и сопоставление
             // существующих объектов: смена формата молча переставит ключи.
             FormatString bogus = FormatStringFunc::ParseFormatString ("F2");
-            DBtest (bogus.n_zero, 0, "R7.1 non-numeric format suffix parses as zero decimals");
+            DBtest (bogus.n_zero, 0, "non-numeric format suffix parses as zero decimals");
             ParamValue num2 = {};
             ParamHelpers::ConvertDoubleToParamValue (num2, EMPTYSTRING, 2.5);
-            DBtest (ParamHelpers::ToString (num2, bogus), GS::UniString ("3"), "R7.1 zero decimals rounds to integer");
+            DBtest (ParamHelpers::ToString (num2, bogus), GS::UniString ("3"), "zero decimals rounds to integer");
         }
 
         // --- fixture 2: поиск ПЕРВОГО совпадения ---
         // out_param хранит ПЕРВЫЙ ключ для данного выходного значения
         // (запись не перезаписывается). Поэтому при двух строках с одинаковым
         // выходом сверка находит только первую, а вторая остаётся в elements
-        // как будто новая. Это старое поведение, и оно же — механизм потери
-        // строки из S09.
+        // как будто новая. Это зафиксированный контракт, и он же — механизм
+        // потери строки при совпадении выходных значений.
         {
             SpecFixture f;
             f.Source (f.first, "A", "Same", 1);
@@ -2240,12 +2210,12 @@ namespace TestFunc {
                     Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
                 Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
             }
-            DBtest (outParam.GetSize (), 1u, "R7.1 one entry for identical out value");
+            DBtest (outParam.GetSize (), 1u, "one entry for identical out value");
             // Первый источник в порядке обхода задаёт значение словаря.
-            DBtest (outParam.Get (GS::UniString ("@Same")), GS::UniString ("@A"), "R7.1 first match wins");
-            DBtest (rows.ContainsKey (GS::UniString ("@B")), true, "R7.1 second row still built");
+            DBtest (outParam.Get (GS::UniString ("@Same")), GS::UniString ("@A"), "first match wins");
+            DBtest (rows.ContainsKey (GS::UniString ("@B")), true, "second row still built");
             // Именно поэтому вторая строка при сверке не найдётся по key_out.
-            DBtest (outParam.ContainsKey (GS::UniString ("@Same")), true, "R7.1 out value present");
+            DBtest (outParam.ContainsKey (GS::UniString ("@Same")), true, "out value present");
         }
 
         // --- fixture 3: ДУБЛИ старых объектов ---
@@ -2264,13 +2234,13 @@ namespace TestFunc {
             f.Text (dupGuid, f.outText, "Alpha");
             f.Number (dupGuid, f.outQuantity, 5);
 
-            f.Shape (f.Run (), 1, 0, 0, 1, "R7.1 duplicate old handled once");
+            f.Shape (f.Run (), 1, 0, 0, 1, "duplicate old handled once");
             // Ровно один из двух дублей удалён, второй — тоже (не найден в guids
             // после обработки первого, т.к. ключ строки уже израсходован).
             // Первый дубль сопоставлен со строкой (guids = true, удаления нет),
             // второй уходит по ветке «строка уже израсходована» и удаляется.
-            DBtest (f.deleted.GetSize (), 1, "R7.1 one duplicate deleted");
-            DBtest (f.created.GetSize (), 0, "R7.1 no row left for duplicates");
+            DBtest (f.deleted.GetSize (), 1, "one duplicate deleted");
+            DBtest (f.created.GetSize (), 0, "no row left for duplicates");
         }
 
         // --- fixture 4: кандидат уже удалён из словаря новых ---
@@ -2301,11 +2271,10 @@ namespace TestFunc {
             // «!elements.ContainsKey (key)» — вот она и удаляется.
             //
             // Итог: удалён ровно ОДИН объект — второй, чья строка была
-            // захвачена первым. Это и есть случай «кандидат уже удалён из
-            // словаря новых», который план R7.1 просит зафиксировать.
-            DBtest (f.deleted.GetSize (), 1, "R7.1 candidate with consumed row deleted");
-            DBtest (f.created.GetSize (), 1, "R7.1 unmatched row survives as create");
-            DBtest (f.created.ContainsKey (GS::UniString ("@B")), true, "R7.1 row B kept as create");
+            // захвачена первым: случай «кандидат уже удалён из словаря новых».
+            DBtest (f.deleted.GetSize (), 1, "candidate with consumed row deleted");
+            DBtest (f.created.GetSize (), 1, "unmatched row survives as create");
+            DBtest (f.created.ContainsKey (GS::UniString ("@B")), true, "row B kept as create");
         }
 
         // --- fixture 5: no-op (совпадение целиком) ---
@@ -2318,10 +2287,10 @@ namespace TestFunc {
             f.Source (f.first, "A", "Alpha", 5);
             f.Existing (f.old, "Alpha", 5);
             const Int32 n = f.Run ();
-            DBtest (n, 0, "R7.1 no-op yields zero operations");
-            DBtest (f.created.GetSize (), 0, "R7.1 no-op creates nothing");
-            DBtest (f.modified.GetSize (), 0, "R7.1 no-op modifies nothing");
-            DBtest (f.deleted.GetSize (), 0, "R7.1 no-op deletes nothing");
+            DBtest (n, 0, "no-op yields zero operations");
+            DBtest (f.created.GetSize (), 0, "no-op creates nothing");
+            DBtest (f.modified.GetSize (), 0, "no-op modifies nothing");
+            DBtest (f.deleted.GetSize (), 0, "no-op deletes nothing");
         }
 
         // --- fixture 6: изменение суммы при неизменном выходе ---
@@ -2333,13 +2302,13 @@ namespace TestFunc {
             f.Source (f.first, "A", "Alpha", 9);
             f.Existing (f.old, "Alpha", 5);
             const Int32 n = f.Run ();
-            DBtest (n, 1, "R7.1 changed sum counts as one operation");
-            DBtest (f.modified.GetSize (), 1, "R7.1 changed sum goes to modified");
+            DBtest (n, 1, "changed sum counts as one operation");
+            DBtest (f.modified.GetSize (), 1, "changed sum goes to modified");
             const Spec::Element *mod = f.modified.GetPtr (GS::UniString ("@A"));
-            DBrequire (mod != nullptr, "R7.1 modified row found");
-            DBtest (mod->exs_guid == f.old, true, "R7.1 modified row keeps existing GUID");
-            DBtest (f.created.GetSize (), 0, "R7.1 nothing created on update");
-            DBtest (f.deleted.GetSize (), 0, "R7.1 nothing deleted on update");
+            DBrequire (mod != nullptr, "modified row found");
+            DBtest (mod->exs_guid == f.old, true, "modified row keeps existing GUID");
+            DBtest (f.created.GetSize (), 0, "nothing created on update");
+            DBtest (f.deleted.GetSize (), 0, "nothing deleted on update");
         }
 
         // --- fixture 7: GUID-связь читается, но результат не используется ---
@@ -2357,32 +2326,25 @@ namespace TestFunc {
             f.context.read.Get (f.old).Delete (f.text);
             const Int32 n = f.Run ();
             // flag_change поднимается из-за непрочитанного поля.
-            DBtest (n, 1, "R7.1 unread guid link counts as change");
-            DBtest (f.modified.GetSize (), 1, "R7.1 unread guid link forces update");
+            DBtest (n, 1, "unread guid link counts as change");
+            DBtest (f.modified.GetSize (), 1, "unread guid link forces update");
             // Если бы связь записывалась, сумма была бы другой — значит её
             // отсутствие не влияет на результат расчёта строки.
             const Spec::Element *mod = f.modified.GetPtr (GS::UniString ("@A"));
-            DBrequire (mod != nullptr, "R7.1 modified row present after guid link");
-            DBtest (mod->OutSumValue (0).val.intValue, 5, "R7.1 guid link does not alter computed row");
+            DBrequire (mod != nullptr, "modified row present after guid link");
+            DBtest (mod->OutSumValue (0).val.intValue, 5, "guid link does not alter computed row");
         }
     }
 
-    // R7.3: план изменений. Сверка вызывается напрямую с планом, чтобы
-    // проверять сам план, а не то, что он согласован (согласованность
-    // проверяет Matches, но она не заменяет проверку содержимого).
+    // План изменений. План получаем от GetElementsForRule (он же владелец
+    // решения), а не строим сами — иначе проверялась бы не план, а его копия.
+    // Согласованность (Matches) не заменяет проверку содержимого.
     //
-    // Ключевое требование шага: на КОРРЕКТНОЙ строке не строится ни одного
-    // текста объяснения. Проверяется не таймером, а тем, что план на
-    // совпавшей строке содержит только счётчик unchanged и НИКАКИХ строк.
-    // R7.3: план изменений. План получаем от GetElementsForRule (он же
-    // владелец решения), а не строим сами — иначе проверялась бы не план,
-    // а его копия.
-    //
-    // Требование шага «не создавать дорогой текст на корректную строку»
-    // проверяется тем, что на совпавшей строке план содержит ТОЛЬКО счётчик
-    // unchanged: ни текстовых полей, ни копии свойств. Это видно из структуры
-    // и подтверждается тем, что deleteReasons хранятся перечислимыми значениями
-    // рядом с GUID, а не отдельными строками-объяснениями.
+    // На КОРРЕКТНОЙ строке не строится ни одного текста объяснения: план на
+    // совпавшей строке содержит ТОЛЬКО счётчик unchanged — ни текстовых полей,
+    // ни копии свойств. Это видно из структуры и подтверждается тем, что
+    // deleteReasons хранятся перечислимыми значениями рядом с GUID, а не
+    // отдельными строками-объяснениями.
     void TestSpecChangePlan () {
         // --- сверка выполнена, изменений нет (no-op) ---
         {
@@ -2392,12 +2354,12 @@ namespace TestFunc {
             Spec::SpecChangePlan plan = {};
             const Int32 n =
                 Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
-            DBtest (n, 0, "R7.3 no-op result");
-            DBtest (plan.deleteOld, 1, "R7.3 plan marked as reconciled");
-            DBtest (plan.removals.GetSize (), 0, "R7.3 no-op removes nothing");
-            DBtest (plan.update.IsEmpty (), true, "R7.3 no-op updates nothing");
-            DBtest (plan.unchanged, 1, "R7.3 matched row counted unchanged");
-            DBtest (plan.Matches (f.modified, f.deleted), true, "R7.3 no-op plan consistent");
+            DBtest (n, 0, "no-op result");
+            DBtest (plan.deleteOld, 1, "plan marked as reconciled");
+            DBtest (plan.removals.GetSize (), 0, "no-op removes nothing");
+            DBtest (plan.update.IsEmpty (), true, "no-op updates nothing");
+            DBtest (plan.unchanged, 1, "matched row counted unchanged");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "no-op plan consistent");
         }
 
         // --- update: сумма изменилась ---
@@ -2410,12 +2372,12 @@ namespace TestFunc {
             Spec::SpecChangePlan plan = {};
             const Int32 n =
                 Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
-            DBtest (n, 1, "R7.3 update result");
-            DBtest (plan.update.GetSize (), 1, "R7.3 one update planned");
-            DBtest (plan.update.ContainsKey (GS::UniString ("@A")), true, "R7.3 update keyed by row key");
-            DBtest (plan.unchanged, 0, "R7.3 updated row not counted unchanged");
-            DBtest (plan.removals.GetSize (), 0, "R7.3 updated row not removed");
-            DBtest (plan.Matches (f.modified, f.deleted), true, "R7.3 update plan consistent");
+            DBtest (n, 1, "update result");
+            DBtest (plan.update.GetSize (), 1, "one update planned");
+            DBtest (plan.update.ContainsKey (GS::UniString ("@A")), true, "update keyed by row key");
+            DBtest (plan.unchanged, 0, "updated row not counted unchanged");
+            DBtest (plan.removals.GetSize (), 0, "updated row not removed");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "update plan consistent");
         }
 
         // --- удаление: RowAlreadyClaimed (строка захвачена другим объектом) ---
@@ -2434,13 +2396,13 @@ namespace TestFunc {
 
             Spec::SpecChangePlan plan = {};
             Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
-            DBtest (plan.removals.GetSize (), 1, "R7.3 exactly one removal planned");
+            DBtest (plan.removals.GetSize (), 1, "exactly one removal planned");
             DBtest (plan.removals[0].reason,
                     Spec::SpecChangePlan::DeleteReason::RowAlreadyClaimed,
-                    "R7.3 claimed-row reason recorded");
-            DBtest (plan.removals[0].guid == dup, true, "R7.3 the second object is removed");
-            DBtest (plan.unchanged, 1, "R7.3 first object counted unchanged");
-            DBtest (plan.Matches (f.modified, f.deleted), true, "R7.3 removal plan consistent");
+                    "claimed-row reason recorded");
+            DBtest (plan.removals[0].guid == dup, true, "the second object is removed");
+            DBtest (plan.unchanged, 1, "first object counted unchanged");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "removal plan consistent");
         }
 
         // --- удаление: NoNewRow (key_out не найден среди новых строк) ---
@@ -2462,12 +2424,12 @@ namespace TestFunc {
 
             Spec::SpecChangePlan plan = {};
             Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
-            DBtest (plan.removals.GetSize (), 1, "R7.3 unmatched object planned for removal");
+            DBtest (plan.removals.GetSize (), 1, "unmatched object planned for removal");
             DBtest (plan.removals[0].reason,
                     Spec::SpecChangePlan::DeleteReason::NoNewRow,
-                    "R7.3 no-new-row reason differs from claimed row");
-            DBtest (plan.removals[0].guid == f.old, true, "R7.3 unmatched guid recorded");
-            DBtest (plan.unchanged, 0, "R7.3 unmatched object is not unchanged");
+                    "no-new-row reason differs from claimed row");
+            DBtest (plan.removals[0].guid == f.old, true, "unmatched guid recorded");
+            DBtest (plan.unchanged, 0, "unmatched object is not unchanged");
         }
 
         // --- create: строки без сопоставленного объекта ---
@@ -2477,9 +2439,9 @@ namespace TestFunc {
             f.Existing (f.old, "Alpha", 5);
             // Вторая строка не имеет старого объекта — она создаётся.
             f.Source (f.extra, "B", "Beta", 7);
-            f.Shape (f.Run (), 1, 1, 0, 0, "R7.3 one create plus one no-op");
-            DBtest (f.created.GetSize (), 1, "R7.3 unmatched row created");
-            DBtest (f.created.ContainsKey (GS::UniString ("@B")), true, "R7.3 created row keyed @B");
+            f.Shape (f.Run (), 1, 1, 0, 0, "one create plus one no-op");
+            DBtest (f.created.GetSize (), 1, "unmatched row created");
+            DBtest (f.created.ContainsKey (GS::UniString ("@B")), true, "created row keyed @B");
         }
 
         // --- deleteOld = false: сверки не было, и это НЕ «всё unchanged» ---
@@ -2492,9 +2454,9 @@ namespace TestFunc {
             Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
             // Ранний выход ДО записи deleteOld: план остаётся в исходном
             // состоянии, и Matches трактует это как «сверки не было».
-            DBtest (plan.unchanged, 0, "R7.3 no reconciliation means zero unchanged");
-            DBtest (plan.removals.GetSize (), 0, "R7.3 no reconciliation removes nothing");
-            DBtest (plan.Matches (f.modified, f.deleted), true, "R7.3 skipped reconciliation consistent");
+            DBtest (plan.unchanged, 0, "no reconciliation means zero unchanged");
+            DBtest (plan.removals.GetSize (), 0, "no reconciliation removes nothing");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "skipped reconciliation consistent");
         }
     }
 
@@ -2516,35 +2478,34 @@ namespace TestFunc {
             Spec::AddContributionToRow (rows, c, f.rule, 1, 1, outParam);
 
             const Spec::Element *row = rows.GetPtr ("@A");
-            DBrequire (row != nullptr, "R6.4 row present");
+            DBrequire (row != nullptr, "row present");
             // Порядок прежний: выходной слот, затем слот суммы.
-            DBtest (row->out_slots.GetSize (), 2, "R6.4 schema has both slots");
-            DBtest (row->out_slots[0].isSum, false, "R6.4 first slot is output");
-            DBtest (row->out_slots[1].isSum, true, "R6.4 second slot is sum");
-            DBtest (row->out_slots[0].rawname, f.outText, "R6.4 output slot name");
-            DBtest (row->out_slots[1].rawname, f.outQuantity, "R6.4 sum slot name");
-            DBtest (row->out_slots[0].value.val.uniStringValue, GS::UniString ("Alpha"), "R6.4 output slot value");
-            DBtest (row->out_slots[1].value.val.intValue, 6, "R6.4 sum slot value");
+            DBtest (row->out_slots.GetSize (), 2, "schema has both slots");
+            DBtest (row->out_slots[0].isSum, false, "first slot is output");
+            DBtest (row->out_slots[1].isSum, true, "second slot is sum");
+            DBtest (row->out_slots[0].rawname, f.outText, "output slot name");
+            DBtest (row->out_slots[1].rawname, f.outQuantity, "sum slot name");
+            DBtest (row->out_slots[0].value.val.uniStringValue, GS::UniString ("Alpha"), "output slot value");
+            DBtest (row->out_slots[1].value.val.intValue, 6, "sum slot value");
 
             // Схема совпадает с прежними параллельными массивами: это есть
             // инвариант до полного перевода потребителей.
-            DBtest (row->out_slots.GetSize (), row->OutSlotCount (), "R6.4 schema size equals accessor count");
+            DBtest (row->out_slots.GetSize (), row->OutSlotCount (), "schema size equals accessor count");
             for (UInt32 i = 0; i < row->out_slots.GetSize (); i++) {
                 GS::UniString rawname;
                 ParamValue value;
                 bool isSum = false;
-                DBtest (row->TryGetOutSlot (i, rawname, value, isSum), true, "R6.4 slot readable by index");
-                DBtest (rawname, row->OutSlotName (i), "R6.4 slot name equals accessor name");
-                DBtest (value.val.uniStringValue,
-                        row->OutParam (i).val.uniStringValue,
-                        "R6.4 slot value equals accessor value");
-                DBtest (isSum, i > 0, "R6.4 slot kind matches position");
+                DBtest (row->TryGetOutSlot (i, rawname, value, isSum), true, "slot readable by index");
+                DBtest (rawname, row->OutSlotName (i), "slot name equals accessor name");
+                DBtest (
+                    value.val.uniStringValue, row->OutParam (i).val.uniStringValue, "slot value equals accessor value");
+                DBtest (isSum, i > 0, "slot kind matches position");
             }
             // Индекс вне схемы даёт безопасный ответ, а не выход за границу.
             GS::UniString name;
             ParamValue val;
             bool sumFlag = true;
-            DBtest (row->TryGetOutSlot (99, name, val, sumFlag), false, "R6.4 out-of-range slot reported");
+            DBtest (row->TryGetOutSlot (99, name, val, sumFlag), false, "out-of-range slot reported");
         }
 
         // --- после слияния значения сумм в схеме АКТУАЛЬНЫ ---
@@ -2572,16 +2533,15 @@ namespace TestFunc {
             Spec::AddContributionToRow (rows, c2, f.rule, 1, 1, outParam);
 
             const Spec::Element *row = rows.GetPtr ("@A");
-            DBrequire (row != nullptr, "R6.4 merged row present");
-            DBtest (row->OutSumValue (0).val.intValue, 5, "R6.4 merged sum in legacy array");
-            DBtest (row->out_slots[1].value.val.intValue, 5, "R6.4 merged sum reflected in schema");
-            DBtest (row->out_slots[1].value.val.intValue,
-                    row->OutSumValue (0).val.intValue,
-                    "R6.4 schema matches legacy sum");
+            DBrequire (row != nullptr, "merged row present");
+            DBtest (row->OutSumValue (0).val.intValue, 5, "merged sum in legacy array");
+            DBtest (row->out_slots[1].value.val.intValue, 5, "merged sum reflected in schema");
+            DBtest (
+                row->out_slots[1].value.val.intValue, row->OutSumValue (0).val.intValue, "schema matches legacy sum");
             // Выходной слот первого представителя НЕ меняется при слиянии.
             DBtest (row->out_slots[0].value.val.uniStringValue,
                     GS::UniString ("Alpha"),
-                    "R6.4 output slot keeps first representative");
+                    "output slot keeps first representative");
         }
 
         // --- схема не строится для отброшенной строки ---
@@ -2601,8 +2561,8 @@ namespace TestFunc {
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             // Схема заявлена шире фактического: строка отбрасывается.
             const Spec::RowAddition r = Spec::AddContributionToRow (rows, c, f.rule, 2, 1, outParam);
-            DBtest (r, Spec::RowAddition::SchemaMismatch, "R6.4 mismatch when output slot missing");
-            DBtest (rows.GetSize (), 0, "R6.4 mismatch adds no row");
+            DBtest (r, Spec::RowAddition::SchemaMismatch, "mismatch when output slot missing");
+            DBtest (rows.GetSize (), 0, "mismatch adds no row");
         }
 
         // --- размер схемы стабилен при многих слияниях ---
@@ -2625,9 +2585,9 @@ namespace TestFunc {
                 Spec::AddContributionToRow (rows, c, f.rule, 1, 1, outParam);
             }
             const Spec::Element *row = rows.GetPtr ("@A");
-            DBrequire (row != nullptr, "R6.4 row after three merges");
-            DBtest (row->out_slots.GetSize (), 2, "R6.4 schema size stable across merges");
-            DBtest (row->out_slots[1].value.val.intValue, 3, "R6.4 schema sum after three merges");
+            DBrequire (row != nullptr, "row after three merges");
+            DBtest (row->out_slots.GetSize (), 2, "schema size stable across merges");
+            DBtest (row->out_slots[1].value.val.intValue, 3, "schema sum after three merges");
         }
     }
 
@@ -2639,8 +2599,8 @@ namespace TestFunc {
             Spec::RuleContribution c = {};
             c.outSumParam.Push (Num (3));
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.OutSumCount (), 1, "R6.3 equal sizes keep size");
-            DBtest (row.OutSumValue (0).val.intValue, 5, "R6.3 equal sizes summed");
+            DBtest (row.OutSumCount (), 1, "equal sizes keep size");
+            DBtest (row.OutSumValue (0).val.intValue, 5, "equal sizes summed");
         }
 
         // --- НЕПОЛНЫЕ массивы: вклад короче строки ---
@@ -2655,10 +2615,10 @@ namespace TestFunc {
             c.outSumParam.Push (Num (2));
             c.outSumParam.Push (Num (20));
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.OutSumCount (), 3, "R6.3 short contribution does not resize row");
-            DBtest (row.OutSumValue (0).val.intValue, 3, "R6.3 short contribution sums first slot");
-            DBtest (row.OutSumValue (1).val.intValue, 30, "R6.3 short contribution sums second slot");
-            DBtest (row.OutSumValue (2).val.intValue, 100, "R6.3 slot beyond nsumm untouched");
+            DBtest (row.OutSumCount (), 3, "short contribution does not resize row");
+            DBtest (row.OutSumValue (0).val.intValue, 3, "short contribution sums first slot");
+            DBtest (row.OutSumValue (1).val.intValue, 30, "short contribution sums second slot");
+            DBtest (row.OutSumValue (2).val.intValue, 100, "slot beyond nsumm untouched");
         }
 
         // --- НЕПОЛНЫЕ массивы: строка короче вклада ---
@@ -2670,8 +2630,8 @@ namespace TestFunc {
             c.outSumParam.Push (Num (2));
             c.outSumParam.Push (Num (4));
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.OutSumCount (), 1, "R6.3 longer contribution does not grow row");
-            DBtest (row.OutSumValue (0).val.intValue, 8, "R6.3 longer contribution sums overlap only");
+            DBtest (row.OutSumCount (), 1, "longer contribution does not grow row");
+            DBtest (row.OutSumValue (0).val.intValue, 8, "longer contribution sums overlap only");
         }
 
         // --- isValid требуется с ОБЕИХ сторон ---
@@ -2683,8 +2643,8 @@ namespace TestFunc {
             c.outSumParam.Push (Num (5, false)); // невалидный: слот остаётся как есть
             c.outSumParam.Push (Num (1));
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.OutSumValue (0).val.intValue, 5, "R6.3 invalid side leaves slot untouched");
-            DBtest (row.OutSumValue (1).val.intValue, 51, "R6.3 valid pair still summed");
+            DBtest (row.OutSumValue (0).val.intValue, 5, "invalid side leaves slot untouched");
+            DBtest (row.OutSumValue (1).val.intValue, 51, "valid pair still summed");
         }
         {
             Spec::Element row = {};
@@ -2692,7 +2652,7 @@ namespace TestFunc {
             Spec::RuleContribution c = {};
             c.outSumParam.Push (Num (5));
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.OutSumValue (0).val.intValue, 5, "R6.3 invalid row slot untouched");
+            DBtest (row.OutSumValue (0).val.intValue, 5, "invalid row slot untouched");
         }
 
         // --- пустые массивы: ничего не происходит, размер не меняется ---
@@ -2701,14 +2661,14 @@ namespace TestFunc {
             PushSumSlot (row, Num (9));
             Spec::RuleContribution c = {};
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.OutSumCount (), 1, "R6.3 empty contribution keeps row size");
-            DBtest (row.OutSumValue (0).val.intValue, 9, "R6.3 empty contribution keeps value");
+            DBtest (row.OutSumCount (), 1, "empty contribution keeps row size");
+            DBtest (row.OutSumValue (0).val.intValue, 9, "empty contribution keeps value");
 
             Spec::Element emptyRow = {};
             Spec::RuleContribution withValue = {};
             withValue.outSumParam.Push (Num (3));
             Spec::SumContributionIntoRow (emptyRow, withValue);
-            DBtest (emptyRow.OutSumCount (), 0, "R6.3 empty row stays empty");
+            DBtest (emptyRow.OutSumCount (), 0, "empty row stays empty");
         }
 
         // --- Created: строка собирается из вклада и копирует признаки правила ---
@@ -2727,18 +2687,18 @@ namespace TestFunc {
             Spec::ElementDict rows = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             const Spec::RowAddition r1 = Spec::AddContributionToRow (rows, c, f.rule, 1, 1, outParam);
-            DBtest (r1, Spec::RowAddition::Created, "R6.3 first contribution creates row");
-            DBtest (rows.GetSize (), 1, "R6.3 one row created");
+            DBtest (r1, Spec::RowAddition::Created, "first contribution creates row");
+            DBtest (rows.GetSize (), 1, "one row created");
             const Spec::Element *row = rows.GetPtr ("@A");
-            DBrequire (row != nullptr, "R6.3 created row found");
-            DBtest (row->OutParamCount (), 1, "R6.3 created row has out slot");
-            DBtest (row->OutSumCount (), 1, "R6.3 created row has sum slot");
-            DBtest (row->OutSumValue (0).val.intValue, 6, "R6.3 created row sum value");
-            DBtest (row->elements.GetSize (), 1, "R6.3 created row has one source");
-            DBtest (row->elements[0] == f.first, true, "R6.3 created row source is the contributor");
-            DBtest (row->favorite_name, f.rule.favorite_name, "R6.3 created row carries favorite");
-            DBtest (row->OutParamCount (), f.rule.out_paramrawname.GetSize (), "R6.3 created row out schema");
-            DBtest (outParam.GetSize (), 1, "R6.3 outParam recorded on creation");
+            DBrequire (row != nullptr, "created row found");
+            DBtest (row->OutParamCount (), 1, "created row has out slot");
+            DBtest (row->OutSumCount (), 1, "created row has sum slot");
+            DBtest (row->OutSumValue (0).val.intValue, 6, "created row sum value");
+            DBtest (row->elements.GetSize (), 1, "created row has one source");
+            DBtest (row->elements[0] == f.first, true, "created row source is the contributor");
+            DBtest (row->favorite_name, f.rule.favorite_name, "created row carries favorite");
+            DBtest (row->OutParamCount (), f.rule.out_paramrawname.GetSize (), "created row out schema");
+            DBtest (outParam.GetSize (), 1, "outParam recorded on creation");
         }
 
         // --- Merged: источник дописан, сумма сложена, признаки НЕ пересчитываются ---
@@ -2764,17 +2724,17 @@ namespace TestFunc {
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             DBtest (Spec::AddContributionToRow (rows, c1, f.rule, 1, 1, outParam),
                     Spec::RowAddition::Created,
-                    "R6.3 first creates");
+                    "first creates");
             DBtest (Spec::AddContributionToRow (rows, c2, f.rule, 1, 1, outParam),
                     Spec::RowAddition::Merged,
-                    "R6.3 second merges");
-            DBtest (rows.GetSize (), 1, "R6.3 merge keeps one row");
+                    "second merges");
+            DBtest (rows.GetSize (), 1, "merge keeps one row");
             const Spec::Element *row = rows.GetPtr ("@A");
-            DBrequire (row != nullptr, "R6.3 merged row found");
-            DBtest (row->OutSumValue (0).val.intValue, 5, "R6.3 merge summed both");
-            DBtest (row->elements.GetSize (), 2, "R6.3 merge collected both sources");
-            DBtest (row->elements[1] == f.second, true, "R6.3 merge appended second source");
-            DBtest (outParam.GetSize (), 1, "R6.3 merge does not duplicate outParam");
+            DBrequire (row != nullptr, "merged row found");
+            DBtest (row->OutSumValue (0).val.intValue, 5, "merge summed both");
+            DBtest (row->elements.GetSize (), 2, "merge collected both sources");
+            DBtest (row->elements[1] == f.second, true, "merge appended second source");
+            DBtest (outParam.GetSize (), 1, "merge does not duplicate outParam");
         }
 
         // --- SchemaMismatch: строка НЕ добавлена, но ключ в outParam УЖЕ записан ---
@@ -2794,9 +2754,9 @@ namespace TestFunc {
             Spec::ElementDict rows = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             const Spec::RowAddition r = Spec::AddContributionToRow (rows, c, f.rule, 2, 2, outParam);
-            DBtest (r, Spec::RowAddition::SchemaMismatch, "R6.3 schema mismatch reported");
-            DBtest (rows.GetSize (), 0, "R6.3 schema mismatch adds no row");
-            DBtest (outParam.GetSize (), 1, "R6.3 outParam written before schema check");
+            DBtest (r, Spec::RowAddition::SchemaMismatch, "schema mismatch reported");
+            DBtest (rows.GetSize (), 0, "schema mismatch adds no row");
+            DBtest (outParam.GetSize (), 1, "outParam written before schema check");
         }
 
         // --- раскладка эквивалентна полному пути: та же строка ---
@@ -2830,11 +2790,11 @@ namespace TestFunc {
             full.Source (full.extra, "B", "Beta", 7);
             full.Run ();
 
-            DBtest (rows.GetSize (), full.created.GetSize (), "R6.3 layout and full path agree on rows");
+            DBtest (rows.GetSize (), full.created.GetSize (), "layout and full path agree on rows");
             // Ключ выхода строится из значений выходных слотов, поэтому у строк
             // с РАЗНЫМИ значениями выхода он разный: "@Alpha" и "@Beta". Одна
             // запись на каждый ключ строки, не на строку.
-            DBtest (outParam.GetSize (), 2, "R6.3 layout outParam has one entry per row");
+            DBtest (outParam.GetSize (), 2, "layout outParam has one entry per row");
             for (auto it = rows.Begin (); it != rows.End (); ++it) {
     #ifdef ServerMainVers_2800
                 const GS::UniString &key = it->key;
@@ -2843,21 +2803,20 @@ namespace TestFunc {
     #endif
                 const Spec::Element *a = rows.GetPtr (key);
                 const Spec::Element *b = full.created.GetPtr (key);
-                DBrequire (a != nullptr && b != nullptr, "R6.3 both sides have the row");
-                DBtest (a->OutSumCount (), b->OutSumCount (), "R6.3 agree on sum slot count");
-                DBtest (a->OutParamCount (), b->OutParamCount (), "R6.3 agree on out slot count");
-                DBtest (a->elements.GetSize (), b->elements.GetSize (), "R6.3 agree on source count");
-                DBtest (a->favorite_name, b->favorite_name, "R6.3 agree on favorite");
+                DBrequire (a != nullptr && b != nullptr, "both sides have the row");
+                DBtest (a->OutSumCount (), b->OutSumCount (), "agree on sum slot count");
+                DBtest (a->OutParamCount (), b->OutParamCount (), "agree on out slot count");
+                DBtest (a->elements.GetSize (), b->elements.GetSize (), "agree on source count");
+                DBtest (a->favorite_name, b->favorite_name, "agree on favorite");
                 for (UInt32 j = 0; j < a->OutSumCount () && j < b->OutSumCount (); j++)
-                    DBtest (
-                        a->OutSumValue (j).val.intValue, b->OutSumValue (j).val.intValue, "R6.3 agree on sum value");
+                    DBtest (a->OutSumValue (j).val.intValue, b->OutSumValue (j).val.intValue, "agree on sum value");
             }
             const Spec::Element *mergedA = rows.GetPtr ("@A");
-            DBrequire (mergedA != nullptr, "R6.3 merged row A present");
-            DBtest (mergedA->OutSumValue (0).val.intValue, 5, "R6.3 layout summed 2+3");
+            DBrequire (mergedA != nullptr, "merged row A present");
+            DBtest (mergedA->OutSumValue (0).val.intValue, 5, "layout summed 2+3");
             const Spec::Element *rowB = rows.GetPtr ("@B");
-            DBrequire (rowB != nullptr, "R6.3 row B present");
-            DBtest (rowB->OutSumValue (0).val.intValue, 7, "R6.3 row B own sum");
+            DBrequire (rowB != nullptr, "row B present");
+            DBtest (rowB->OutSumValue (0).val.intValue, 7, "row B own sum");
         }
     }
 
@@ -2870,24 +2829,24 @@ namespace TestFunc {
             UnicGuid errors;
             GS::HashTable<GS::UniString, GS::UniString> outParam;
             const Int32 n = Spec::PlanRuleRows (f.rule, f.context, planned, errors, false, outParam);
-            DBtest (n, 1, "R6.1 one source one row");
-            DBtest (planned.GetSize (), 1, "R6.1 one row planned");
-            DBtest (errors.IsEmpty (), true, "R6.1 no errors");
+            DBtest (n, 1, "one source one row");
+            DBtest (planned.GetSize (), 1, "one row planned");
+            DBtest (errors.IsEmpty (), true, "no errors");
             // Строка рассчитана: слоты заполнены по схеме, источник и признаки
             // правила перенесены.
             const Spec::Element *row = planned.GetPtr ("@A");
-            DBrequire (row != nullptr, "R6.1 row found by key");
-            DBtest (row->OutParamCount (), 1, "R6.1 out slot filled");
-            DBtest (row->OutSumCount (), 1, "R6.1 sum slot filled");
-            DBtest (row->OutParamValue (0).val.uniStringValue, GS::UniString ("Alpha"), "R6.1 out value");
-            DBtest (row->OutSumValue (0).val.intValue, 2, "R6.1 sum value");
-            DBtest (row->elements.GetSize (), 1, "R6.1 source multiplicity");
-            DBtest (row->OutParamCount (), f.rule.out_paramrawname.GetSize (), "R6.1 out schema carried");
-            DBtest (row->favorite_name, f.rule.favorite_name, "R6.1 favorite carried");
+            DBrequire (row != nullptr, "row found by key");
+            DBtest (row->OutParamCount (), 1, "out slot filled");
+            DBtest (row->OutSumCount (), 1, "sum slot filled");
+            DBtest (row->OutParamValue (0).val.uniStringValue, GS::UniString ("Alpha"), "out value");
+            DBtest (row->OutSumValue (0).val.intValue, 2, "sum value");
+            DBtest (row->elements.GetSize (), 1, "source multiplicity");
+            DBtest (row->OutParamCount (), f.rule.out_paramrawname.GetSize (), "out schema carried");
+            DBtest (row->favorite_name, f.rule.favorite_name, "favorite carried");
             // out_param: ключ - склеенные выходящие значения, значение - ключ
             // строки. Он пережил вынос и остаётся тем же словарём.
-            DBtest (outParam.GetSize (), 1, "R6.1 outParam one entry");
-            DBtest (outParam.ContainsKey (EMPTYSTRING) || outParam.GetSize () == 1, true, "R6.1 outParam keyed");
+            DBtest (outParam.GetSize (), 1, "outParam one entry");
+            DBtest (outParam.ContainsKey (EMPTYSTRING) || outParam.GetSize () == 1, true, "outParam keyed");
         }
 
         // --- расчёт НЕ трогает существующие строки: delete_old не влияет ---
@@ -2902,8 +2861,8 @@ namespace TestFunc {
             Spec::PlanRuleRows (f.rule, f.context, planned, errors, false, outParam);
             // Сверки не было: ни удалений, ни модификаций — эти контейнеры
             // не входят в расчётную часть вовсе.
-            DBtest (planned.GetSize (), 1, "R6.1 delete_old does not add rows");
-            DBtest (f.rule.runState.exsist_elements.GetSize (), 1, "R6.1 existing list untouched by planning");
+            DBtest (planned.GetSize (), 1, "delete_old does not add rows");
+            DBtest (f.rule.runState.exsist_elements.GetSize (), 1, "existing list untouched by planning");
         }
 
         // --- суммирование одинаковых ключей в расчётной части ---
@@ -2916,12 +2875,12 @@ namespace TestFunc {
             GS::HashTable<GS::UniString, GS::UniString> outParam;
             const Int32 n = Spec::PlanRuleRows (f.rule, f.context, planned, errors, false, outParam);
             // Одна строка, сумма сложена, источников два.
-            DBtest (n, 1, "R6.1 merged sources one row");
-            DBtest (planned.GetSize (), 1, "R6.1 merged row single");
+            DBtest (n, 1, "merged sources one row");
+            DBtest (planned.GetSize (), 1, "merged row single");
             const Spec::Element *row = planned.GetPtr ("@A");
-            DBrequire (row != nullptr, "R6.1 merged row found");
-            DBtest (row->OutSumValue (0).val.intValue, 5, "R6.1 merged sum");
-            DBtest (row->elements.GetSize (), 2, "R6.1 merged sources");
+            DBrequire (row != nullptr, "merged row found");
+            DBtest (row->OutSumValue (0).val.intValue, 5, "merged sum");
+            DBtest (row->elements.GetSize (), 2, "merged sources");
         }
 
         // --- расчёт и полный путь дают одну и ту же строку ---
@@ -2939,18 +2898,17 @@ namespace TestFunc {
             full.Source (full.first, "A", "Alpha", 2);
             const Int32 fullCount = full.Run ();
 
-            DBtest (planCount, fullCount, "R6.1 planning and full path agree on count");
-            DBtest (planned.GetSize (), full.created.GetSize (), "R6.1 planning and full path agree on rows");
-            DBtest (planned.ContainsKey ("@A"), full.created.ContainsKey ("@A"), "R6.1 agree on key");
+            DBtest (planCount, fullCount, "planning and full path agree on count");
+            DBtest (planned.GetSize (), full.created.GetSize (), "planning and full path agree on rows");
+            DBtest (planned.ContainsKey ("@A"), full.created.ContainsKey ("@A"), "agree on key");
             const Spec::Element *a = planned.GetPtr ("@A");
             const Spec::Element *b = full.created.GetPtr ("@A");
-            DBrequire (a != nullptr && b != nullptr, "R6.1 both rows available");
-            DBtest (a->OutParamCount (), b->OutParamCount (), "R6.1 agree on out slot count");
-            DBtest (a->OutSumCount (), b->OutSumCount (), "R6.1 agree on sum slot count");
-            DBtest (a->OutParamValue (0).val.uniStringValue,
-                    b->OutParamValue (0).val.uniStringValue,
-                    "R6.1 agree on out value");
-            DBtest (a->OutSumValue (0).val.intValue, b->OutSumValue (0).val.intValue, "R6.1 agree on sum value");
+            DBrequire (a != nullptr && b != nullptr, "both rows available");
+            DBtest (a->OutParamCount (), b->OutParamCount (), "agree on out slot count");
+            DBtest (a->OutSumCount (), b->OutSumCount (), "agree on sum slot count");
+            DBtest (
+                a->OutParamValue (0).val.uniStringValue, b->OutParamValue (0).val.uniStringValue, "agree on out value");
+            DBtest (a->OutSumValue (0).val.intValue, b->OutSumValue (0).val.intValue, "agree on sum value");
         }
 
         // --- отказ правила обнуляет расчёт, но НЕ трогает входные словари ---
@@ -2964,9 +2922,9 @@ namespace TestFunc {
             UnicGuid errors;
             GS::HashTable<GS::UniString, GS::UniString> outParam;
             const Int32 n = Spec::PlanRuleRows (f.rule, f.context, planned, errors, false, outParam);
-            DBtest (n, 0, "R6.1 rejected rule counts zero");
-            DBtest (planned.IsEmpty (), true, "R6.1 rejected rule clears rows");
-            DBtest (errors.ContainsKey (f.first), true, "R6.1 rejected rule marks element");
+            DBtest (n, 0, "rejected rule counts zero");
+            DBtest (planned.IsEmpty (), true, "rejected rule clears rows");
+            DBtest (errors.ContainsKey (f.first), true, "rejected rule marks element");
         }
 
         // --- видимость: skip происходит в расчётной части ---
@@ -2978,8 +2936,8 @@ namespace TestFunc {
             UnicGuid errors;
             GS::HashTable<GS::UniString, GS::UniString> outParam;
             const Int32 n = Spec::PlanRuleRows (f.rule, f.context, planned, errors, false, outParam);
-            DBtest (n, 0, "R6.1 invisible source skipped in planning");
-            DBtest (planned.IsEmpty (), true, "R6.1 invisible source yields no rows");
+            DBtest (n, 0, "invisible source skipped in planning");
+            DBtest (planned.IsEmpty (), true, "invisible source yields no rows");
         }
     }
 
@@ -3026,7 +2984,7 @@ namespace TestFunc {
                     "boundary neighbour element intact");
         }
 
-        // --- S14: формулы и отсутствие утечки значений между элементами ---
+        // --- формулы и отсутствие утечки значений между элементами ---
         // Контракт зафиксирован ЧТЕНИЕМ КОДА, а не предположением:
         //   - обычная формула (без маркеров %elem./%mat./... и без
         //     {@listdata:}) на этапе Read НЕ вычисляется - возвращается
@@ -3050,9 +3008,9 @@ namespace TestFunc {
             f.Text (f.first, f.text, "src");
             f.context.read.Get (f.first).Put (plain, pv);
             ParamValue got;
-            DBtest (Spec::SpecValueReader (f.context).Read (f.first, plain, got, 0), "S14 plain formula read");
-            DBtest (got.val.doubleValue, 10.0, "S14 plain formula not evaluated at read");
-            DBtest (got.val.hasFormula, true, "S14 plain formula flag preserved");
+            DBtest (Spec::SpecValueReader (f.context).Read (f.first, plain, got, 0), "plain formula read");
+            DBtest (got.val.doubleValue, 10.0, "plain formula not evaluated at read");
+            DBtest (got.val.hasFormula, true, "plain formula keeps hasFormula");
         }
         // Вторая часть: два элемента с РАЗНЫМИ list-data формулами дают разные
         // результаты в любом порядке чтения - локальный словарь изолирован.
@@ -3097,19 +3055,19 @@ namespace TestFunc {
 
             const Spec::SpecValueReader reader (f.context);
             ParamValue first, second;
-            DBtest (reader.Read (f.first, libName, first, 0), "S14 element A formula read");
-            DBtest (reader.Read (f.second, libName, second, 0), "S14 element B formula read");
+            DBtest (reader.Read (f.first, libName, first, 0), "element A formula read");
+            DBtest (reader.Read (f.second, libName, second, 0), "element B formula read");
             // Обратный порядок - результаты те же, утечки нет.
             ParamValue secondFirst, firstSecond;
-            DBtest (reader.Read (f.second, libName, secondFirst, 0), "S14 reverse B read");
-            DBtest (reader.Read (f.first, libName, firstSecond, 0), "S14 reverse A read");
-            DBtest (first.val.uniStringValue, GS::UniString ("Rebar-A"), "S14 element A value");
-            DBtest (second.val.uniStringValue, GS::UniString ("Rebar-B"), "S14 element B value");
-            DBtest (firstSecond.val.uniStringValue, first.val.uniStringValue, "S14 A stable across order");
-            DBtest (secondFirst.val.uniStringValue, second.val.uniStringValue, "S14 B stable across order");
+            DBtest (reader.Read (f.second, libName, secondFirst, 0), "reverse B read");
+            DBtest (reader.Read (f.first, libName, firstSecond, 0), "reverse A read");
+            DBtest (first.val.uniStringValue, GS::UniString ("Rebar-A"), "element A value");
+            DBtest (second.val.uniStringValue, GS::UniString ("Rebar-B"), "element B value");
+            DBtest (firstSecond.val.uniStringValue, first.val.uniStringValue, "A stable across order");
+            DBtest (secondFirst.val.uniStringValue, second.val.uniStringValue, "B stable across order");
         }
 
-        // --- S16: два правила на одном избранном ---
+        // --- два правила на одном избранном ---
         // Соседнее правило не должно пострадать от разрешения избранного и от
         // сверки выходной схемы: признаки готовности независимы.
         {
@@ -3127,32 +3085,30 @@ namespace TestFunc {
             bad.out_sum_paramrawname.Push ("{@property:spec-missing}");
 
             // Первое правило проверяется ДО второго: его признак не должен сброситься.
-            DBtest (Spec::MatchDestinationProperties (good, favorite, errors), true, "S16 first rule ready");
-            DBtest (Spec::MatchDestinationProperties (bad, favorite, errors), false, "S16 second rule not ready");
-            DBtest (good.destinationReady, true, "S16 first rule flag survived neighbour");
-            DBtest (bad.destinationReady, false, "S16 second rule flag cleared");
-            DBtest (good.out_paramrawname.GetSize (), 1, "S16 first rule schema intact");
-            DBtest (good.out_sum_paramrawname.GetSize (), 1, "S16 first rule sum schema intact");
+            DBtest (Spec::MatchDestinationProperties (good, favorite, errors), true, "first rule ready");
+            DBtest (Spec::MatchDestinationProperties (bad, favorite, errors), false, "second rule not ready");
+            DBtest (good.destinationReady, true, "first rule destinationReady survives neighbour");
+            DBtest (bad.destinationReady, false, "second rule destinationReady cleared");
+            DBtest (good.out_paramrawname.GetSize (), 1, "first rule schema intact");
+            DBtest (good.out_sum_paramrawname.GetSize (), 1, "first rule sum schema intact");
             // Обратный порядок: неполное правило не должно влиять на полное.
             ParamDict errors2;
             Spec::MatchDestinationProperties (bad, favorite, errors2);
-            DBtest (Spec::MatchDestinationProperties (good, favorite, errors2), true, "S16 good ready after bad");
-            DBtest (good.destinationReady, true, "S16 good flag kept after bad");
+            DBtest (Spec::MatchDestinationProperties (good, favorite, errors2), true, "good ready after bad");
+            DBtest (good.destinationReady, true, "complete rule destinationReady kept after incomplete one");
             // Отсутствие избранного целиком: оба правила не готовы, ошибка одна.
             ParamDict errors3;
             GS::HashTable<GS::UniString, GS::UniString> emptyFavorite;
+            DBtest (Spec::MatchDestinationProperties (good, emptyFavorite, errors3), false, "no favorite not ready");
             DBtest (
-                Spec::MatchDestinationProperties (good, emptyFavorite, errors3), false, "S16 no favorite not ready");
-            DBtest (Spec::MatchDestinationProperties (bad, emptyFavorite, errors3),
-                    false,
-                    "S16 no favorite both not ready");
-            DBtest (errors3.GetSize (), 3, "S16 three missing names recorded");
+                Spec::MatchDestinationProperties (bad, emptyFavorite, errors3), false, "no favorite both not ready");
+            DBtest (errors3.GetSize (), 3, "three missing names recorded");
         }
 
-        // --- S13: семантика первого ряда GDL-массива на чтении ---
+        // --- семантика первого ряда GDL-массива на чтении ---
         // Разбор имени @arr - territory Helpers (ConvertStringToParamValue,
-        // Helpers.cpp:6220), он читает через ACAPI и R5 его не трогает. Здесь
-        // закрепляется только то, что видит вычислитель.
+        // Helpers.cpp:6220), он читает через ACAPI. Здесь закрепляется только
+        // то, что видит вычислитель.
         //
         // Предусловие найдено ЧТЕНИЕМ КОДА, и оно неочевидно: признак
         // fromGDLArray попадает в pvalue только если Read дошёл до материальной
@@ -3174,16 +3130,16 @@ namespace TestFunc {
             firstRow.fromGDLArray = true;
             firstRow.val.array_row_start = 1;
             f.context.read.Get (f.first).Put (f.text, firstRow);
-            f.Shape (f.Run (), 0, 0, 0, 0, "S13 first row stops");
-            DBtest (f.errors.ContainsKey (f.first), true, "S13 first row marks element error");
+            f.Shape (f.Run (), 0, 0, 0, 0, "first row stops");
+            DBtest (f.errors.ContainsKey (f.first), true, "first row marks element error");
 
             // Второй ряд: тот же маршрут, но array_row_start == 2 — отказ не
             // является ошибкой элемента.
             ParamValue secondRow = firstRow;
             secondRow.val.array_row_start = 2;
             f.context.read.Get (f.first).Put (f.text, secondRow);
-            f.Shape (f.Run (), 0, 0, 0, 0, "S13 second row skips silently");
-            DBtest (f.errors.ContainsKey (f.first), false, "S13 second row not an error");
+            f.Shape (f.Run (), 0, 0, 0, 0, "second row skips silently");
+            DBtest (f.errors.ContainsKey (f.first), false, "second row not an error");
 
             // Контроль маршрута, найденный чтением кода: признаки материала
             // НЕЛЬЗЯ снять и ждать отказа. Без fromMaterial Read возвращает
@@ -3193,8 +3149,8 @@ namespace TestFunc {
             ParamValue plain = firstRow;
             plain.fromMaterial = false;
             f.context.read.Get (f.first).Put (f.text, plain);
-            f.Shape (f.Run (), 1, 1, 0, 0, "S13 non material reads fine");
-            DBtest (f.errors.ContainsKey (f.first), false, "S13 non material is not an error");
+            f.Shape (f.Run (), 1, 1, 0, 0, "non material reads fine");
+            DBtest (f.errors.ContainsKey (f.first), false, "non material is not an error");
         }
     }
 
@@ -3240,18 +3196,18 @@ namespace TestFunc {
         DBtest (f.context.composite.Get (f.first).Get (f.text).composite.GetSize (), 6, "Spec layers unchanged");
     }
 
-    // R4.1: нормализация описания - отдельная проверяемая единица.
-    // Раньше она была телом AddRule и не тестировалась вовсе: все проверки били
-    // по GetRuleFromDescription, который на входе уже ждёт НОРМАЛИЗОВАННУЮ строку.
-    // Здесь фиксируется контракт: что именно считается "нормализованным".
-    // R4.2: политика правила вынесена в ApplyRulePolicy. Проверяем её отдельно от
-    // разбора групп - раньше политика была первым блоком парсера, и её нельзя было
-    // проверить, не разбирая всё описание целиком.
-    // Ожидания получены воспроизведением ветвления, а не подгонкой под вывод.
-    // R4.2: выходная схема s() вынесена в ParseOutputSchema. Проверяем её отдельно:
-    // требование ровно двух частей, срезание суффикса "[N]", пропуск пустых имён
-    // и раздельное заполнение out_/out_sum_. Имена берутся в уже нормализованной
-    // части после "s@@" - это контракт из R4.1.
+    // Нормализация описания, политика правила и разбор схемы — отдельные
+    // проверяемые единицы. Все они вынесены из AddRule и вызываются из него же,
+    // поэтому контракт каждой проверяется без разбора описания целиком.
+    // Нормализация: что именно считается "нормализованной" строкой —
+    // GetRuleFromDescription на входе уже ждёт такую.
+    // Политика правила (ApplyRulePolicy) проверяется отдельно от разбора
+    // групп. Ожидания получены воспроизведением ветвления, а не подгонкой
+    // под вывод.
+    // Выходная схема s() (ParseOutputSchema): требование ровно двух частей,
+    // срезание суффикса "[N]", пропуск пустых имён и раздельное заполнение
+    // out_/out_sum_. Имена берутся в уже нормализованной части после
+    // "s@@".
     // Формат имён подтверждён существующим набором парсера: GDL:X -> {@gdl:x},
     // Property:Total -> {@property:total}.
     // Разбор группы g() после выноса в Spec::ParseGroups (). Ключевая особенность
@@ -3313,16 +3269,15 @@ namespace TestFunc {
         }
     }
 
-    // R7.4-инвариант: ПОРЯДОК слотов обязателен. OutParamValue/OutSumValue и
+    // ПОРЯДОК слотов обязателен. OutParamValue/OutSumValue и
     // SumContributionIntoRow адресуют слоты по позиции, пересчитывая число
     // выходных через флаг isSum. Перемешанная схема (сумма раньше выхода)
     // прошла бы сверку чисел, и суммирование сложило бы ВЫХОДНОЙ слот вместо
     // суммарного — тихо. Это статический риск, а не наблюдавшаяся регрессия:
     // производственный BuildOutputSlots порядок соблюдает.
-    // R3.5: сценарии S01 / S17 / S24 — МЕХАНИКА ВЫБОРА. Ключевое утверждение
-    // всех трёх сценариев общее: «невыбранное корректное правило не становится
-    // ошибкой парсинга, следующий запуск не наследует прошлый выбор»
-    // (Reviews/2026-09-27_174500, строки S01/S17/S24).
+    // МЕХАНИКА ВЫБОРА. Ключевое утверждение: «невыбранное корректное правило
+    // не становится ошибкой парсинга, следующий запуск не наследует прошлый
+    // выбор».
     //
     // Обе части проверяются на подставной фикстуре, без модели и без диалога:
     //   - «не ошибка парсинга»: parseValid выставляется РАЗБОРОМ описания, а не
@@ -3332,10 +3287,10 @@ namespace TestFunc {
     //     отделён от признаков готовности.
     //
     // Что набор НЕ покрывает (эти части требуют модели или UI, см. IDEA.md):
-    //   - S01 «выделение» и настоящий default-правило из UI;
-    //   - S17 снятие правила в диалоге и отмена диалога/точки;
-    //   - S24 повторный запуск на одной модели, смена проекта, приостановка
-    //     групп и отсутствие роста retained memory.
+    //   - «выделение» и настоящий default-правило из UI;
+    //   - снятие правила в диалоге и отмена диалога/точки;
+    //   - повторный запуск на одной модели, смена проекта, приостановка групп
+    //     и отсутствие роста retained memory.
     // Эти пункты не выдаются за закрытые.
     void TestSpecSelectionPolicy () {
         // Рабочий синтаксис взят из существующих наборов (TestSpecParser и др.),
@@ -3343,68 +3298,68 @@ namespace TestFunc {
         // (уникальный, читаемый, флаг, количество), s@@x;y — выходная схема.
         const GS::UniString validDesc = "Spec_rule{Fav;g@@u;p;f;q@@s@@x;y}";
 
-        // --- S17: снятие выбора НЕ делает правило ошибкой парсинга ---
+        // --- снятие выбора НЕ делает правило ошибкой парсинга ---
         {
             Spec::SpecRule rule = Spec::GetRuleFromDescription (validDesc);
-            DBtest (rule.parseValid, true, "S17 valid rule parses");
+            DBtest (rule.parseValid, true, "valid rule parses");
             rule.selected = false;
-            DBtest (rule.parseValid, true, "S17 deselected rule still parses");
-            DBtest (rule.selected, false, "S17 deselection recorded");
+            DBtest (rule.parseValid, true, "deselected rule still parses");
+            DBtest (rule.selected, false, "deselection recorded");
             // Совместимый адаптер: правило выпадает из запуска, но разбор не
             // инвалидируется — иначе следующий запуск увидит ошибку парсинга.
-            DBtest (rule.IsRunnableForRun (), false, "S17 deselected rule not runnable");
+            DBtest (rule.IsRunnableForRun (), false, "deselected rule not runnable");
         }
 
-        // --- S01: невыбранное правило не влияет на выбранное ---
+        // --- невыбранное правило не влияет на выбранное ---
         {
             Spec::SpecRule kept = Spec::GetRuleFromDescription (validDesc);
             Spec::SpecRule dropped = Spec::GetRuleFromDescription (validDesc);
             dropped.selected = false;
-            DBtest (kept.IsRunnableForRun (), true, "S01 selected rule runnable");
-            DBtest (dropped.IsRunnableForRun (), false, "S01 unselected rule skipped");
+            DBtest (kept.IsRunnableForRun (), true, "selected rule runnable");
+            DBtest (dropped.IsRunnableForRun (), false, "unselected rule skipped");
             // Снятие выбора одного правила не меняет прочие — обход идёт по
             // словарю правил, а выбор принадлежит правилу.
-            DBtest (kept.selected, true, "S01 neighbour selection intact");
-            DBtest (kept.parseValid, true, "S01 neighbour parse intact");
+            DBtest (kept.selected, true, "neighbour selection intact");
+            DBtest (kept.parseValid, true, "neighbour parse intact");
         }
 
-        // --- S24: следующий запуск не наследует прошлый выбор ---
+        // --- следующий запуск не наследует прошлый выбор ---
         {
             // Первый «запуск»: правило создано заново, выбрано, затем снято в UI.
             Spec::SpecRule first = Spec::GetRuleFromDescription (validDesc);
             first.selected = false;
-            DBtest (first.selected, false, "S24 first run deselected");
+            DBtest (first.selected, false, "first run deselected");
 
             // Второй «запуск»: словарь правил создаётся заново, поэтому прежний
             // выбор не восстанавливается из переиспользованной структуры.
             Spec::SpecRule second = Spec::GetRuleFromDescription (validDesc);
-            DBtest (second.selected, true, "S24 second run does not inherit deselection");
-            DBtest (second.parseValid, true, "S24 second run parses");
+            DBtest (second.selected, true, "second run does not inherit deselection");
+            DBtest (second.parseValid, true, "second run parses");
         }
 
-        // --- S24: гейт запуска отделён от признаков готовности ---
+        // --- гейт запуска отделён от признаков готовности ---
         {
             Spec::SpecRule rule = Spec::GetRuleFromDescription (validDesc);
-            DBtest (rule.selected, true, "S24 default selection is true");
-            DBtest (rule.destinationReady, true, "S24 destination ready by default");
-            DBtest (rule.IsRunnableForRun (), true, "S24 fresh rule runnable");
+            DBtest (rule.selected, true, "default selection is true");
+            DBtest (rule.destinationReady, true, "destination ready by default");
+            DBtest (rule.IsRunnableForRun (), true, "fresh rule runnable");
 
             // Находка инвентаря R3: две стадии используют РАЗНЫЕ гейты.
             // Стадия планирования (:632) требует готовности назначения, а
             // стадия сбора избранного (:678) — нет. Обе комбинации обязаны
             // вести себя предсказуемо, иначе смена гейта молча сузит план чтения.
             rule.destinationReady = false;
-            DBtest (rule.IsRunnableForRun (), false, "S24 not-ready rule blocked by run gate");
+            DBtest (rule.IsRunnableForRun (), false, "not-ready rule blocked by run gate");
 
             rule.destinationReady = true;
             rule.selected = false;
             rule.parseValid = false;
-            DBtest (rule.IsRunnableForRun (), false, "S24 invalid+unselected still blocked");
+            DBtest (rule.IsRunnableForRun (), false, "invalid+unselected still blocked");
             rule.parseValid = true;
-            DBtest (rule.IsRunnableForRun (), false, "S24 unselected blocked after parse fixed");
+            DBtest (rule.IsRunnableForRun (), false, "unselected blocked after parse fixed");
         }
 
-        // --- S17/S24: выбор отделён от валидности в обе стороны ---
+        // --- выбор отделён от валидности в обе стороны ---
         {
             // Невалидное, но ВЫБРАННОЕ правило не должно попасть в запуск:
             // выбор не превращает отказ разбора в успех.
@@ -3416,22 +3371,22 @@ namespace TestFunc {
             // TestSpecParseError как контракт).
             const GS::UniString brokenDesc = "Spec_rule{Fav;g@@u;p1,p2;f;q@@s@@x;y}";
             Spec::SpecRule rule = Spec::GetRuleFromDescription (brokenDesc);
-            DBtest (rule.selected, true, "S24 broken rule selected by default");
-            DBtest (rule.parseValid, false, "S24 broken rule reported invalid");
-            DBtest (rule.IsRunnableForRun (), false, "S24 broken rule never runnable");
+            DBtest (rule.selected, true, "broken rule selected by default");
+            DBtest (rule.parseValid, false, "broken rule reported invalid");
+            DBtest (rule.IsRunnableForRun (), false, "broken rule never runnable");
             // Причина отказа не None — парсер сообщил, о чём речь.
-            DBtest (rule.parseError == Spec::ParseError::NoGroupsAccepted, true, "S24 parse error recorded");
+            DBtest (rule.parseError == Spec::ParseError::NoGroupsAccepted, true, "parse error recorded");
         }
 
-        // --- S24: выбор и разбор независимы и в обратную сторону ---
+        // --- выбор и разбор независимы и в обратную сторону ---
         {
             // Не выбранное, но вполне разобранное правило — обычное состояние
-            // запуска, а не поломка: именно это проверяет S01/S17/S24.
+            // запуска, а не поломка: именно это проверяет этот набор.
             Spec::SpecRule rule = Spec::GetRuleFromDescription (validDesc);
-            DBtest (rule.parseValid, true, "S24 unselected-but-parsed parses");
+            DBtest (rule.parseValid, true, "unselected-but-parsed parses");
             rule.selected = false;
-            DBtest (rule.parseValid, true, "S24 unselected-but-parsed still parses");
-            DBtest (rule.parseError == Spec::ParseError::None, true, "S24 unselected-but-parsed reason None");
+            DBtest (rule.parseValid, true, "unselected-but-parsed still parses");
+            DBtest (rule.parseError == Spec::ParseError::None, true, "unselected-but-parsed reason None");
         }
 
         // --- путь «сырое описание из UI → нормализация → разбор» на реальном
@@ -3452,12 +3407,12 @@ namespace TestFunc {
 
             // 1) Нормализация сама по себе НЕ добавляет знаков @.
             const GS::UniString normalized = Spec::NormalizeRuleDescription (rawDescription);
-            DBtest (normalized.Contains ("g@@"), true, "R3.5 real desc group normalized");
-            DBtest (normalized.Contains ("s@@"), true, "R3.5 real desc summary normalized");
-            DBtest (normalized.Contains ("Property:"), true, "R3.5 real desc keeps typed prefix");
-            DBtest (normalized.Contains ("@property:"), false, "R3.5 normalize adds no raw prefix");
+            DBtest (normalized.Contains ("g@@"), true, "real desc group normalized");
+            DBtest (normalized.Contains ("s@@"), true, "real desc summary normalized");
+            DBtest (normalized.Contains ("Property:"), true, "real desc keeps typed prefix");
+            DBtest (normalized.Contains ("@property:"), false, "normalize adds no raw prefix");
             // Пробельный мусор ("Spec_rule {" с пробелом) снят.
-            DBtest (normalized.Contains ("Spec_rule {"), false, "R3.5 real desc space trimmed");
+            DBtest (normalized.Contains ("Spec_rule {"), false, "real desc space trimmed");
 
             // 2) Разбор нормализованного описания даёт правило, и префикс
             // {@property: появляется только здесь.
@@ -3469,24 +3424,24 @@ namespace TestFunc {
             //     группами по одной строке на каждую, и исходная группа в
             //     rule.groups НЕ попадает (Spec.cpp:2143-2144 против :2175).
             const Spec::SpecRule rule = Spec::GetRuleFromDescription (normalized);
-            DBtest (rule.parseValid, true, "R3.5 real desc parses");
-            DBtest (rule.groups.GetSize () == 4, true, "R3.5 real desc array expanded to 4 groups");
-            DBtest (rule.out_paramrawname.GetSize () == 5, true, "R3.5 real desc output count");
-            DBtest (rule.out_sum_paramrawname.GetSize () == 1, true, "R3.5 real desc sum count");
-            DBtest (rule.parseError == Spec::ParseError::None, true, "R3.5 real desc reason None");
+            DBtest (rule.parseValid, true, "real desc parses");
+            DBtest (rule.groups.GetSize () == 4, true, "real desc array expanded to 4 groups");
+            DBtest (rule.out_paramrawname.GetSize () == 5, true, "real desc output count");
+            DBtest (rule.out_sum_paramrawname.GetSize () == 1, true, "real desc sum count");
+            DBtest (rule.parseError == Spec::ParseError::None, true, "real desc reason None");
 
             // 3) Имена приходят УЖЕ с префиксом {@property: / {@gdl: — это работа
             // NameToRawName, а не результат нормализации. Тип префикса выбирается
             // по наличию ":" в имени описания: `pos` без двоеточия → {@gdl:.
-            DBtest (rule.out_paramrawname[0], GS::UniString ("{@gdl:pos}"), "R3.5 real desc untyped becomes gdl");
-            DBtest (rule.out_paramrawname[1].BeginsWith ("{@property:"), true, "R3.5 real desc typed keeps property");
-            DBtest (rule.out_sum_paramrawname[0].BeginsWith ("{@property:"), true, "R3.5 real desc sum raw prefix");
+            DBtest (rule.out_paramrawname[0], GS::UniString ("{@gdl:pos}"), "real desc untyped becomes gdl");
+            DBtest (rule.out_paramrawname[1].BeginsWith ("{@property:"), true, "real desc typed keeps property");
+            DBtest (rule.out_sum_paramrawname[0].BeginsWith ("{@property:"), true, "real desc sum raw prefix");
 
             // 4) Ключ правила = имя выбранного элемента из кавычек.
-            DBtest (rule.favorite_name, GS::UniString ("АР_Спец_Перемычки"), "R3.5 real desc favorite name");
+            DBtest (rule.favorite_name, GS::UniString ("АР_Спец_Перемычки"), "real desc favorite name");
         }
 
-        // --- S01/S17/S24 на ОДНОМ правиле в реальной форме описания: снятие
+        // --- механика выбора на ОДНОМ правиле в реальной форме описания: снятие
         // выбора не ломает ни разбор, ни признаки готовности, а следующий
         // запуск снова выбирает правило. Склейка предыдущих проверок в сценарий.
         {
@@ -3497,19 +3452,19 @@ namespace TestFunc {
                 " s(pos,Property:S/Mark,Property:S/Name;Property:S/Qty)}";
 
             Spec::SpecRule rule = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescOne));
-            DBtest (rule.parseValid, true, "S01 scenario parses");
-            DBtest (rule.selected, true, "S01 scenario selected by default");
-            DBtest (rule.IsRunnableForRun (), true, "S01 scenario runnable");
+            DBtest (rule.parseValid, true, "scenario parses");
+            DBtest (rule.selected, true, "scenario selected by default");
+            DBtest (rule.IsRunnableForRun (), true, "scenario runnable");
 
             rule.selected = false;
-            DBtest (rule.parseValid, true, "S17 scenario deselect keeps parse");
-            DBtest (rule.IsRunnableForRun (), false, "S17 scenario deselect blocks run");
-            DBtest (rule.destinationReady, true, "S17 scenario readiness intact");
+            DBtest (rule.parseValid, true, "scenario deselect keeps parse");
+            DBtest (rule.IsRunnableForRun (), false, "scenario deselect blocks run");
+            DBtest (rule.destinationReady, true, "scenario readiness intact");
 
             // Следующий запуск: правило создаётся заново и снова выбрано.
             Spec::SpecRule next = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescOne));
-            DBtest (next.selected, true, "S24 scenario next run reselects");
-            DBtest (next.IsRunnableForRun (), true, "S24 scenario next run runnable");
+            DBtest (next.selected, true, "scenario next run reselects");
+            DBtest (next.IsRunnableForRun (), true, "scenario next run runnable");
         }
 
         // --- РЕАЛЬНОЕ многострочное описание владельца (вставки, 2026-10-01).
@@ -3605,11 +3560,11 @@ namespace TestFunc {
             // набирается в несколько строк, и без этого разбивка по g@@/s@@
             // увидит мусор. Константы LINEBRAKE/LINEBRAKER/TABSTRING = "\n"/"\r"/"\t".
             const GS::UniString normalized = Spec::NormalizeRuleDescription (rawDescription);
-            DBtest (normalized.Contains ("\n"), false, "R3.5 multiline: line feeds removed");
-            DBtest (normalized.Contains ("\t"), false, "R3.5 multiline: tabs removed");
-            DBtest (normalized.Contains ("g@@"), true, "R3.5 multiline: group markers written");
-            DBtest (normalized.Contains ("s@@"), true, "R3.5 multiline: summary marker written");
-            DBtest (normalized.Contains ("@property:"), false, "R3.5 multiline: normalize adds no @");
+            DBtest (normalized.Contains ("\n"), false, "multiline: line feeds removed");
+            DBtest (normalized.Contains ("\t"), false, "multiline: tabs removed");
+            DBtest (normalized.Contains ("g@@"), true, "multiline: group markers written");
+            DBtest (normalized.Contains ("s@@"), true, "multiline: summary marker written");
+            DBtest (normalized.Contains ("@property:"), false, "multiline: normalize adds no @");
 
             // Разбор: пять групп, и каждая обязана совпасть по размеру со схемой
             // выхода (ExpandGroup/ParseGroups иначе отбрасывают группу). Числа
@@ -3617,27 +3572,27 @@ namespace TestFunc {
             // описание реального вида не принимается. Это стоп-сигнал, а не
             // ожидаемое значение.
             const Spec::SpecRule rule = Spec::GetRuleFromDescription (normalized);
-            DBtest (rule.parseValid, true, "R3.5 multiline: parses");
-            DBtest (rule.parseError == Spec::ParseError::None, true, "R3.5 multiline: reason None");
+            DBtest (rule.parseValid, true, "multiline: parses");
+            DBtest (rule.parseError == Spec::ParseError::None, true, "multiline: reason None");
             DBtest (rule.favorite_name,
                     GS::UniString ("ВСТАВКИ Условные обозначения SomeStuff"),
-                    "R3.5 multiline: favorite name");
-            DBtest (rule.groups.GetSize () == 5, true, "R3.5 multiline: five groups");
-            DBtest (rule.out_paramrawname.GetSize () == 26, true, "R3.5 multiline: 26 outputs");
-            DBtest (rule.out_sum_paramrawname.GetSize () == 1, true, "R3.5 multiline: one sum");
+                    "multiline: favorite name");
+            DBtest (rule.groups.GetSize () == 5, true, "multiline: five groups");
+            DBtest (rule.out_paramrawname.GetSize () == 26, true, "multiline: 26 outputs");
+            DBtest (rule.out_sum_paramrawname.GetSize () == 1, true, "multiline: one sum");
 
             // Имена с пробелом и типом Property: сохраняют префикс, кириллица
             // не должна превращаться в мусор (NameToRawName lowercases).
             DBtest (rule.out_paramrawname[0],
                     GS::UniString ("{@gdl:gs_list_manufacturer}"),
-                    "R3.5 multiline: untyped name becomes gdl");
+                    "multiline: untyped name becomes gdl");
             DBtest (rule.out_sum_paramrawname[0].BeginsWith ("{@property:"),
                     true,
-                    "R3.5 multiline: typed sum keeps property prefix");
+                    "multiline: typed sum keeps property prefix");
             // Пространство имён не должно теряться при lowercases: кириллица
             // сохраняется, латиница приводится к нижнему регистру.
             const bool hasCyrillic = rule.out_paramrawname[0].Contains ("gs_list_manufacturer");
-            DBtest (hasCyrillic, true, "R3.5 multiline: latin name kept");
+            DBtest (hasCyrillic, true, "multiline: latin name kept");
         }
 
         // --- тот же пример, но С СЕМАНТИКОЙ ВЫБОРА: снятие выбора на
@@ -3729,37 +3684,37 @@ namespace TestFunc {
             Spec::SpecRule rule = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescription));
             const bool readyBefore = rule.IsRunnableForRun ();
             rule.selected = false;
-            DBtest (rule.parseValid, true, "S17 multiline: deselect keeps parse");
-            DBtest (rule.IsRunnableForRun (), false, "S17 multiline: deselect blocks run");
-            DBtest (rule.groups.GetSize () == 5, true, "S17 multiline: groups survive deselect");
+            DBtest (rule.parseValid, true, "multiline: deselect keeps parse");
+            DBtest (rule.IsRunnableForRun (), false, "multiline: deselect blocks run");
+            DBtest (rule.groups.GetSize () == 5, true, "multiline: groups survive deselect");
 
             Spec::SpecRule next = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescription));
-            DBtest (next.selected, true, "S24 multiline: next run reselects");
-            DBtest (next.IsRunnableForRun (), readyBefore, "S24 multiline: runnability restored");
+            DBtest (next.selected, true, "multiline: next run reselects");
+            DBtest (next.IsRunnableForRun (), readyBefore, "multiline: runnability restored");
         }
     }
 
-    // R3.5: ГРАНИЦА ТИПОВ. Первым вынесено exsist_elements (R3.4), у него один
-    // писатель. Набор фиксирует, что:
+    // ГРАНИЦА ТИПОВ. У состояния запуска exsist_elements один писатель.
+    // Набор фиксирует, что:
     //   - состояние запуска — отдельный тип, а не поле в SpecRule;
     //   - заполнение состояния НЕ трогает определение правила (схему, признаки
     //     готовности, выбор) — то есть перенос не смешал данные с местом;
     //   - правило ПО УМОЛЧАНИЮ пригодно к запуску (IsRunnableForRun), и наполнение
     //     состояния этого не меняет.
-    // Политика удаления и признак полноты здесь НЕ проверяются: они принадлежат
-    // F1, и R3 не должен влиять на них.
+    // Политика удаления и признак полноты здесь НЕ проверяются: они
+    // относятся к отдельной задаче.
     void TestSpecRunStateBoundary () {
         // --- отдельный тип состояния компилируется и самодостаточен ---
         {
             Spec::SpecRuleRunState state = {};
-            DBtest (state.exsist_elements.IsEmpty (), true, "R3.5 fresh state is empty");
+            DBtest (state.exsist_elements.IsEmpty (), true, "fresh state is empty");
             state.exsist_elements.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
-            DBtest (state.exsist_elements.GetSize (), 1, "R3.5 state holds existing list");
+            DBtest (state.exsist_elements.GetSize (), 1, "runState holds existing list");
             // Копия состояния независима от правила: это данные запуска, а не
             // определение, поэтому присваивание структуры не должно тащить за
             // собой определение.
             Spec::SpecRuleRunState copy = state;
-            DBtest (copy.exsist_elements.GetSize (), 1, "R3.5 state copies by value");
+            DBtest (copy.exsist_elements.GetSize (), 1, "runState copy carries existing list");
         }
 
         // --- заполнение состояния не трогает определение ---
@@ -3779,26 +3734,26 @@ namespace TestFunc {
             UnicGuid selected;
             Spec::SelectExistingElements (rule, found, selected);
 
-            DBtest (rule.runState.exsist_elements.GetSize (), 1, "R3.5 state filled");
-            DBtest (rule.out_paramrawname.GetSize (), outBefore, "R3.5 out schema untouched");
-            DBtest (rule.out_sum_paramrawname.GetSize (), sumBefore, "R3.5 sum schema untouched");
-            DBtest (rule.groups.GetSize (), groupsBefore, "R3.5 groups untouched");
-            DBtest (rule.parseValid, parseBefore, "R3.5 parse flag untouched");
-            DBtest (rule.destinationReady, readyBefore, "R3.5 readiness untouched");
-            DBtest (rule.selected, selectedBefore, "R3.5 selection untouched");
+            DBtest (rule.runState.exsist_elements.GetSize (), 1, "runState.exsist_elements filled");
+            DBtest (rule.out_paramrawname.GetSize (), outBefore, "out schema untouched");
+            DBtest (rule.out_sum_paramrawname.GetSize (), sumBefore, "sum schema untouched");
+            DBtest (rule.groups.GetSize (), groupsBefore, "groups untouched");
+            DBtest (rule.parseValid, parseBefore, "parse flag untouched");
+            DBtest (rule.destinationReady, readyBefore, "readiness untouched");
+            DBtest (rule.selected, selectedBefore, "selection untouched");
         }
 
         // --- наполнение состояния не меняет готовность правила к запуску ---
         {
             Spec::SpecRule rule;
             rule.runState.exsist_elements.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
-            DBtest (rule.IsRunnableForRun (), true, "R3.5 existing list does not block run");
+            DBtest (rule.IsRunnableForRun (), true, "existing list does not block run");
             // Находка №1 инвентаря: элементы заполняются ДО выбора, поэтому
             // наличие источников само по себе не делает правило непригодным.
             rule.elements.Push (APIGuidFromString ("{22222222-2222-2222-2222-222222222222}"));
-            DBtest (rule.IsRunnableForRun (), true, "R3.5 sources do not change runnability");
-            DBtest (rule.runState.exsist_elements.GetSize (), 1, "R3.5 existing list independent");
-            DBtest (rule.elements.GetSize (), 1, "R3.5 source list independent");
+            DBtest (rule.IsRunnableForRun (), true, "sources do not change runnability");
+            DBtest (rule.runState.exsist_elements.GetSize (), 1, "existing list independent");
+            DBtest (rule.elements.GetSize (), 1, "source list independent");
         }
 
         // --- прежнее поле отсутствует: доступ идёт через состояние ---
@@ -3813,7 +3768,7 @@ namespace TestFunc {
             DBtest (!rule.runState.exsist_elements.IsEmpty () &&
                         rule.runState.exsist_elements[0] ==
                             APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"),
-                    "R3.5 found order preserved in state");
+                    "found order preserved in state");
         }
     }
 
@@ -3864,17 +3819,17 @@ namespace TestFunc {
         }
     }
 
-    // R7.3: ПОЛНОТА чтения и расчёта в плане.
+    // ПОЛНОТА чтения и расчёта в плане.
     //
-    // Прежде в SpecChangePlan были объявлены счётчики notFoundUnicCount /
-    // notFoundParamCount, в которые НИЧЕГО не писалось: 0 означал «счётчик не
-    // заполняется», а не «всё прочитано». Хуже — единственные готовые словари
-    // not_found_* хранят только ЗАСООБЩЁННЫЕ поля, то есть зависят от
-    // stop_on_error, и при stop_on_error = false остаются пустыми при реально
-    // неполном чтении. Поэтому полнота считается по вкладам.
+    // Счётчики notFoundUnicCount / notFoundParamCount должны означать «всё
+    // прочитано», а не «счётчик не заполняется». Готовые словари
+    // not_found_* для этого не годятся: они хранят только ЗАСООБЩЁННЫЕ поля,
+    // то есть зависят от stop_on_error, и при stop_on_error = false остаются
+    // пустыми при реально неполном чтении. Поэтому полнота считается по
+    // вкладам.
     //
     // Здесь stop_on_error = false (так по умолчанию в фикстуре) — это и есть
-    // случай, где прежние словари молчали бы.
+    // случай, где словари not_found_* молчали бы.
     void TestSpecPlanCompleteness () {
         // --- полное чтение: план честно полон ---
         {
@@ -3885,15 +3840,15 @@ namespace TestFunc {
             UnicGuid errors = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             const Int32 n = Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
-            DBtest (n, 1, "R7.3 complete read creates one row");
-            DBtest (plan.contributionsTotal, 1, "R7.3 one contribution counted");
-            DBtest (plan.notFoundUnicCount, 0, "R7.3 no missing unic fields");
-            DBtest (plan.notFoundParamCount, 0, "R7.3 no missing sum fields");
-            DBtest (plan.contributionsPartial, 0, "R7.3 no partial contributions");
-            DBtest (plan.schemaMismatchCount, 0, "R7.3 no schema mismatch");
-            DBtest (plan.ReadComplete (), true, "R7.3 read complete");
-            DBtest (plan.CalcComplete (), true, "R7.3 calc complete");
-            DBtest (plan.IsComplete (), true, "R7.3 plan complete");
+            DBtest (n, 1, "complete read creates one row");
+            DBtest (plan.contributionsTotal, 1, "one contribution counted");
+            DBtest (plan.notFoundUnicCount, 0, "no missing unic fields");
+            DBtest (plan.notFoundParamCount, 0, "no missing sum fields");
+            DBtest (plan.contributionsPartial, 0, "no partial contributions");
+            DBtest (plan.schemaMismatchCount, 0, "no schema mismatch");
+            DBtest (plan.ReadComplete (), true, "read complete");
+            DBtest (plan.CalcComplete (), true, "calc complete");
+            DBtest (plan.IsComplete (), true, "plan complete");
         }
 
         // --- plan == nullptr допустим: вызывающие без плана не меняются ---
@@ -3904,7 +3859,7 @@ namespace TestFunc {
             UnicGuid errors = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             const Int32 n = Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam);
-            DBtest (n, 1, "R7.3 null plan path unchanged");
+            DBtest (n, 1, "null plan path unchanged");
         }
 
         // --- не прочитано уникальное поле: чтение НЕПОЛНОЕ ---
@@ -3919,11 +3874,11 @@ namespace TestFunc {
             UnicGuid errors = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
-            DBtest (plan.notFoundUnicCount, 1, "R7.3 missing unic counted");
-            DBtest (plan.ReadComplete (), false, "R7.3 read incomplete on missing unic");
-            DBtest (plan.IsComplete (), false, "R7.3 plan not complete on missing unic");
+            DBtest (plan.notFoundUnicCount, 1, "missing unic counted");
+            DBtest (plan.ReadComplete (), false, "read incomplete on missing unic");
+            DBtest (plan.IsComplete (), false, "plan not complete on missing unic");
             // stop_on_error == false: счётчик неполноты ЕСТЬ, хотя отчёт молчит.
-            DBtest (plan.notFoundUnicCount > 0, true, "R7.3 incompleteness survives stop_on_error=false");
+            DBtest (plan.notFoundUnicCount > 0, true, "incompleteness survives stop_on_error=false");
         }
 
         // --- не прочитано суммарное поле: расчёт НЕПОЛНЫЙ ---
@@ -3936,10 +3891,10 @@ namespace TestFunc {
             UnicGuid errors = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
-            DBtest (plan.notFoundParamCount, 1, "R7.3 missing sum counted");
-            DBtest (plan.contributionsPartial, 1, "R7.3 partial contribution counted");
-            DBtest (plan.ReadComplete (), false, "R7.3 read incomplete on missing sum");
-            DBtest (plan.CalcComplete (), false, "R7.3 calc incomplete on missing sum");
+            DBtest (plan.notFoundParamCount, 1, "missing sum counted");
+            DBtest (plan.contributionsPartial, 1, "partial contribution counted");
+            DBtest (plan.ReadComplete (), false, "read incomplete on missing sum");
+            DBtest (plan.CalcComplete (), false, "calc incomplete on missing sum");
         }
 
         // --- не прочитано выходное поле: считается в фазе 2 ---
@@ -3952,8 +3907,8 @@ namespace TestFunc {
             UnicGuid errors = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
-            DBtest (plan.notFoundParamCount, 1, "R7.3 missing output counted");
-            DBtest (plan.ReadComplete (), false, "R7.3 read incomplete on missing output");
+            DBtest (plan.notFoundParamCount, 1, "missing output counted");
+            DBtest (plan.ReadComplete (), false, "read incomplete on missing output");
         }
 
         // --- два источника: счётчики СУММИРУЮТСЯ, а не перезаписываются ---
@@ -3967,9 +3922,9 @@ namespace TestFunc {
             UnicGuid errors = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
             Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
-            DBtest (plan.contributionsTotal, 2, "R7.3 two contributions counted");
-            DBtest (plan.notFoundParamCount, 1, "R7.3 one of two incomplete");
-            DBtest (plan.contributionsPartial, 1, "R7.3 partial counted once");
+            DBtest (plan.contributionsTotal, 2, "two contributions counted");
+            DBtest (plan.notFoundParamCount, 1, "one of two incomplete");
+            DBtest (plan.contributionsPartial, 1, "partial counted once");
         }
 
         // --- сверка заполняет deleteOld, полнота остаётся отдельной ---
@@ -3985,20 +3940,20 @@ namespace TestFunc {
             // modify + create (прежняя формула), поэтому unchanged в нём не
             // участвует и здесь законно 0 — проверяем это явно, чтобы
             // изменение формулы было замечено.
-            DBtest (n, 0, "R7.3 unchanged object not counted in result");
-            DBtest (plan.deleteOld, 1, "R7.3 reconciliation ran");
-            DBtest (plan.unchanged, 1, "R7.3 unchanged counted in plan");
-            DBtest (plan.create.GetSize (), 0, "R7.3 no create in reconcile");
-            DBtest (plan.removals.GetSize (), 0, "R7.3 no removals in reconcile");
-            DBtest (f.created.GetSize (), 0, "R7.3 claimed row leaves created set");
-            DBtest (f.deleted.GetSize (), 0, "R7.3 unchanged object not deleted");
-            DBtest (plan.IsComplete (), true, "R7.3 complete run gives complete plan");
-            DBtest (plan.Matches (f.modified, f.deleted), true, "R7.3 plan matches actual lists");
+            DBtest (n, 0, "unchanged object not counted in result");
+            DBtest (plan.deleteOld, 1, "reconciliation ran");
+            DBtest (plan.unchanged, 1, "unchanged counted in plan");
+            DBtest (plan.create.GetSize (), 0, "no create in reconcile");
+            DBtest (plan.removals.GetSize (), 0, "no removals in reconcile");
+            DBtest (f.created.GetSize (), 0, "claimed row leaves created set");
+            DBtest (f.deleted.GetSize (), 0, "unchanged object not deleted");
+            DBtest (plan.IsComplete (), true, "complete run gives complete plan");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "plan matches actual lists");
         }
 
         // --- сверка НЕ исполнялась: полнота расчёта всё равно заполнена ---
         // delete_old = false: сверки не было, deleteOld == 0, но расчёт-то
-        // выполнен, и именно его полнота интересует F1.
+        // выполнен, и именно его полнота проверяется.
         {
             SpecFixture f;
             f.Source (f.first, "A", "Alpha", 5);
@@ -4006,10 +3961,10 @@ namespace TestFunc {
             Spec::SpecChangePlan plan;
             const Int32 n =
                 Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
-            DBtest (plan.deleteOld, 0, "R7.3 no reconciliation without delete_old");
-            DBtest (plan.contributionsTotal, 1, "R7.3 calc still counted without reconciliation");
-            DBtest (plan.IsComplete (), false, "R7.3 incomplete calc seen without reconciliation");
-            DBtest (n >= 0, true, "R7.3 result returned without reconciliation");
+            DBtest (plan.deleteOld, 0, "no reconciliation without delete_old");
+            DBtest (plan.contributionsTotal, 1, "calc still counted without reconciliation");
+            DBtest (plan.IsComplete (), false, "incomplete calc seen without reconciliation");
+            DBtest (n >= 0, true, "result returned without reconciliation");
         }
     }
 
@@ -4472,7 +4427,7 @@ namespace TestFunc {
         // Политика вызывается из парсера: тот же префикс через полный разбор даёт
         // те же признаки (проверка, что вызов не потерян при выделении).
         // Строка обязана быть НОРМАЛИЗОВАНА - это контракт GetRuleFromDescription,
-        // закреплённый в R4.1; сырой "g(u;p;f;q)s(x;y)" парсер не принимает.
+        // закреплённый контрактом нормализации; сырой "g(u;p;f;q)s(x;y)" парсер не принимает.
         {
             GS::UniString description = "Spec_rule_km{Fav;g@@u;p;f;q@@s@@x;y)}";
             const Spec::SpecRule rule = Spec::GetRuleFromDescription (description);
@@ -4551,7 +4506,7 @@ namespace TestFunc {
         DBtest (
             Spec::NormalizeRuleDescription (GS::UniString ("   ")), GS::UniString (" "), "Spec normalize only spaces");
         // Пробелы ВНУТРИ скобок нормализация не трогает - они уходят в имя
-        // параметра, и это историческое поведение, а не дефект.
+        // параметра: это зафиксированный контракт, а не дефект.
         DBtest (Spec::NormalizeRuleDescription (GS::UniString ("Spec_rule{Fav;g ( a )}")),
                 GS::UniString ("Spec_rule{Fav;g@@ a )}"),
                 "Spec normalize inner spaces kept");
@@ -4573,9 +4528,8 @@ namespace TestFunc {
             DBtest (rule.groups.GetSize (), 1, label + " group count");
             DBtest (rule.out_paramrawname.GetSize (), 1, label + " output count");
             DBtest (rule.out_sum_paramrawname.GetSize (), 1, label + " sum count");
-            // R4.3: парсер больше НЕ мутирует вход - обрезки идут на локальной
-            // копии. Раньше здесь проверялось, что строка «съедена» парсером;
-            // теперь контракт обратный - вызывающий сохраняет свою строку.
+            // Парсер больше НЕ мутирует вход - обрезки идут на локальной
+            // копии, поэтому вызывающий сохраняет свою строку.
             DBtest (description, GS::UniString (prefixes[i]) + "{Fav;g@@u;p;f;q@@s@@x;y)}", label + " input intact");
             if (rule.groups.GetSize () == 1) {
                 const Spec::GroupSpec &group = rule.groups[0];
@@ -4590,8 +4544,8 @@ namespace TestFunc {
                         label + " ordinary group");
             }
             DBtest (rule.elements.IsEmpty () && rule.runState.exsist_elements.IsEmpty (), label + " no elements");
-            // Ключ словаря строится из той же строки ПОСЛЕ разбора - раньше это
-            // было невозможно, потому что парсер оставлял строку в обрезанном виде.
+            // Ключ словаря строится из той же строки ПОСЛЕ разбора: парсер не
+            // мутирует вход, поэтому строка остаётся пригодной для GetSubstring.
             const GS::UniString keyAfter = description.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
             DBtest (keyAfter.Contains (GS::UniString ("s@@x;y)")), label + " key reusable after parse");
         }
@@ -4775,7 +4729,7 @@ namespace TestFunc {
         }
     }
 
-    // R4.4: причина отказа в разборе. Парсер пишет её в тех же точках, где
+    // Причина отказа в разборе. Парсер пишет её в тех же точках, где
     // сбрасывает parseValid, поэтому набор значений и число точек обязаны
     // совпадать: 7 значений отказа + None.
     // Ожидания рассчитаны воспроизведением ПОРЯДКА проверок парсера, а не

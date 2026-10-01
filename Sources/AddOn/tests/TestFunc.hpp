@@ -22,14 +22,14 @@ namespace TestFunc {
     void TestGetTextLineLength (GS::UniString &var);
 
     // Проверяет SyncAddSubelement — развёртывание правил from_sub/to_sub на подэлементы.
-    // Включает RED-тест бага P1 (ветка to_sub недостижима) и GREEN-регрессии
+    // Включает тест на известный дефект развёртки to_sub и регрессии
 
-    // GREEN-регрессии логики нумерации: RenumPos (конструкторы, Add, FormatToMax,
+    // Регрессии логики нумерации: RenumPos (конструкторы, Add, FormatToMax,
 
-    // GREEN-регрессии ParsePropertyDescriptionToRules для to_sub/from_sub/GUID:
+    // Регрессии ParsePropertyDescriptionToRules для to_sub/from_sub/GUID:
     // targetType/targetName/hasSub/hasGUID/guidSourceProperty. Фиксирует контракт,
 
-    // Диагностика #184/#185: воспроизводит путь BrowserPalette::GetPropertiesList на
+    // Диагностика моста BrowserPalette: воспроизводит путь GetPropertiesList на
     // реальных элементах проекта и печатает длины описаний из двух источников
 
     // Выводит все встроенные свойства в отладочный журнал.
