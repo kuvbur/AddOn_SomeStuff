@@ -51,6 +51,7 @@ namespace TestFunc {
         TestKit::Register ("TestSpecRowLayout", Groups::Spec, TestSpecRowLayout);
         TestKit::Register ("TestSpecRowSlots", Groups::Spec, TestSpecRowSlots);
         TestKit::Register ("TestSpecReconcileFixtures", Groups::Spec, TestSpecReconcileFixtures);
+        TestKit::Register ("TestSpecChangePlan", Groups::Spec, TestSpecChangePlan);
         TestKit::Register ("TestSpecScenarioMatrix", Groups::Spec, TestSpecScenarioMatrix);
         TestKit::Register ("TestSpecEngineEquivalence", Groups::Spec, TestSpecEngineEquivalence);
         TestKit::Register ("TestSpecOutputSchema", Groups::Spec, TestSpecOutputSchema);

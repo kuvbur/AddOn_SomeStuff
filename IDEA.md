@@ -20,10 +20,11 @@ JSON (зафиксировано в #226).
 
 ### Status
 IN_PROGRESS — P0-P3, R3 (целиком), R4.1-R4.6, R5 (целиком), R6 (целиком),
-R7.2 закрыты. Следующий — R7.3-R7.4 (SpecChangePlan, один владелец payload).
-Последний прогон (R7.2): AC25 build success, sweep AC26-29 success, по схеме
-#231 `suites=58 passed=2250 failed=1` (предсуществующая
-`TestConvertPropertyToParamValue`), новый `TestSpecReconcileFixtures` 37/37,
+R7.3 закрыты. Следующий — R7.4 (один владелец payload строк).
+Последний прогон (R7.3): AC25 build success, sweep AC26-29 success, по схеме
+#231 `suites=59 passed=2280 failed=1` (предсуществующая
+`TestConvertPropertyToParamValue`), новый `TestSpecChangePlan` 30/30,
+`TestSpecReconcileFixtures` 37/37,
 `TestSpecReconcile` 57/57, `TestSpecRowSlots` 28/28, `TestSpecRowLayout` 54/54,
 `TestSpecScenarioMatrix` 75/75,
 `TestSpecEngineEquivalence` 49/49, `TestSpecRowSlots` 28/28, `TestSpecRowLayout`
@@ -179,7 +180,11 @@ exit code 0. Покрыто: каждое из пяти полей summary, от
 - [x] R7.2: сверка вынесена в `ReconcileExistingRows` (SpecPlanning.cpp) — порядок
   операций, 8 чтений и тексты `msg_rep` сохранены; представление
   create/update/delete/unchanged ещё не введено. См. «R7.2 — ЗАКРЫТ».
-- [ ] R7.3-R7.6: SpecChangePlan, один владелец payload (см. Next Step).
+- [x] R7.3: `SpecChangePlan` в `Spec.hpp` + `TestSpecChangePlan` 30 проверок —
+  план наблюдает решение (не второй источник истины), причины удаления
+  перечислимыми значениями, `unchanged` счётчиком, `deleteOld` по умолчанию 0.
+  См. «R7.3 — ЗАКРЫТ».
+- [ ] R7.4-R7.6: один владелец payload, S04/S05/S18-S20/S23, scaling (см. Next Step).
 
 ### Грабли этой сессии (записать в skill при случае, если уже не записано)
 
@@ -1371,6 +1376,57 @@ create/update/delete/unchanged **ещё НЕ введено** — это R7.4/R7
 (параметр новой функции называется `outParam`); текст сообщения `out_param.
 ContainsKey (key_out)` оставлен без изменений намеренно.
 
+### R7.3 — ЗАКРЫТ (SpecChangePlan хранит происхождение решения)
+
+**Что сделано.** `SpecChangePlan` в `Spec.hpp` (не в `SpecPlanning.hpp`: тот включает
+`Spec.hpp`, наоборот получился бы цикл) + `TestSpecChangePlan` — 30 проверок.
+
+- **План НАБЛЮДАЕТ решение, а не становится вторым источником истины.** Заполняется
+  из тех же точек, что пишут `elementsMod`/`elementsDelete`, поэтому расхождение
+  плана с фактическими списками невозможно by construction. `Matches` — страховка
+  от будущей правки, а не проверка согласованности «двух источников».
+- **Про «дорогой текст на корректную строку»: выполнять было нечего.** Все девять
+  вызовов `report` в сверке стоят ВНУТРИ ветвей отклонения, так что на совпавшей
+  строке не строится ни одного текста. Проверено по коду до внесения изменений.
+- **Происхождение решения хранится ДЁШЕВО:** `DeleteReason` —
+  `NoUniqueFields` / `NoNewRow` / `RowAlreadyClaimed` / `Obsolete`, пара
+  `{guid, причина}` в одном массиве `removals`. Раздельные массивы GUID и причин
+  были бы «постоянным дубликатом» — их рассинхронизация при правке любой ветви
+  сделала бы причину недостоверной.
+- **`unchanged` — счётчик, а не копия строки.** Копия всех свойств ради строки,
+  которую не трогаем, ровно та лишняя копия, которую запрещает R7.4. Это решение
+  R7.4, сделанное в R7.3, потому что план — его первый потребитель.
+- **`deleteOld` по умолчанию 0**, а не 1: незаполненный план не должен утверждать,
+  что отражает решение. Ставится 1 только после раннего выхода `!rule.delete_old`,
+  то есть действительно в точке, где сверка прошла.
+- **План опционален:** `GetElementsForRule` и `ReconcileExistingRows` принимают
+  `SpecChangePlan *plan = nullptr`; рабочий путь его не строит.
+
+**Две ошибки — мои ожидания:**
+1. **Причина удаления — `NoNewRow`, а не `Obsolete`.** Объект с выходным
+   значением, которого нет среди новых строк, отсекается ВТОРОЙ ветвью сверки, до
+   сопоставления. `Obsolete` (второй обход) при обычном ходе недостижим: объект
+   попадает в `guids` либо удаляется одной из трёх ранних ветвей. Значение оставлено
+   в перечислении как явный «второй обход», отдельной проверки на него нет.
+2. **`deleteOld` по умолчанию 1 было смысловой ошибкой** в самой структуре —
+   исправлено на 0 вместе с проверкой на пропуск сверки.
+
+**Служебное:** имя поля `delete` — зарезервированное слово C++, отсюда `removals`.
+Итерация по `GS::HashTable` — в стиле проекта: `for (auto &cIt : dict)` с
+`cIt.key`/`cIt.value` под `#ifdef ServerMainVers_2800` (моё `pair.first` не
+компилируется: у `CurrentPair` нет таких членов).
+
+**Проверки:** clang-format на 4 файла; AC25 — `Build succeeded!`; sweep AC26-29 —
+`status=success`; схема #231: `suites=59 passed=2280 failed=1`, новый набор
+`TestSpecChangePlan` 30/30, `TestSpecReconcileFixtures` 37/37,
+`TestSpecReconcile` 57/57, `TestSpecScenarioMatrix` 75/75,
+`TestSpecEngineEquivalence` 49/49, `TestSpecRowSlots` 28/28, `TestSpecRowLayout`
+54/54, `TestSpecContribution` 51/51, `TestSpecReadBoundary` 49/49,
+`TestSpecPlanning` 33/33; `FAILED_SUITE TestConvertPropertyToParamValue` —
+предсуществующая вне области; раннер exit_code=70 корректно. Инвариант чтений держится:
+8 в `SpecPlanning.cpp`, 0 в `Spec.cpp`. A/B `r73-final` — C=2/M=12/D=2, 14 строк,
+`diff_rows` = 0 против `p0-smoke`/`r72-final`; sha256 `db1690f…` совпал.
+
 ### Next Step
 Блок R6 закрыт целиком (R6.1-R6.6). Следующий — **R7: выделить сверку
 существующих строк и `SpecChangePlan`** (строка 281+ выписки
@@ -1403,9 +1459,9 @@ ContainsKey (key_out)` оставлен без изменений намерен
 - **S09-коллизия и кандидат в F1 остаются не тронутыми** — это отдельные
   согласования, R7 не должен их решать попутно.
 ### Last Checkpoint
-R7.2 — `b1bd9ae` (spec/Spec.cpp, spec/SpecPlanning.cpp, spec/SpecPlanning.hpp,
-Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md, IDEA.md,
-Refs: #228).
+R7.3 — коммит этого шага (spec/Spec.hpp, spec/Spec.cpp, spec/SpecPlanning.cpp,
+spec/SpecPlanning.hpp, tests/*, Docs/modules/spec/*.md, IDEA.md, Refs: #228).
+Предыдущий: R7.2 — `b1bd9ae`.
 Предыдущий: R7.1 — `0ce39d2`; пользователь — `f0ddbe6`/`a139b88` (#231).
 Предыдущий: R6.6 — `18cbe4b`; пользователь — `f0ddbe6`/`a139b88` (#231).
 Предыдущий: R6.5 — `d3a91c9` (tests/TestSpec.cpp, tests/TestFunc.cpp,

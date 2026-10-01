@@ -224,7 +224,8 @@ namespace Spec {
                                 const GS::HashTable<GS::UniString, GS::UniString> &outParam,
                                 ElementDict &elements,
                                 ElementDict &elementsMod,
-                                GS::Array<API_Guid> &elementsDelete);
+                                GS::Array<API_Guid> &elementsDelete,
+                                SpecChangePlan *plan = nullptr);
 
     RowAddition AddContributionToRow (ElementDict &rows,
                                       const RuleContribution &contribution,

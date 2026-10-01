@@ -371,13 +371,100 @@ namespace Spec {
     // Формирует набор элементов для создания или обновления по одному правилу.
     // После расчётной части (PlanRuleRows) идёт сверка существующих строк —
     // это отдельный шаг R7, здесь она остаётся на прежнем месте.
+    // -----------------------------------------------------------------------------
+    // План изменений по существующим строкам (R7.3).
+    //
+    // Сверка решает ТРИ вопроса, и раньше её ответ был размазан по трём
+    // выходным параметрам (elements_mod, elements_delete, элементы, оставшиеся в
+    // elements). План собирает ответы в одну структуру, но ВАЖНО: не создавая
+    // текста объяснения на каждую корректную строку.
+    //
+    // Про «не создавать дорогой текст» — это уже выполнено в текущем коде и
+    // закреплено проверкой: все девять вызовов report в ReconcileExistingRows
+    // стоят ВНУТРИ ветвей отклонения, так что на совпавшей строке не строится
+    // ни одной строки текста. Ничего ускорять не нужно — нечего ускорять.
+    // Происхождение решения хранится Дёшево: перечислимыми значениями и
+    // счётчиками, а не склеенными строками.
+    //
+    // Поля:
+    //   create  — строки, оставшиеся создать (те, что не сопоставлены ни одному
+    //             существующему объекту); это остатки в elements после сверки;
+    //   update  — сопоставленные строки, для которых поднят flag_change;
+    //             они же лежат в elementsMod под ключом key;
+    //   delete  — GUID существующих объектов, которые нужно удалить;
+    //   unchanged — сопоставленные строки БЕЗ изменений. Их НЕ храним копией:
+    //             копия всех свойств ради строки, которую не надо трогать,
+    //             противоречит R7.4. Считаем их количество.
+    //
+    // deleteOld == 0 означает: сверка не выполнялась вовсе, план пустой, и это
+    // НЕ то же самое, что «всё unchanged».
+    // -----------------------------------------------------------------------------
+    struct SpecChangePlan {
+        // Причина, по которой существующий объект удаляется. Порядок ветвей
+        // сверки задаёт и порядок причин — он значим.
+        enum class DeleteReason : unsigned char {
+            NoUniqueFields = 0, // не собрался key_out: не прочитано уникальное поле
+            NoNewRow,           // key_out не найден в out_param: нет такой строки
+            RowAlreadyClaimed,  // строка по key_out уже израсходована другим объектом
+            Obsolete            // объект не попал в guids: нет сопоставления
+        };
+
+        // Что удалить и ПОЧЕМУ — одной структурой, а не двумя параллельными
+        // массивами: параллельный массив причин рассинхронизируется с delete
+        // при любой правке одной из ветвей, а это ровно тот «постоянный дубликат»,
+        // который запрещает R7.4.
+        struct Deletion {
+            API_Guid guid;
+            DeleteReason reason;
+        };
+
+        GS::Array<Deletion> removals = {}; // что удалить, в порядке обхода
+        ElementDict update = {};           // что обновить: ключ строки -> строка
+        GS::Array<API_Guid> create = {};   // создаваемые GUID (порядок строк)
+        Int32 unchanged = 0;               // сопоставлено без изменений
+        // Сверка выполнялась? По умолчанию НЕТ: план, который никто не
+        // заполнял, не должен утверждать, что отражает решение. Ставится 1
+        // только в точке, где сверка действительно прошла.
+        Int32 deleteOld = 0;
+        Int32 notFoundUnicCount = 0; // счётчики полноты чтения
+        Int32 notFoundParamCount = 0;
+
+        // Согласованность плана с реально выполненным. Сверка пишет план и
+        // фактические списки из одних и тех же точек, поэтому проверка должна
+        // всегда проходить; она существует как страховка от будущей правки.
+        bool Matches (const ElementDict &elementsMod, const GS::Array<API_Guid> &elementsDelete) const {
+            if (deleteOld == 0)
+                return removals.IsEmpty () && update.IsEmpty () && create.IsEmpty () && unchanged == 0;
+            if (removals.GetSize () != elementsDelete.GetSize ())
+                return false;
+            for (UInt32 i = 0; i < removals.GetSize (); ++i)
+                if (removals[i].guid != elementsDelete[i])
+                    return false;
+            if (update.GetSize () != elementsMod.GetSize ())
+                return false;
+            for (auto &cIt : update) {
+    #ifdef ServerMainVers_2800
+                const GS::UniString &rowKey = cIt.key;
+    #else
+                const GS::UniString &rowKey = *cIt.key;
+    #endif
+                if (!elementsMod.ContainsKey (rowKey))
+                    return false;
+            }
+            return true;
+        }
+    };
+
     Int32 GetElementsForRule (SpecRule &rule,
                               const SpecReadContext &context,
                               ElementDict &elements,
                               ElementDict &elements_mod,
                               GS::Array<API_Guid> &elements_delete,
                               UnicGuid &error_element,
-                              bool showUserInterface);
+                              bool showUserInterface,
+                              // R7.3: план изменений. nullptr означает «план не нужен» —
+                              // обычный рабочий путь его не строит вовсе.
+                              SpecChangePlan *plan = nullptr);
 
     // Выбирает из параметров групп имена свойств, которые нужно прочитать в начале обработки.
     bool OutSlotsMatchSchema (const Element &element, UInt32 outSlots, UInt32 sumSlots);

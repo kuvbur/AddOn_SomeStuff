@@ -1902,7 +1902,8 @@ namespace Spec {
                               ElementDict &elements_mod,
                               GS::Array<API_Guid> &elements_delete,
                               UnicGuid &error_element,
-                              bool showUserInterface) {
+                              bool showUserInterface,
+                              SpecChangePlan *plan) {
         Int32 n_elements = 0;
         // R6.1: расчёт вынесен. out_param — тот же словарь, что и раньше: он
         // строится в расчётной части и читается в сверке существующих строк.
@@ -1922,7 +1923,18 @@ namespace Spec {
         // R7.2: сверка вынесена в SpecPlanning (ReconcileExistingRows) без
         // изменения порядка операций. Число чтений то же: 4 здесь были и там
         // остались; reader и fstr — те же объекты по составу, что и до переноса.
-        ReconcileExistingRows (rule, reader, fstr, out_param, elements, elements_mod, elements_delete);
+        // R7.3: план наблюдает решение сверки, но не становится вторым
+        // источником истины — тот же вызов пишет и фактические списки.
+        SpecChangePlan localPlan = {};
+        if (plan == nullptr)
+            plan = &localPlan;
+        plan->deleteOld = 1;
+        ReconcileExistingRows (rule, reader, fstr, out_param, elements, elements_mod, elements_delete, plan);
+        if (!plan->Matches (elements_mod, elements_delete)) {
+            // Страховка: план и фактические списки пишутся из одних точек, так
+            // что расхождение означало бы правку кода, а не гонку.
+            msg_rep ("Spec", "SpecChangePlan mismatch", NoError, APINULLGuid);
+        }
         n_elements = 0;
         n_elements += elements_delete.GetSize ();
         n_elements += elements_mod.GetSize ();

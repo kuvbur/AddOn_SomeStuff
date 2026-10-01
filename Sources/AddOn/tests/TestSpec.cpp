@@ -2304,6 +2304,137 @@ namespace TestFunc {
         }
     }
 
+    // R7.3: план изменений. Сверка вызывается напрямую с планом, чтобы
+    // проверять сам план, а не то, что он согласован (согласованность
+    // проверяет Matches, но она не заменяет проверку содержимого).
+    //
+    // Ключевое требование шага: на КОРРЕКТНОЙ строке не строится ни одного
+    // текста объяснения. Проверяется не таймером, а тем, что план на
+    // совпавшей строке содержит только счётчик unchanged и НИКАКИХ строк.
+    // R7.3: план изменений. План получаем от GetElementsForRule (он же
+    // владелец решения), а не строим сами — иначе проверялась бы не план,
+    // а его копия.
+    //
+    // Требование шага «не создавать дорогой текст на корректную строку»
+    // проверяется тем, что на совпавшей строке план содержит ТОЛЬКО счётчик
+    // unchanged: ни текстовых полей, ни копии свойств. Это видно из структуры
+    // и подтверждается тем, что deleteReasons хранятся перечислимыми значениями
+    // рядом с GUID, а не отдельными строками-объяснениями.
+    void TestSpecChangePlan () {
+        // --- сверка выполнена, изменений нет (no-op) ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Alpha", 5);
+            Spec::SpecChangePlan plan = {};
+            const Int32 n =
+                Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
+            DBtest (n, 0, "R7.3 no-op result");
+            DBtest (plan.deleteOld, 1, "R7.3 plan marked as reconciled");
+            DBtest (plan.removals.GetSize (), 0, "R7.3 no-op removes nothing");
+            DBtest (plan.update.IsEmpty (), true, "R7.3 no-op updates nothing");
+            DBtest (plan.unchanged, 1, "R7.3 matched row counted unchanged");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "R7.3 no-op plan consistent");
+        }
+
+        // --- update: сумма изменилась ---
+        // Причина удаления при этом НЕ возникает: update и unchanged — разные
+        // исходы, и план обязан их различать.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 9);
+            f.Existing (f.old, "Alpha", 5);
+            Spec::SpecChangePlan plan = {};
+            const Int32 n =
+                Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
+            DBtest (n, 1, "R7.3 update result");
+            DBtest (plan.update.GetSize (), 1, "R7.3 one update planned");
+            DBtest (plan.update.ContainsKey (GS::UniString ("@A")), true, "R7.3 update keyed by row key");
+            DBtest (plan.unchanged, 0, "R7.3 updated row not counted unchanged");
+            DBtest (plan.removals.GetSize (), 0, "R7.3 updated row not removed");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "R7.3 update plan consistent");
+        }
+
+        // --- удаление: RowAlreadyClaimed (строка захвачена другим объектом) ---
+        // Два старых объекта с ОДНИМ выходным значением: первый сопоставлен со
+        // строкой, второй приходит по ветке «строка уже израсходована». В плане
+        // это обязано быть отражено КАК ПРИЧИНА, а не просто как факт удаления:
+        // у Obsolete нет строки-кандидата, у RowAlreadyClaimed она была.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Alpha", 5);
+            const API_Guid dup = APIGuidFromString ("{88888888-8888-8888-8888-888888888888}");
+            f.rule.exsist_elements.Push (dup);
+            f.Text (dup, f.outText, "Alpha");
+            f.Number (dup, f.outQuantity, 5);
+
+            Spec::SpecChangePlan plan = {};
+            Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
+            DBtest (plan.removals.GetSize (), 1, "R7.3 exactly one removal planned");
+            DBtest (plan.removals[0].reason,
+                    Spec::SpecChangePlan::DeleteReason::RowAlreadyClaimed,
+                    "R7.3 claimed-row reason recorded");
+            DBtest (plan.removals[0].guid == dup, true, "R7.3 the second object is removed");
+            DBtest (plan.unchanged, 1, "R7.3 first object counted unchanged");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "R7.3 removal plan consistent");
+        }
+
+        // --- удаление: NoNewRow (key_out не найден среди новых строк) ---
+        // Старый объект с выходным значением, которого нет ни в одной новой
+        // строке. Он отсекается ВТОРОЙ ветвью сверки, до сопоставления, —
+        // поэтому причина NoNewRow, а не Obsolete. **Первая версия проверки
+        // ошибалась:** я ждал Obsolete, приняв «объект не сопоставлен» за
+        // второй обход, хотя до него доходит только объект, прошедший
+        // сопоставление и не попавший в guids, — а ветви !hasunic, NoNewRow и
+        // RowAlreadyClaimed к тому моменту уже отсекли бы его раньше.
+        //
+        // То есть Obsolete при обычном ходе сверки недостижим, и отдельной
+        // проверки на него здесь нет: значение остаётся в перечислении как
+        // явный «второй обход», чтобы диагностика была исчерпывающей.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "TotallyOther", 77);
+
+            Spec::SpecChangePlan plan = {};
+            Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
+            DBtest (plan.removals.GetSize (), 1, "R7.3 unmatched object planned for removal");
+            DBtest (plan.removals[0].reason,
+                    Spec::SpecChangePlan::DeleteReason::NoNewRow,
+                    "R7.3 no-new-row reason differs from claimed row");
+            DBtest (plan.removals[0].guid == f.old, true, "R7.3 unmatched guid recorded");
+            DBtest (plan.unchanged, 0, "R7.3 unmatched object is not unchanged");
+        }
+
+        // --- create: строки без сопоставленного объекта ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Alpha", 5);
+            // Вторая строка не имеет старого объекта — она создаётся.
+            f.Source (f.extra, "B", "Beta", 7);
+            f.Shape (f.Run (), 1, 1, 0, 0, "R7.3 one create plus one no-op");
+            DBtest (f.created.GetSize (), 1, "R7.3 unmatched row created");
+            DBtest (f.created.ContainsKey (GS::UniString ("@B")), true, "R7.3 created row keyed @B");
+        }
+
+        // --- deleteOld = false: сверки не было, и это НЕ «всё unchanged» ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.rule.delete_old = false;
+            f.rule.exsist_elements.Push (f.old);
+            Spec::SpecChangePlan plan = {};
+            Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
+            // Ранний выход ДО записи deleteOld: план остаётся в исходном
+            // состоянии, и Matches трактует это как «сверки не было».
+            DBtest (plan.unchanged, 0, "R7.3 no reconciliation means zero unchanged");
+            DBtest (plan.removals.GetSize (), 0, "R7.3 no reconciliation removes nothing");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "R7.3 skipped reconciliation consistent");
+        }
+    }
+
     void TestSpecRowSlots () {
         // --- схема повторяет прежние порядок, имена и значения ---
         {

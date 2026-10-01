@@ -257,7 +257,15 @@ namespace Spec {
                                 const GS::HashTable<GS::UniString, GS::UniString> &outParam,
                                 ElementDict &elements,
                                 ElementDict &elementsMod,
-                                GS::Array<API_Guid> &elementsDelete) {
+                                GS::Array<API_Guid> &elementsDelete,
+                                SpecChangePlan *plan) {
+        // План — НЕ источник истины: сверка по-прежнему пишет в
+        // elementsMod/elementsDelete и удаляет из elements. План только
+        // НАБЛЮДАЕТ то же решение по ходу, поэтому расхождение плана и
+        // фактических списков невозможно by construction: это запись того же
+        // решения в момент его принятия, а не вторая копия состояния.
+        if (plan)
+            plan->deleteOld = 1;
         // Тот же msg_rep ("Spec", текст, NoError, APINULLGuid), что и до переноса:
         // тексты ветвей участвуют в разборе отчёта и не должны измениться.
         auto report = [&rule] (const GS::UniString &text) { msg_rep ("Spec", text, NoError, APINULLGuid); };
@@ -276,12 +284,16 @@ namespace Spec {
             if (!hasunic) {
                 report ("!hasunic " + key_out);
                 elementsDelete.Push (elemguid);
+                if (plan)
+                    plan->removals.Push ({elemguid, SpecChangePlan::DeleteReason::NoUniqueFields});
                 guids.Add (elemguid, false);
                 continue;
             }
             if (!outParam.ContainsKey (key_out)) {
                 report ("out_param.ContainsKey (key_out) " + key_out);
                 elementsDelete.Push (elemguid);
+                if (plan)
+                    plan->removals.Push ({elemguid, SpecChangePlan::DeleteReason::NoNewRow});
                 guids.Add (elemguid, false);
                 continue;
             }
@@ -289,6 +301,8 @@ namespace Spec {
             if (!elements.ContainsKey (key)) {
                 report ("!elements.ContainsKey (key) " + key_out);
                 elementsDelete.Push (elemguid);
+                if (plan)
+                    plan->removals.Push ({elemguid, SpecChangePlan::DeleteReason::RowAlreadyClaimed});
                 guids.Add (elemguid, false);
                 continue;
             }
@@ -380,6 +394,13 @@ namespace Spec {
             if (flag_change) {
                 el.exs_guid = elemguid;
                 elementsMod.Add (key, el);
+                if (plan)
+                    plan->update.Add (key, el);
+            } else if (plan) {
+                // Сопоставлено без изменений. Копию строки НЕ сохраняем (R7.4):
+                // держать второй экземпляр всех свойств ради строки, которую
+                // не трогаем, ровно та лишняя копия, которую план запрещает.
+                plan->unchanged += 1;
             }
             // Удаляем из списка новых элементов и добавляем в словарь обработанных
             elements.Delete (key);
@@ -387,8 +408,29 @@ namespace Spec {
         }
         // Удаляем все существующие устаревшие элементы
         for (const API_Guid &elemguid : rule.exsist_elements) {
-            if (!guids.ContainsKey (elemguid))
+            if (!guids.ContainsKey (elemguid)) {
                 elementsDelete.Push (elemguid);
+                if (plan)
+                    plan->removals.Push ({elemguid, SpecChangePlan::DeleteReason::Obsolete});
+            }
+        }
+        // Оставшиеся в elements строки — те, что не сопоставлены ни одному
+        // существующему объекту; их создание. Порядок — порядок словаря строк.
+        if (plan) {
+            for (auto &cIt : elements) {
+#ifdef ServerMainVers_2800
+                const GS::UniString &rowKey = cIt.key;
+                const Element &row = cIt.value;
+#else
+                const GS::UniString &rowKey = *cIt.key;
+                const Element &row = *cIt.value;
+#endif
+                if (elementsMod.ContainsKey (rowKey))
+                    continue;
+                if (row.elements.IsEmpty ())
+                    continue;
+                plan->create.Push (row.elements[0]);
+            }
         }
     }
 
