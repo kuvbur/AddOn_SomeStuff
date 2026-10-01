@@ -14,7 +14,7 @@
 | Тип | Описание |
 |-----|----------|
 | `GroupSpec` | unic_paramrawname, out_paramrawname, sum_paramrawname, flag_paramrawname, fromMaterial, fromLibData, n_layer [из комментария, Spec.hpp:13-23] |
-| `SpecRule` | rule_name, groups, out_paramrawname, subguid_paramrawname (маркер), destinationParamGuidName (разрешённое свойство), subguid_rulename/rulevalue, elements, exsist_elements, rule_definitions, favorite_name, флаги политики [см. карточку ниже] |
+| `SpecRule` | rule_name, groups, out_paramrawname, subguid_paramrawname (маркер), destinationParamGuidName (разрешённое свойство), subguid_rulename/rulevalue, runState.elements, runState.exsist_elements, rule_definitions, favorite_name, флаги политики [см. карточку ниже] |
 | `Element` / `ElementDict` | Временный контейнер создаваемого элемента / словарь по сцепке уникальных параметров [из комментария] |
 | `SpecRuleDict` | HashTable<string, SpecRule> [из комментария] |
 | `SpecElementDump` | Дамп одного созданного/изменённого элемента: `guid`, `favorite_name`, `sourceElements`, `properties`, `gdlParameters` (#227, Spec.hpp) |
@@ -1124,9 +1124,11 @@
   [по коду]
 - **Остальные поля состояния остались в `SpecRule` намеренно:** у `elements`,
   `selected`, `destinationReady`, `destinationParamGuidName` по два и более
-  писателя и разные моменты появления. `elements` переносить нельзя без стадии
-  планирования — он заполняется ДО выбора правила, и гейт по `selected` сузил бы
-  план чтения. [по коду: сбросов `selected` до стадии 2 нет]
+  писателя и разные моменты появления. `elements` заполняется ДО выбора
+  правила, и гейт по `selected` сузил бы план чтения. [по коду: сбросов
+  `selected` до стадии 2 нет] **Позднее, в R3-остатке, `elements` перенесён в
+  `SpecRuleRunState` вместе с чтением плана — см. раздел R3.A2 ниже: перенос
+  сделан так, что момент чтения не изменился.**
 - **`SelectExistingElements` и сверка не менялись по сути:** сигнатуры те же,
   порядок обхода тот же, читателей стало четыре на прежние места.
   [по коду + прогону]
@@ -1199,6 +1201,39 @@
   `TestConvertPropertyToParamValue`, вне области. Прод-код не менялся.
 - A/B `r35-multiline` против `p2-before-r74`/`r74-final`/`r74-inv`/`r73c`/
   `r34-final`/`r34-state`/`r35-final` — **0 во всех семи**; sweep AC26–29 success.
+
+### R3.A2 — `elements` перенесён в `SpecRuleRunState` (#228)
+- **Поле `elements` удалено из `SpecRule`**, добавлено в `SpecRuleRunState`
+  рядом с `exsist_elements`. Промежуточного дубля поля не вводилось: сначала
+  было заведено `elementsToMove`, и это немедленно отменено как нарушение
+  «не держать два набора данных». [по коду]
+- **Сигнатуры функций не менялись.** `runState` и раньше был членом `SpecRule`,
+  поэтому перенос — переименование пути доступа, а не изменение структуры.
+  Писатели: `GetRuleFromElement` (`:110`), `AddRule` (`:1186`); читатели:
+  отчёт `qty_elements` в `SpecDG` (`:473`), `GetParamToReadFromRule` (`:1318`),
+  `PlanRuleRows` (`:1705`). [по коду: поиск `.elements` без `runState` вне
+  `Element::elements` — 0 совпадений]
+- **Момент чтения не изменился — это главный риск шага, и он не реализовался.**
+  План чтения по-прежнему строится ДО выбора пользователя, поэтому список
+  источников не сузился: гейт по `selected` в `GetParamToReadFromRule` не
+  вводился. Проверено `TestSpecReadPlan` 26/26 и `TestSpecRunStateBoundary` 15/15.
+  [по коду + прогону]
+- **Инвариант чтений сохранён:** 8 в `SpecPlanning.cpp`, 0 в `Spec.cpp`.
+  [по стенду]
+- Комментарий контракта в `Spec.hpp` (`IsSourceVisible`) переведён на
+  `runState.elements`; оговорка о `SelectExistingElements` сохранена дословно,
+  номер строки устарел и приведён к фактическому (`:1428`). [по коду]
+- Пробный прогон упал на `LNK1168` — `.apx` держал ранее открытый Archicad;
+  после `Stop-Process` и снятия `test_25.pln.lck` сборка прошла. Прогна не
+  было, это не «сломанное состояние». [по сборке]
+- Прогон (AC25): `suites=65 passed=2661 failed=1` — числа совпали с прогоном
+  до переноса; `TestSpecOperationMatrix` 216/216, `TestSpecEngineEquivalence`
+  49/49; `FAILED_SUITE TestConvertPropertyToParamValue` — предсуществующая вне
+  области. [по отчёту, runtime AC25 2026-10-01]
+- Проверка: clang-format на 3 файла; AC25 — `Build succeeded!`; sweep
+  AC26–29 — `status=success`. **A/B:** `r3a2-elements` против
+  `r75-opmatrix`/`r4-final`/`r35-multiline`/`r3-final` — **0 во всех четырёх**.
+  [по стенду]
 
 ## Карточки
 

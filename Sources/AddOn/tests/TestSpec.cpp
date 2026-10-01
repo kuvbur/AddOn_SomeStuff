@@ -110,7 +110,7 @@ namespace TestFunc {
             }
 
             void Source (const API_Guid &guid, const GS::UniString &k, const GS::UniString &t, Int32 q) {
-                rule.elements.Push (guid);
+                rule.runState.elements.Push (guid);
                 Text (guid, key, k);
                 Text (guid, text, t);
                 Number (guid, quantity, q);
@@ -388,7 +388,7 @@ namespace TestFunc {
             f.Existing (f.old, "Alpha", 2);
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec unchanged");
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec unchanged repeat");
-            DBtest (f.rule.elements.GetSize (), 1, "Spec rule sources preserved");
+            DBtest (f.rule.runState.elements.GetSize (), 1, "Spec rule sources preserved");
             DBtest (f.rule.runState.exsist_elements.GetSize (), 1, "Spec existing list preserved");
             f.Number (f.first, f.quantity, 3);
             f.Shape (f.Run (), 1, 0, 1, 0, "Spec quantity changed");
@@ -413,7 +413,7 @@ namespace TestFunc {
             f.rule.delete_old = false;
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec delete old disabled");
             f.rule.delete_old = true;
-            f.rule.elements.Clear ();
+            f.rule.runState.elements.Clear ();
             f.Shape (f.Run (), 1, 0, 0, 1, "Spec disappeared row");
         }
         for (Int32 changed = 0; changed < 2; ++changed) {
@@ -539,7 +539,7 @@ namespace TestFunc {
             f.Source (f.first, "A", "Alpha", 7);
             f.rule.groups[0].sum_paramrawname.Clear ();
             f.rule.groups[0].sum_paramrawname.Push ("1");
-            f.rule.elements.Push (f.second);
+            f.rule.runState.elements.Push (f.second);
             f.Text (f.second, f.key, "A");
             f.Text (f.second, f.text, "Beta");
             DBtest (f.Run (), 1, "Spec literal count result");
@@ -620,7 +620,7 @@ namespace TestFunc {
                 DBtest (rule->rule_definitions.guid == f.old, "Spec dedup first property GUID wins");
                 // Второе свойство не попало ни в rule_name, ни в
                 // rule_definitions, но его элемент добавлен в общий список.
-                DBtest (rule->elements.GetSize () == 2, "Spec dedup second source appended");
+                DBtest (rule->runState.elements.GetSize () == 2, "Spec dedup second source appended");
             }
         }
 
@@ -646,7 +646,7 @@ namespace TestFunc {
             const Spec::SpecRule *after = rules.GetPtr (brokenKey);
             DBtest (after != nullptr && !after->parseValid, "Spec dedup stays invalid");
             // Источник не добавлен: элементы дописываются только валидному правилу.
-            DBtest (after != nullptr && after->elements.IsEmpty (), "Spec dedup invalid takes no source");
+            DBtest (after != nullptr && after->runState.elements.IsEmpty (), "Spec dedup invalid takes no source");
         }
 
         // Одно и то же описание, написанное по-разному, даёт один ключ.
@@ -663,7 +663,8 @@ namespace TestFunc {
             Spec::AddRule (d, f.second, rules);
             DBtest (rules.GetSize (), 1, "Spec dedup normalizes to one key");
             const Spec::SpecRule *rule = rules.GetPtr (bodyKey);
-            DBtest (rule != nullptr && rule->elements.GetSize () == 2, "Spec dedup normalized source appended");
+            DBtest (rule != nullptr && rule->runState.elements.GetSize () == 2,
+                    "Spec dedup normalized source appended");
             DBtest (rule != nullptr && rule->rule_name == "Sync_name_Compact", "Spec dedup normalized first wins");
         }
 
@@ -695,15 +696,15 @@ namespace TestFunc {
         DBtest (read.IsEmpty (), "Spec read no sources");
         DBtest (write.GetSize (), 2, "Spec write targets without sources");
         DBtest (write.ContainsKey (f.outText) && write.ContainsKey (f.outQuantity), "Spec write target names");
-        f.rule.elements.Push (f.first);
-        f.rule.elements.Push (f.second);
+        f.rule.runState.elements.Push (f.first);
+        f.rule.runState.elements.Push (f.second);
         f.rule.groups[0].flag_paramrawname = f.flag;
         f.rule.groups[0].sum_paramrawname.Push ("1");
         const Spec::GroupSpec duplicate = f.rule.groups[0];
         f.rule.groups.Push (duplicate);
         Spec::GetParamToReadFromRule (f.rule, read, write);
         DBtest (read.GetSize (), 2, "Spec read source count");
-        for (const API_Guid &guid : f.rule.elements) {
+        for (const API_Guid &guid : f.rule.runState.elements) {
             const ParamDictValue *params = read.GetPtr (guid);
             DBtest (params != nullptr, "Spec read source exists");
             if (params != nullptr) {
@@ -720,7 +721,7 @@ namespace TestFunc {
         DBtest (write.GetSize (), 2, "Spec repeated write deduplicated");
         for (Int32 mode = 0; mode < 3; ++mode) {
             SpecFixture special;
-            special.rule.elements.Push (special.first);
+            special.rule.runState.elements.Push (special.first);
             special.rule.groups[0].flag_paramrawname = special.flag;
             special.rule.groups[0].is_Valid = mode != 0;
             special.rule.groups[0].fromMaterial = mode == 1;
@@ -1598,8 +1599,8 @@ namespace TestFunc {
             Spec::GroupSlotBinding binding;
             FormatString fstr;
             GS::Array<Spec::RuleContribution> contributions = {};
-            DBtest (f.rule.elements.GetSize (), 3, "rule has three sources");
-            collect (f, f.rule.elements, binding, fstr, contributions);
+            DBtest (f.rule.runState.elements.GetSize (), 3, "rule has three sources");
+            collect (f, f.rule.runState.elements, binding, fstr, contributions);
             DBtest (contributions.GetSize (), 3, "three contributions collected");
 
             Spec::ElementDict freshRows = {};
@@ -1646,7 +1647,7 @@ namespace TestFunc {
         }
 
         // --- два ключа, перемешанные источники ---
-        // Порядок обхода rule.elements задаёт порядок первого представителя,
+        // Порядок обхода rule.runState.elements задаёт порядок первого представителя,
         // поэтому смешивание ключей — то, где потеря порядка была бы видна.
         {
             SpecFixture f;
@@ -1657,7 +1658,7 @@ namespace TestFunc {
             Spec::GroupSlotBinding binding;
             FormatString fstr;
             GS::Array<Spec::RuleContribution> contributions = {};
-            collect (f, f.rule.elements, binding, fstr, contributions);
+            collect (f, f.rule.runState.elements, binding, fstr, contributions);
 
             Spec::ElementDict freshRows = {};
             GS::HashTable<GS::UniString, GS::UniString> freshOut = {};
@@ -1805,7 +1806,7 @@ namespace TestFunc {
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             ParamDict none1 = {};
             ParamDict none2 = {};
-            for (const API_Guid &guid : f.rule.elements) {
+            for (const API_Guid &guid : f.rule.runState.elements) {
                 for (UInt32 gi = 0; gi < f.rule.groups.GetSize (); gi++) {
                     Spec::RuleContribution c =
                         Spec::BuildContribution (guid, gi, f.rule.groups[gi], bindings[gi], reader, none1, none2);
@@ -1844,7 +1845,7 @@ namespace TestFunc {
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             ParamDict none1 = {};
             ParamDict none2 = {};
-            for (const API_Guid &guid : f.rule.elements) {
+            for (const API_Guid &guid : f.rule.runState.elements) {
                 Spec::RuleContribution c =
                     Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
                 if (c.status == Spec::ContributionStatus::Excluded)
@@ -1895,7 +1896,7 @@ namespace TestFunc {
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             ParamDict none1 = {};
             ParamDict none2 = {};
-            for (const API_Guid &guid : f.rule.elements) {
+            for (const API_Guid &guid : f.rule.runState.elements) {
                 Spec::RuleContribution c =
                     Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
                 Spec::RuleContribution rowContribution = c;
@@ -1952,7 +1953,7 @@ namespace TestFunc {
                     APIGuidFromString (GS::UniString::Printf ("{40000000-0000-0000-0000-%012X}", i).ToCStr ());
                 f.Source (guid, "A", "Alpha", 1);
             }
-            DBtest (f.rule.elements.GetSize (), (UInt32)kSources, "sources registered");
+            DBtest (f.rule.runState.elements.GetSize (), (UInt32)kSources, "sources registered");
 
             Spec::ElementDict rows = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
@@ -1962,7 +1963,7 @@ namespace TestFunc {
             ParamDict none1 = {};
             ParamDict none2 = {};
             int readOutputPasses = 0;
-            for (const API_Guid &guid : f.rule.elements) {
+            for (const API_Guid &guid : f.rule.runState.elements) {
                 Spec::RuleContribution c =
                     Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
                 Spec::RuleContribution rowContribution = c;
@@ -2006,7 +2007,7 @@ namespace TestFunc {
             for (int i = 0; i < kRows; i++) {
                 API_Guid guid =
                     APIGuidFromString (GS::UniString::Printf ("{50000000-0000-0000-0000-%012X}", i).ToCStr ());
-                f.rule.elements.Push (guid);
+                f.rule.runState.elements.Push (guid);
                 f.Text (guid, f.key, GS::UniString::Printf ("K%u", i));
                 for (UInt32 s = 0; s < 6; s++) {
                     ParamValue p = {};
@@ -2026,7 +2027,7 @@ namespace TestFunc {
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             ParamDict none1 = {};
             ParamDict none2 = {};
-            for (const API_Guid &guid : f.rule.elements) {
+            for (const API_Guid &guid : f.rule.runState.elements) {
                 Spec::RuleContribution c =
                     Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
                 Spec::RuleContribution rowContribution = c;
@@ -2072,7 +2073,7 @@ namespace TestFunc {
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             ParamDict none1 = {};
             ParamDict none2 = {};
-            for (const API_Guid &guid : f.rule.elements) {
+            for (const API_Guid &guid : f.rule.runState.elements) {
                 Spec::RuleContribution c =
                     Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
                 Spec::RuleContribution rowContribution = c;
@@ -2102,7 +2103,7 @@ namespace TestFunc {
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             ParamDict none1 = {};
             ParamDict none2 = {};
-            for (const API_Guid &guid : f.rule.elements) {
+            for (const API_Guid &guid : f.rule.runState.elements) {
                 Spec::RuleContribution c =
                     Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
                 Spec::RuleContribution rowContribution = c;
@@ -2213,7 +2214,7 @@ namespace TestFunc {
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             ParamDict none1 = {};
             ParamDict none2 = {};
-            for (const API_Guid &guid : f.rule.elements) {
+            for (const API_Guid &guid : f.rule.runState.elements) {
                 Spec::RuleContribution c =
                     Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
                 Spec::RuleContribution rowContribution = c;
@@ -2897,7 +2898,7 @@ namespace TestFunc {
             SpecFixture f;
             f.rule.delete_old = true;
             f.rule.runState.exsist_elements.Clear ();
-            f.rule.elements.Clear ();
+            f.rule.runState.elements.Clear ();
             f.Existing (f.old, "Alpha", 5);
             Spec::SpecChangePlan plan = {};
             f.Shape (f.RunWithPlan (plan), 1, 0, 0, 1, "empty result removes placed rows");
@@ -3088,7 +3089,7 @@ namespace TestFunc {
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             Spec::ElementDict rows = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
-            for (const API_Guid &guid : f.rule.elements) {
+            for (const API_Guid &guid : f.rule.runState.elements) {
                 Spec::RuleContribution c =
                     Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
                 Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, c);
@@ -3284,7 +3285,7 @@ namespace TestFunc {
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             Spec::ElementDict rows = {};
             GS::HashTable<GS::UniString, GS::UniString> outParam = {};
-            for (const API_Guid &guid : layout.rule.elements) {
+            for (const API_Guid &guid : layout.rule.runState.elements) {
                 Spec::RuleContribution c =
                     Spec::BuildContribution (guid, 0, layout.rule.groups[0], binding, reader, none1, none2);
                 if (c.status == Spec::ContributionStatus::Excluded)
@@ -4260,10 +4261,10 @@ namespace TestFunc {
             DBtest (rule.IsRunnableForRun (), true, "existing list does not block run");
             // Находка №1 инвентаря: элементы заполняются ДО выбора, поэтому
             // наличие источников само по себе не делает правило непригодным.
-            rule.elements.Push (APIGuidFromString ("{22222222-2222-2222-2222-222222222222}"));
+            rule.runState.elements.Push (APIGuidFromString ("{22222222-2222-2222-2222-222222222222}"));
             DBtest (rule.IsRunnableForRun (), true, "sources do not change runnability");
             DBtest (rule.runState.exsist_elements.GetSize (), 1, "existing list independent");
-            DBtest (rule.elements.GetSize (), 1, "source list independent");
+            DBtest (rule.runState.elements.GetSize (), 1, "source list independent");
         }
 
         // --- прежнее поле отсутствует: доступ идёт через состояние ---
@@ -5053,7 +5054,8 @@ namespace TestFunc {
                 DBtest (group.is_Valid && !group.fromMaterial && !group.fromLibData && group.n_layer == 0,
                         label + " ordinary group");
             }
-            DBtest (rule.elements.IsEmpty () && rule.runState.exsist_elements.IsEmpty (), label + " no elements");
+            DBtest (rule.runState.elements.IsEmpty () && rule.runState.exsist_elements.IsEmpty (),
+                    label + " no elements");
             // Ключ словаря строится из той же строки ПОСЛЕ разбора: парсер не
             // мутирует вход, поэтому строка остаётся пригодной для GetSubstring.
             const GS::UniString keyAfter = description.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
@@ -5190,7 +5192,7 @@ namespace TestFunc {
         if (rule == nullptr)
             return;
         DBtest (rule->parseValid && rule->delete_old, "Spec AddRule v2 valid");
-        DBtest (rule->elements.IsEmpty (), "Spec AddRule null GUID not appended");
+        DBtest (rule->runState.elements.IsEmpty (), "Spec AddRule null GUID not appended");
         DBtest (rule->rule_name, definition.name, "Spec AddRule name");
         DBtest (rule->subguid_paramrawname, definition.name, "Spec AddRule link");
         DBtest (rule->subguid_rulevalue, definition.name, "Spec AddRule rule value");
@@ -5202,9 +5204,10 @@ namespace TestFunc {
         Spec::AddRule (definition, APINULLGuid, rules);
         rule = rules.GetPtr (key);
         DBtest (rules.GetSize (), 1, "Spec AddRule reuses key");
-        DBtest (rule != nullptr && rule->elements.GetSize () == 3, "Spec AddRule preserves repeated GUID");
-        if (rule != nullptr && rule->elements.GetSize () == 3)
-            DBtest (rule->elements[0] == f.first && rule->elements[1] == f.second && rule->elements[2] == f.first,
+        DBtest (rule != nullptr && rule->runState.elements.GetSize () == 3, "Spec AddRule preserves repeated GUID");
+        if (rule != nullptr && rule->runState.elements.GetSize () == 3)
+            DBtest (rule->runState.elements[0] == f.first && rule->runState.elements[1] == f.second &&
+                        rule->runState.elements[2] == f.first,
                     "Spec AddRule source order");
         definition.name = "Sync_name_Other";
         definition.guid = f.extra;
@@ -5223,7 +5226,7 @@ namespace TestFunc {
         Spec::AddRule (definition, f.second, rules);
         DBtest (rules.GetSize (), 2, "Spec AddRule caches invalid once");
         const Spec::SpecRule *invalid = rules.GetPtr ("Bad;g@@u;p;f;q@@s@@x)");
-        DBtest (invalid != nullptr && !invalid->parseValid && invalid->elements.IsEmpty (),
+        DBtest (invalid != nullptr && !invalid->parseValid && invalid->runState.elements.IsEmpty (),
                 "Spec AddRule invalid has no sources");
         const char *groups[] = {"gm", "gl"};
         for (Int32 i = 0; i < 2; ++i) {

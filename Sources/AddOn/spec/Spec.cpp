@@ -27,7 +27,7 @@ namespace Spec {
     //   2. Ищет свойства, в описании которых есть "Spec_rule{...}"
     //   3. Для каждого правила находит элементы через классификацию (rule.rule_definitions.availability)
     //   4. Проверяет значение свойства-флага у каждого элемента (включён ли флаг)
-    //   5. Если флаг включён - добавляет элемент в rule.elements
+    //   5. Если флаг включён - добавляет элемент в rule.runState.elements
     // Возвращает: true, если найдены элементы (даже если флаги выключены)
     // Примечание: для AC_22 всегда возвращает false
     // --------------------------------------------------------------------
@@ -107,7 +107,7 @@ namespace Spec {
                     // Здесь важно различать три состояния: свойство выключено, недоступно или не оценено.
                     // Это влияет на то, будет ли элемент включён в спецификацию или отложен для сообщения пользователю.
                     if (flagfindspec) {
-                        rule.elements.PushNew (elemGuid);
+                        rule.runState.elements.PushNew (elemGuid);
                         has_elementspec = true;
                     } else {
                         if (!error_name.ContainsKey (propertyflag.definition.name))
@@ -190,7 +190,7 @@ namespace Spec {
                 msg_rep ("Spec", "Create spec from all visible element", NoError, APINULLGuid);
             }
         }
-        // Если default element уже нашёл включённые элементы, они сохранены в rule.elements
+        // Если default element уже нашёл включённые элементы, они сохранены в rule.runState.elements
         // и должны быть обработаны SpecArray даже при пустом guidArray.
         if (guidArray.IsEmpty () && !has_elementspec)
             return NoError;
@@ -470,7 +470,7 @@ namespace Spec {
             if (rules.qty_elements.ContainsKey (rule.rule_name))
                 continue;
             rules.rules.Add (rule.rule_name, true);
-            rules.qty_elements.Add (rule.rule_name, GS::UniString::Printf ("%d", rule.elements.GetSize ()));
+            rules.qty_elements.Add (rule.rule_name, GS::UniString::Printf ("%d", rule.runState.elements.GetSize ()));
         }
         rules.is_warn = rule_from_one;
         rules.titleResID = UndoSumId;
@@ -1171,7 +1171,7 @@ namespace Spec {
         GS::UniString key = description.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
         if (rules.ContainsKey (key)) {
             if (rules.Get (key).parseValid && elemguid != APINULLGuid)
-                rules.Get (key).elements.Push (elemguid);
+                rules.Get (key).runState.elements.Push (elemguid);
         } else {
             // Добавление группы и элемента
             SpecRule rule = GetRuleFromDescription (description);
@@ -1183,7 +1183,7 @@ namespace Spec {
                 rule.rule_definitions = definition;
                 rule.rule_name = fname;
                 if (elemguid != APINULLGuid)
-                    rule.elements.Push (elemguid);
+                    rule.runState.elements.Push (elemguid);
             }
             rules.Add (key, rule); // Добавляем в любом случае, чтоб потом дважды не обрабатывать
             if (rule.parseValid) {
@@ -1315,7 +1315,7 @@ namespace Spec {
         BuildReadParamDict (dependencies.read, paramDict);
         // Добавляем параметры для каждого элемента
         if (!paramDict.IsEmpty ()) {
-            for (const API_Guid elemguid : rule.elements) {
+            for (const API_Guid elemguid : rule.runState.elements) {
                 ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
             }
         }
@@ -1702,7 +1702,7 @@ namespace Spec {
         // число чтений задаёт вычислитель, поэтому изменить прочитанные данные
         // «по ходу» нельзя.
         const SpecValueReader reader (context);
-        for (const API_Guid &elemguid : rule.elements) {
+        for (const API_Guid &elemguid : rule.runState.elements) {
             // Видимость проверяется до чтения любых значений, как и начала расчёта.
             if (!IsSourceVisible (elemguid, rule.only_visible))
                 continue;
@@ -1900,7 +1900,7 @@ namespace Spec {
     //   elements_delete - [OUT] массив удаляемых устаревших элементов
     //   error_element - [OUT] элементы с ошибками чтения параметров
     // Алгоритм:
-    //   1. Для каждого элемента в rule.elements:
+    //   1. Для каждого элемента в rule.runState.elements:
     //      - проверяет видимость (если rule.only_visible)
     //      - для каждой группы (group) проверяет флаг (flag_paramrawname)
     //      - формирует ключ из уникальных параметров (unic_paramrawname)
