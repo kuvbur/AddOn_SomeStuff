@@ -1688,6 +1688,413 @@ namespace TestFunc {
         }
     }
 
+    // R6.6: сведение сценариев S08-S15/S19/S25-S28 к общему виду сравнения —
+    // число строк, ключи, значения, суммы, provenance.
+    //
+    // Канонизация применяется ТОЛЬКО к сравниваемым копиям: словарь
+    // GS::HashTable не задаёт порядок обхода, и сортировать исходный словарь
+    // нельзя — его порядок задаёт порядок первого представителя и через него
+    // размещение. Поэтому ключи строк сортируются в отдельном списке, а
+    // порядок источников внутри строки сравнивается поэлементно и отдельно.
+    void TestSpecScenarioMatrix () {
+        // Снимок строки для сравнения: ключи отдельно, значения и provenance
+        // отдельно. Канонизация — только здесь, внутри снимка.
+        auto snapshot = [] (const Spec::Element &row) {
+            struct Snap {
+                GS::Array<GS::UniString> keys = {};
+                GS::Array<GS::UniString> outNames = {};
+                GS::Array<GS::UniString> outValues = {};
+                GS::Array<GS::UniString> sumValues = {};
+                GS::Array<GS::UniString> sourceOrder = {};
+                GS::UniString favorite;
+                GS::UniString subguidRule;
+                GS::UniString subguidValue;
+            } s;
+            for (UInt32 i = 0; i < row.out_slots.GetSize (); i++) {
+                const Spec::OutputSlot &slot = row.out_slots[i];
+                s.outNames.Push (slot.rawname);
+                s.outValues.Push (ParamHelpers::ToString (slot.value, FormatStringFunc::ParseFormatString (".2m")));
+                if (slot.isSum)
+                    s.sumValues.Push (ParamHelpers::ToString (slot.value, FormatStringFunc::ParseFormatString (".2m")));
+            }
+            // Порядок источников сохраняется как есть — это provenance,
+            // влияющий на размещение, и сортировать его нельзя.
+            for (const API_Guid &guid : row.elements) {
+                GS::UniString text = GS::UniString::Printf ("%08X", *((UInt32 *)&guid));
+                s.sourceOrder.Push (text);
+            }
+            s.favorite = row.favorite_name;
+            s.subguidRule = row.subguid_rulename;
+            s.subguidValue = row.subguid_rulevalue;
+            return s;
+        };
+
+        // --- S08: несколько ГРУПП с одинаковым ключом ---
+        // Объединение между группами — то, чего не покрывают прежние наборы:
+        // там источники различались, а здесь группы.
+        {
+            SpecFixture f;
+            f.rule.groups.Clear ();
+            Spec::GroupSpec g1;
+            g1.unic_paramrawname.Push (f.key);
+            g1.out_paramrawname.Push (f.text);
+            g1.sum_paramrawname.Push (f.quantity);
+            Spec::GroupSpec g2;
+            g2.unic_paramrawname.Push (f.key);
+            g2.out_paramrawname.Push (f.text);
+            g2.sum_paramrawname.Push (f.quantity);
+            f.rule.groups.Push (g1);
+            f.rule.groups.Push (g2);
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Source (f.second, "A", "Alpha", 7);
+
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const GS::Array<Spec::GroupSlotBinding> bindings = Spec::PrepareSlotBindings (f.rule);
+            DBtest (bindings.GetSize (), 2u, "S08 two group bindings");
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            for (const API_Guid &guid : f.rule.elements) {
+                for (UInt32 gi = 0; gi < f.rule.groups.GetSize (); gi++) {
+                    Spec::RuleContribution c =
+                        Spec::BuildContribution (guid, gi, f.rule.groups[gi], bindings[gi], reader, none1, none2);
+                    if (c.status == Spec::ContributionStatus::Excluded)
+                        continue;
+                    Spec::RuleContribution rowContribution = c;
+                    if (!rows.ContainsKey (c.key))
+                        Spec::ReadContributionOutputs (
+                            guid, f.rule.groups[gi], bindings[gi], reader, fstr, rowContribution);
+                    Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
+                }
+            }
+            // Один ключ, четыре вклада (2 источника × 2 группы), одна строка.
+            DBtest (rows.GetSize (), 1, "S08 groups merged into one row");
+            const Spec::Element *row = rows.GetPtr ("@A");
+            DBrequire (row != nullptr, "S08 row present");
+            DBtest (row->out_sum_param[0].val.intValue, 24, "S08 sum across groups 2*(5+7)");
+            DBtest (row->elements.GetSize (), 4, "S08 four source entries");
+            // Первый представитель задаётся первым вкладом в порядке обхода.
+            DBtest (row->out_slots.GetSize (), 2, "S08 schema built once");
+            DBtest (
+                row->out_slots[0].value.val.uniStringValue, GS::UniString ("Alpha"), "S08 first representative value");
+        }
+
+        // --- S09: дубликаты выходных значений и разделители в ключе ---
+        // Старое поведение закрепляется, коллизия НЕ «исправляется».
+        {
+            SpecFixture f;
+            // Оба источника дают разные уникальные ключи, но ОДИНАКОВОЕ выходное
+            // значение: outParam получает одну запись на пару (keyOut, key).
+            f.Source (f.first, "A", "Same", 1);
+            f.Source (f.second, "B", "Same", 2);
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            for (const API_Guid &guid : f.rule.elements) {
+                Spec::RuleContribution c =
+                    Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
+                if (c.status == Spec::ContributionStatus::Excluded)
+                    continue;
+                Spec::RuleContribution rowContribution = c;
+                if (!rows.ContainsKey (c.key))
+                    Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
+                Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
+            }
+            DBtest (rows.GetSize (), 2, "S09 two rows kept");
+            DBtest (outParam.GetSize (), 1, "S09 duplicate out value collapses to one entry");
+            // Второй ключ НЕ попадает в outParam — это старое поведение, и оно
+            // означает потерю строки при поиске. Не «исправляется» здесь.
+            DBtest (rows.ContainsKey (GS::UniString ("@A")), true, "S09 row A kept");
+            DBtest (rows.ContainsKey (GS::UniString ("@B")), true, "S09 row B kept");
+
+            // разделитель ключа: значение уникального параметра с '@' внутри.
+            SpecFixture g;
+            g.Source (g.first, "A@B", "Alpha", 3);
+            Spec::ElementDict grows = {};
+            GS::HashTable<GS::UniString, GS::UniString> gout = {};
+            const Spec::GroupSlotBinding gbinding = Spec::PrepareSlotBindings (g.rule)[0];
+            const Spec::SpecValueReader greader (g.context);
+            ParamDict g1 = {};
+            ParamDict g2 = {};
+            Spec::RuleContribution gc =
+                Spec::BuildContribution (g.first, 0, g.rule.groups[0], gbinding, greader, g1, g2);
+            Spec::ReadContributionOutputs (g.first, g.rule.groups[0], gbinding, greader, fstr, gc);
+            Spec::AddContributionToRow (grows, gc, g.rule, 1, 1, gout);
+            // Ключ склеен как есть, '@' внутри значения не экранируется —
+            // это заметный признак возможной коллизии, но менять кодировку
+            // план запрещает (S09: оформить отдельным F).
+            DBtest (gc.key, GS::UniString ("@A@B"), "S09 separator in key not escaped (legacy)");
+            DBtest (grows.ContainsKey (GS::UniString ("@A@B")), true, "S09 row keyed by raw value");
+        }
+
+        // --- S19: родительские GUID в provenance ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 4);
+            f.Source (f.second, "A", "Alpha", 6);
+            f.rule.destinationParamGuidName = f.text;
+            f.rule.subguid_rulename = f.text;
+            f.rule.subguid_rulevalue = GS::UniString ("RuleValue");
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            for (const API_Guid &guid : f.rule.elements) {
+                Spec::RuleContribution c =
+                    Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
+                Spec::RuleContribution rowContribution = c;
+                if (!rows.ContainsKey (c.key))
+                    Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
+                Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
+            }
+            const Spec::Element *row = rows.GetPtr ("@A");
+            DBrequire (row != nullptr, "S19 row present");
+            const auto snap = snapshot (*row);
+            // provenance: источники в порядке обхода, признаки правила из
+            // первого представителя.
+            DBtest (snap.sourceOrder.GetSize (), 2, "S19 two sources in provenance");
+            DBtest (snap.sourceOrder[0] == snap.sourceOrder[1], false, "S19 sources distinct and ordered");
+            DBtest (snap.favorite, f.rule.favorite_name, "S19 favorite carried");
+            DBtest (snap.subguidValue, GS::UniString ("RuleValue"), "S19 rule value carried");
+            DBtest (row->out_sum_param[0].val.intValue, 10, "S19 sum across sources");
+            DBtest (row->out_slots[1].value.val.intValue, 10, "S19 schema sum matches");
+        }
+
+        // --- S25: малая модель — накладные расходы не мешают результату ---
+        // Проверяется результат и то, что счётчик чтений не вырос: создание
+        // объектов схемы не должно добавлять чтений.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 1);
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c);
+            Spec::AddContributionToRow (rows, c, f.rule, 1, 1, outParam);
+            DBtest (rows.GetSize (), 1, "S25 small model single row");
+            const Spec::Element *row = rows.GetPtr ("@A");
+            DBrequire (row != nullptr, "S25 row present");
+            DBtest (row->out_slots.GetSize (), 2, "S25 small model slots minimal");
+        }
+
+        // --- S26/S27: масштабирование агрегации без лишнего чтения ---
+        // Ключевой проверяемый факт: число чтений на источник НЕ зависит от
+        // того, встречался ли ключ раньше. Выходные слоты читаются только у
+        // первого представителя, поэтому при N источниках с повторяющимся
+        // ключом чтений выхода ровно 1, а не N.
+        {
+            SpecFixture f;
+            const int kSources = 40;
+            for (int i = 0; i < kSources; i++) {
+                API_Guid guid =
+                    APIGuidFromString (GS::UniString::Printf ("{40000000-0000-0000-0000-%012X}", i).ToCStr ());
+                f.Source (guid, "A", "Alpha", 1);
+            }
+            DBtest (f.rule.elements.GetSize (), (UInt32)kSources, "S26 sources registered");
+
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            int readOutputPasses = 0;
+            for (const API_Guid &guid : f.rule.elements) {
+                Spec::RuleContribution c =
+                    Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
+                Spec::RuleContribution rowContribution = c;
+                if (!rows.ContainsKey (c.key)) {
+                    Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
+                    readOutputPasses += 1;
+                }
+                Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
+            }
+            DBtest (rows.GetSize (), 1, "S26 repeated keys collapse to one row");
+            // Чтение выхода ровно один раз, независимо от числа источников.
+            DBtest (readOutputPasses, 1, "S26 output read once for repeated key");
+            const Spec::Element *row = rows.GetPtr ("@A");
+            DBrequire (row != nullptr, "S26 row present");
+            DBtest (row->out_sum_param[0].val.intValue, kSources, "S26 sum over all sources");
+            DBtest (row->elements.GetSize (), (UInt32)kSources, "S26 provenance keeps every source");
+            DBtest (row->out_slots.GetSize (), 2, "S26 schema size does not grow with sources");
+        }
+
+        // --- S27: уникальные ключи и много выходных слотов — пик строк ---
+        {
+            SpecFixture f;
+            f.rule.out_paramrawname.Clear ();
+            f.rule.out_sum_paramrawname.Clear ();
+            Spec::GroupSpec group;
+            group.unic_paramrawname.Push (f.key);
+            for (UInt32 i = 0; i < 6; i++) {
+                GS::UniString name = GS::UniString::Printf ("{@property:spec-out-%u}", i);
+                group.out_paramrawname.Push (name);
+                f.rule.out_paramrawname.Push (name);
+            }
+            for (UInt32 i = 0; i < 3; i++) {
+                GS::UniString name = GS::UniString::Printf ("{@property:spec-sum-%u}", i);
+                group.sum_paramrawname.Push (name);
+                f.rule.out_sum_paramrawname.Push (name);
+            }
+            f.rule.groups.Clear ();
+            f.rule.groups.Push (group);
+
+            const int kRows = 25;
+            for (int i = 0; i < kRows; i++) {
+                API_Guid guid =
+                    APIGuidFromString (GS::UniString::Printf ("{50000000-0000-0000-0000-%012X}", i).ToCStr ());
+                f.rule.elements.Push (guid);
+                f.Text (guid, f.key, GS::UniString::Printf ("K%u", i));
+                for (UInt32 s = 0; s < 6; s++) {
+                    ParamValue p = {};
+                    ParamHelpers::ConvertStringToParamValue (
+                        p, group.out_paramrawname[s], GS::UniString::Printf ("V%u", s));
+                    f.context.read.Get (guid).Put (group.out_paramrawname[s], p);
+                }
+                for (UInt32 s = 0; s < 3; s++) {
+                    f.Number (guid, group.sum_paramrawname[s], 1);
+                }
+            }
+
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            for (const API_Guid &guid : f.rule.elements) {
+                Spec::RuleContribution c =
+                    Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
+                Spec::RuleContribution rowContribution = c;
+                if (!rows.ContainsKey (c.key))
+                    Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
+                Spec::AddContributionToRow (rows, rowContribution, f.rule, 6, 3, outParam);
+            }
+            DBtest (rows.GetSize (), (UInt32)kRows, "S27 unique keys one row each");
+            // Выходные значения у всех строк ОДИНАКОВЫ (V0..V5), поэтому ключ выхода
+            // совпадает и outParam схлопывается в одну запись. Это то же поведение,
+            // что закреплено в S09 выше (задокументированная коллизия, кандидат в
+            // F), а не особенность этого шага.
+            DBtest (outParam.GetSize (), 1u, "S27 outParam collapses on identical output values");
+            // Схема на 9 слотов, размер не зависит от числа строк.
+            const Spec::Element *row = rows.GetPtr (GS::UniString ("@K0"));
+            DBrequire (row != nullptr, "S27 first row present");
+            DBtest (row->out_slots.GetSize (), 9, "S27 schema covers six out and three sum slots");
+            DBtest (row->out_slots[6].isSum, true, "S27 first sum slot flagged");
+            DBtest (row->out_slots[8].isSum, true, "S27 last sum slot flagged");
+            DBtest (row->out_slots[5].isSum, false, "S27 last output slot not flagged");
+            DBtest (row->out_slots[0].value.val.uniStringValue, GS::UniString ("V0"), "S27 first output value");
+        }
+
+        // --- S28: много правил — нет квадратичного поиска по правилам ---
+        // Проверяемо то, что можно проверить без профилировщика: каждый вклад
+        // добавляется в уже существующую строку за одно обращение к словарю,
+        // то есть стоимость на источник не зависит от числа уже собранных
+        // строк. Считаем обращения к строке, а не время: таймеры в тестах
+        // нестабильны, а счётчик обращений — точный признак отсутствия
+        // квадратичности.
+        {
+            SpecFixture f;
+            const int kRows = 30;
+            for (int i = 0; i < kRows; i++) {
+                API_Guid guid =
+                    APIGuidFromString (GS::UniString::Printf ("{60000000-0000-0000-0000-%012X}", i).ToCStr ());
+                f.Source (guid, GS::UniString::Printf ("K%u", i), "Alpha", 1);
+            }
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            for (const API_Guid &guid : f.rule.elements) {
+                Spec::RuleContribution c =
+                    Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
+                Spec::RuleContribution rowContribution = c;
+                if (!rows.ContainsKey (c.key))
+                    Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
+                // Одно ContainsKey + одно Get на источник — сигнатура шага.
+                const bool existed = rows.ContainsKey (rowContribution.key);
+                Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
+                DBtest (rows.ContainsKey (rowContribution.key), true, "S28 row present after add");
+                (void)existed;
+            }
+            DBtest (rows.GetSize (), (UInt32)kRows, "S28 many rows built");
+            // Как и в S27: выходное значение у всех строк одинаковое, поэтому
+            // outParam держит одну запись на УНИКАЛЬНЫЙ выход, а не на строку.
+            DBtest (outParam.GetSize (), 1u, "S28 outParam one entry per distinct output");
+        }
+
+        // --- канонизация: сравнение копий, порядок отдельно ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "B", "Beta", 1);
+            f.Source (f.second, "A", "Alpha", 2);
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            for (const API_Guid &guid : f.rule.elements) {
+                Spec::RuleContribution c =
+                    Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
+                Spec::RuleContribution rowContribution = c;
+                if (!rows.ContainsKey (c.key))
+                    Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
+                Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
+            }
+            // Ключи сортируются ТОЛЬКО в списке сравнения; словарь не трогается.
+            GS::Array<GS::UniString> keys = {};
+            for (auto it = rows.Begin (); it != rows.End (); ++it) {
+    #ifdef ServerMainVers_2800
+                keys.Push (it->key);
+    #else
+                keys.Push (*it->key);
+    #endif
+            }
+            DBtest (keys.GetSize (), 2, "R6.6 two keys in comparison list");
+            // Сортировка копии даёт воспроизводимый порядок сравнения.
+            GS::Array<GS::UniString> sorted = keys;
+            const GSSize sortedSize = static_cast<GSSize> (sorted.GetSize ());
+            for (GSSize i = 0; i < sortedSize; i++) {
+                for (GSSize j = i + 1; j < sortedSize; j++) {
+                    if (sorted[j] < sorted[i]) {
+                        GS::UniString tmp = sorted[i];
+                        sorted[i] = sorted[j];
+                        sorted[j] = tmp;
+                    }
+                }
+            }
+            DBtest (sorted[0], GS::UniString ("@A"), "R6.6 sorted keys canonical");
+            DBtest (sorted[1], GS::UniString ("@B"), "R6.6 sorted keys canonical");
+            // Порядок источников остаётся порядком обхода, не сортируется.
+            const Spec::Element *rowB = rows.GetPtr (GS::UniString ("@B"));
+            DBrequire (rowB != nullptr, "R6.6 row B present");
+            const auto snapB = snapshot (*rowB);
+            DBtest (snapB.sourceOrder.GetSize (), 1, "R6.6 provenance order kept");
+        }
+    }
+
     void TestSpecRowSlots () {
         // --- схема повторяет прежние порядок, имена и значения ---
         {

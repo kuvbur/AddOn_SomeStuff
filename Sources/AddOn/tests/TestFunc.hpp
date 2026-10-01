@@ -69,6 +69,7 @@ namespace TestFunc {
     void TestSpecContribution ();
     void TestSpecRowLayout ();
     void TestSpecRowSlots ();
+    void TestSpecScenarioMatrix ();
     void TestSpecEngineEquivalence ();
     void TestSpecValueEdges ();
     void TestSpecOutSlots ();
