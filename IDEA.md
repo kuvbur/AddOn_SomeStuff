@@ -1575,8 +1575,9 @@ Archicad; на диске `Test_file/test_25.pln` прежний (56 МБ, 28 с
 - **S09-коллизия и кандидат в F1 остаются не тронутыми** — это отдельные
   согласования, R7 не должен их решать попутно.
 ### Last Checkpoint
-R7.4 — `код` (см. Last Checkpoint ниже); эталон A/B: `p2-before-r74` -> `r74-final`,
-`diff_rows` = 0.
+R7.4 — `2cb00d9` (spec/Spec.hpp, spec/Spec.cpp, spec/SpecPlanning.cpp,
+tests/TestSpec.cpp, Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md,
+IDEA.md, Refs: #228). A/B: `p2-before-r74` -> `r74-final`, `diff_rows` = 0.
 Предыдущий: R7.3 — `6d68d56` (spec/Spec.hpp, spec/Spec.cpp,
 spec/SpecPlanning.cpp, spec/SpecPlanning.hpp, tests/TestSpec.cpp,
 tests/TestFunc.*, Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md,
