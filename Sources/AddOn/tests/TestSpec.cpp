@@ -229,6 +229,140 @@ namespace TestFunc {
         };
     } // namespace
 
+    // Контракт BuildRowParamToWrite — общей сборки записываемых параметров строки
+    // для создания и изменения. Набор закрывает то, что заявлено в
+    // SpecHelpers.hpp: порядок записи, фильтр по разрешённым именам, отсутствие
+    // повторов, правку типа только у сумм.
+    void TestSpecBuildRowParam () {
+        const GS::UniString guidName = "{@property:spec-guid-link}";
+        const GS::UniString ruleName = "{@property:spec-rule-name}";
+        const GS::UniString outName = "{@property:spec-out}";
+        const GS::UniString sumName = "{@property:spec-sum}";
+        const GS::UniString foreign = "{@property:spec-foreign}";
+
+        // Строка с источниками, GUID-связью, носителем правила, выходом и суммой.
+        auto MakeRow = [&] (Spec::Element &row) {
+            row.subguid_paramrawname = guidName;
+            row.subguid_rulename = ruleName;
+            row.subguid_rulevalue = "rule-1";
+            row.elements.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
+            row.elements.Push (APIGuidFromString ("{22222222-2222-2222-2222-222222222222}"));
+            PushOutSlot (row, Num (7));
+            row.out_slots[0].rawname = outName;
+            PushSumSlot (row, Num (5));
+            row.out_slots[1].rawname = sumName;
+        };
+
+        // Словарь разрешённых избранным свойств: значения в нём нужны только
+        // как признак «имя разрешено» и как носитель определения свойства.
+        auto MakeAllowed = [&] (ParamDictValue &allowed, const GS::UniString &name, bool fromDefinition) {
+            ParamValue pv = {};
+            pv.rawName = name;
+            pv.isValid = true;
+            pv.fromPropertyDefinition = fromDefinition;
+            pv.definition.valueType = API_PropertyStringValueType;
+            allowed.Add (name, pv);
+        };
+
+        // 1. Полный набор: пишутся все четыре поля.
+        {
+            Spec::Element row;
+            MakeRow (row);
+            ParamDictValue allowed;
+            MakeAllowed (allowed, guidName, false);
+            MakeAllowed (allowed, ruleName, false);
+            MakeAllowed (allowed, outName, false);
+            MakeAllowed (allowed, sumName, true);
+            ParamDictValue param;
+            Spec::BuildRowParamToWrite (row, allowed, param);
+            DBtest (param.GetSize (), 4u, "row param writes every field");
+            DBtest (param.ContainsKey (guidName), true, "row param has guid link");
+            DBtest (param.ContainsKey (ruleName), true, "row param has rule carrier");
+            DBtest (param.ContainsKey (outName), true, "row param has output");
+            DBtest (param.ContainsKey (sumName), true, "row param has sum");
+            // GUID-связь склеивает источники точки с запятой в порядке строки.
+            const GS::UniString link = param.Get (guidName).val.uniStringValue;
+            DBtest (link.IsEmpty (), false, "row param link is written");
+            DBtest (link.Contains (SEMICOLON), true, "row param link joins sources");
+        }
+
+        // 2. Неразрешённое избранным имя не пишется: paramToWrite — это фильтр.
+        {
+            Spec::Element row;
+            MakeRow (row);
+            ParamDictValue allowed;
+            MakeAllowed (allowed, guidName, false);
+            MakeAllowed (allowed, ruleName, false);
+            // outName и sumName НЕ разрешены, а foreign разрешён, но в строке его нет.
+            MakeAllowed (allowed, foreign, false);
+            ParamDictValue param;
+            Spec::BuildRowParamToWrite (row, allowed, param);
+            DBtest (param.GetSize (), 2u, "row param writes only allowed names");
+            DBtest (param.ContainsKey (outName), false, "row param skips unresolved output");
+            DBtest (param.ContainsKey (sumName), false, "row param skips unresolved sum");
+        }
+
+        // 3. Тип правят ТОЛЬКО у сумм при fromPropertyDefinition. Выходной слот
+        // получает тип из slot.value и подмены не получает.
+        {
+            Spec::Element row;
+            MakeRow (row);
+            row.out_slots[0].value.val.type = API_PropertyIntegerValueType;
+            row.out_slots[1].value.val.type = API_PropertyIntegerValueType;
+            ParamDictValue allowed;
+            MakeAllowed (allowed, outName, true);
+            MakeAllowed (allowed, sumName, true);
+            ParamDictValue param;
+            Spec::BuildRowParamToWrite (row, allowed, param);
+            DBtest (param.Get (outName).val.type, API_PropertyIntegerValueType, "row param keeps output slot type");
+            DBtest (param.Get (sumName).val.type,
+                    API_PropertyStringValueType,
+                    "row param switches sum type from definition");
+        }
+
+        // 4. Пустое имя слота не пишется: безымянный слот соответствует
+        // отсутствующему имени в схеме правила, и такое свойство писать некуда.
+        {
+            Spec::Element row;
+            PushOutSlot (row, Num (1)); // rawname пустой
+            ParamDictValue allowed;
+            ParamDictValue param;
+            Spec::BuildRowParamToWrite (row, allowed, param);
+            DBtest (param.IsEmpty (), true, "row param ignores nameless slot");
+        }
+
+        // 5. Носитель правила пишется только когда заданы оба поля. При пустом
+        // значении писать нечего: иначе в избранное уехало бы свойство с
+        // пустым значением.
+        {
+            Spec::Element row;
+            row.subguid_rulename = ruleName;
+            row.subguid_rulevalue = EMPTYSTRING;
+            ParamDictValue allowed;
+            MakeAllowed (allowed, ruleName, false);
+            ParamDictValue param;
+            Spec::BuildRowParamToWrite (row, allowed, param);
+            DBtest (param.IsEmpty (), true, "row param needs rule value to write carrier");
+        }
+
+        // 6. Порядок обхода слотов значим: суммы не должны попасть в выходные.
+        // Проверяется перемешанная схема — сумма раньше выхода.
+        {
+            Spec::Element row;
+            row.out_slots.Clear ();
+            PushRawSlot (row, true, Num (1));  // сумма
+            PushRawSlot (row, false, Num (2)); // выход
+            ParamDictValue allowed;
+            MakeAllowed (allowed, "S", false);
+            MakeAllowed (allowed, "O", false);
+            ParamDictValue param;
+            Spec::BuildRowParamToWrite (row, allowed, param);
+            DBtest (param.GetSize (), 2u, "row param handles interleaved slots");
+            DBtest (param.ContainsKey ("S"), true, "row param has sum from interleaved schema");
+            DBtest (param.ContainsKey ("O"), true, "row param has output from interleaved schema");
+        }
+    }
+
     // Замер роста стоимости сверки с числом ранее размещённых объектов E.
     // Вопрос: не выполняется ли для каждого прежнего объекта полный скан
     // списка E, то есть не выросла ли квадратичная составляющая.

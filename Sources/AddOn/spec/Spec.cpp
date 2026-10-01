@@ -837,61 +837,7 @@ namespace Spec {
 #endif
                     hlElems.Add (el.exs_guid, hlColor);
                     ParamDictValue param = {};
-                    if (!el.subguid_paramrawname.IsEmpty ()) {
-                        if (paramToWrite.ContainsKey (el.subguid_paramrawname) &&
-                            !param.ContainsKey (el.subguid_paramrawname)) {
-                            ParamValue paramTo = paramToWrite.Get (el.subguid_paramrawname);
-                            GS::UniString instring = APIGuidToString (el.elements[0]);
-                            for (UInt32 k = 1; k < el.elements.GetSize (); k++) {
-                                instring = instring + SEMICOLON + APIGuid2GSGuid (el.elements[k]).ToUniString ();
-                            }
-                            paramTo.val.uniStringValue = StringUnic (instring, SEMICOLON);
-                            paramTo.isValid = true;
-                            paramTo.val.type = API_PropertyStringValueType;
-                            param.Add (el.subguid_paramrawname, paramTo);
-                        }
-                    }
-                    if (!el.subguid_rulename.IsEmpty () && !el.subguid_rulevalue.IsEmpty ()) {
-                        if (paramToWrite.ContainsKey (el.subguid_rulename) &&
-                            !param.ContainsKey (el.subguid_rulename)) {
-                            ParamValue paramTo = paramToWrite.Get (el.subguid_rulename);
-                            paramTo.val.uniStringValue = el.subguid_rulevalue;
-                            paramTo.isValid = true;
-                            paramTo.val.type = API_PropertyStringValueType;
-                            param.Add (el.subguid_rulename, paramTo);
-                        }
-                    }
-                    // Слот содержит имя и значение; свойства записываются в порядке схемы.
-                    for (const OutputSlot &slot : el.out_slots) {
-                        if (slot.isSum)
-                            continue;
-                        const GS::UniString &rawname = slot.rawname;
-                        if (paramToWrite.ContainsKey (rawname) && !param.ContainsKey (rawname)) {
-                            FormatString stringformat;
-                            ParamValue paramFrom = slot.value;
-                            ParamValue paramTo = paramToWrite.Get (rawname);
-                            paramTo.val = paramFrom.val;
-                            paramTo.isValid = true;
-                            param.Add (rawname, paramTo);
-                        }
-                    }
-                    for (const OutputSlot &slot : el.out_slots) {
-                        if (!slot.isSum)
-                            continue;
-                        const GS::UniString &rawname = slot.rawname;
-                        if (paramToWrite.ContainsKey (rawname) && !param.ContainsKey (rawname)) {
-                            FormatString stringformat;
-                            ParamValue paramFrom = slot.value;
-                            ParamValue paramTo = paramToWrite.Get (rawname);
-                            paramTo.val = paramFrom.val;
-                            if (paramTo.fromPropertyDefinition) {
-                                if (paramTo.definition.valueType == API_PropertyStringValueType)
-                                    paramTo.val.type = API_PropertyStringValueType;
-                            }
-                            paramTo.isValid = true;
-                            param.Add (rawname, paramTo);
-                        }
-                    }
+                    BuildRowParamToWrite (el, paramToWrite, param);
                     paramOut.Add (el.exs_guid, param);
                     // Дамп изменяемого элемента: GUID уже известен (элемент создан
                     // предыдущим запуском), в отличие от создаваемого.
@@ -2992,62 +2938,7 @@ namespace Spec {
                     bool flag_find_row = GetSizePlaceElement (element, memo, dx, dy);
                     // Запись параметров
                     ParamDictValue param = {};
-                    if (!el.subguid_paramrawname.IsEmpty ()) {
-                        if (paramToWrite.ContainsKey (el.subguid_paramrawname) &&
-                            !param.ContainsKey (el.subguid_paramrawname)) {
-                            ParamValue paramTo = paramToWrite.Get (el.subguid_paramrawname);
-                            GS::UniString instring = APIGuidToString (el.elements[0]);
-                            for (UInt32 k = 1; k < el.elements.GetSize (); k++) {
-                                instring = instring + SEMICOLON + APIGuid2GSGuid (el.elements[k]).ToUniString ();
-                            }
-                            paramTo.val.uniStringValue = StringUnic (instring, SEMICOLON);
-                            paramTo.isValid = true;
-                            paramTo.val.type = API_PropertyStringValueType;
-                            param.Add (el.subguid_paramrawname, paramTo);
-                        }
-                    }
-                    if (!el.subguid_rulename.IsEmpty () && !el.subguid_rulevalue.IsEmpty ()) {
-                        if (paramToWrite.ContainsKey (el.subguid_rulename) &&
-                            !param.ContainsKey (el.subguid_rulename)) {
-                            ParamValue paramTo = paramToWrite.Get (el.subguid_rulename);
-                            paramTo.val.uniStringValue = el.subguid_rulevalue;
-                            paramTo.isValid = true;
-                            paramTo.val.type = API_PropertyStringValueType;
-                            param.Add (el.subguid_rulename, paramTo);
-                        }
-                    }
-                    // GDL параметры сразу запишем в memo
-                    // Слот содержит имя и значение; свойства записываются в порядке схемы.
-                    for (const OutputSlot &slot : el.out_slots) {
-                        if (slot.isSum)
-                            continue;
-                        const GS::UniString &rawname = slot.rawname;
-                        if (paramToWrite.ContainsKey (rawname) && !param.ContainsKey (rawname)) {
-                            FormatString stringformat;
-                            ParamValue paramFrom = slot.value;
-                            ParamValue paramTo = paramToWrite.Get (rawname);
-                            paramTo.val = paramFrom.val;
-                            paramTo.isValid = true;
-                            param.Add (rawname, paramTo);
-                        }
-                    }
-                    for (const OutputSlot &slot : el.out_slots) {
-                        if (!slot.isSum)
-                            continue;
-                        const GS::UniString &rawname = slot.rawname;
-                        if (paramToWrite.ContainsKey (rawname) && !param.ContainsKey (rawname)) {
-                            FormatString stringformat;
-                            ParamValue paramFrom = slot.value;
-                            ParamValue paramTo = paramToWrite.Get (rawname);
-                            paramTo.val = paramFrom.val;
-                            if (paramTo.fromPropertyDefinition) {
-                                if (paramTo.definition.valueType == API_PropertyStringValueType)
-                                    paramTo.val.type = API_PropertyStringValueType;
-                            }
-                            paramTo.isValid = true;
-                            param.Add (rawname, paramTo);
-                        }
-                    }
+                    BuildRowParamToWrite (el, paramToWrite, param);
                     const GSSize nParams = (memo.params == nullptr)
                                                ? 0
                                                : BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
