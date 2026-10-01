@@ -131,6 +131,17 @@ namespace TestFunc {
                 return Spec::GetElementsForRule (rule, context, created, modified, deleted, errors, false);
             }
 
+            // Тот же запуск, но с планом изменений. План получаем от
+            // GetElementsForRule, а не строим сами: иначе проверялась бы копия
+            // решения, а не само решение.
+            Int32 RunWithPlan (Spec::SpecChangePlan &plan) {
+                created.Clear ();
+                modified.Clear ();
+                deleted.Clear ();
+                errors.Clear ();
+                return Spec::GetElementsForRule (rule, context, created, modified, deleted, errors, false, &plan);
+            }
+
             // Убрать поле из прочитанных: так источник выглядит для расчёта
             // так, будто поле недоступно (нет слоя, нет материала и т.п.). Это
             // нужно для проверки полноты расчёта — неполнота не зависит от
@@ -2457,6 +2468,505 @@ namespace TestFunc {
             DBtest (plan.unchanged, 0, "no reconciliation means zero unchanged");
             DBtest (plan.removals.GetSize (), 0, "no reconciliation removes nothing");
             DBtest (plan.Matches (f.modified, f.deleted), true, "skipped reconciliation consistent");
+        }
+    }
+
+    // Операционные сценарии правила: четыре класса операций (создание,
+    // изменение, удаление, отсутствие изменений) в комбинациях, которые
+    // по одному не получить — смешанный прогон, только удаления, пустой
+    // результат, частично отсутствующие данные, дубли уже размещённых
+    // строк, выбор представителя по выходному значению.
+    //
+    // Среда: подставная фикстура (синтетические GUID, словари чтения в
+    // памяти). Модель не нужна: расчёт и сверка только принимают решения, а
+    // создание и удаление объектов выполняются вне них. Поэтому проверяется
+    // решение и его полнота, а не исполнение.
+    //
+    // Требуют модели и на этом шаге НЕ закрыты (статус «не проверено», а не
+    // «покрыто»):
+    //   - отказ создания, частичный и полный: он возникает в исполнителе при
+    //     записи в модель, чтение словарей его не воспроизводит;
+    //   - отбраковка невидимого источника: элемент синтетический, в модели его
+    //     нет; здесь проверяется только решение НЕ спрашивать модель;
+    //   - состояние модели после каждого этапа и откат неудачной записи.
+    void TestSpecOperationMatrix () {
+        // ----------------------------------------------------------------
+        // Политика версии 2: удаление старого обязательно, отказ на
+        // непрочитанном поле останавливает правило.
+        // ----------------------------------------------------------------
+
+        // --- создание: у строки нет ранее размещённого объекта ---
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;    // v2
+            f.rule.stop_on_error = true; // v2
+            f.rule.only_visible = false; // синтетический элемент не проходит проверку видимости
+            f.Source (f.first, "A", "Alpha", 5);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 1, 1, 0, 0, "v2 create");
+            DBtest (plan.deleteOld, 1, "v2 create ran reconciliation");
+            DBtest (plan.create.GetSize (), 1, "v2 create planned");
+            // В плане создание называет ПЕРВЫЙ источник строки: он же
+            // представитель для значений и для порядка размещения.
+            DBtest (plan.create[0] == f.first, true, "v2 create names the first source of the row");
+            DBtest (plan.update.IsEmpty (), true, "v2 create updates nothing");
+            DBtest (plan.removals.IsEmpty (), true, "v2 create removes nothing");
+            DBtest (plan.unchanged, 0, "v2 create counts no unchanged row");
+            DBtest (plan.IsComplete (), true, "v2 create plan complete");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "v2 create plan consistent");
+        }
+
+        // --- изменение: сумма пересчитана, GUID объекта сохранён ---
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.rule.stop_on_error = true;
+            f.rule.only_visible = false;
+            f.Source (f.first, "A", "Alpha", 9);
+            f.Existing (f.old, "Alpha", 5);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 1, 0, 1, 0, "v2 update by sum");
+            const Spec::Element *row = f.modified.GetPtr ("@A");
+            DBrequire (row != nullptr, "v2 update row present");
+            DBtest (row->exs_guid == f.old, true, "v2 update keeps GUID of updated object");
+            DBtest (row->OutSumValue (0).val.intValue, 9, "v2 update carries the new sum");
+            DBtest (row->elements.GetSize () == 1 && row->elements[0] == f.first, true, "v2 update names its source");
+            DBtest (plan.update.ContainsKey (GS::UniString ("@A")), true, "v2 update keyed by row key");
+            DBtest (plan.unchanged, 0, "v2 update is not counted unchanged");
+            DBtest (plan.removals.IsEmpty (), true, "v2 update removes nothing");
+            DBtest (plan.create.IsEmpty (), true, "v2 update creates nothing");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "v2 update plan consistent");
+        }
+
+        // --- удаление: у объекта нет соответствующей новой строки ---
+        // Старый объект идёт по ветке «нет такой строки», поэтому расчёт не
+        // отбрасывается: строка @A остаётся созданием, а объект удаляется
+        // вместе с ней. Число операций — два, и это не «удаление вместо
+        // создания», а оба решения сразу.
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.rule.stop_on_error = true;
+            f.rule.only_visible = false;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "TotallyOther", 77);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 2, 1, 0, 1, "v2 delete without new row");
+            DBtest (plan.removals.GetSize (), 1, "v2 delete planned");
+            DBtest (plan.removals[0].guid == f.old, true, "v2 delete names the object");
+            DBtest (plan.removals[0].reason, Spec::SpecChangePlan::DeleteReason::NoNewRow, "v2 delete reason");
+            DBtest (plan.create.GetSize (), 1, "v2 delete still leaves the calculated row to create");
+            DBtest (plan.unchanged, 0, "v2 delete counts no unchanged row");
+            DBtest (plan.update.IsEmpty (), true, "v2 delete updates nothing");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "v2 delete plan consistent");
+        }
+
+        // --- отсутствие изменений: объект сопоставлен и оставлен в покое ---
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.rule.stop_on_error = true;
+            f.rule.only_visible = false;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Alpha", 5);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 0, 0, 0, 0, "v2 unchanged");
+            DBtest (plan.unchanged, 1, "v2 unchanged counted");
+            DBtest (plan.update.IsEmpty (), true, "v2 unchanged updates nothing");
+            DBtest (plan.removals.IsEmpty (), true, "v2 unchanged removes nothing");
+            DBtest (plan.create.IsEmpty (), true, "v2 unchanged creates nothing");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "v2 unchanged plan consistent");
+        }
+
+        // ----------------------------------------------------------------
+        // Политика версии 3: удаление старого обязательно, отказ на
+        // непрочитанном поле НЕ останавливает правило, видимость не
+        // спрашивается.
+        // ----------------------------------------------------------------
+
+        // --- частично отсутствующие данные: строка НЕ появляется ---
+        // Непрочитанное суммируемое поле оставляет строку без суммарного
+        // слота, и сверка схемы её отбрасывает. Отказ при stop_on_error = false
+        // молчаливый: элемент не помечается, отчёт не печатается, а план
+        // честно говорит, что чтение и расчёт неполны. Именно поэтому полнота
+        // и считается по вкладам, а не по словарям not_found_*.
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.rule.stop_on_error = false; // v3
+            f.rule.only_visible = false;  // v3
+            f.Source (f.first, "A", "Alpha", 5);
+            f.DropField (f.first, f.quantity);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 0, 0, 0, 0, "v3 missing sum leaves no row");
+            DBtest (f.errors.IsEmpty (), true, "v3 missing sum marks no element");
+            DBtest (f.created.IsEmpty (), true, "v3 missing sum creates nothing");
+            DBtest (plan.notFoundParamCount, 1, "v3 missing sum counted");
+            DBtest (plan.contributionsPartial, 1, "v3 missing sum is a partial contribution");
+            DBtest (plan.schemaMismatchCount, 1, "v3 missing sum fails the schema check");
+            DBtest (plan.ReadComplete (), false, "v3 missing sum read incomplete");
+            DBtest (plan.CalcComplete (), false, "v3 missing sum calc incomplete");
+            DBtest (plan.IsComplete (), false, "v3 missing sum plan not complete");
+        }
+
+        // --- непрочитанный уникальный параметр: вклад исключается целиком ---
+        // Ключ склеивается даже при неудаче, но вклад без ключа не доходит до
+        // раскладки, поэтому строки нет и вклада в расчёт не было. Это
+        // отличие от предыдущего случая принципиально: здесь неполнота
+        // считается, но неполным вкладом вклад НЕ является.
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.rule.stop_on_error = false;
+            f.rule.only_visible = false;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.DropField (f.first, f.key);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 0, 0, 0, 0, "v3 missing unique key yields no row");
+            DBtest (f.errors.IsEmpty (), true, "v3 missing unique key marks no element");
+            DBtest (plan.contributionsTotal, 1, "v3 missing unique key still counted as contribution");
+            DBtest (plan.notFoundUnicCount, 1, "v3 missing unique key counted");
+            DBtest (plan.contributionsPartial, 0, "v3 excluded contribution is not partial");
+            DBtest (plan.ReadComplete (), false, "v3 missing unique key read incomplete");
+        }
+
+        // --- та же неполнота при stop_on_error: расчёт отбрасывается, а
+        //     размещённые строки УДАЛЯЮТСЯ ---
+        // Здесь закрепляется действующая политика разрушительных действий,
+        // а не предпочтительная. Отказ очищает словарь строк и возвращает ноль,
+        // но сверка всё равно выполняется по ПУСТОМУ словарю выходов, поэтому
+        // прежний объект не находит себе пары и удаляется. Политика
+        // принадлежит владельцу (поток F1) и здесь не меняется: изменение
+        // удаления при недостоверных данных — отдельное решение, а не
+        // побочный эффект этого шага. Заметим, что это худший из возможных
+        // исходов: недостоверный расчёт приводит к потере размещённых строк.
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.rule.stop_on_error = true;
+            f.rule.only_visible = false;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Source (f.second, "B", "Beta", 7);
+            f.Existing (f.old, "Alpha", 5);
+            f.DropField (f.first, f.quantity);
+            Spec::SpecChangePlan plan = {};
+            // Возвращаемое число пересобирается ПОСЛЕ сверки как удаление +
+            // изменение + создание, поэтому отказ на расчёте его не обнуляет:
+            // ноль от расчёта заменяется числом удалений. Это ещё одно
+            // следствие действующей политики, а не опечатка в ожидании.
+            f.Shape (f.RunWithPlan (plan), 1, 0, 0, 1, "v2 missing sum rejects the rule");
+            DBtest (f.errors.ContainsKey (f.first), true, "v2 missing sum marks the offending element");
+            DBtest (plan.contributionsTotal, 2, "v2 rejected rule still counted both contributions");
+            DBtest (plan.ReadComplete (), false, "v2 rejected rule read incomplete");
+            // Удаление произошло, хотя строк не рассчитано: сверка идёт по
+            // пустому словарю выходов.
+            DBtest (plan.deleteOld, 1, "v2 rejected rule still reconciles");
+            DBtest (plan.removals.GetSize (), 1, "v2 rejected rule removes the placed object");
+            DBtest (plan.removals[0].guid == f.old, true, "v2 rejected rule names the removed object");
+            // Причина здесь НЕ «нет такой строки», а «строка уже израсходована»,
+            // и это следствие действующего порядка вещей: строка была посчитана,
+            // связана в словаре выходов, но отброшена проверкой схемы, поэтому
+            // в словаре строк её нет. Словарь выходов при отказе НЕ очищается,
+            // и прежний объект находит в нём свою пару — на строку, которой
+            // уже не существует. Само удаление от этого не меняется, но
+            // диагностика плана называет причину неверно, а именно по причине
+            // судят о том, чего не хватило.
+            DBtest (plan.removals[0].reason,
+                    Spec::SpecChangePlan::DeleteReason::RowAlreadyClaimed,
+                    "v2 rejected removal blamed on a row rejected by the schema check");
+            DBtest (plan.create.IsEmpty (), true, "v2 rejected rule creates nothing");
+            DBtest (plan.unchanged, 0, "v2 rejected rule counts no unchanged row");
+        }
+
+        // --- видимость не спрашивается у модели ---
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.rule.only_visible = true;
+            Spec::SpecChangePlan skipped = {};
+            f.Shape (f.RunWithPlan (skipped), 0, 0, 0, 0, "only visible on synthetic element");
+            DBtest (skipped.contributionsTotal, 0, "invisible source never becomes a contribution");
+            DBtest (skipped.deleteOld, 1, "reconciliation still ran without rows");
+
+            f.rule.only_visible = false;
+            Spec::SpecChangePlan passed = {};
+            f.Shape (f.RunWithPlan (passed), 1, 1, 0, 0, "visibility check skipped");
+            DBtest (passed.contributionsTotal, 1, "source counted without asking the model");
+        }
+
+        // ----------------------------------------------------------------
+        // Уже размещённые строки: сопоставление по выходному значению.
+        // ----------------------------------------------------------------
+
+        // --- смена выходного значения: это УДАЛЕНИЕ и СОЗДАНИЕ, не изменение ---
+        // Сопоставление идёт по выходному значению, поэтому объект с прежним
+        // выходом не находит себе пары: он удаляется, а строка с новым выходом
+        // создаётся. Это действующий контракт и важное отличие от смены суммы,
+        // которая даёт изменение с сохранением GUID. Проверяется явно, потому
+        // что «переименование позиции» интуитивно ожидают как изменение.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Renamed", 5);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 2, 1, 0, 1, "placed output renamed");
+            DBtest (plan.removals.GetSize (), 1, "renamed output plans a removal");
+            DBtest (plan.removals[0].guid == f.old, true, "renamed output names the old object");
+            DBtest (
+                plan.removals[0].reason, Spec::SpecChangePlan::DeleteReason::NoNewRow, "renamed output removal reason");
+            DBtest (plan.create.GetSize (), 1, "renamed output plans a creation");
+            DBtest (plan.update.IsEmpty (), true, "renamed output is not an update");
+            DBtest (plan.unchanged, 0, "renamed output counts no unchanged row");
+        }
+
+        // --- смена суммы при том же выходе: изменение с сохранением GUID ---
+        // Обратный случай предыдущего: выход совпал, поэтому объект найден, и
+        // меняется только накопленная сумма. GUID объекта обязан сохраниться.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 9);
+            f.Existing (f.old, "Alpha", 5);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 1, 0, 1, 0, "placed sum changed");
+            const Spec::Element *row = f.modified.GetPtr ("@A");
+            DBrequire (row != nullptr, "placed row update present");
+            DBtest (row->exs_guid == f.old, true, "placed row keeps GUID on sum change");
+            DBtest (row->OutParamValue (0).val.uniStringValue, GS::UniString ("Alpha"), "placed row keeps the output");
+            DBtest (row->OutSumValue (0).val.intValue, 9, "placed row carries the new sum");
+            DBtest (plan.update.ContainsKey (GS::UniString ("@A")), true, "sum change is an update");
+            DBtest (plan.removals.IsEmpty (), true, "sum change removes nothing");
+            DBtest (plan.unchanged, 0, "changed sum is not unchanged");
+        }
+
+        // --- лишняя строка: объект без пары в новом расчёте ---
+        // Старый @A сопоставлен и остаётся в покое, лишний объект не находит
+        // пары и удаляется. Число операций — одно удаление; создания нет,
+        // потому что строка @A была израсходована сопоставлением.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Alpha", 5);
+            f.Existing (f.extra, "Obsolete", 9);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 1, 0, 0, 1, "placed extra row removed");
+            DBtest (plan.removals.GetSize (), 1, "extra placed row planned for removal");
+            DBtest (plan.removals[0].guid == f.extra, true, "extra placed row named");
+            DBtest (plan.removals[0].reason, Spec::SpecChangePlan::DeleteReason::NoNewRow, "extra row reason");
+            DBtest (plan.unchanged, 1, "kept placed row counted unchanged");
+            DBtest (f.deleted.GetSize () == 1 && f.deleted[0] == f.extra, true, "only the extra object is deleted");
+        }
+
+        // --- два прежних объекта с одинаковым выходным значением ---
+        // Первый забирает строку, второй приходит по ветке «строка уже
+        // израсходована». Различие причин обязательно: у лишней строки
+        // кандидата не было вовсе, у занятой он был.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Alpha", 5);
+            const API_Guid dup = APIGuidFromString ("{77777777-7777-7777-7777-777777777777}");
+            f.rule.runState.exsist_elements.Push (dup);
+            f.Text (dup, f.outText, "Alpha");
+            f.Number (dup, f.outQuantity, 5);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 1, 0, 0, 1, "placed duplicate removed");
+            DBtest (plan.removals.GetSize (), 1, "placed duplicate planned for removal");
+            DBtest (plan.removals[0].guid == dup, true, "second object is the one removed");
+            DBtest (plan.removals[0].reason,
+                    Spec::SpecChangePlan::DeleteReason::RowAlreadyClaimed,
+                    "duplicate removed as claimed row");
+            DBtest (plan.unchanged, 1, "first object counted unchanged");
+            DBtest (plan.create.IsEmpty (), true, "duplicate leaves no row to create");
+        }
+
+        // --- представитель выбирается первым совпадением выходного значения ---
+        // Две строки с РАЗНЫМИ ключами и ОДИНАКОВЫМ выходным значением: словарь
+        // выходов хранит только первое совпадение, поэтому размещённый объект
+        // сопоставляется с первой строкой, а вторая остаётся созданием. Это
+        // действующий контракт и механизм потери сопоставления; он не
+        // «исправляется» здесь.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Same", 1);
+            f.Source (f.second, "B", "Same", 2);
+            f.Existing (f.old, "Same", 1);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 1, 1, 0, 0, "representative is the first matching output");
+            DBtest (plan.unchanged, 1, "placed object matched the first row");
+            DBtest (plan.create.GetSize (), 1, "second row stays a creation");
+            DBtest (plan.create[0] == f.second, true, "creation names the second row source");
+            DBtest (plan.update.IsEmpty (), true, "equal values need no update");
+            DBtest (f.created.ContainsKey (GS::UniString ("@B")), true, "unclaimed row is created by its own key");
+        }
+
+        // ----------------------------------------------------------------
+        // Смешанный прогон и частичная потеря вкладов.
+        // ----------------------------------------------------------------
+
+        // --- создание, изменение и удаление в одном запуске ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 9);
+            f.Source (f.second, "B", "Beta", 7);
+            f.Existing (f.old, "Alpha", 5);
+            f.Existing (f.extra, "Obsolete", 9);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 3, 1, 1, 1, "mixed create update delete");
+            DBtest (plan.create.GetSize (), 1, "mixed run plans one creation");
+            DBtest (plan.create[0] == f.second, true, "mixed run names the new row source");
+            DBtest (plan.update.ContainsKey (GS::UniString ("@A")), true, "mixed run plans the update by row key");
+            DBtest (plan.removals.GetSize (), 1, "mixed run plans one removal");
+            DBtest (plan.removals[0].guid == f.extra, true, "mixed run removes the unmatched object");
+            DBtest (plan.unchanged, 0, "mixed run has no unchanged row");
+            // Порядок в трёх контейнерах задаётся обходом и разными словарями,
+            // поэтому по одному размеру не судить: проверяем состав по именам.
+            DBtest (f.created.ContainsKey (GS::UniString ("@B")), true, "mixed run created the new row");
+            DBtest (f.modified.ContainsKey (GS::UniString ("@A")), true, "mixed run modified the matched row");
+            DBtest (f.modified.GetPtr ("@A")->exs_guid == f.old, true, "mixed run kept GUID of updated object");
+            DBtest (f.deleted.GetSize () == 1 && f.deleted[0] == f.extra, true, "mixed run deleted the extra object");
+            // Планирование не пишет в модель: прочитанные значения прежние.
+            DBtest (
+                f.context.read.Get (f.old).Get (f.outQuantity).val.intValue, 5, "mixed run leaves read data intact");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "mixed run plan consistent");
+        }
+
+        // --- второй источник той же строки без данных: строка создаётся, но
+        //     источник не участвует в сумме ---
+        // Строка собирается из ПЕРВОГО представителя, а вклад без
+        // суммируемого поля не добавляет слота: источник попадает в
+        // перечень, сумма остаётся от первого. Неполнота при этом
+        // засчитывается, то есть план честно говорит, что расчёт неполон.
+        {
+            SpecFixture f;
+            f.rule.stop_on_error = false;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Source (f.second, "A", "Alpha", 100);
+            f.DropField (f.second, f.quantity);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 1, 1, 0, 0, "incomplete merge keeps the row");
+            const Spec::Element *row = f.created.GetPtr ("@A");
+            DBrequire (row != nullptr, "merged row present");
+            DBtest (row->elements.GetSize (), 2, "incomplete merge records both sources");
+            DBtest (row->OutSumValue (0).val.intValue, 5, "incomplete merge does not add the missing sum");
+            DBtest (row->OutParamValue (0).val.uniStringValue,
+                    GS::UniString ("Alpha"),
+                    "incomplete merge keeps first output");
+            DBtest (plan.notFoundParamCount, 1, "incomplete merge counted the missing field");
+            DBtest (plan.contributionsPartial, 1, "incomplete merge counted the partial contribution");
+            DBtest (plan.contributionsTotal, 2, "incomplete merge counted both contributions");
+            DBtest (plan.IsComplete (), false, "incomplete merge plan not complete");
+        }
+
+        // --- отказ создания строки на расчётной стадии ---
+        // Непрочитанное выходное поле оставляет строку без выходных слотов,
+        // и сверка схемы её отбрасывает. Возврат ПУСТОЙ строки — уже
+        // наблюдаемый отказ создания на планировании; отказ при записи в
+        // модель этим не воспроизводится и остаётся непроверенным.
+        {
+            SpecFixture f;
+            f.rule.stop_on_error = false;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.DropField (f.first, f.text);
+            Spec::SpecChangePlan plan = {};
+            Spec::ElementDict rows = {};
+            UnicGuid errors = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Int32 n = Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
+            DBtest (n, 0, "schema mismatch produces no row");
+            DBtest (rows.IsEmpty (), true, "schema mismatch leaves no row");
+            DBtest (errors.IsEmpty (), true, "schema mismatch marks no element without stop on error");
+            DBtest (plan.schemaMismatchCount, 1, "schema mismatch counted");
+            DBtest (plan.contributionsPartial, 1, "schema mismatch is also a partial contribution");
+            DBtest (plan.CalcComplete (), false, "schema mismatch calc incomplete");
+            // Побочный эффект действующего порядка: связь выход -> строка
+            // записывается ДО проверки схемы, поэтому отброшенная строка
+            // остаётся в словаре выходов. Закреплено как есть: изменить
+            // значит сломать сопоставление по этому словарю.
+            DBtest (outParam.GetSize (), 1, "rejected row still recorded in the output dictionary");
+            DBtest (outParam.Get (EMPTYSTRING), GS::UniString ("@A"), "rejected row keyed by the row key");
+        }
+
+        // ----------------------------------------------------------------
+        // Состав результата: пустой, только изменения, только удаления,
+        // только сопоставленные без изменений.
+        // ----------------------------------------------------------------
+
+        // --- пустой результат: размещённые объекты не имеют пары ---
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.rule.runState.exsist_elements.Clear ();
+            f.rule.elements.Clear ();
+            f.Existing (f.old, "Alpha", 5);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 1, 0, 0, 1, "empty result removes placed rows");
+            DBtest (plan.contributionsTotal, 0, "empty result has no contributions");
+            DBtest (plan.create.IsEmpty (), true, "empty result creates nothing");
+            DBtest (plan.update.IsEmpty (), true, "empty result updates nothing");
+            DBtest (plan.unchanged, 0, "empty result counts no unchanged row");
+            DBtest (plan.removals.GetSize (), 1, "empty result removes the placed object");
+            DBtest (plan.IsComplete (), true, "empty result plan is complete: nothing was read wrongly");
+        }
+
+        // --- только изменения ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 9);
+            f.Source (f.second, "B", "Beta", 7);
+            f.Existing (f.old, "Alpha", 5);
+            f.Existing (f.extra, "Beta", 3);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 2, 0, 2, 0, "only updates");
+            DBtest (plan.update.GetSize (), 2, "only updates plans both rows");
+            DBtest (plan.create.IsEmpty (), true, "only updates creates nothing");
+            DBtest (plan.removals.IsEmpty (), true, "only updates removes nothing");
+            DBtest (plan.unchanged, 0, "only updates counts no unchanged row");
+            DBtest (f.modified.GetPtr ("@A")->exs_guid == f.old, true, "only updates kept first GUID");
+            DBtest (f.modified.GetPtr ("@B")->exs_guid == f.extra, true, "only updates kept second GUID");
+        }
+
+        // --- только удаления, в порядке прежних объектов ---
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.Existing (f.old, "Alpha", 5);
+            f.Existing (f.extra, "Beta", 7);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 2, 0, 0, 2, "only deletions");
+            DBtest (plan.removals.GetSize (), 2, "only deletions plans both objects");
+            DBtest (plan.removals[0].guid == f.old, true, "only deletions keeps the traversal order, first");
+            DBtest (plan.removals[1].guid == f.extra, true, "only deletions keeps the traversal order, second");
+            DBtest (plan.removals[0].reason, Spec::SpecChangePlan::DeleteReason::NoNewRow, "first deletion reason");
+            DBtest (plan.removals[1].reason, Spec::SpecChangePlan::DeleteReason::NoNewRow, "second deletion reason");
+            DBtest (plan.create.IsEmpty (), true, "only deletions creates nothing");
+            DBtest (plan.update.IsEmpty (), true, "only deletions updates nothing");
+            DBtest (f.deleted.GetSize () == 2 && f.deleted[0] == f.old && f.deleted[1] == f.extra,
+                    true,
+                    "deletion list keeps the traversal order");
+        }
+
+        // --- только сопоставленные без изменений ---
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Source (f.second, "B", "Beta", 7);
+            f.Existing (f.old, "Alpha", 5);
+            f.Existing (f.extra, "Beta", 7);
+            Spec::SpecChangePlan plan = {};
+            f.Shape (f.RunWithPlan (plan), 0, 0, 0, 0, "only unchanged");
+            DBtest (plan.unchanged, 2, "both placed objects counted unchanged");
+            DBtest (plan.create.IsEmpty (), true, "only unchanged creates nothing");
+            DBtest (plan.update.IsEmpty (), true, "only unchanged updates nothing");
+            DBtest (plan.removals.IsEmpty (), true, "only unchanged removes nothing");
+            // Возвращаемое число — это удаление + изменение + создание.
+            // Сопоставленные без изменений в него не входят, поэтому
+            // повторный запуск даёт ноль при двух занятых строках. Это
+            // действующий контракт: новый статус «unchanged» его не
+            // подменяет, а лишь дополняет планом.
+            DBtest (plan.unchanged > 0, true, "unchanged is visible in the plan even though the result is zero");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "only unchanged plan consistent");
         }
     }
 

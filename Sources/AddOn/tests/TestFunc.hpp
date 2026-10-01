@@ -71,6 +71,7 @@ namespace TestFunc {
     void TestSpecRowSlots ();
     void TestSpecReconcileFixtures ();
     void TestSpecChangePlan ();
+    void TestSpecOperationMatrix ();
     void TestSpecScenarioMatrix ();
     void TestSpecEngineEquivalence ();
     void TestSpecValueEdges ();
