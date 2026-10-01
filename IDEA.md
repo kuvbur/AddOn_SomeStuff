@@ -1121,10 +1121,9 @@ LNK1168 — .apx держал Archicad); sweep AC26-29 — все `success`; с�
 - **Находка про неполные массивы оформлена кандидатом в F1 и НЕ исправлена.**
   R6.4 не должен притронуться к ней «по пути»: это отдельное согласование.
 ### Last Checkpoint
-R6.3 — коммит этого шага (Spec.cpp, spec/SpecPlanning.hpp/.cpp,
-tests/TestSpec.cpp, tests/TestFunc.cpp, tests/TestFunc.hpp,
-Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md, IDEA.md,
-Refs: #228).
+R6.3 — `b1f00ae` (Spec.cpp, spec/SpecPlanning.hpp/.cpp, tests/TestSpec.cpp,
+tests/TestFunc.cpp, tests/TestFunc.hpp, Docs/modules/spec/Spec.md,
+Docs/modules/spec/SpecPlanning.md, IDEA.md, Refs: #228).
 Предыдущий: R6.2 — `2e0433c` (Spec.cpp, spec/SpecPlanning.hpp/.cpp,
 tests/TestSpec.cpp, tests/TestFunc.cpp, tests/TestFunc.hpp,
 Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md, IDEA.md,
