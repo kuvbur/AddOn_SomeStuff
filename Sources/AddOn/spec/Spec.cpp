@@ -1684,8 +1684,7 @@ namespace Spec {
     // ---------------------------------------------------------------------
     bool OutSlotsMatchSchema (const Element &element, UInt32 outSlots, UInt32 sumSlots) {
         // R7.4: сверка по СХЕМЕ СЛОТОВ, а не по прежним массивам. Условие прежнее
-        // (ни один набор не пуст, числа совпадают), но источник прежних полей —
-        // флаг isSum, поэтому порядок схемы не влияет на результат.
+        // (ни один набор не пуст, числа совпадают).
         if (element.out_slots.IsEmpty ())
             return false;
         UInt32 nonSum = 0;
@@ -1698,7 +1697,23 @@ namespace Spec {
         }
         if (nonSum == 0 || sum == 0)
             return false;
-        return sum == sumSlots && nonSum == outSlots;
+        if (sum != sumSlots || nonSum != outSlots)
+            return false;
+        // Порядок обязателен, а не желателен: OutParamValue/OutSumValue и
+        // SumContributionIntoRow адресуют слоты ПО ПОЗИЦИИ (первые
+        // OutParamSlotCount () — выходные, остальные — суммы), пересчитывая
+        // число выходных через флаг. Перемешанная схема прошла бы проверку
+        // чисел, и тогда суммирование сложило бы ВЫХОДНОЙ слот вместо
+        // суммарного — тихо и без диагностики. Производственный конструктор
+        // BuildOutputSlots порядок соблюдает, но схема — публичные данные
+        // элемента, и полагаться на единственного автора нельзя.
+        for (UInt32 i = 1; i < element.out_slots.GetSize (); ++i) {
+            if (!element.out_slots[i - 1].isSum && element.out_slots[i].isSum)
+                continue;
+            if (element.out_slots[i - 1].isSum && !element.out_slots[i].isSum)
+                return false; // выходной слот ПОСЛЕ суммарного — порядок нарушен
+        }
+        return true;
     }
 
     // -----------------------------------------------------------------------------

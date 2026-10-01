@@ -75,6 +75,7 @@ namespace TestFunc {
     void TestSpecEngineEquivalence ();
     void TestSpecValueEdges ();
     void TestSpecOutSlots ();
+    void TestSpecSlotOrder ();
     void TestSpecSlotBindings ();
     void TestSpecExpandGroup ();
     void TestSpecGroups ();

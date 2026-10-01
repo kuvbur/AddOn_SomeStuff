@@ -40,6 +40,17 @@ namespace TestFunc {
             row.out_slots.Push (slot);
         }
 
+        // R7.4-инвариант: слот с произвольным флагом — нужен, чтобы собрать
+        // ПЕРЕМЕШАННУЮ схему (сумма раньше выхода). Схема — публичные данные
+        // элемента, поэтому нельзя полагаться на единственного автора.
+        void PushRawSlot (Spec::Element &row, bool isSum, const ParamValue &value) {
+            Spec::OutputSlot slot = {};
+            slot.rawname = isSum ? GS::UniString ("S") : GS::UniString ("O");
+            slot.value = value;
+            slot.isSum = isSum;
+            row.out_slots.Push (slot);
+        }
+
         // Симметричный хелпер для выходного (не суммарного) слота.
         void PushOutSlot (Spec::Element &row, const ParamValue &value) {
             Spec::OutputSlot slot = {};
@@ -3288,6 +3299,59 @@ namespace TestFunc {
         {
             Spec::Element element = {};
             DBtest (Spec::OutSlotsMatchSchema (element, 1, 1), false, "empty element");
+        }
+    }
+
+    // R7.4-инвариант: ПОРЯДОК слотов обязателен. OutParamValue/OutSumValue и
+    // SumContributionIntoRow адресуют слоты по позиции, пересчитывая число
+    // выходных через флаг isSum. Перемешанная схема (сумма раньше выхода)
+    // прошла бы сверку чисел, и суммирование сложило бы ВЫХОДНОЙ слот вместо
+    // суммарного — тихо. Это статический риск, а не наблюдавшаяся регрессия:
+    // производственный BuildOutputSlots порядок соблюдает.
+    void TestSpecSlotOrder () {
+        // --- перемешанная схема отвергается, даже когда числа сходятся ---
+        {
+            Spec::Element element = {};
+            PushSumSlot (element, Num (1)); // сумма ПЕРВОЙ
+            PushOutSlot (element, Num (2));
+            DBtest (Spec::OutSlotsMatchSchema (element, 1, 1), false, "sum before out rejected");
+        }
+        {
+            Spec::Element element = {};
+            PushSumSlot (element, Num (1));
+            PushSumSlot (element, Num (3));
+            PushOutSlot (element, Num (2));
+            DBtest (Spec::OutSlotsMatchSchema (element, 1, 2), false, "two sums then out rejected");
+        }
+        // --- корректный порядок принимается (прежние случаи не сломаны) ---
+        {
+            Spec::Element element = {};
+            PushOutSlot (element, Num (2));
+            PushSumSlot (element, Num (1));
+            DBtest (Spec::OutSlotsMatchSchema (element, 1, 1), true, "out then sum accepted");
+        }
+        // --- последствия: смешанная схема даёт НЕВЕРНЫЙ слот суммы ---
+        // OutSumValue (0) обязан вернуть первый СУММАРНЫЙ слот. При порядке
+        // [сумма 1, выход 2] это значение 2, а не 1 — ровно та ошибка, от
+        // которой страхует сверка.
+        {
+            Spec::Element element = {};
+            PushSumSlot (element, Num (1));
+            PushOutSlot (element, Num (2));
+            DBtest (element.OutSumValue (0).val.intValue, 2, "mixed layout: sum accessor returns OUT value");
+            DBtest (element.OutParamValue (0).val.intValue, 1, "mixed layout: out accessor returns SUM value");
+        }
+        // --- перемешивание недостижимо через PushSumSlot/PushOutSlot ---
+        // Оба хелпера дописывают в конец, поэтому корректный порядок сохраняется
+        // сам по себе; перемешать может только явная сборка PushRawSlot.
+        {
+            Spec::Element element = {};
+            for (UInt32 i = 0; i < 2; i++) {
+                ParamValue pv = {};
+                PushOutSlot (element, pv);
+                PushSumSlot (element, pv);
+            }
+            DBtest (Spec::OutSlotsMatchSchema (element, 2, 2), false, "interleaved build rejected");
         }
     }
 
