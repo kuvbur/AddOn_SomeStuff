@@ -244,4 +244,43 @@ namespace Spec {
             return APIERR_GENERAL;
         return NoError;
     }
+
+    // Запись свойств и удаление устаревших строк. Тело перенесено из Spec.cpp
+    // без изменений (R8.4): границы транзакции и порядок вызовов сохранены.
+    // Отличие одно и намеренное: результат удаления возвращается, а не
+    // пишется во внешний накопитель ошибок - это позволяет вынести этап из
+    // функции запуска. Вызывающий присваивает его своему накопителю.
+    GSErrCode WriteSpecProperties (const GS::Array<API_Guid> &elementsDelete,
+                                   ParamDictElement &paramOut,
+                                   SpecRunResult *runResult) {
+        GSErrCode err = NoError;
+        ACAPI_CallUndoableCommand ("Writing properties to created spec elements", [&] () -> GSErrCode {
+            if (!elementsDelete.IsEmpty ()) {
+                if (runResult != nullptr) {
+                    runResult->deleteOld.attempted = elementsDelete.GetSize ();
+                }
+                err = ACAPI_Element_Delete (elementsDelete);
+                if (runResult != nullptr) {
+                    // Удаление одним вызовом: подтверждено либо всё, либо ничего.
+                    // Проверка каждого удалённого элемента здесь невозможна и не
+                    // нужна - об этом читатель узнает по create/delete счётчикам.
+                    if (err == NoError)
+                        runResult->deleteOld.succeeded = elementsDelete.GetSize ();
+                    else {
+                        runResult->deleteOld.failed = elementsDelete.GetSize ();
+                        // Удаление идёт ПОСЛЕ создания: элементы уже созданы,
+                        // поэтому отказ удаления - ошибка восстановления.
+                        runResult->hasRecoveryError = true;
+                    }
+                }
+                msg_rep ("Spec",
+                         GS::UniString::Printf ("Removed %d obsolete spec elements", elementsDelete.GetSize ()),
+                         err,
+                         APINULLGuid);
+            }
+            ParamHelpers::ElementsWrite (paramOut);
+            return NoError;
+        });
+        return err;
+    }
 } // namespace Spec

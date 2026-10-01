@@ -930,33 +930,11 @@ namespace Spec {
         } else {
             start = clock ();
         }
-        ACAPI_CallUndoableCommand ("Writing properties to created spec elements", [&] () -> GSErrCode {
-            if (!elements_delete.IsEmpty ()) {
-                if (runResult != nullptr) {
-                    runResult->deleteOld.attempted = elements_delete.GetSize ();
-                }
-                err = ACAPI_Element_Delete (elements_delete);
-                if (runResult != nullptr) {
-                    // Удаление одним вызовом: подтверждено либо всё, либо ничего.
-                    // Проверка каждого удалённого элемента здесь невозможна и не
-                    // нужна - об этом читатель узнает по create/delete счётчикам.
-                    if (err == NoError)
-                        runResult->deleteOld.succeeded = elements_delete.GetSize ();
-                    else {
-                        runResult->deleteOld.failed = elements_delete.GetSize ();
-                        // Удаление идёт ПОСЛЕ создания: элементы уже созданы,
-                        // поэтому отказ удаления - ошибка восстановления.
-                        runResult->hasRecoveryError = true;
-                    }
-                }
-                msg_rep ("Spec",
-                         GS::UniString::Printf ("Removed %d obsolete spec elements", elements_delete.GetSize ()),
-                         err,
-                         APINULLGuid);
-            }
-            ParamHelpers::ElementsWrite (paramOut);
-            return NoError;
-        });
+        // Запись свойств и удаление устаревших строк - отдельный этап (#228 R8.4).
+        // Результат удаления возвращается этапом и присваивается накопителю
+        // ошибок функции запуска: так ошибка удаления доходит до вызывающего,
+        // как и до выделения. Sync выполняется ниже и в транзакцию записи не входит.
+        err = WriteSpecProperties (elements_delete, paramOut, runResult);
         if (has_v2 && showUserInterface) {
             GS::UniString msg;
             if (!elements_delete.IsEmpty ()) {
