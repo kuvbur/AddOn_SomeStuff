@@ -1972,7 +1972,15 @@ A/B: `r73c` vs `p2-before-r74` / `r74-final` / `r74-inv` — **0, 0, 0**
 коду этот gate не заменяет.
 
 ### Last Checkpoint
-Последний чекпоинт кода: R3.4 (первый путь) — `c0d9f38` (spec/Spec.hpp,
+Перенос шага сетки и дампа значений в `spec/SpecHelpers` + очистка комментариев
+Spec — `6ba2bea` (16 файлов: spec/SpecHelpers.hpp/.cpp [новые],
+spec/Spec.cpp/.hpp, spec/SpecPlanning.cpp/.hpp, spec/Spec_libpart.cpp,
+tests/TestSpec.cpp, Docs/REPOMAP.md, Docs/_progress.md, Docs/modules/spec/Spec.md,
+Docs/modules/spec/SpecHelpers.md [новая], Docs/_generated/symbols.json,
+IDEA.md, AGENTS.md, .gitignore). A/B `sh-final` vs шесть эталонов =
+`diff_rows` 0. Очистка комментариев в этом коммите сделана параллельным
+агентом и попала сюда по решению пользователя «закоммить всё разом».
+Предыдущий: R3.4 (первый путь) — `c0d9f38` (spec/Spec.hpp,
 spec/Spec.cpp, spec/SpecPlanning.cpp/.hpp, tests/TestSpec.cpp, tests/TestFunc.*,
 Docs/modules/spec/Spec.md, IDEA.md, Refs: #228). A/B `r34-final`/`r34-state` vs
 `p2-before-r74`/`r74-final`/`r73c` = 0.
