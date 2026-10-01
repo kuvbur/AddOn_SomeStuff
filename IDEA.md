@@ -1228,9 +1228,9 @@ S19, S25-S28 — число строк, ключи, значения, суммы
   (`subguid_*`, `favorite_name`). Они копируются из первого представителя —
   это проверяется, а не предполагается.
 ### Last Checkpoint
-R6.5 — коммит этого шага (tests/TestSpec.cpp, tests/TestFunc.cpp,
-tests/TestFunc.hpp, Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md,
-IDEA.md, Refs: #228).
+R6.5 — `d3a91c9` (tests/TestSpec.cpp, tests/TestFunc.cpp, tests/TestFunc.hpp,
+Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md, IDEA.md,
+Refs: #228).
 Предыдущий: R6.4 — `a3b34b5` (Spec.cpp/.hpp, spec/SpecPlanning.cpp,
 tests/TestSpec.cpp, tests/TestFunc.cpp, tests/TestFunc.hpp,
 Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md, IDEA.md,
