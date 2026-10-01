@@ -399,17 +399,26 @@ namespace Spec {
                         bool fromMaterial,
                         const GS::Int32 &n_layer);
 
+    // План изменений по существующим строкам (R7.3). Объявлен здесь, потому что
+    // PlanRuleRows принимает его наблюдателем; полное определение — ниже, после
+    // описания строки Element.
+    struct SpecChangePlan;
+
     // R6.1: расчётная часть правила — всё до сверки существующих строк.
     // Заполняет elements и out_param, возвращает число созданных строк
     // (0, если правило отвергнуто). Ничего не удаляет и не создаёт в модели:
     // результат можно проверить, не имея модели. Контейнеры прежние, ключи
     // прежние — это вынос, а не изменение модели (R6.2-R6.5 вводят SpecRow).
+    // plan — необязательный наблюдатель полноты расчёта (R7.3). Не влияет на
+    // решение: ни одно условие не читает и не пишет его. Default nullptr —
+    // вызывающие, которым полнота не нужна, не меняются.
     Int32 PlanRuleRows (SpecRule &rule,
                         const SpecReadContext &context,
                         ElementDict &elements,
                         UnicGuid &error_element,
                         bool showUserInterface,
-                        GS::HashTable<GS::UniString, GS::UniString> &out_param);
+                        GS::HashTable<GS::UniString, GS::UniString> &out_param,
+                        SpecChangePlan *plan = nullptr);
 
     // Формирует набор элементов для создания или обновления по одному правилу.
     // После расчётной части (PlanRuleRows) идёт сверка существующих строк —
@@ -469,8 +478,26 @@ namespace Spec {
         // заполнял, не должен утверждать, что отражает решение. Ставится 1
         // только в точке, где сверка действительно прошла.
         Int32 deleteOld = 0;
-        Int32 notFoundUnicCount = 0; // счётчики полноты чтения
-        Int32 notFoundParamCount = 0;
+        // Полнота чтения и расчёта (R7.3). Считаются по ВКЛАДАМ, а не по
+        // словарям not_found_*: те словари хранят только ЗАСООБЩЁННЫЕ поля, то
+        // есть зависимы от stop_on_error, и при stop_on_error = false остаются
+        // пустыми при реально неполном чтении. Полнота — свойство расчёта, а не
+        // политики отчётов, поэтому и источник другой.
+        Int32 notFoundUnicCount = 0;    // не прочитано уникальных полей (все вклады)
+        Int32 notFoundParamCount = 0;   // не прочитано выходных и суммарных полей
+        Int32 contributionsTotal = 0;   // вкладов, дошедших до раскладки в строку
+        Int32 contributionsPartial = 0; // из них с неполным чтением
+        Int32 schemaMismatchCount = 0;  // вкладов, отброшенных сверкой схемы
+
+        // Чтение и расчёт прошли полностью? Раздельные признаки, потому что
+        // неполное чтение и неполная схема — разные причины, и F1 должен
+        // различать их при решении, разрешать ли разрушительные действия.
+        bool ReadComplete () const { return notFoundUnicCount == 0 && notFoundParamCount == 0; }
+
+        bool CalcComplete () const { return contributionsPartial == 0 && schemaMismatchCount == 0; }
+
+        // Полное состояние: план можно применять без оговорок.
+        bool IsComplete () const { return ReadComplete () && CalcComplete (); }
 
         // Согласованность плана с реально выполненным. Сверка пишет план и
         // фактические списки из одних и тех же точек, поэтому проверка должна

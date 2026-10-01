@@ -132,6 +132,15 @@ namespace TestFunc {
                 return Spec::GetElementsForRule (rule, context, created, modified, deleted, errors, false);
             }
 
+            // Убрать поле из прочитанных: так источник выглядит для расчёта
+            // так, будто поле недоступно (нет слоя, нет материала и т.п.). Это
+            // нужно для проверки полноты расчёта — неполнота не зависит от
+            // stop_on_error.
+            void DropField (const API_Guid &guid, const GS::UniString &name) {
+                if (context.read.ContainsKey (guid))
+                    context.read.Get (guid).Delete (name);
+            }
+
             void Shape (Int32 result,
                         Int32 expected,
                         UInt32 ncreate,
@@ -3352,6 +3361,155 @@ namespace TestFunc {
                 PushSumSlot (element, pv);
             }
             DBtest (Spec::OutSlotsMatchSchema (element, 2, 2), false, "interleaved build rejected");
+        }
+    }
+
+    // R7.3: ПОЛНОТА чтения и расчёта в плане.
+    //
+    // Прежде в SpecChangePlan были объявлены счётчики notFoundUnicCount /
+    // notFoundParamCount, в которые НИЧЕГО не писалось: 0 означал «счётчик не
+    // заполняется», а не «всё прочитано». Хуже — единственные готовые словари
+    // not_found_* хранят только ЗАСООБЩЁННЫЕ поля, то есть зависят от
+    // stop_on_error, и при stop_on_error = false остаются пустыми при реально
+    // неполном чтении. Поэтому полнота считается по вкладам.
+    //
+    // Здесь stop_on_error = false (так по умолчанию в фикстуре) — это и есть
+    // случай, где прежние словари молчали бы.
+    void TestSpecPlanCompleteness () {
+        // --- полное чтение: план честно полон ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            Spec::SpecChangePlan plan;
+            Spec::ElementDict rows = {};
+            UnicGuid errors = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Int32 n = Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
+            DBtest (n, 1, "R7.3 complete read creates one row");
+            DBtest (plan.contributionsTotal, 1, "R7.3 one contribution counted");
+            DBtest (plan.notFoundUnicCount, 0, "R7.3 no missing unic fields");
+            DBtest (plan.notFoundParamCount, 0, "R7.3 no missing sum fields");
+            DBtest (plan.contributionsPartial, 0, "R7.3 no partial contributions");
+            DBtest (plan.schemaMismatchCount, 0, "R7.3 no schema mismatch");
+            DBtest (plan.ReadComplete (), true, "R7.3 read complete");
+            DBtest (plan.CalcComplete (), true, "R7.3 calc complete");
+            DBtest (plan.IsComplete (), true, "R7.3 plan complete");
+        }
+
+        // --- plan == nullptr допустим: вызывающие без плана не меняются ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            Spec::ElementDict rows = {};
+            UnicGuid errors = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Int32 n = Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam);
+            DBtest (n, 1, "R7.3 null plan path unchanged");
+        }
+
+        // --- не прочитано уникальное поле: чтение НЕПОЛНОЕ ---
+        // Ключ склеивается даже при неудаче (поведение сохранено), поэтому строка
+        // создаётся — но план обязан сказать, что чтение неполно.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.DropField (f.first, f.key);
+            Spec::SpecChangePlan plan;
+            Spec::ElementDict rows = {};
+            UnicGuid errors = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
+            DBtest (plan.notFoundUnicCount, 1, "R7.3 missing unic counted");
+            DBtest (plan.ReadComplete (), false, "R7.3 read incomplete on missing unic");
+            DBtest (plan.IsComplete (), false, "R7.3 plan not complete on missing unic");
+            // stop_on_error == false: счётчик неполноты ЕСТЬ, хотя отчёт молчит.
+            DBtest (plan.notFoundUnicCount > 0, true, "R7.3 incompleteness survives stop_on_error=false");
+        }
+
+        // --- не прочитано суммарное поле: расчёт НЕПОЛНЫЙ ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.DropField (f.first, f.quantity);
+            Spec::SpecChangePlan plan;
+            Spec::ElementDict rows = {};
+            UnicGuid errors = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
+            DBtest (plan.notFoundParamCount, 1, "R7.3 missing sum counted");
+            DBtest (plan.contributionsPartial, 1, "R7.3 partial contribution counted");
+            DBtest (plan.ReadComplete (), false, "R7.3 read incomplete on missing sum");
+            DBtest (plan.CalcComplete (), false, "R7.3 calc incomplete on missing sum");
+        }
+
+        // --- не прочитано выходное поле: считается в фазе 2 ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.DropField (f.first, f.text);
+            Spec::SpecChangePlan plan;
+            Spec::ElementDict rows = {};
+            UnicGuid errors = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
+            DBtest (plan.notFoundParamCount, 1, "R7.3 missing output counted");
+            DBtest (plan.ReadComplete (), false, "R7.3 read incomplete on missing output");
+        }
+
+        // --- два источника: счётчики СУММИРУЮТСЯ, а не перезаписываются ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Source (f.second, "B", "Beta", 7);
+            f.DropField (f.second, f.quantity);
+            Spec::SpecChangePlan plan;
+            Spec::ElementDict rows = {};
+            UnicGuid errors = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            Spec::PlanRuleRows (f.rule, f.context, rows, errors, false, outParam, &plan);
+            DBtest (plan.contributionsTotal, 2, "R7.3 two contributions counted");
+            DBtest (plan.notFoundParamCount, 1, "R7.3 one of two incomplete");
+            DBtest (plan.contributionsPartial, 1, "R7.3 partial counted once");
+        }
+
+        // --- сверка заполняет deleteOld, полнота остаётся отдельной ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Existing (f.old, "Alpha", 5);
+            Spec::SpecChangePlan plan;
+            const Int32 n =
+                Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
+            // Совпавшие значения => existing не меняется: он сопоставлен как
+            // unchanged и УБРАН из elements. Возвращаемое n_elements = delete +
+            // modify + create (прежняя формула), поэтому unchanged в нём не
+            // участвует и здесь законно 0 — проверяем это явно, чтобы
+            // изменение формулы было замечено.
+            DBtest (n, 0, "R7.3 unchanged object not counted in result");
+            DBtest (plan.deleteOld, 1, "R7.3 reconciliation ran");
+            DBtest (plan.unchanged, 1, "R7.3 unchanged counted in plan");
+            DBtest (plan.create.GetSize (), 0, "R7.3 no create in reconcile");
+            DBtest (plan.removals.GetSize (), 0, "R7.3 no removals in reconcile");
+            DBtest (f.created.GetSize (), 0, "R7.3 claimed row leaves created set");
+            DBtest (f.deleted.GetSize (), 0, "R7.3 unchanged object not deleted");
+            DBtest (plan.IsComplete (), true, "R7.3 complete run gives complete plan");
+            DBtest (plan.Matches (f.modified, f.deleted), true, "R7.3 plan matches actual lists");
+        }
+
+        // --- сверка НЕ исполнялась: полнота расчёта всё равно заполнена ---
+        // delete_old = false: сверки не было, deleteOld == 0, но расчёт-то
+        // выполнен, и именно его полнота интересует F1.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.DropField (f.first, f.quantity);
+            Spec::SpecChangePlan plan;
+            const Int32 n =
+                Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
+            DBtest (plan.deleteOld, 0, "R7.3 no reconciliation without delete_old");
+            DBtest (plan.contributionsTotal, 1, "R7.3 calc still counted without reconciliation");
+            DBtest (plan.IsComplete (), false, "R7.3 incomplete calc seen without reconciliation");
+            DBtest (n >= 0, true, "R7.3 result returned without reconciliation");
         }
     }
 

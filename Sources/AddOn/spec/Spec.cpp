@@ -1773,7 +1773,8 @@ namespace Spec {
                         ElementDict &elements,
                         UnicGuid &error_element,
                         bool showUserInterface,
-                        GS::HashTable<GS::UniString, GS::UniString> &out_param) {
+                        GS::HashTable<GS::UniString, GS::UniString> &out_param,
+                        SpecChangePlan *plan) {
         ParamDict not_found_paramname = {};
         ParamDict not_found_unic = {};
         Int32 n_elements = 0;
@@ -1812,6 +1813,49 @@ namespace Spec {
                 const RuleContribution contribution = BuildContribution (
                     elemguid, group_index, group, binding, reader, not_found_paramname, not_found_unic);
                 GS::UniString key = contribution.key;
+                // R7.3: полнота чтения считается по САМОМУ вкладу, а не по
+                // словарям not_found_*. Те хранят только засобочённые поля
+                // (политика повторов, зависит от stop_on_error), поэтому при
+                // stop_on_error = false показали бы «полное чтение» там, где
+                // поля действительно не прочитаны. Ни одно условие ниже этого
+                // не читает — счётчики только наблюдают.
+                // contributionsPartial — ЧИСЛО ВКЛАДОВ, а не число причин.
+                // Один и тот же вклад может быть одновременно неполным по
+                // чтению и отброшен сверкой схемы; засчитывать его дважды
+                // завышало бы счётчик и делало бы сравнение с contributionsTotal
+                // бессмысленным. Поэтому решение принимается здесь, а на
+                // SchemaMismatch инкремент не делается вовсе.
+                bool partialThisContribution = false;
+                // ВСЕ вклады, включая отклонённые: непрочитанное уникальное поле
+                // делает чтение неполным, и это должен видеть план. Раньше здесь
+                // стояло «!= Excluded», из-за чего пропадало ровно то, что F1
+                // запрещает молчать.
+                if (plan) {
+                    plan->contributionsTotal += 1;
+                    plan->notFoundUnicCount += contribution.missingUnic.GetSize ();
+                    plan->notFoundParamCount += contribution.missingSum.GetSize ();
+                    // Неполное чтение видно по трём признакам вклада: непрочитанные
+                    // поля либо пустой набор выходов/сумм. Флаг isComplete
+                    // выставляется только в фазе 2, поэтому здесь (конец фазы 1)
+                    // он ещё не задан — неполноту фазы 1 считаем по missingSum
+                    // и hasSumSlots, а полноту выходов — после фазы 2, где
+                    // missingOut уже заполнен.
+                    // Неполнота РАСЧЁТА засчитывается только для вкладов, дошедших
+                    // до фазы сумм. Вклад без уникального ключа возвращается
+                    // раньше, и его hasSumSlots остался невыставленным — считать
+                    // его «неполным расчётом» значило бы задваивать одну и ту же
+                    // неполноту, уже учтённую в notFoundUnicCount. Здесь речь о
+                    // схеме и суммах, там — о чтении: признаки разные.
+                    if (contribution.status != ContributionStatus::Excluded &&
+                        (!contribution.missingSum.IsEmpty () || !contribution.hasSumSlots)) {
+                        partialThisContribution = true;
+                        // Здесь и только здесь contributionsPartial растёт.
+                        // Ветка SchemaMismatch ниже инкрементит лишь тогда, когда
+                        // вклад ещё не помечен, чтобы один вклад не считался
+                        // дважды.
+                        plan->contributionsPartial += 1;
+                    }
+                }
                 // Политика отказов осталась здесь, снаружи вклада: вклад лишь
                 // сообщает, ЧТО не прочитано, а решение (писать ли отчёт, вести
                 // ли счётчик, останавливать ли правило) — по-прежнему здесь.
@@ -1851,6 +1895,8 @@ namespace Spec {
                     ReadContributionOutputs (elemguid, group, binding, reader, fstr, rowContribution);
                 // Отчёт по непрочитанным полям выхода: только для первого
                 // представителя, как и раньше.
+                if (plan)
+                    plan->notFoundParamCount += rowContribution.missingOut.GetSize ();
                 for (const Spec::MissingField &field : rowContribution.missingOut) {
                     if (!not_found_paramname.ContainsKey (field.rawname) && rule.stop_on_error && field.isError) {
                         if (!error_element.ContainsKey (elemguid))
@@ -1866,6 +1912,15 @@ namespace Spec {
                 if (addition == RowAddition::Created) {
                     n_elements += 1;
                 } else if (addition == RowAddition::SchemaMismatch) {
+                    // contributionsPartial здесь НЕ инкрементится: вклад с
+                    // несовпадением схемы уже помечен partialThisContribution,
+                    // потому что несовпадение и есть следствие неполного чтения.
+                    // schemaMismatchCount — отдельная причина, для F1.
+                    if (plan) {
+                        plan->schemaMismatchCount += 1;
+                        if (!partialThisContribution)
+                            plan->contributionsPartial += 1;
+                    }
                     if (rule.stop_on_error) {
                         if (!error_element.ContainsKey (elemguid))
                             error_element.Add (elemguid, true);
@@ -1955,7 +2010,11 @@ namespace Spec {
         // писателей нет. R7 вынесет саму сверку и сведёт их в одно место.
         const SpecValueReader reader (context);
         FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
-        n_elements = PlanRuleRows (rule, context, elements, error_element, showUserInterface, out_param);
+        // R7.3: план получает полноту чтения/расчёта из расчётной части.
+        // Передаётся и когда сверка не пойдёт (delete_old = false): неполное
+        // чтение делает расчёт недостоверным независимо от того, удаляются ли
+        // старые строки. Политика — дело F1, здесь только факт.
+        n_elements = PlanRuleRows (rule, context, elements, error_element, showUserInterface, out_param, plan);
         if (!rule.delete_old)
             return n_elements;
         // R7.2: сверка вынесена в SpecPlanning (ReconcileExistingRows) без

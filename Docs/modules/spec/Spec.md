@@ -1022,6 +1022,41 @@
   `status=success`. **A/B:** база `p2-before-r74` снята ДО правок (2C/12M/2D, 14
   строк), `r74-final` — те же 2C/12M/2D, 14 строк; `diff_rows` = **0**.
 
+### R7.3 — полнота чтения/расчёта в плане (реализовано)
+- **Раньше счётчики `notFoundUnicCount`/`notFoundParamCount` были объявлены, но
+  НИЧЕГО в них не писалось** — ноль означал «не заполняется», а не «всё
+  прочитано». [по коду: единственные вхождения — объявления в `Spec.hpp`]
+- **Словари `not_found_*` как источник полноты непригодны:** они хранят только
+  ЗАСООБЩЁННЫЕ поля, то есть зависят от `stop_on_error`, и при
+  `stop_on_error = false` пусты при реально неполном чтении. Полнота — свойство
+  расчёта, а не политики отчётов, поэтому и источник другой. [по коду]
+- **Теперь полнота считается по ВКЛАДАМ:** `notFoundUnicCount`,
+  `notFoundParamCount`, `contributionsTotal`, `contributionsPartial`,
+  `schemaMismatchCount`. Признаки `ReadComplete ()` / `CalcComplete ()` /
+  `IsComplete ()` раздельные — разные причины для F1. [по коду]
+- **`PlanRuleRows` получил `SpecChangePlan *plan = nullptr`** — необязательный
+  наблюдатель; ни одно условие расчёта его не читает и не пишет, поэтому 7
+  вызывающих в тестах не изменились. План передаётся и когда сверка не пойдёт:
+  неполное чтение недостоверно независимо от удаления старых строк. [по коду]
+- **`SpecChangePlan` объявлен вперёд** (`struct SpecChangePlan;`): функция
+  объявлена раньше плана в файле. [по компиляции]
+- **Две ошибки первой реализации, найденные тестом:** (1) счётчик стоял под
+  `!= Excluded`, из-за чего пропадал ровно тот случай, который F1 запрещает
+  молчать — непрочитанное уникальное поле; (2) `contributionsPartial`
+  инкрементировался дважды на один вклад. Теперь это **число вкладов, а не
+  причин**. [по прогону]
+- Закреплено `TestSpecPlanCompleteness` (36 проверок) + `TestSpecSlotOrder` (6).
+- Прогон (AC25, схема #231): `suites=61 passed=2322 failed=1`;
+  `TestSpecPlanCompleteness` 36/36, `TestSpecSlotOrder` 6/6,
+  `TestSpecChangePlan` 30/30, `TestSpecEngineEquivalence` 49/49,
+  `TestSpecContribution` 51/51, `TestSpecRowLayout` 54/54;
+  `FAILED_SUITE TestConvertPropertyToParamValue` — предсуществующая вне области.
+  Инвариант чтений: 8 в `SpecPlanning.cpp`, 0 в `Spec.cpp`.
+  [по отчёту, runtime AC25 2026-10-01]
+- Проверка: clang-format; AC25 — `Build succeeded!`; sweep AC26–29 —
+  `status=success`. **A/B:** `r73c` vs `p2-before-r74`/`r74-final`/`r74-inv` —
+  **0 / 0 / 0** расхождений.
+
 ## Карточки
 
 ### R3 — `SpecRule`: разведение определения и состояния запуска (#228)
