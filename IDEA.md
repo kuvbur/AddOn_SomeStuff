@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿# Current Task
+﻿﻿﻿﻿﻿﻿﻿# Current Task
 
 ## Task — рефакторинг Spec (R4: разбор парсера и однократная подготовка схемы)
 
@@ -1494,12 +1494,12 @@ Issue: #231 — машиночитаемый результат, отбор на
 ### Scope
 `Sources/AddOn/tests/` (TestKit, TestFunc, 7 наборных TU),
 `Docs/modules/TestFunc.md`, `Tools/restart_archicad_for_test.ps1`, `IDEA.md`.
-Вне scope: разбиение TU по модулям и табличные кейсы — следующий шаг;
-прод-код не менялся, вскрытый баг вынесен в #232.
+Вне scope: прод-код не менялся ни разу; вскрытые баги вынесены в #232 и #233.
 
 ### Status
-DONE — все шаги закрыты (13 чекпоинтов). Прод-код не менялся; два
-вскрытых бага вынесены в #232 и #233.
+DONE — все шаги закрыты (16 чекпоинтов). Прод-код не менялся; два
+вскрытых бага вынесены в #232 и #233. Последний шаг (2026-10-01):
+`DBprnt` вычищен из тестов, измерения переведены на `TestKit::Note`.
 
 ### Last Completed
 Раннер читает отчёт TestKit и выдаёт `exit_code=70` при провалах — раньше он
@@ -1536,8 +1536,20 @@ CMake не правил: sources берутся `GLOB_RECURSE CONFIGURE_DEPENDS`
   объявления, второй заголовок дал бы два источника истины.
 `core.autocrlf=true`: git хранит LF и сам выдаёт CRLF в рабочем дереве,
   поэтому ручная нормализация окончания строк в `tests/` избыточна.
-- Прод-`DBtest`/`DBprnt` в тестах не перекрываются: они объявлены в общем
-  заголовке и вызываются из `Helpers.cpp`/`CommonFunction.cpp`.
+- Прод-`DBtest`/`DBprnt` в тестах **не вызываются вообще** (2026-10-01): `DBprnt`
+  печатает `== ERROR ==` по вхождению `err`/`ERROR` в тексте, склеивает аргументы
+  через `" : "` и пишет мимо файла отчёта. Замена — `TestKit::Note` с парными
+  `key=value`.
+- Макросы TestKit квалифицируются `::TestKit`, а не `TestKit`: вызовы идут изнутри
+  `namespace TestFunc`, и короткое имя искалось бы как `TestFunc::TestKit`
+  (MSVC C2039; clangd этот контекст не проверяет). Без квалификации — C2065:
+  пространства TestKit и TestFunc соседние, не вложенные.
+- Уровень измерений — аргумент `minLevel`, а не переключатель: забытая скобка
+  тихо оставила бы шум на Normal. `Config::noteLevelExplicit` отделяет «явно
+  попросили Normal» от дефолта, иначе `SMSTF_VERBOSE` перекрыл бы намерение.
+- `GS::ValueToUniString` — шаблон без перегрузок для `bool` и `USize`
+  (`DevKit/APIDevKit-25/.../GSRoot/CH.hpp:524-558`), поэтому `detail::FieldValue`
+  печатает `bool` словами, а `USize` (= `UInt32`) приводит явно.
 
 ### Sweep сборки (2026-09-30, BuildAddOn.py)
 
@@ -1552,6 +1564,14 @@ CMake не правил: sources берутся `GLOB_RECURSE CONFIGURE_DEPENDS`
 Обе причины предсуществующие: `TestBuildOtdByParent` с `Roombook::TypeOtd` есть
 ещё в `39486f8` (до TestKit) — оформлено как **#233**. Ветка `DBPrint` (AC22-23)
 на практике не проверена, потому что до C++ дело не доходит.
+### Прогон (AC25, 2026-10-01, после вычистки DBprnt)
+`suites=58 passed=2242 failed=4 notes=28`. Число наборов выросло за счёт
+parallel R5.5/R7.1, не моей правки. Из провалов 3 — работа R5.5
+(`TestSpecReconcileFixtures`, R7.1), 1 предсуществующий баг **#232**
+(`TestParam.cpp:263` `doubleValue`, та же строка в HEAD, моим diff не
+затронута). Уровни измерений проверены прогоном: строк `NOTE` 0 / 5 / 29 при
+`SMSTF_VERBOSE` = 0 / 1 / 2. Сборка AC25-29 — `Build succeeded`.
+
 ### Прогон (AC25, 2026-09-30)
 `suites=49 passed=1825 failed=1`, `FAILED_SUITE TestConvertPropertyToParamValue`,
 `exit_code=70`. 1832 -> 1825: удалены 7 тавтологий в TestParsePrefixes
