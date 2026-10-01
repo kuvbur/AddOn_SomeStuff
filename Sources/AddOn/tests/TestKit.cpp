@@ -12,22 +12,11 @@
 
     #include "tests/TestKit.hpp"
 
-    // Вывод в панель «Отладка» идёт тем же каналом, что и у прод-DBprnt:
-    // DBPrintf (AC24+), DBPrint (AC22-23). Канал зеркалит отчёт, поэтому
-    // результаты видны и в IDE, и в файле.
-    #ifndef ServerMainVers_2300
-        #define SMSTF_PRINT(...) DBPrintf (__VA_ARGS__)
-    #else
-        // DBPrint принимает ровно один аргумент (без varargs), поэтому строка
-        // собирается в буфер, а не форматируется на месте.
-        #define SMSTF_PRINT(...)                                                                                       \
-            do {                                                                                                       \
-                char smSTF_buf_[1024];                                                                                 \
-                std::snprintf (smSTF_buf_, sizeof (smSTF_buf_), __VA_ARGS__);                                          \
-                DBPrint (smSTF_buf_);                                                                                  \
-            } while (false)
-    #endif
-
+// Прод-канал печати (DBprnt/DBPrintf/DBPrint) в харнесе НЕ используется:
+// он добавляет префикс "== ERROR ==" по вхождению "err"/"ERROR" в тексте,
+// поэтому измерение выглядит как сбой, и после запуска через раннер
+// (без IDE) его всё равно негде смотреть. Единственный канал — файл отчёта,
+// который переживает падение ArchiCAD и читается чем угодно.
 namespace TestKit {
 
     // Текущий набор: подставляется в каждую строку Note, чтобы измерение
@@ -83,27 +72,18 @@ namespace TestKit {
                 return;
             const std::string path = ReportPath ();
             g_file = std::fopen (path.c_str (), "w");
-            if (g_file == nullptr) {
-                // Файл недоступен — не молчим: сообщаем в отладочный вывод.
-                SMSTF_PRINT ("somestuff tests: cannot open report %s\n", path.c_str ());
-                return;
-            }
-            SMSTF_PRINT ("somestuff tests: report %s\n", path.c_str ());
+            // Файл недоступен — не молчим: сообщаем в отладочный вывод проды.
+            if (g_file == nullptr)
+                DBPrintf ("somestuff tests: cannot open report %s\n", path.c_str ());
         }
 
         void Emit (const std::string &line) {
-            if (g_file != nullptr) {
-                std::fputs (line.c_str (), g_file);
-                std::fputc ('\n', g_file);
-                // Сброс на каждую строку: файл обязан пережить падение ArchiCAD.
-                std::fflush (g_file);
-            }
-            // Дублируем в панель вывода VS, иначе после запуска через раннер
-            // результаты негде смотреть.
-            SMSTF_PRINT ("%s\n", line.c_str ());
-            const std::function<void (const GS::UniString &)> &mirror = GetConfig ().mirror;
-            if (mirror)
-                mirror (GS::UniString (line.c_str ()));
+            if (g_file == nullptr)
+                return;
+            std::fputs (line.c_str (), g_file);
+            std::fputc ('\n', g_file);
+            // Сброс на каждую строку: файл обязан пережить падение ArchiCAD.
+            std::fflush (g_file);
         }
 
         // Точное совпадение, префикс "X*" или список через запятую.
