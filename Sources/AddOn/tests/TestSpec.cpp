@@ -3511,6 +3511,232 @@ namespace TestFunc {
             DBtest (next.selected, true, "S24 scenario next run reselects");
             DBtest (next.IsRunnableForRun (), true, "S24 scenario next run runnable");
         }
+
+        // --- РЕАЛЬНОЕ многострочное описание владельца (вставки, 2026-10-01).
+        // Форма отличается от предыдущего примера: переводы строк и табуляции
+        // ВНУТРИ описания, пять групп g(), 26 выходов в s(), имена вида
+        // Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений (с пробелом,
+        // дефисом и кавычками в имени избранного). Знаков @ по-прежнему нет.
+        {
+            const GS::UniString rawDescription =
+                "Spec_rule {\"ВСТАВКИ Условные обозначения SomeStuff\";\n"
+                "\n"
+                "g(_pos_1, \n"
+                "gs_list_manufacturer,gs_list_note,\n"
+                "pos1,prm1_1,prm2_1,prm3_1,otd_vst,KlasZt,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "\tgs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\n"
+                "\tID_0,ID_vst,ID1,\n"
+                "\tpos1,fill_pen_1,\n"
+                "\tprm1_1,prm2_1,prm3_1,\n"
+                "\tvoltR_1,voltR3_1,voltD_1,\n"
+                "\tamperR_1,amperR3_1,amperD_1,\n"
+                "\tHram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "pos1_ON;pos1_ON)\n"
+                "\n"
+                "g(_pos_2, \n"
+                "gs_list_manufacturer,gs_list_note,\n"
+                "pos2,prm1_2,prm2_2,prm3_2,otd_vst,KlasZt,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "\n"
+                "\tgs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\t\n"
+                "\tID_0,ID_vst,ID2,\n"
+                "\tpos2,fill_pen_2,\n"
+                "\tprm1_2,prm2_2,prm3_2,\n"
+                "\tvoltR_2,voltR3_2,voltD_2,\n"
+                "\tamperR_2,amperR3_2,amperD_2,\n"
+                "\tHram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "pos2_ON;pos2_ON)\n"
+                "\n"
+                "g(_pos_3, \n"
+                "gs_list_manufacturer,gs_list_note,\n"
+                "pos3,prm1_3,prm2_3,prm3_3,otd_vst,KlasZt,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "\n"
+                "\tgs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\t\n"
+                "\tID_0,ID_vst,ID3,\n"
+                "\tpos3,fill_pen_3,\n"
+                "\tprm1_3,prm2_3,prm3_3,\n"
+                "\tvoltR_3,voltR3_3,voltD_3,\n"
+                "\tamperR_3,amperR3_3,\n"
+                "\tamperD_3,Hram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "pos3_ON;pos3_ON)\n"
+                "\n"
+                "g(_pos_4, \n"
+                "gs_list_manufacturer,gs_list_note,\n"
+                "pos4,prm1_4,prm2_4,prm3_4,otd_vst,KlasZt,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "\n"
+                "\tgs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\t\n"
+                "\tID_0,ID_vst,ID4,\n"
+                "\tpos4,fill_pen_4,\n"
+                "\tprm1_4,prm2_4,prm3_4,\n"
+                "\tvoltR_4,voltR3_4,voltD_4,\n"
+                "\tamperR_4,amperR3_4,amperD_4,\n"
+                "\tHram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "pos4_ON;pos4_ON)\n"
+                "\n"
+                "g(_pos_5, \n"
+                "gs_list_manufacturer,gs_list_note,\n"
+                "pos5,prm1_5,prm2_5,prm3_5,otd_vst,KlasZt,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "\n"
+                "\tgs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\t\n"
+                "\tID_0,ID_vst,ID5,\n"
+                "\tpos5,fill_pen_5,\n"
+                "\tprm1_5,prm2_5,prm3_5,\n"
+                "\tvoltR_5,voltR3_5,voltD_5,\n"
+                "\tamperR_5,amperR3_5,amperD_5,\n"
+                "\tHram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "pos5_ON;pos5_ON)\n"
+                "\n"
+                "\n"
+                "  s(gs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\t\n"
+                "\tID_0,ID_vst,ID1,\n"
+                "\tpos1,fill_pen_1, \n"
+                "\tprm1_1,prm2_1,prm3_1,\n"
+                "\tvoltR_1,voltR3_1,voltD_1,\n"
+                "\tamperR_1,amperR3_1,amperD_1,\n"
+                "\tHram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "Property:Рамка ЭЛ/_авто_Количество (вставки))\n"
+                "}";
+            // Нормализация обязана снять переводы строк и табуляции: описание
+            // набирается в несколько строк, и без этого разбивка по g@@/s@@
+            // увидит мусор. Константы LINEBRAKE/LINEBRAKER/TABSTRING = "\n"/"\r"/"\t".
+            const GS::UniString normalized = Spec::NormalizeRuleDescription (rawDescription);
+            DBtest (normalized.Contains ("\n"), false, "R3.5 multiline: line feeds removed");
+            DBtest (normalized.Contains ("\t"), false, "R3.5 multiline: tabs removed");
+            DBtest (normalized.Contains ("g@@"), true, "R3.5 multiline: group markers written");
+            DBtest (normalized.Contains ("s@@"), true, "R3.5 multiline: summary marker written");
+            DBtest (normalized.Contains ("@property:"), false, "R3.5 multiline: normalize adds no @");
+
+            // Разбор: пять групп, и каждая обязана совпасть по размеру со схемой
+            // выхода (ExpandGroup/ParseGroups иначе отбрасывают группу). Числа
+            // НЕ выдуманы — их выдаёт разбор, и любое расхождение означает, что
+            // описание реального вида не принимается. Это стоп-сигнал, а не
+            // ожидаемое значение.
+            const Spec::SpecRule rule = Spec::GetRuleFromDescription (normalized);
+            DBtest (rule.parseValid, true, "R3.5 multiline: parses");
+            DBtest (rule.parseError == Spec::ParseError::None, true, "R3.5 multiline: reason None");
+            DBtest (rule.favorite_name,
+                    GS::UniString ("ВСТАВКИ Условные обозначения SomeStuff"),
+                    "R3.5 multiline: favorite name");
+            DBtest (rule.groups.GetSize () == 5, true, "R3.5 multiline: five groups");
+            DBtest (rule.out_paramrawname.GetSize () == 26, true, "R3.5 multiline: 26 outputs");
+            DBtest (rule.out_sum_paramrawname.GetSize () == 1, true, "R3.5 multiline: one sum");
+
+            // Имена с пробелом и типом Property: сохраняют префикс, кириллица
+            // не должна превращаться в мусор (NameToRawName lowercases).
+            DBtest (rule.out_paramrawname[0],
+                    GS::UniString ("{@gdl:gs_list_manufacturer}"),
+                    "R3.5 multiline: untyped name becomes gdl");
+            DBtest (rule.out_sum_paramrawname[0].BeginsWith ("{@property:"),
+                    true,
+                    "R3.5 multiline: typed sum keeps property prefix");
+            // Пространство имён не должно теряться при lowercases: кириллица
+            // сохраняется, латиница приводится к нижнему регистру.
+            const bool hasCyrillic = rule.out_paramrawname[0].Contains ("gs_list_manufacturer");
+            DBtest (hasCyrillic, true, "R3.5 multiline: latin name kept");
+        }
+
+        // --- тот же пример, но С СЕМАНТИКОЙ ВЫБОРА: снятие выбора на
+        // многострочном описании обязано вести себя так же, как на простом.
+        {
+            const GS::UniString rawDescription =
+                "Spec_rule {\"ВСТАВКИ Условные обозначения SomeStuff\";\n"
+                "\n"
+                "g(_pos_1, \n"
+                "gs_list_manufacturer,gs_list_note,\n"
+                "pos1,prm1_1,prm2_1,prm3_1,otd_vst,KlasZt,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "\tgs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\n"
+                "\tID_0,ID_vst,ID1,\n"
+                "\tpos1,fill_pen_1,\n"
+                "\tprm1_1,prm2_1,prm3_1,\n"
+                "\tvoltR_1,voltR3_1,voltD_1,\n"
+                "\tamperR_1,amperR3_1,amperD_1,\n"
+                "\tHram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "pos1_ON;pos1_ON)\n"
+                "\n"
+                "g(_pos_2, \n"
+                "gs_list_manufacturer,gs_list_note,\n"
+                "pos2,prm1_2,prm2_2,prm3_2,otd_vst,KlasZt,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "\n"
+                "\tgs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\t\n"
+                "\tID_0,ID_vst,ID2,\n"
+                "\tpos2,fill_pen_2,\n"
+                "\tprm1_2,prm2_2,prm3_2,\n"
+                "\tvoltR_2,voltR3_2,voltD_2,\n"
+                "\tamperR_2,amperR3_2,amperD_2,\n"
+                "\tHram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "pos2_ON;pos2_ON)\n"
+                "\n"
+                "g(_pos_3, \n"
+                "gs_list_manufacturer,gs_list_note,\n"
+                "pos3,prm1_3,prm2_3,prm3_3,otd_vst,KlasZt,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "\n"
+                "\tgs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\t\n"
+                "\tID_0,ID_vst,ID3,\n"
+                "\tpos3,fill_pen_3,\n"
+                "\tprm1_3,prm2_3,prm3_3,\n"
+                "\tvoltR_3,voltR3_3,voltD_3,\n"
+                "\tamperR_3,amperR3_3,\n"
+                "\tamperD_3,Hram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "pos3_ON;pos3_ON)\n"
+                "\n"
+                "g(_pos_4, \n"
+                "gs_list_manufacturer,gs_list_note,\n"
+                "pos4,prm1_4,prm2_4,prm3_4,otd_vst,KlasZt,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "\n"
+                "\tgs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\t\n"
+                "\tID_0,ID_vst,ID4,\n"
+                "\tpos4,fill_pen_4,\n"
+                "\tprm1_4,prm2_4,prm3_4,\n"
+                "\tvoltR_4,voltR3_4,voltD_4,\n"
+                "\tamperR_4,amperR3_4,amperD_4,\n"
+                "\tHram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "pos4_ON;pos4_ON)\n"
+                "\n"
+                "g(_pos_5, \n"
+                "gs_list_manufacturer,gs_list_note,\n"
+                "pos5,prm1_5,prm2_5,prm3_5,otd_vst,KlasZt,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "\n"
+                "\tgs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\t\n"
+                "\tID_0,ID_vst,ID5,\n"
+                "\tpos5,fill_pen_5,\n"
+                "\tprm1_5,prm2_5,prm3_5,\n"
+                "\tvoltR_5,voltR3_5,voltD_5,\n"
+                "\tamperR_5,amperR3_5,amperD_5,\n"
+                "\tHram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "pos5_ON;pos5_ON)\n"
+                "\n"
+                "\n"
+                "  s(gs_list_manufacturer,gs_list_note,\n"
+                "\totd_vst,KlasZt,gs_cont_pen,pen_es,\t\n"
+                "\tID_0,ID_vst,ID1,\n"
+                "\tpos1,fill_pen_1, \n"
+                "\tprm1_1,prm2_1,prm3_1,\n"
+                "\tvoltR_1,voltR3_1,voltD_1,\n"
+                "\tamperR_1,amperR3_1,amperD_1,\n"
+                "\tHram,Lram,Hotv,Lotv,Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений, Property:ЭКСПЛИКАЦИЯ помещений/Этаж;\n"
+                "Property:Рамка ЭЛ/_авто_Количество (вставки))\n"
+                "}";
+            Spec::SpecRule rule = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescription));
+            const bool readyBefore = rule.IsRunnableForRun ();
+            rule.selected = false;
+            DBtest (rule.parseValid, true, "S17 multiline: deselect keeps parse");
+            DBtest (rule.IsRunnableForRun (), false, "S17 multiline: deselect blocks run");
+            DBtest (rule.groups.GetSize () == 5, true, "S17 multiline: groups survive deselect");
+
+            Spec::SpecRule next = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (rawDescription));
+            DBtest (next.selected, true, "S24 multiline: next run reselects");
+            DBtest (next.IsRunnableForRun (), readyBefore, "S24 multiline: runnability restored");
+        }
     }
 
     // R3.5: ГРАНИЦА ТИПОВ. Первым вынесено exsist_elements (R3.4), у него один

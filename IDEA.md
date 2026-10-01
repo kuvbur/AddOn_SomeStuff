@@ -202,7 +202,28 @@ create+update+delete, S23 пустой/только-изменения/толь�
 - S24 повторный запуск на одной модели, смена проекта, приостановка групп,
   отсутствие роста retained memory.
 
-**Прогон (AC25):** `suites=63 passed=2383 failed=1`; `TestSpecSelectionPolicy`
+**Второй реальный пример — многострочное описание (вставки, владелец).**
+Форма принципиально иная: переводы строк и табуляции ВНУТРИ описания, пять
+групп `g()`, 26 выходов в `s()`, имена вида
+`Property:ЭКСПЛИКАЦИЯ помещений/№ - Наименование помещений` (пробел, дефис,
+кавычки в имени избранного). Знаков `@` по-прежнему нет.
+Закреплено `TestSpecSelectionPolicy` (+19 проверок, 65/65):
+- `NormalizeRuleDescription` снимает `
+` и `	` — без этого разбивка по
+  `g@@`/`s@@` увидела бы мусор (константы `LINEBRAKE`/`LINEBRAKER`/`TABSTRING`
+  в `Constants.hpp`);
+- пять групп и 26 выходов, одна сумма, имя избранного с кириллицей;
+- `pos`-подобные имена без `:` → `{@gdl:...}`, имена с `Property:` →
+  `{@property:...}`;
+- семантика выбора на многострочном описании ведёт себя так же, как на простом:
+  снятие выбора не ломает разбор и не убирает группы, следующий запуск снова
+  выбирает правило и восстанавливает пригодность к запуску.
+
+Все числа подтверждены первым же прогоном — расхождение означало бы, что
+описание реального вида не принимается, и это стоп-сигнал, а не ожидаемое
+значение.
+
+**Прогон (AC25):** `suites=63 passed=2402 failed=1`; `TestSpecSelectionPolicy`
 46/46; единственный провал — предсуществующий `TestConvertPropertyToParamValue`
 (`TestParam.cpp:263`), вне области. A/B `r35-final` против `p2-before-r74`,
 `r74-final`, `r74-inv`, `r73c`, `r34-final`, `r34-state` — **0 во всех шести**.
@@ -2044,9 +2065,11 @@ IDEA.md, AGENTS.md, .gitignore). A/B `sh-final` vs шесть эталонов =
 Этот коммит закрыл и 4×`TODO : вынести в SpecHelpers`, стоявшие в дереве с
 R3.4: вынесены `GetSizePlaceElement`, `ParamValueToDumpString`,
 `FillDumpFromParamDict`, `FillDumpGDLParameter`.
-Текущий: R3.5 (механика выбора) — `TestSpecSelectionPolicy` 46/46, A/B
-`r35-final` = 0 против шести баз (`p2-before-r74`/`r74-final`/`r74-inv`/`r73c`/
-`r34-final`/`r34-state`); sweep AC26–29 success. Прод-код не менялся.
+Текущий: R3.5 (механика выбора) — `TestSpecSelectionPolicy` **65/65**, включая
+второе реальное многострочное описание владельца («вставки»: `\n`/`\t` внутри,
+5 групп, 26 выходов). A/B `r35-multiline` = 0 против семи баз; sweep AC26–29
+success; `suites=63 passed=2402 failed=1` (прежний провал вне области).
+Прод-код не менялся.
 Предыдущий: R3.4 (первый путь) — `c0d9f38` (spec/Spec.hpp,
 spec/Spec.cpp, spec/SpecPlanning.cpp/.hpp, tests/TestSpec.cpp, tests/TestFunc.*,
 Docs/modules/spec/Spec.md, IDEA.md, Refs: #228). A/B `r34-final`/`r34-state` vs
