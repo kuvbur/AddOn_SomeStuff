@@ -2650,63 +2650,63 @@
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 42
+    "line": 34
   },
   {
     "name": "Spec::SpecAll",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 150
+    "line": 143
   },
   {
     "name": "Spec::SpecFilter",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 222
+    "line": 215
   },
   {
     "name": "Spec::SpecDG",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 469
+    "line": 457
   },
   {
     "name": "Spec::SpecArray",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 535
+    "line": 519
   },
   {
     "name": "Spec::GetRuleFromElement",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1144
+    "line": 1054
   },
   {
     "name": "Spec::NormalizeRuleDescription",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1222
+    "line": 1117
   },
   {
     "name": "Spec::AddRule",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1270
+    "line": 1165
   },
   {
     "name": "Spec::GetParamToReadFromRule",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1324
+    "line": 1312
   },
   {
     "name": "Spec::GetParamValue",
@@ -2720,77 +2720,98 @@
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1592
+    "line": 1597
   },
   {
     "name": "Spec::GetElementsForRule",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1602
+    "line": 1914
   },
   {
     "name": "Spec::ParseErrorText",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1981
+    "line": 1977
   },
   {
     "name": "Spec::ApplyRulePolicy",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2013
+    "line": 2009
   },
   {
     "name": "Spec::ExpandGroup",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2057
+    "line": 2052
   },
   {
     "name": "Spec::ParseGroups",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2149
+    "line": 2144
   },
   {
     "name": "Spec::ParseOutputSchema",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2327
+    "line": 2323
   },
   {
     "name": "Spec::GetRuleFromDescription",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2369
+    "line": 2365
   },
   {
     "name": "Spec::GetElementForPlaceProperties",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2427
+    "line": 2743
   },
   {
     "name": "Spec::GetElementForPlace",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2537
+    "line": 2871
   },
   {
     "name": "Spec::PlaceElements",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2664
+    "line": 2920
+  },
+  {
+    "name": "Spec::EvaluateRuleFlag",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2447
+  },
+  {
+    "name": "Spec::CollectUnreadRuleNames",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2520
+  },
+  {
+    "name": "Spec::CheckRuleByPropertyGuid",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2608
   },
   {
     "name": "ListData::GetSubposKey",

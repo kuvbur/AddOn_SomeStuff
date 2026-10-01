@@ -371,9 +371,106 @@ namespace Spec {
     // своей строкой после вызова (например, построить из неё ключ словаря).
     SpecRule GetRuleFromDescription (const GS::UniString &normalizedDescription);
 
+    // Источник, из которого прочитаны свойства и GDL-параметры при поиске
+    // элемента для размещения.
+    //
+    // favoriteFound и fromDefaultElem — РАЗНЫЕ признаки, и это разделение
+    // обязательно: при ненайденном избранном функция читает настройки объекта
+    // по умолчанию и возвращает NoError, поэтому успешная сверка по умолчанию
+    // НЕ доказывает, что указанное избранное существует.
+    struct PlaceSourceInfo {
+        GS::Array<API_Property> properties = {}; // Свойства источника (избранного или объекта по умолчанию)
+        GS::UniString name = EMPTYSTRING;        // Имя избранного из правила (пусто — объект по умолчанию)
+        bool favoriteFound = false;              // Избранное найдено по имени
+        bool fromDefaultElem = false;            // Читались настройки объекта по умолчанию
+    };
+
+    // Состояние значения свойства-флага правила.
+    //
+    // Отдельный перечислитель, а не bool: «недоступно», «не вычислено»,
+    // «взято значение по умолчанию из определения» и фактическое значение флага
+    // — разные ответы, и сведение их к одному признаку теряет причину отказа.
+    // В AC22-23 вычисленность свойства выражает isEvaluated, с AC24 — status,
+    // поэтому приведение к одному полю выполняется только внутри EvaluateRuleFlag.
+    enum class RuleFlagStatus : unsigned char {
+        Unknown,      // определение свойства не найдено либо источник не задан
+        NotPresent,   // в источнике нет этого свойства
+        NotAvailable, // свойство недоступно на источнике
+        NotEvaluated, // не вычислено
+        HasValue      // значение получено
+    };
+
+    // Откуда взято значение флага: различать нужно, потому что подстановка
+    // настроек объекта по умолчанию вместо ненайденного избранного меняет смысл
+    // проверки (см. PlaceSourceInfo).
+    enum class RuleFlagOrigin : unsigned char {
+        NotChecked,       // не проверялось
+        ElementValue,     // значение на переданном элементе
+        FavoriteValue,    // значение у избранного
+        DefaultElemValue, // значение у объекта по умолчанию
+        DefaultDefinition // значение по умолчанию из определения (свойство не вычислено)
+    };
+
+    // Результат чтения флага правила. checked означает «значение можно читать»,
+    // value осмысленно только при checked == true.
+    struct RuleFlagCheck {
+        bool checked = false;
+        bool value = false;
+        RuleFlagStatus status = RuleFlagStatus::Unknown;
+        RuleFlagOrigin origin = RuleFlagOrigin::NotChecked;
+        GS::UniString sourceName = EMPTYSTRING; // имя избранного или GUID источника
+        bool isSingleValue = false;             // definition.collectionType == API_PropertySingleCollectionType
+        bool isDefault = true;
+        bool evaluated = false;
+    };
+
+    // Разбирает API_Property как флаг правила, НЕ схлопывая состояния: с AC24
+    // status == API_Property_NotAvailable НЕ означает «флаг включён», хотя прод
+    // GetRuleFromElement трактует его именно так. Здесь этот случай остаётся
+    // отдельным ответом (NotAvailable, checked == false), а origin задаёт
+    // вызывающий, потому что только он знает источник.
+    void EvaluateRuleFlag (const API_Property &property, RuleFlagCheck &flag);
+
+    // Имена из dependencies.read, которых НЕТ в прочитанном словаре элемента
+    // (ключ отсутствует) либо значение которых помечено невалидным. Возвращает
+    // число расхождений. Литерал "1" и пустые имена пропускаются — читать нечего.
+    UInt32 CollectUnreadRuleNames (const SpecRule &rule,
+                                   const API_Guid &elemguid,
+                                   const ParamDictElement &read,
+                                   GS::Array<GS::UniString> &missing);
+
+    // Проверка правила спецификации по GUID свойства-правила (read-only).
+    // Ничего не пишет в модель: правило разбирается теми же функциями, что и
+    // запуск, наличие свойств проверяется существующими чтениями.
+    struct RuleCheckResult {
+        SpecRule rule = {};                       // Разобранное правило (заполняется всегда, даже при отказе разбора)
+        GS::UniString propertyName = EMPTYSTRING; // Полное имя свойства-правила
+        bool definitionFound = false;             // Определение свойства найдено в проекте
+        bool ruleParsed = false;                  // Описание разобрано без ошибок
+        ParseError parseError = ParseError::None;
+        bool checkedElement = false;                       // Проверялось ли наличие у элемента
+        RuleFlagCheck elementFlag = {};                    // Флаг на переданном элементе
+        RuleFlagCheck destinationFlag = {};                // Флаг у избранного или объекта по умолчанию
+        bool favoriteFound = false;                        // Избранное найдено по имени
+        bool fromDefaultElem = false;                      // Назначение прочитано по умолчанию (fallback)
+        GS::Array<GS::UniString> missingRead = {};         // Не прочитано у элемента
+        GS::Array<GS::UniString> missingWrite = {};        // Нет выходных свойств у избранного/объекта по умолчанию
+        GS::Array<GS::UniString> unresolvedInProject = {}; // Не подтверждено наличием определения в проекте
+    };
+
+    // Проверяет правило по GUID его свойства. elemguid == APINULLGuid означает
+    // «элемент не задан»: тогда читается только проект (наличие определений
+    // свойств) и назначение правила, а чтение с элемента не выполняется.
+    // Правило всегда возвращается в result.rule (в том числе неразобранным), а
+    // признак удачи — result.definitionFound.
+    bool CheckRuleByPropertyGuid (const API_Guid &propertyGuid, const API_Guid &elemguid, RuleCheckResult &result);
+
     // Формирует набор свойств, которые нужно передать в элемент для размещения.
+    // readInfo — необязательный наблюдатель источника чтения (nullptr — прежнее
+    // поведение вызова: словарь наполняется, источник не отслеживается).
     GSErrCode GetElementForPlaceProperties (const GS::UniString &favorite_name,
-                                            GS::HashTable<GS::UniString, GS::UniString> &paramdict);
+                                            GS::HashTable<GS::UniString, GS::UniString> &paramdict,
+                                            PlaceSourceInfo *readInfo = nullptr);
 
     // Читает одно значение параметра для конкретного элемента.
     // Поддерживаются обычные свойства, формулы, материалы слоёв и данные из list-data.

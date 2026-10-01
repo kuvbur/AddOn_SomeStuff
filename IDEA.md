@@ -7,14 +7,17 @@ Issue: #228 (kuvbur/AddOn_SomeStuff) — рефакторинг; #227 — дам
 
 ### Параллельная задача — валидатор правила по GUID (#234)
 
-- Scope: отдельная read-only функция для проверки Spec по GUID свойства-правила с необязательным GUID элемента; минимальное расширение `GetElementForPlaceProperties` для значения флага и строгой проверки избранного; тесты в `Sources/AddOn/tests/`; соответствующая карточка `Docs/modules/spec/Spec.md`. `Helpers.cpp`, рефакторинг #228 и ресурсы не менять.
-- Status: IN_PROGRESS; версия проверки AC25 Windows Debug, совместимость AC22–29 сверить по SDK и доступным сборкам.
-- Plan: [x] создать и сверить issue #234; [/] проверить существующие функции Spec/Helpers и SDK; [ ] реализовать и проверить новую функцию; [ ] clang-format, LSP, сборка, runtime, ревью; [ ] checkpoint только для своих фрагментов.
-- Last Completed: issue #234, согласован минимальный возврат флага из существующей функции.
-- Next Step: дождаться SDK-контрактов и стабилизации параллельных правок Spec; не перезаписывать их.
-- Last Checkpoint: нет; HEAD для этой задачи `4e2c1fa` (не коммит #234).
+- Scope: отдельная read-only функция для проверки Spec по GUID свойства-правила с необязательным GUID элемента; минимальное расширение `GetElementForPlaceProperties` для значения флага и строгой проверки избранного; тесты в `Sources/AddOn/tests/`; карточка `Docs/modules/spec/Spec.md`, `symbols.json`, `_progress.md`. `Helpers.cpp`, рефакторинг #228 и ресурсы не менялись.
+- Status: **DONE (код валидирован)** — реализовано и проверено. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/234.
+- Plan: [x] создать и сверить issue #234; [x] проверить существующие функции Spec/Helpers и SDK (AC24 not verified); [x] согласовать владение `Spec.cpp/.hpp` и реализовать новую функцию; [x] clang-format, LSP, сборка, runtime, ревью, документация; [/] checkpoint только для своих фрагментов.
+- Реализовано: `EvaluateRuleFlag` (`Spec.cpp:2447`), `CollectUnreadRuleNames` (:2520), `CheckRuleByPropertyGuid` (:2608), внутренние `static` `GetRulePropertyDefinition` (:2559) и `ReadElementRuleFlag` (:2571); в `Spec.hpp` — `PlaceSourceInfo`, `RuleFlagStatus` (5 состояний), `RuleFlagOrigin`, `RuleFlagCheck`, `RuleCheckResult`. `GetElementForPlaceProperties` расширена одним необязательным `PlaceSourceInfo *readInfo = nullptr`; существующий вызов (`Spec.cpp:662`) не затронут.
+- Осознанные решения: (1) возвращаемый `bool` = `definitionFound`, а не «правило корректно»; (2) `favoriteFound` и `fromDefaultElem` разведены — успешная сверка после fallback на объект по умолчанию не доказывает, что избранное найдено; (3) `status == API_Property_NotAvailable` оставлен отдельным ответом, хотя прод `GetRuleFromElement` трактует его как «флаг включён» — расхождение намеренное, не сводить без решения владельца; (4) на AC22–23 нет ни `API_Property::status`, ни `API_PropertyValueStatus` — только `isEvaluated`, а `NotAvailable` невыразимо, поэтому в тесте два набора ожиданий под `#ifdef ServerMainVers_2400`.
+- Валидация: clang-format на 5 файлов; clangd 0 ошибок (warning `PushRawSlot` в `TestSpec.cpp:45` — предсуществующий, вне моего хука); AC25 `success`, sweep AC26-29 все `success`; `restart_archicad_for_test.ps1` exit_code=70 → `suites=64 passed=2445 failed=1`, `TestSpecRuleCheck` 43/43, единственный `FAILED_SUITE TestConvertPropertyToParamValue` предсуществующий и вне области; **дельта по всем 63 существующим наборам = 0**. AC22/23 падают на ресурсах и чужих файлах — проверено на чистом дереве через `git stash`, те же сбои без моих правок. **AC24 not verified** (DevKit-24 отсутствует). macOS не собирался.
+- Next Step: сделать checkpoint (issue-коммит с `Refs: #234`) — после него задача закрывается и возвращает управление владельцу рефакторинга #228.
+- Last Checkpoint: нет; HEAD `c2d0ab4`, коммита #234 по-прежнему нет — работа лежит в рабочем дереве.
 
 ### Scope
+
 Пошаговый рефакторинг движка спецификаций по плану (issue #228). Файлы:
 `Sources/AddOn/spec/Spec.cpp/.hpp`, `SpecPlanning.cpp/.hpp`,
 `Sources/AddOn/tests/TestSpec.cpp`, `tests/TestFunc.cpp/.hpp`,

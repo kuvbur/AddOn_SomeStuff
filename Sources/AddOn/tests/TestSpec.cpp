@@ -4900,5 +4900,262 @@ namespace TestFunc {
         BMKillHandle (reinterpret_cast<GSHandle *> (&memo.params));
     }
 
+    // Проверка правила по GUID свойства-правила (#234).
+    // Модель не трогается: собираются только определения свойств и читаются
+    // значения уже существующего элемента. Проверяются три независимых
+    // ответа — разбор описания, наличие зависимостей и состояние флага, —
+    // потому что сведение их к одному признаку скрывает причину отказа.
+    void TestSpecRuleCheck () {
+        const API_Guid ruleGuid = APIGuidFromString ("{7A1B2C3D-4E5F-4061-8172-8394A5B6C7D8}");
+
+        // ---- Неизвестный GUID: определения нет, правило не разбирается ----
+        {
+            Spec::RuleCheckResult result;
+            const bool found = Spec::CheckRuleByPropertyGuid (ruleGuid, APINULLGuid, result);
+            ::TestKit::NoteFields ("RuleCheck.unknown",
+                                   {SMSTF_FIELD ("found", found), SMSTF_FIELD ("parsed", result.ruleParsed)},
+                                   "нет определения свойства");
+            DBtest (found, false, "RuleCheck unknown guid not found");
+            DBtest (result.definitionFound, false, "RuleCheck unknown guid definitionFound");
+            DBtest (result.ruleParsed, false, "RuleCheck unknown guid ruleParsed");
+            DBtest (result.checkedElement, false, "RuleCheck unknown guid no element check");
+        }
+
+        // ---- Синтетические свойства-флаги: состояния не схлопываются ----
+        // Прод GetRuleFromElement считает API_Property_NotAvailable включённым
+        // флагом; валидатор обязан отличать этот случай от значения true.
+        {
+            API_Property property = {};
+            // Состояние свойства различается по версиям: с AC24 это поле
+            // API_Property::status и перечисление API_PropertyValueStatus.
+            // До AC24 нет ни того, ни другого - вычисленность выражает
+            // isEvaluated, а состояние NotAvailable невыразимо вовсе.
+            // Поэтому ниже ДВА набора ожиданий под #ifdef: на AC22-23 их
+            // меньше, и это НЕ ослабление проверки, а другой контракт SDK.
+            property.definition.collectionType = API_PropertySingleCollectionType;
+            property.definition.valueType = API_PropertyBooleanValueType;
+            property.value.variantStatus = API_VariantStatusNormal;
+            Spec::RuleFlagCheck flag;
+
+    #ifdef ServerMainVers_2400
+            property.status = API_Property_HasValue;
+    #else
+            property.isEvaluated = true;
+    #endif
+            property.isDefault = false;
+            property.value.singleVariant.variant.boolValue = true;
+            Spec::EvaluateRuleFlag (property, flag);
+            DBtest (flag.checked, true, "RuleCheck flag HasValue is checked");
+            DBtest (flag.value, true, "RuleCheck flag HasValue true");
+            DBtest (flag.status == Spec::RuleFlagStatus::HasValue, true, "RuleCheck flag HasValue status");
+            DBtest (flag.evaluated, true, "RuleCheck flag HasValue evaluated");
+            DBtest (flag.origin == Spec::RuleFlagOrigin::NotChecked, true, "RuleCheck flag origin untouched by caller");
+            DBtest (flag.isSingleValue, true, "RuleCheck flag single value");
+            DBtest (flag.isDefault, false, "RuleCheck flag not default");
+
+            property.value.singleVariant.variant.boolValue = false;
+            Spec::EvaluateRuleFlag (property, flag);
+            DBtest (flag.checked && !flag.value, true, "RuleCheck flag HasValue false is a real false");
+
+    #ifdef ServerMainVers_2400
+            // Только с AC24: состояние NotAvailable выразимо, и оно НЕ равно
+            // «флаг включён», хотя прод GetRuleFromElement трактует именно так.
+            property.status = API_Property_NotAvailable;
+            Spec::EvaluateRuleFlag (property, flag);
+            DBtest (flag.checked, false, "RuleCheck flag NotAvailable is NOT checked");
+            DBtest (flag.status == Spec::RuleFlagStatus::NotAvailable, true, "RuleCheck flag NotAvailable status");
+            DBtest (flag.value, false, "RuleCheck flag NotAvailable does not read as enabled");
+            DBtest (flag.evaluated, false, "RuleCheck flag NotAvailable not evaluated");
+    #else
+            // До AC24 состояния NotAvailable не существует: при
+            // isEvaluated == false и isDefault == false значение не берётся
+            // из определения, и функция обязана вернуть NotEvaluated.
+            property.isEvaluated = false;
+            property.isDefault = false;
+            Spec::EvaluateRuleFlag (property, flag);
+            DBtest (flag.status == Spec::RuleFlagStatus::NotEvaluated,
+                    true,
+                    "RuleCheck pre-AC24 unavailable collapses to NotEvaluated");
+            DBtest (flag.checked, true, "RuleCheck pre-AC24 value comes from SDK");
+            DBtest (flag.value, true, "RuleCheck pre-AC24 value not forced to true");
+    #endif
+
+    #ifdef ServerMainVers_2400
+            property.status = API_Property_NotEvaluated;
+    #else
+            property.isEvaluated = false;
+    #endif
+            property.isDefault = true;
+            property.value.singleVariant.variant.boolValue = false;
+            property.definition.defaultValue.basicValue.singleVariant.variant.boolValue = true;
+            Spec::EvaluateRuleFlag (property, flag);
+            DBtest (flag.checked, true, "RuleCheck flag NotEvaluated has value from definition");
+            DBtest (flag.value, true, "RuleCheck flag NotEvaluated takes definition value");
+            DBtest (flag.status == Spec::RuleFlagStatus::NotEvaluated, true, "RuleCheck flag NotEvaluated status");
+            DBtest (flag.origin == Spec::RuleFlagOrigin::DefaultDefinition, true, "RuleCheck flag origin definition");
+            DBtest (flag.evaluated, false, "RuleCheck flag NotEvaluated not evaluated");
+
+            // Не вычислено, но не default: значение остаётся тем, что вернул
+            // SDK, и происхождение уже НЕ «из определения». origin перед
+            // вызовом задаётся явно: функция его НЕ трогает, это её контракт.
+            property.isDefault = false;
+            property.value.singleVariant.variant.boolValue = true;
+            flag.origin = Spec::RuleFlagOrigin::ElementValue;
+            Spec::EvaluateRuleFlag (property, flag);
+            DBtest (flag.status == Spec::RuleFlagStatus::NotEvaluated,
+                    true,
+                    "RuleCheck flag nondefault not evaluated status");
+            DBtest (flag.origin == Spec::RuleFlagOrigin::ElementValue,
+                    true,
+                    "RuleCheck flag origin belongs to caller and is not overwritten");
+
+            // Перечисление: одиночного значения нет, поэтому булево поле и
+            // смотреть не на что - это не «флаг выключен».
+            property.definition.collectionType = API_PropertySingleChoiceEnumerationCollectionType;
+    #ifdef ServerMainVers_2400
+            property.status = API_Property_HasValue;
+    #else
+            property.isEvaluated = true;
+    #endif
+            Spec::EvaluateRuleFlag (property, flag);
+            DBtest (flag.checked, false, "RuleCheck enumeration flag not checked");
+            DBtest (flag.isSingleValue, false, "RuleCheck enumeration is not single");
+            DBtest (flag.status == Spec::RuleFlagStatus::NotPresent, true, "RuleCheck enumeration status");
+
+            // Не булево: значение есть, но флагом быть не может.
+            property.definition.collectionType = API_PropertySingleCollectionType;
+            property.definition.valueType = API_PropertyStringValueType;
+            Spec::EvaluateRuleFlag (property, flag);
+            DBtest (flag.checked, false, "RuleCheck non-boolean flag not checked");
+            DBtest (flag.status == Spec::RuleFlagStatus::NotPresent, true, "RuleCheck non-boolean status");
+
+            // Вариант не приведён к нормальному виду: статус утверждает, что
+            // значение есть, но читать его нельзя.
+            property.definition.valueType = API_PropertyBooleanValueType;
+    #ifdef ServerMainVers_2400
+            property.status = API_Property_HasValue;
+    #else
+            property.isEvaluated = true;
+    #endif
+            property.value.variantStatus = API_VariantStatusUserUndefined;
+            Spec::EvaluateRuleFlag (property, flag);
+            DBtest (flag.checked, false, "RuleCheck non-normal variant is not checked");
+        }
+
+        // ---- Перечень непрочитанных имён: два разных случая в одном списке ----
+        {
+            const GS::UniString U ("{@gdl:u}"), P ("{@gdl:p}"), Q ("{@gdl:q}");
+            const API_Guid elem = APIGuidFromString ("{11111111-2222-3333-4444-555555555555}");
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push (P);
+            rule.out_sum_paramrawname.Push (Q);
+            Spec::GroupSpec group;
+            group.unic_paramrawname.Push (U);
+            group.out_paramrawname.Push (P);
+            group.sum_paramrawname.Push (Q);
+            rule.groups.Push (group);
+
+            ParamDictElement read = {};
+            GS::Array<GS::UniString> missing = {};
+
+            // Элемента в словаре нет - читать нечего вовсе.
+            DBtest (Spec::CollectUnreadRuleNames (rule, elem, read, missing), 0, "RuleCheck unread no element");
+            DBtest (missing.IsEmpty (), true, "RuleCheck unread no element empty");
+
+            // Ключа нет вовсе: U и Q не прочитаны.
+            ParamValue valid = {};
+            valid.rawName = P;
+            ParamHelpers::ConvertIntToParamValue (valid, P, 1);
+            valid.isValid = true;
+            read.Put (elem, ParamDictValue ());
+            read.Get (elem).Put (P, valid);
+            DBtest (Spec::CollectUnreadRuleNames (rule, elem, read, missing), 2, "RuleCheck unread absent keys");
+            DBtest (missing.Contains (U) && missing.Contains (Q), true, "RuleCheck unread lists absent names");
+            DBtest (missing.Contains (P), false, "RuleCheck unread omits present name");
+
+            // Ключ есть, но значение невалидно: тоже расхождение.
+            ParamValue invalid = valid;
+            invalid.isValid = false;
+            read.Get (elem).Put (P, invalid);
+            DBtest (Spec::CollectUnreadRuleNames (rule, elem, read, missing), 3, "RuleCheck unread invalid value");
+            DBtest (missing.Contains (P), true, "RuleCheck unread lists invalid name");
+
+            // Литерал-счётчик и пустое имя расхождением не считаются. Итог равен
+            // двум: литерала "1" и пустого флага в списке нет, U отсутствует
+            // в словаре чтения, а P помечено невалидным предыдущим блоком.
+            // Q сюда НЕ входит: литерал "1" заменил его в sum_paramrawname,
+            // поэтому Q вообще не попадает в зависимости.
+            Spec::SpecRule counterRule = rule;
+            Spec::GroupSpec counterGroup = group;
+            counterGroup.sum_paramrawname.Clear ();
+            counterGroup.sum_paramrawname.Push ("1");
+            counterGroup.flag_paramrawname = EMPTYSTRING;
+            counterRule.groups.Clear ();
+            counterRule.groups.Push (counterGroup);
+            DBtest (Spec::CollectUnreadRuleNames (counterRule, elem, read, missing),
+                    2,
+                    "RuleCheck unread skips literal and empty flag");
+            DBtest (missing.Contains ("1") || missing.Contains (EMPTYSTRING),
+                    false,
+                    "RuleCheck unread omits literal and empty flag");
+        }
+
+        // ---- Настоящий проект: определение правила и его зависимости ----
+        // Модель не изменяется; берётся первое найденное свойство с описанием,
+        // в котором есть "Spec_rule".
+        {
+            // Поиск определения с описанием правила идёт через группы свойств:
+            // ACAPI_Property_GetPropertyDefinitions запрашивает определения ГРУППЫ,
+            // поэтому одного вызова с пустым GUID недостаточно.
+            GS::Array<API_PropertyGroup> groups = {};
+            if (ACAPI_Property_GetPropertyGroups (groups) == NoError) {
+                API_PropertyDefinition candidate = {};
+                for (const API_PropertyGroup &group : groups) {
+                    GS::Array<API_PropertyDefinition> definitions = {};
+                    if (ACAPI_Property_GetPropertyDefinitions (group.guid, definitions) != NoError)
+                        continue;
+                    for (const API_PropertyDefinition &definition : definitions) {
+                        if (!definition.description.IsEmpty () && definition.description.Contains ("pec_rule")) {
+                            candidate = definition;
+                            break;
+                        }
+                    }
+                    if (candidate.guid != APINULLGuid)
+                        break;
+                }
+                if (candidate.guid == APINULLGuid) {
+                    ::TestKit::Note ("RuleCheck.project", "в проекте нет определения с описанием правила");
+                } else {
+                    Spec::RuleCheckResult result;
+                    const bool found = Spec::CheckRuleByPropertyGuid (candidate.guid, APINULLGuid, result);
+                    ::TestKit::NoteFields ("RuleCheck.project",
+                                           {SMSTF_FIELD ("found", found),
+                                            SMSTF_FIELD ("parsed", result.ruleParsed),
+                                            SMSTF_FIELD ("unresolved", (Int32)result.unresolvedInProject.GetSize ()),
+                                            SMSTF_FIELD_U ("name", result.propertyName),
+                                            SMSTF_FIELD_U ("favorite", result.rule.favorite_name),
+                                            SMSTF_FIELD ("favoriteFound", result.favoriteFound),
+                                            SMSTF_FIELD ("fromDefault", result.fromDefaultElem),
+                                            SMSTF_FIELD ("missingWrite", (Int32)result.missingWrite.GetSize ())},
+                                           "проверка по определению свойства из проекте");
+                    DBtest (found, true, "RuleCheck project definition found");
+                    DBtest (!result.checkedElement, true, "RuleCheck project without element skips element check");
+                    DBtest (result.missingRead.IsEmpty (), true, "RuleCheck project without element has no read list");
+                    // Найденное избранное и чтение настроек объекта по умолчанию -
+                    // разные ответы: сверка по умолчанию не доказывает, что
+                    // избранное с таким именем существует.
+                    DBtest (result.fromDefaultElem == !result.favoriteFound,
+                            true,
+                            "RuleCheck destination source reported explicitly");
+                    if (result.ruleParsed) {
+                        DBtest (result.destinationFlag.origin != Spec::RuleFlagOrigin::NotChecked,
+                                true,
+                                "RuleCheck destination flag origin resolved");
+                    }
+                }
+            }
+        }
+    }
+
 } // namespace TestFunc
 #endif

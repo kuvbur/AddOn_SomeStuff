@@ -88,6 +88,7 @@ namespace TestFunc {
     void TestSpecParser ();
     void TestSpecAddRule ();
     void TestSpecParseError ();
+    void TestSpecRuleCheck ();
     void TestSpecSizes ();
 
     // --- sync: правила синхронизации и разбор описаний (10) ---

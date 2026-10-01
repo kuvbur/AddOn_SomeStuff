@@ -2431,11 +2431,329 @@ namespace Spec {
     // Возвращает: код ошибки
     // Примечание: вызывается в SpecArray для проверки наличия необходимых параметров у избранного
     // --------------------------------------------------------------------
+    // --------------------------------------------------------------------
+    // Состояние свойства-флага правила по одному API_Property.
+    // Назначение: разложить ответ SDK на отдельные состояния, не подменяя
+    //   «недоступно» и «не вычислено» значением true.
+    // Параметры:
+    //   property - прочитанное свойство
+    //   flag - [OUT] состояние флага (origin и sourceName остаются как заданы)
+    // Особенности:
+    //   isSingleValue проверяется по definition.collectionType, потому что у
+    //   перечислений и списков поля singleVariant не существует вовсе.
+    //   Значение по умолчанию берётся из definition ТОЛЬКО когда свойство не
+    //   вычислено, поэтому isDefault безусловно перекрывать нельзя.
+    // --------------------------------------------------------------------
+    void EvaluateRuleFlag (const API_Property &property, RuleFlagCheck &flag) {
+        flag.checked = false;
+        flag.value = false;
+        flag.isDefault = property.isDefault;
+        flag.isSingleValue = property.definition.collectionType == API_PropertySingleCollectionType;
+#ifndef ServerMainVers_2400
+        // До AC24 вычисленность выражает isEvaluated; полем status эти версии не
+        // обходятся вообще.
+        flag.evaluated = property.isEvaluated;
+#else
+        flag.evaluated = property.status == API_Property_HasValue;
+#endif
+        if (!flag.isSingleValue) {
+            // Значение не одиночное: булево поле смотреть не на что.
+            flag.status = RuleFlagStatus::NotPresent;
+            return;
+        }
+        if (property.definition.valueType != API_PropertyBooleanValueType) {
+            flag.status = RuleFlagStatus::NotPresent;
+            return;
+        }
+#ifndef ServerMainVers_2400
+        if (!property.isEvaluated)
+            flag.status = RuleFlagStatus::NotEvaluated;
+        else
+            flag.status = RuleFlagStatus::HasValue;
+        const API_PropertyValue &value =
+            property.isDefault && !property.isEvaluated ? property.definition.defaultValue.basicValue : property.value;
+#else
+        if (property.status == API_Property_NotAvailable) {
+            flag.status = RuleFlagStatus::NotAvailable;
+            return;
+        }
+        if (property.status == API_Property_NotEvaluated)
+            flag.status = RuleFlagStatus::NotEvaluated;
+        else
+            flag.status = RuleFlagStatus::HasValue;
+        if (property.value.variantStatus != API_VariantStatusNormal) {
+            // Вариант не приведён к нормальному виду: значение брать нельзя,
+            // даже если статус утверждает, что оно есть.
+            flag.checked = false;
+            return;
+        }
+        const API_PropertyValue &value = property.isDefault && property.status == API_Property_NotEvaluated
+                                             ? property.definition.defaultValue.basicValue
+                                             : property.value;
+#endif
+        // Откуда взялось значение: при isDefault && не вычислено оно подставлено
+        // из определения, и это исходное значение правила, а не прочитанное.
+        const bool fromDefinition = flag.status == RuleFlagStatus::NotEvaluated && property.isDefault;
+        if (fromDefinition)
+            flag.origin = RuleFlagOrigin::DefaultDefinition;
+        flag.checked = true;
+        flag.value = value.singleVariant.variant.boolValue;
+    }
+
+    // --------------------------------------------------------------------
+    // Имена, которые правило требует прочитать, но которых нет в словаре
+    //   чтения элемента.
+    // Назначение: перечислить расхождения между тем, что правило просит, и тем,
+    //   что реально прочитано (CollectRuleDependencies + BuildReadParamDict
+    //   задают запрос, ElementsRead его выполняет).
+    // Параметры:
+    //   rule - разобранное правило
+    //   elemguid - элемент, для которого выполнено чтение
+    //   read - словарь прочитанного (SpecReadContext::read)
+    //   missing - [OUT] имена без значения либо с невалидным значением
+    // Возвращает: число расхождений
+    // Примечание: признак «имя не найдено вовсе» и «значение помечено
+    //   невалидным» — РАЗНЫЕ случаи, но оба означают «прочитать не удалось»,
+    //   поэтому попадают в один список; порядок — порядок обхода
+    //   зависимостей, а не алфавитный.
+    // --------------------------------------------------------------------
+    UInt32 CollectUnreadRuleNames (const SpecRule &rule,
+                                   const API_Guid &elemguid,
+                                   const ParamDictElement &read,
+                                   GS::Array<GS::UniString> &missing) {
+        missing.Clear ();
+        if (elemguid == APINULLGuid)
+            return 0;
+        const ParamDictValue *values = read.GetPtr (elemguid);
+        if (values == nullptr)
+            return 0;
+        const RuleDependencies dependencies = CollectRuleDependencies (rule);
+        for (const auto &cItt : dependencies.read) {
+#ifdef ServerMainVers_2800
+            const GS::UniString &rawname = cItt.key;
+#else
+            const GS::UniString &rawname = *cItt.key;
+#endif
+            // Литерал-счётчик и пустое имя читать нечего: BuildReadParamDict их
+            // пропускает, поэтому отсутствие в словаре не является расхождением.
+            if (rawname.IsEmpty () || rawname.IsEqual ("1"))
+                continue;
+            // Служебные имена читаются как части составного значения: их в
+            // словаре элемента нет по построению, их наполняет разбор
+            // материала/формулы.
+            if (rawname.Contains (MATERIALNAMEPREFIX) || rawname.Contains (FORMULANAMEPREFIX))
+                continue;
+            const ParamValue *value = values->GetPtr (rawname);
+            if (value == nullptr || !value->isValid)
+                missing.Push (rawname);
+        }
+        return missing.GetSize ();
+    }
+
+    // --------------------------------------------------------------------
+    // Определение свойства-правила по GUID.
+    // Отдельная функция, а не GetRuleFromElement: та ищет правила перебором
+    // описаний элемента и попутно решает, включён ли флаг, а здесь нужен
+    // ОДИН запрос по GUID без перебора и без влияния на словарь правил.
+    // --------------------------------------------------------------------
+    static bool GetRulePropertyDefinition (const API_Guid &propertyGuid, API_PropertyDefinition &definition) {
+        definition = {};
+        definition.guid = propertyGuid;
+        return ACAPI_Property_GetPropertyDefinition (definition) == NoError;
+    }
+
+    // --------------------------------------------------------------------
+    // Значение свойства-флага на элементе.
+    // Отсутствие определения у элемента (ACAPI_Element_GetPropertyValue вернул
+    // не NoError) — это NotPresent, а не «флаг выключен»: свойство может быть
+    // просто не применимо к типу элемента.
+    // --------------------------------------------------------------------
+    static bool ReadElementRuleFlag (const API_Guid &elemguid,
+                                     const API_Guid &propertyGuid,
+                                     RuleFlagCheck &flag,
+                                     RuleFlagOrigin origin) {
+        API_Property property = {};
+        flag = {};
+        flag.origin = origin;
+        flag.sourceName = APIGuidToString (elemguid);
+        if (ACAPI_Element_GetPropertyValue (elemguid, propertyGuid, property) != NoError) {
+            flag.status = RuleFlagStatus::NotPresent;
+            return false;
+        }
+        EvaluateRuleFlag (property, flag);
+        return true;
+    }
+
+    // --------------------------------------------------------------------
+    // Проверка правила спецификации по GUID свойства-правила.
+    // Назначение: read-only проверка корректности правила и полноты данных
+    //   для его выполнения, без создания элементов спецификации.
+    // Параметры:
+    //   propertyGuid - GUID свойства, в описании которого живёт правило
+    //   elemguid - элемент для проверки; APINULLGuid — элемент не задан
+    //   result - [OUT] разобранное правило и результаты проверок
+    // Возвращает: true, если определение свойства найдено в проекте
+    // Алгоритм:
+    //   1. Читается определение свойства по GUID (без перебора описаний).
+    //   2. Описание нормализуется и разбирается теми же функциями, что и запуск
+    //      (NormalizeRuleDescription -> GetRuleFromDescription).
+    //   3. Назначение правила читается тем же GetElementForPlaceProperties, что
+    //      использует запуск, но с наблюдателем источника: так валидатор видит
+    //      и избранное, и случайный fallback на объект по умолчанию.
+    //   4. При заданном элементе собираются те же зависимости, что и для
+    //      запуска, и читаются существующим чтением элементов.
+    // Возвращает правило в result.rule ДАЖЕ при неудачном разборе, чтобы
+    //   вызывающий получил причину отказа, а не пустую структуру.
+    // --------------------------------------------------------------------
+    bool CheckRuleByPropertyGuid (const API_Guid &propertyGuid, const API_Guid &elemguid, RuleCheckResult &result) {
+        result = {};
+        API_PropertyDefinition definition = {};
+        if (!GetRulePropertyDefinition (propertyGuid, definition)) {
+            result.rule.parseValid = false;
+            return false;
+        }
+        result.definitionFound = true;
+        GS::UniString fullName = EMPTYSTRING;
+        GetPropertyFullName (definition, fullName);
+        result.propertyName = fullName;
+
+        // Разбор описания: тот же путь, что и у AddRule, включая обрезку по
+        // первой закрывающей скобке — иначе длинное описание с пояснением
+        // разбиралось бы иначе, чем при запуске.
+        GS::UniString description = NormalizeRuleDescription (definition.description);
+        GS::Array<GS::UniString> partstring = {};
+        if (StringSplt (description, BRACEEND, partstring, "pec_rule") > 0) {
+            description = partstring[0] + BRACEEND;
+        }
+        SpecRule rule = GetRuleFromDescription (description);
+        if (rule.parseValid) {
+            // Те же поля, что ставит AddRule: без них разобранное правило не
+            // описывает само себя.
+            rule.rule_name = fullName;
+            rule.subguid_paramrawname = fullName;
+            rule.subguid_rulevalue = fullName;
+            rule.rule_definitions = definition;
+        }
+        result.rule = rule;
+        result.ruleParsed = rule.parseValid;
+        result.parseError = rule.parseError;
+        if (!rule.parseValid)
+            return true; // Причина отказа уже в result.parseError.
+
+        // Проверка назначения: избранное из правила (или объект по умолчанию).
+        // Сверка выходной схемы идёт той же функцией, что и при запуске, но в
+        // ОТДЕЛЬНУЮ копию правила: сброс destinationReady проверки не должен
+        // влиять на то, что возвращается вызывающему.
+        GS::HashTable<GS::UniString, GS::UniString> destination = {};
+        PlaceSourceInfo source = {};
+        // Наблюдатель передаётся всегда: без него валидатор не отличил бы
+        // найденное избранное от чтения настроек объекта по умолчанию.
+        const GSErrCode destErr = GetElementForPlaceProperties (rule.favorite_name, destination, &source);
+        result.favoriteFound = source.favoriteFound;
+        result.fromDefaultElem = source.fromDefaultElem || destErr != NoError;
+        if (destErr == NoError) {
+            SpecRule destinationRule = rule;
+            ParamDict destinationErrors = {};
+            MatchDestinationProperties (destinationRule, destination, destinationErrors);
+            for (const auto &cIt : destinationErrors) {
+#ifdef ServerMainVers_2800
+                const GS::UniString &name = cIt.key;
+#else
+                const GS::UniString &name = *cIt.key;
+#endif
+                result.missingWrite.Push (name);
+            }
+            // Флаг правила у назначения: у избранного, если оно найдено, иначе у
+            // объекта по умолчанию. Проверяется ВСЕГДА, в том числе когда
+            // назначение признано негодным по выходной схеме: отсутствие
+            // свойства-флага у избранного — самостоятельный дефект правила.
+            RuleFlagCheck &flag = result.destinationFlag;
+            flag = {};
+            flag.sourceName = rule.favorite_name;
+            for (const API_Property &property : source.properties) {
+                if (property.definition.guid != propertyGuid)
+                    continue;
+                EvaluateRuleFlag (property, flag);
+                flag.sourceName = rule.favorite_name;
+                break;
+            }
+            if (flag.status == RuleFlagStatus::Unknown) {
+                flag.status = RuleFlagStatus::NotPresent;
+                flag.checked = false;
+            }
+            flag.origin = source.favoriteFound ? RuleFlagOrigin::FavoriteValue : RuleFlagOrigin::DefaultElemValue;
+        } else {
+            result.destinationFlag.status = RuleFlagStatus::Unknown;
+            result.destinationFlag.origin = RuleFlagOrigin::NotChecked;
+            result.destinationFlag.sourceName = rule.favorite_name;
+        }
+
+        // Проверка с элементом. Без элемента читается только проект: тогда
+        // проверяется, что определения нужных свойств в проекте вообще есть.
+        if (elemguid == APINULLGuid) {
+            auto &cache = PROPERTYCACHE ();
+            if (!cache.isPropertyDefinitionRead_full)
+                cache.ReadPropertyDefinition ();
+            if (!cache.isPropertyDefinition_OK)
+                return true; // Кэш недоступен — это не дефект правила.
+            for (const auto &cItt : CollectRuleDependencies (rule).read) {
+#ifdef ServerMainVers_2800
+                const GS::UniString &rawname = cItt.key;
+#else
+                const GS::UniString &rawname = *cItt.key;
+#endif
+                if (rawname.IsEmpty () || rawname.IsEqual ("1"))
+                    continue;
+                if (rawname.Contains (MATERIALNAMEPREFIX) || rawname.Contains (FORMULANAMEPREFIX))
+                    continue;
+                if (cache.property.GetPtr (rawname) == nullptr)
+                    result.unresolvedInProject.Push (rawname);
+            }
+            for (const auto &cItt : CollectRuleDependencies (rule).write) {
+#ifdef ServerMainVers_2800
+                const GS::UniString &rawname = cItt.key;
+#else
+                const GS::UniString &rawname = *cItt.key;
+#endif
+                if (cache.property.GetPtr (rawname) == nullptr)
+                    result.unresolvedInProject.Push (rawname);
+            }
+            return true;
+        }
+
+        result.checkedElement = true;
+        ReadElementRuleFlag (elemguid, propertyGuid, result.elementFlag, RuleFlagOrigin::ElementValue);
+        // Чтение элемента идёт существующим путём чтения аддона: собираются те
+        // же имена, что и для запуска, и выполняется одно чтение на элемент.
+        ParamDictElement paramToRead = {};
+        ParamDictValue paramDict = {};
+        BuildReadParamDict (CollectRuleDependencies (rule).read, paramDict);
+        if (!paramDict.IsEmpty ()) {
+            ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
+        }
+        ParamDictCompositeElement paramComposite = {};
+        ListData::LibElements listData = {};
+        if (!paramToRead.IsEmpty ()) {
+            ParamHelpers::ElementsRead (paramToRead, paramComposite, listData, true, true);
+        }
+        CollectUnreadRuleNames (rule, elemguid, paramToRead, result.missingRead);
+        return true;
+    }
+
     GSErrCode GetElementForPlaceProperties (const GS::UniString &favorite_name,
-                                            GS::HashTable<GS::UniString, GS::UniString> &paramdict) {
+                                            GS::HashTable<GS::UniString, GS::UniString> &paramdict,
+                                            PlaceSourceInfo *readInfo) {
         GSErrCode err = NoError;
         API_Element element = {};
         API_ElementMemo memo = {};
+        // Источник чтения отслеживается только когда запрошен: прежние вызовы
+        // передают nullptr и о нём ничего не знают.
+        if (readInfo != nullptr) {
+            readInfo->properties.Clear ();
+            readInfo->name = favorite_name;
+            readInfo->favoriteFound = false;
+            readInfo->fromDefaultElem = false;
+        }
 #ifdef ServerMainVers_2300
         if (!favorite_name.IsEmpty ()) {
             API_Favorite favorite (favorite_name);
@@ -2444,6 +2762,11 @@ namespace Spec {
             BNZeroMemory (&favorite.memo.Get (), sizeof (API_ElementMemo));
             err = ACAPI_Favorite_Get (&favorite);
             if (err == NoError) {
+                if (readInfo != nullptr) {
+                    readInfo->favoriteFound = true;
+                    if (favorite.properties.HasValue ())
+                        readInfo->properties = favorite.properties.Get ();
+                }
                 if (favorite.properties.HasValue ()) {
                     for (const auto &property : favorite.properties.Get ()) {
                         GS::UniString fname;
@@ -2484,6 +2807,10 @@ namespace Spec {
 #ifndef ServerMainVers_2300
         element.header.variationID = APIVarId_Object;
 #endif
+        // Источник чтения — объект по умолчанию: избранного нет либо оно не
+        // найдено. Это отдельный признак, а не следствие успеха чтения.
+        if (readInfo != nullptr)
+            readInfo->fromDefaultElem = true;
         msg_rep ("Spec", "Read the default settings of the object", err, APINULLGuid);
         err = ACAPI_Element_GetDefaults (&element, &memo);
         if (err != NoError) {

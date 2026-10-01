@@ -1,6 +1,6 @@
 # spec/Spec — Движок спецификаций
 
-> Хеш состояния: рабочее дерево ветки `spec_refactor` поверх `e22ddc8` (2026-09-28) — #227: дамп значений элементов (`includeParameters`). Последний закоммиченный хеш: `309606a`, раздел `GetParamValue` дополнен правкой #221. Номера строк — определения в `.cpp` (1-based, проверены source; функции внутри namespace Spec).
+> Хеш состояния: рабочее дерево ветки `spec_refactor` поверх `c2d0ab4` (2026-10-01) — #234: read-only валидатор правила по GUID свойства-правила (`CheckRuleByPropertyGuid`, `EvaluateRuleFlag`, `CollectUnreadRuleNames`, наблюдатель `PlaceSourceInfo` в `GetElementForPlaceProperties`). Последний закоммиченный хеш до #234: `309606a`, раздел `GetParamValue` дополнен правкой #221. Номера строк — определения в `.cpp` (1-based, проверены source; функции внутри namespace Spec).
 
 ## Назначение
 Генерация спецификаций по правилам: разбор описаний, выбор элементов, группировка, создание/обновление элементов. [из комментария, Spec.hpp:8-9]
@@ -33,9 +33,65 @@
 | `GetElementsForRule` | 1559 | Формирование элементов для одного правила [из комментария] |
 | `GetParamToReadFromRule` | 1294 | Параметры для предварительного чтения [из комментария] |
 | `GetElementForPlace` | 2391 | Создание/настройка элемента для размещения [из комментария] |
+| `EvaluateRuleFlag` | 2447 | Разбор `API_Property` как флага правила без схлопывания состояний (#234) |
+| `CollectUnreadRuleNames` | 2520 | Имена из `dependencies.read`, не прочитанные у элемента (#234) |
+| `CheckRuleByPropertyGuid` | 2608 | Read-only проверка правила по GUID свойства-правила (#234) |
+| `GetElementForPlaceProperties` | 2743 | Параметры избранного; `readInfo` — наблюдатель источника чтения (#234) |
 | ~~`GetSizePlaceElement`~~ | — | **вынесен** в `spec/SpecHelpers.cpp`, карточка `SpecHelpers.md` |
 | `PlaceElements` | 2518 | Размещение сформированных элементов и заполнение параметров [из комментария] — карточка |
 | ~~`ParamValueToDumpString` / `FillDumpFromParamDict` / `FillDumpGDLParameter`~~ | — | **вынесены** в `spec/SpecHelpers.cpp`, карточка `SpecHelpers.md` |
+
+### R4.9 — read-only валидатор правила по GUID свойства (#234)
+- `CheckRuleByPropertyGuid (const API_Guid &propertyGuid, const API_Guid &elemguid, RuleCheckResult &result)`
+  — `Spec.cpp:2608`, объявление `Spec.hpp:466`. Ничего не пишет в модель:
+  разбор идёт теми же функциями, что и запуск (`NormalizeRuleDescription` →
+  `GetRuleFromDescription`, включая обрезку по первой закрывающей скобке),
+  назначение читается тем же `GetElementForPlaceProperties`, значения — тем же
+  `BuildReadParamDict` + `ParamHelpers::ElementsRead`.
+  `elemguid == APINULLGuid` означает «элемент не задан»: читается только проект
+  (наличие определений в `PROPERTYCACHE`) и назначение правила. Правило
+  возвращается в `result.rule` **даже при неудачном разборе** — иначе вызывающий
+  получил бы пустую структуру вместо причины отказа.
+- **Возвращаемое `bool` — это `definitionFound`, а не «правило корректно».**
+  Корректность разбора читается в `result.ruleParsed` / `result.parseError`,
+  полнота данных — в `missingRead` / `missingWrite` / `unresolvedInProject`.
+  Сводить их в один признак нельзя: это разные вопросы с разными причинами отказа.
+- **`RuleFlagStatus` — не `bool` намеренно.** Пять состояний (`Unknown`,
+  `NotPresent`, `NotAvailable`, `NotEvaluated`, `HasValue`) не сводятся:
+  «свойство недоступно» и «не вычислено» — разные дефекты правила с разным
+  лечением. Существенно, что **прод `GetRuleFromElement` (`Spec.cpp:1080`)
+  трактует `status == API_Property_NotAvailable` как «флаг включён»**, а
+  `EvaluateRuleFlag` оставляет этот случай отдельным ответом (`NotAvailable`,
+  `checked == false`). Это расхождение намеренное: валидатор показывает дефект,
+  запуск не должен менять поведением. Не «сводить» их без отдельного решения
+  владельца.
+- **Версионный разрыв в состояниях свойства.** С AC24 вычисленность выражает
+  `API_Property::status` и есть перечисление `API_PropertyValueStatus`; до AC24
+  есть только `isEvaluated`, а состояние `NotAvailable` невыразимо вовсе.
+  Приведение к единому полю сделано внутри `EvaluateRuleFlag` под
+  `#ifndef ServerMainVers_2400`, и на AC22–23 `NotAvailable` схлопывается в
+  `NotEvaluated` — это другой контракт SDK, а не ослабление проверки.
+- **`favoriteFound` и `fromDefaultElem` — РАЗНЫЕ признаки.** При ненайденном
+  избранном `GetElementForPlaceProperties` читает настройки объекта по умолчанию и
+  возвращает `NoError`, поэтому успешная сверка после такого fallback **не**
+  доказывает, что указанное в правиле избранное существует. Наблюдатель
+  `PlaceSourceInfo *readInfo` — необязательный (`nullptr` = прежнее поведение),
+  поэтому существующий вызов на `Spec.cpp:662` не затронут.
+- **`CollectUnreadRuleNames` пропускает литерал `"1"` и пустые имена**, а также
+  служебные имена материалов и формул: их в словаре элемента нет по построению,
+  их наполняет разбор материала/формулы. Отсутствие такого имени в словаре не
+  является расхождением.
+- Закреплено в `TestSpecRuleCheck` (`TestFunc.cpp`, регистрация; тело
+  `tests/TestSpec.cpp`): 43 ассерта — все пять состояний флага, различие
+  `NotAvailable` и `NotEvaluated` на обеих ветках API, `DefaultDefinition`
+  против значения из SDK, перечисление и не-булево свойство, не-нормальный
+  `variantStatus`, непрочитанные имена (включая случай «имя помечено невалидным»),
+  и сверка на настоящем проекте — определение с описанием правила ищется через
+  группы свойств, потому что `ACAPI_Property_GetPropertyDefinitions` запрашивает
+  определения **ГРУППЫ** и не принимает `API_NULLGuid`.
+- [по коду + чтению DevKit AC22/23/25–29]. **AC24 not verified** — DevKit-24 в
+  репозитории отсутствует; ветка `#ifdef ServerMainVers_2400` проверена по
+  заголовкам AC25 и по отсутствию полей в AC23.
 
 ### R4.1 — нормализация описания выделена в проверяемую единицу (#228)
 - `NormalizeRuleDescription (const GS::UniString &source)` — `Spec.cpp:1222`, объявление

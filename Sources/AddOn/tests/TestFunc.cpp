@@ -70,6 +70,7 @@ namespace TestFunc {
         TestKit::Register ("TestSpecParser", Groups::Spec, TestSpecParser);
         TestKit::Register ("TestSpecAddRule", Groups::Spec, TestSpecAddRule);
         TestKit::Register ("TestSpecParseError", Groups::Spec, TestSpecParseError);
+        TestKit::Register ("TestSpecRuleCheck", Groups::Spec, TestSpecRuleCheck);
         TestKit::Register ("TestSpecSizes", Groups::Spec, TestSpecSizes);
 
         TestKit::Register ("TestStringSplt", Groups::Core, TestStringSplt);
