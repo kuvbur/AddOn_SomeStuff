@@ -118,6 +118,32 @@ def row_count(body, section):
     return len(((body.get(section) or {}).get("element") or []))
 
 
+def rejected(body, run_index):
+    """Почему ответ нельзя принять как измерение no-op серии.
+
+    Проверяются ПЕРЕД записью замера: серия, названная noop-converged, обязана
+    состоять из успешных ответов без единой операции. Иначе в timings попадает
+    не то, что измеряли, а тишина отказа (status failed) или незамеченная
+    мутация модели (ненулевой create).
+    """
+    status = body.get("status")
+    if status != "completed":
+        return "status=%r" % status
+    code = body.get("resultCode")
+    if isinstance(code, int) and code != 0:
+        return "resultCode=%r" % code
+    counters = (body.get("elementsToCreate"),
+                body.get("elementsToModify"),
+                body.get("elementsToDelete"))
+    if any(isinstance(c, int) and c != 0 for c in counters):
+        return "counters C/M/D=%s" % (counters,)
+    for key in ("status", "resultCode", "elementsToCreate",
+                "elementsToModify", "elementsToDelete"):
+        if key not in body:
+            return "missing %s" % key
+    return None
+
+
 def measure(port, runs, include):
     """Серия прогонов; порядок фиксирован, вариативность не оценивается как
     A/B — здесь только baseline одной конфигурации."""
@@ -128,7 +154,19 @@ def measure(port, runs, include):
             print("run %d FAILED: %s" % (index, json.dumps(raw, ensure_ascii=False)[:300]))
             return None
         body = raw.get("result", {}).get("addOnCommandResponse", {})
-        records.append({
+        why = rejected(body, index)
+        if why is not None:
+            # Серия обрывается: дальнейшие вызовы только повторят то же самое
+            # и, при create, продолжили бы изменять модель.
+            print("run %d REJECTED (%s): %s" % (index, why, json.dumps(body, ensure_ascii=False)[:300]))
+            return None
+        elapsed = body.get("elapsedSeconds")
+        if not isinstance(elapsed, (int, float)) or elapsed < 0:
+            # Нечисловое время не усредняем, но и не выбрасываем молча: прогон
+            # учитывается в счётчиках, и series_complete становится ложным.
+            print("run %d BAD TIMING: %r" % (index, elapsed))
+            elapsed = None
+        record = {
             "run": index,
             "includeParameters": include,
             "status": body.get("status"),
@@ -136,22 +174,26 @@ def measure(port, runs, include):
             "elementsToCreate": body.get("elementsToCreate"),
             "elementsToModify": body.get("elementsToModify"),
             "elementsToDelete": body.get("elementsToDelete"),
-            "elapsedSeconds": body.get("elapsedSeconds"),
+            "elapsedSeconds": elapsed,
             "clientWallSeconds": round(wall, 6),
             "createdRows": row_count(body, "created"),
             "modifiedRows": row_count(body, "modified"),
             "deletedRows": row_count(body, "deleted"),
-        })
-        print("  run %2d/%d  elapsed=%.4f  wall=%.4f  C=%s M=%s D=%s  %s"
-              % (index, runs, records[-1]["elapsedSeconds"] or -1.0,
-                 wall, records[-1]["elementsToCreate"],
-                 records[-1]["elementsToModify"],
-                 records[-1]["elementsToDelete"], records[-1]["status"]))
+        }
+        records.append(record)
+        print("  run %2d/%d  elapsed=%s  wall=%.4f  C=%s M=%s D=%s  %s"
+              % (index, runs,
+                 ("%.4f" % elapsed) if elapsed is not None else "n/a",
+                 wall, record["elementsToCreate"],
+                 record["elementsToModify"],
+                 record["elementsToDelete"], record["status"]))
     return records
 
 
 def summarize(records, include):
-    elapsed = [r["elapsedSeconds"] for r in records if isinstance(r["elapsedSeconds"], (int, float))]
+    elapsed = [r["elapsedSeconds"] for r in records
+               if isinstance(r["elapsedSeconds"], (int, float))]
+    discarded = len(records) - len(elapsed)
     wall = [r["clientWallSeconds"] for r in records]
     counters = {(r["elementsToCreate"], r["elementsToModify"], r["elementsToDelete"])
                 for r in records}
@@ -160,6 +202,12 @@ def summarize(records, include):
         "scenario": "noop-converged",
         "includeParameters": include,
         "runs": len(records),
+        # Число действительных измерений и число отброшенных показываются
+        # явно: иначе серия из двух прогонов с одним временем выглядит как
+        # «два замера, нулевой разброс».
+        "validTimingSamples": len(elapsed),
+        "discardedTimingSamples": discarded,
+        "series_complete": discarded == 0,
         "statuses": sorted(statuses),
         "countersObserved": sorted(list(counters)),
         "elapsedSeconds": {
@@ -209,9 +257,15 @@ def main():
         print("series includeParameters=%s" % str(include).lower())
         records = measure(port, args.runs, include)
         if records is None:
+            # Серия отвергнута: файлы НЕ пишутся, чтобы отвергнутый замер не
+            # выглядел как готовая baseline-серия для следующего сравнения.
+            print("series rejected - no baseline written")
             return 1
         all_records.extend(records)
         summaries.append(summarize(records, include))
+    if any(not s["series_complete"] for s in summaries):
+        print("series incomplete - timings are partial, treat as evidence of a defect")
+        return 1
 
     os.makedirs(BASELINE_DIR, exist_ok=True)
     csv_path = os.path.join(BASELINE_DIR, "runs-%s.csv" % args.tag)

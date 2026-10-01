@@ -1305,11 +1305,11 @@ namespace TestFunc {
             for (GS::HashTable<GS::UniString, GS::UniString>::ConstPairIterator cIt = favorite.EnumeratePairs ();
                  cIt != NULL;
                  ++cIt) {
-#ifdef ServerMainVers_2800
+    #ifdef ServerMainVers_2800
                 iterationOrder.Push (cIt->key);
-#else
+    #else
                 iterationOrder.Push (*cIt->key);
-#endif
+    #endif
             }
             // spec_rule_name отсутствует намеренно: при нём ранний выход
             // прерывает обход после первого совпадения и first/last неразличимы.
@@ -1739,8 +1739,7 @@ namespace TestFunc {
                         else
                             ++legacyOut;
                     }
-                    if (legacyOut == 0 || legacySum == 0 ||
-                        legacySum != rule.out_sum_paramrawname.GetSize () ||
+                    if (legacyOut == 0 || legacySum == 0 || legacySum != rule.out_sum_paramrawname.GetSize () ||
                         legacyOut != rule.out_paramrawname.GetSize ())
                         continue;
                     row.subguid_paramrawname = rule.runState.destinationParamGuidName;
@@ -2288,23 +2287,36 @@ namespace TestFunc {
             FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
             ParamDict none1 = {};
             ParamDict none2 = {};
+            GS::UniString sampleKeyOut;
             for (const API_Guid &guid : f.rule.runState.elements) {
                 Spec::RuleContribution c =
                     Spec::BuildContribution (guid, 0, f.rule.groups[0], binding, reader, none1, none2);
                 Spec::RuleContribution rowContribution = c;
                 if (!rows.ContainsKey (c.key))
                     Spec::ReadContributionOutputs (guid, f.rule.groups[0], binding, reader, fstr, rowContribution);
+                // Ключ выхода запоминается ПЕРВЫМ источником: он одинаков для
+                // всех тридцати (все выходные значения совпадают), а
+                // ReadContributionOutputs заполняет keyOut — BuildContribution
+                // оставляет его пустым.
+                if (sampleKeyOut.IsEmpty ())
+                    sampleKeyOut = rowContribution.keyOut;
                 // Одно ContainsKey + одно Get на источник — сигнатура шага.
                 // Счётчик обращений ЗДЕСЬ считается по-настоящему: результат
                 // ContainsKey записывается и проверяется, а не глушится. Проверка
                 // ниже подтверждает, что каждый источник даёт ровно одну строку
                 // и ровно одну запись в outParam на уникальный выход.
                 const bool existed = rows.ContainsKey (rowContribution.key);
+                const UInt32 rowsBefore = rows.GetSize ();
                 Spec::AddContributionToRow (rows, rowContribution, f.rule, 1, 1, outParam);
                 DBtest (rows.ContainsKey (rowContribution.key), true, "row present after add");
                 // Существовавшая строка обязана остаться той же: повторный
-                // источник того же ключа не создаёт вторую строку.
-                DBtest (existed == (rows.GetSize () < kRows), "repeated key did not add a second row");
+                // источник того же ключа не создаёт вторую строку. Число строк
+                // сравнивается ДО и ПОСЛЕ добавления, а не с предельным числом:
+                // у последнего источника вклад идёт в тридцатую строку, и
+                // сравнение с пределом не отличило бы «добавил» от «не добавил».
+                DBtest (existed ? rows.GetSize () == rowsBefore : rows.GetSize () == rowsBefore + 1,
+                        true,
+                        "repeated key did not add a second row");
             }
             DBtest (rows.GetSize (), (UInt32)kRows, "many rows built");
             // Выходное значение у всех строк одинаковое, поэтому outParam держит
@@ -2312,8 +2324,11 @@ namespace TestFunc {
             DBtest (outParam.GetSize (), 1u, "outParam one entry per distinct output");
             // Содержимое записи проверяется, а не только размер: ключ строки
             // обязан вести в словарь строк, иначе сверка существующих объектов
-            // не нашла бы строку по выходному значению.
-            const GS::UniString *outKey = outParam.GetPtr ("Alpha");
+            // не нашла бы строку по выходному значению. Ключ берётся из
+            // contribution.keyOut, а не пишется строкой: там разделитель ATSIGN,
+            // поэтому литерал без него в словаре не лежит.
+            DBtest (sampleKeyOut.IsEmpty (), false, "output key was built");
+            const GS::UniString *outKey = outParam.GetPtr (sampleKeyOut);
             DBtest (outKey != nullptr, true, "outParam holds the output key");
             DBtest (outKey != nullptr && rows.ContainsKey (*outKey), true, "outParam key resolves to a row");
         }
@@ -2696,6 +2711,82 @@ namespace TestFunc {
             DBtest (plan.unchanged, 0, "no reconciliation means zero unchanged");
             DBtest (plan.removals.GetSize (), 0, "no reconciliation removes nothing");
             DBtest (plan.Matches (f.modified, f.deleted), true, "skipped reconciliation consistent");
+        }
+
+        // --- ДВА ПРАВИЛА с общим накопительным массивом удалений ---
+        // SpecArray передаёт общий накопительный массив удалений каждому
+        // правилу, поэтому план ПРАВИЛА сопоставляется только со своим
+        // суффиксом. Без этого второе правило, ничего не удалившее, было бы
+        // признано несогласованным из-за удаления ПЕРВОГО правила.
+        {
+            Spec::SpecChangePlan planA = {};
+            Spec::SpecChangePlan planB = {};
+            Spec::ElementDict createdA = {}, modifiedA = {};
+            Spec::ElementDict createdB = {}, modifiedB = {};
+            GS::Array<API_Guid> sharedDeletes = {};
+            UnicGuid errorsA = {}, errorsB = {};
+
+            // Правило A: один лишний старый объект -> одно удаление.
+            SpecFixture fa;
+            fa.rule.delete_old = true;
+            fa.Source (fa.first, "A", "Alpha", 5);
+            fa.Existing (fa.old, "Alpha", 5);
+            fa.Existing (fa.extra, "TotallyOther", 77);
+            Spec::GetElementsForRule (fa.rule, fa.context, createdA, modifiedA, sharedDeletes, errorsA, false, &planA);
+            const UIndex afterA = sharedDeletes.GetSize ();
+            DBtest (afterA, 1, "first rule removed one object");
+            DBtest (planA.removals.GetSize (), 1, "first rule planned one removal");
+            DBtest (planA.Matches (modifiedA, sharedDeletes, 0), true, "first rule plan consistent");
+
+            // Правило B: своя фикстура, но ТОТ ЖЕ массив удалений и ноль
+            // собственных удалений. Сверка идёт, план пуст по removals.
+            SpecFixture fb;
+            fb.rule.delete_old = true;
+            fb.Source (fb.first, "B", "Beta", 4);
+            fb.Existing (fb.old, "Beta", 4);
+            Spec::GetElementsForRule (fb.rule, fb.context, createdB, modifiedB, sharedDeletes, errorsB, false, &planB);
+            DBtest (sharedDeletes.GetSize (), afterA, "second rule added no removals");
+            DBtest (planB.removals.GetSize (), 0, "second rule planned no removals");
+            // Суффикс пуст, а общий массив непуст: без смещения это ложное
+            // расхождение, с которым прежняя проверка писала бы
+            // «SpecChangePlan mismatch» в журнал.
+            DBtest (
+                planB.Matches (modifiedB, sharedDeletes, afterA), true, "second rule plan ignores earlier removals");
+            // Контроль: смещение, не равное началу второго правила, обязано дать
+            // расхождение - иначе проверка ничего бы не проверяла.
+            DBtest (planB.Matches (modifiedB, sharedDeletes, 0), false, "offset zero rejects a foreign removal");
+        }
+
+        // --- рабочий путь: план не создаётся ---
+        // GetElementsForRule без плана не строит его: иначе каждое изменение
+        // платило бы второй копией строки плюс сбором removals/create.
+        // Проверяется то, что видно снаружи: результат и фактические списки на
+        // пути без плана совпадают с прогоном с планом, а сам план,
+        // полученный сверху, остаётся нетронутым.
+        {
+            SpecFixture f1;
+            f1.rule.delete_old = true;
+            f1.Source (f1.first, "A", "Alpha", 9);
+            f1.Existing (f1.old, "Alpha", 5);
+            f1.Existing (f1.extra, "TotallyOther", 77);
+            Spec::SpecChangePlan observed = {};
+            const Int32 withPlan = Spec::GetElementsForRule (
+                f1.rule, f1.context, f1.created, f1.modified, f1.deleted, f1.errors, false, &observed);
+
+            SpecFixture f2;
+            f2.rule.delete_old = true;
+            f2.Source (f2.first, "A", "Alpha", 9);
+            f2.Existing (f2.old, "Alpha", 5);
+            f2.Existing (f2.extra, "TotallyOther", 77);
+            const Int32 withoutPlan =
+                Spec::GetElementsForRule (f2.rule, f2.context, f2.created, f2.modified, f2.deleted, f2.errors, false);
+
+            DBtest (withPlan == withoutPlan, true, "null plan result equals observed result");
+            DBtest (f1.created.GetSize () == f2.created.GetSize (), true, "null plan creates the same rows");
+            DBtest (f1.modified.GetSize () == f2.modified.GetSize (), true, "null plan updates the same rows");
+            DBtest (f1.deleted.GetSize () == f2.deleted.GetSize (), true, "null plan deletes the same objects");
+            DBtest (observed.deleteOld, 1, "observed plan records that reconciliation ran");
+            DBtest (observed.removals.GetSize (), f1.deleted.GetSize (), "observed plan covers the removals");
         }
     }
 
@@ -3301,6 +3392,51 @@ namespace TestFunc {
             const Spec::RowAddition r = Spec::AddContributionToRow (rows, c, f.rule, 2, 1, outParam);
             DBtest (r, Spec::RowAddition::SchemaMismatch, "mismatch when output slot missing");
             DBtest (rows.GetSize (), 0, "mismatch adds no row");
+        }
+
+        // --- ШИРОКИЙ ВЫХОД: граница сумм находится по суффиксу ---
+        // Суммирование ищет первую сумму обратным проходом, опираясь на
+        // инвариант «сначала выходные, затем суммы». Здесь выход шире любой
+        // суммы, поэтому ошибка смещения дала бы сложение не того слота.
+        // Строка собирается вручную: построитель схемы в проде всегда даёт
+        // корректный порядок, а проверить надо именно сам обратный проход.
+        {
+            Spec::Element wide = {};
+            for (int i = 0; i < 6; i++)
+                PushOutSlot (wide, Num (i + 1));
+            PushSumSlot (wide, Num (100));
+            PushSumSlot (wide, Num (200));
+            DBtest (wide.out_slots.GetSize (), 8u, "wide row has eight slots");
+            DBtest (wide.OutParamCount (), 6u, "six output slots");
+            DBtest (wide.OutSumCount (), 2u, "two sum slots");
+
+            Spec::RuleContribution c = {};
+            c.isIncluded = true;
+            c.outputsRead = true;
+            c.outSumParam.Push (Num (5));
+            c.outSumParam.Push (Num (7));
+            c.outParam.Push (Num (1));
+            Spec::SumContributionIntoRow (wide, c);
+            // Складываются ТОЛЬКО суммы: выходные шесть слотов не тронуты.
+            DBtest (wide.out_slots[6].value.val.intValue, 105, "first sum slot accumulated");
+            DBtest (wide.out_slots[7].value.val.intValue, 207, "second sum slot accumulated");
+            for (UInt32 i = 0; i < 6; i++)
+                DBtest (wide.out_slots[i].value.val.intValue, (Int32)i + 1, "output slot untouched by merge");
+
+            // Вклад короче накопленного: складывается только общая часть.
+            Spec::Element wideShort = wide;
+            Spec::RuleContribution shortC = {};
+            shortC.outSumParam.Push (Num (1));
+            Spec::SumContributionIntoRow (wideShort, shortC);
+            DBtest (wideShort.out_slots[6].value.val.intValue, 106, "short contribution touches first sum only");
+            DBtest (wideShort.out_slots[7].value.val.intValue, 207, "short contribution leaves second sum");
+
+            // Пустой вклад сумм ничего не меняет.
+            Spec::Element wideEmpty = wide;
+            Spec::RuleContribution emptyC = {};
+            Spec::SumContributionIntoRow (wideEmpty, emptyC);
+            DBtest (wideEmpty.out_slots[6].value.val.intValue, 105, "empty contribution changes nothing");
+            DBtest (wideEmpty.out_slots[7].value.val.intValue, 207, "empty contribution keeps second sum");
         }
 
         // --- размер схемы стабилен при многих слияниях ---

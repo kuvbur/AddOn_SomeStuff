@@ -1371,6 +1371,13 @@ namespace Spec {
                                const GS::HashTable<GS::UniString, GS::UniString> &favorite,
                                ParamDictValue &paramToWrite) {
         bool guidFound = false;
+        // Поисковый маркер ОТДЕЛЕН от определения правила и изменяем по ходу
+        // обхода: после успешного разрешения следующие свойства сопоставляются
+        // уже по найденному имени, а не по исходному маркеру описания.
+        // Прежде тот же эффект давало присваивание обратно в subguid_paramrawname;
+        // теперь определение правила неизменяемо, а последовательность выбора
+        // сохраняется (при двух подходящих свойствах выбирается первое).
+        GS::UniString searchMarker = rule.subguid_paramrawname;
         for (const auto &cItt : favorite) {
 #ifdef ServerMainVers_2800
             const GS::UniString rawname = cItt.key;
@@ -1393,13 +1400,14 @@ namespace Spec {
                 }
                 rule.subguid_rulename = rawname;
             }
-            // Сопоставление идёт по НЕИЗМЕНЯЕМОМУ маркеру subguid_paramrawname
-            // (из описания правила); найденное имя свойства пишется в
-            // destinationParamGuidName - больше маркер не подменяется результатом,
-            // поэтому повторный проход по тому же правилу ищет то же самое.
-            if (!rule.subguid_paramrawname.IsEmpty ()) {
-                if (description.Contains (rule.subguid_paramrawname.ToLowerCase ()) &&
-                    description.Contains ("sync_guid")) {
+            // Сопоставление идёт по поисковому маркеру: сначала это неизменяемый
+            // маркер subguid_paramrawname из описания правила, а после
+            // успешного разрешения - уже найденное имя свойства. Найденное имя
+            // пишется в destinationParamGuidName, поэтому определение правила
+            // не подменяется результатом и повторный проход по тому же правилу
+            // ищет то же самое.
+            if (!searchMarker.IsEmpty ()) {
+                if (description.Contains (searchMarker.ToLowerCase ()) && description.Contains ("sync_guid")) {
                     if (!paramToWrite.ContainsKey (rawname)) {
                         ParamValue chpvalue;
                         if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) {
@@ -1411,6 +1419,7 @@ namespace Spec {
                         paramToWrite.Add (rawname, chpvalue);
                     }
                     rule.runState.destinationParamGuidName = rawname;
+                    searchMarker = rawname;
                     guidFound = true;
                 }
             }
@@ -1935,14 +1944,21 @@ namespace Spec {
         n_elements = PlanRuleRows (rule, context, elements, error_element, showUserInterface, out_param, plan);
         if (!rule.delete_old)
             return n_elements;
-        // Сверка заполняет фактические списки и план; план не становится вторым
-        // источником истины — тот же вызов пишет и фактические списки.
-        SpecChangePlan localPlan = {};
-        if (plan == nullptr)
-            plan = &localPlan;
-        plan->deleteOld = 1;
+        // План наблюдает решение сверки, но не становится вторым источником
+        // истины — тот же вызов пишет и фактические списки. На рабочем пути
+        // plan == nullptr, и тогда план НЕ создаётся: иначе каждое изменение
+        // оплачивало бы второй копией строки (вставкой в plan->update) плюс
+        // сбором removals/create и обходом остатков, то есть ровно тем
+        // дублированием payload, которое запрещено.
+        if (plan != nullptr)
+            plan->deleteOld = 1;
+        // elements_delete — общий накопительный массив запуска: он передаётся
+        // каждому правилу и содержит удаления ПРЕДЫДУЩИХ правил тоже. Сверка
+        // сопоставляет с планом только свой суффикс, иначе второе правило,
+        // ничего не удалившее, дало бы ложное расхождение.
+        const UIndex deleteOffset = elements_delete.GetSize ();
         ReconcileExistingRows (rule, reader, fstr, out_param, elements, elements_mod, elements_delete, plan);
-        if (!plan->Matches (elements_mod, elements_delete)) {
+        if (plan != nullptr && !plan->Matches (elements_mod, elements_delete, deleteOffset)) {
             // Страховка: план и фактические списки пишутся из одних точек, так
             // что расхождение указывает на нарушение согласованности списков.
             msg_rep ("Spec", "SpecChangePlan mismatch", NoError, APINULLGuid);

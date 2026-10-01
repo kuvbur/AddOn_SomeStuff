@@ -191,14 +191,21 @@ namespace Spec {
     void SumContributionIntoRow (Element &row, const RuleContribution &contribution) {
         // Суммируются первые общие суммарные слоты; при неполном вкладе
         // отсутствующие слоты не создаются и оставшиеся значения не меняются.
+        // Граница сумм ищется ОБРАТНЫМ проходом: схема строится как «сначала
+        // выходные, затем суммы», поэтому суммарные слоты образуют суффикс.
+        // Прямой проход по всем слотам был бы O(выход + суммы) на каждый merge,
+        // то есть стоимость слияния зависела бы от числа выходных полей.
         UInt32 accumulated = 0;
-        for (const OutputSlot &slot : row.out_slots)
-            if (slot.isSum)
-                ++accumulated;
+        for (GSIndex i = row.out_slots.GetSize () - 1; i >= 0; --i) {
+            if (!row.out_slots[i].isSum)
+                break;
+            ++accumulated;
+        }
         const UInt32 incoming = contribution.outSumParam.GetSize ();
         const UInt32 nsumm = accumulated < incoming ? accumulated : incoming;
-        // Суммы идут после выходных слотов; смещение зависит от числа
-        // накопленных сумм, а не от числа слотов очередного вклада.
+        // Суммарные слоты занимают ПОСЛЕДНИЕ accumulated позиций схемы (порядок
+        // нарочно: сначала выходные, затем суммы), поэтому первый из них имеет
+        // индекс outSlots - accumulated.
         const UInt32 firstSumSlot = row.out_slots.GetSize () - accumulated;
         for (UInt32 j = 0; j < nsumm; j++) {
             OutputSlot &slot = row.out_slots[firstSumSlot + j];

@@ -169,6 +169,32 @@ def collect_rows(body, section):
     return rows
 
 
+def collect_deleted(body):
+    """Список удалений -> {GUID: имя избранного}.
+
+    Удаления - часть результата запуска, а не только число в сводке: замена
+    одного объекта другим при том же количестве не должна проходить сравнение.
+    GUID новых объектов не сравниваются, но у удаляемых он ИЗВЕСТЕН (это
+    ранее размещённые объекты), поэтому он и служит ключом. Порядок не важен:
+    список приводится к словарю сортировкой ключей.
+    """
+    out = {}
+    for element in (body.get("deleted") or {}).get("element", []):
+        guid = (element.get("guid") or "").strip()
+        if guid:
+            out[guid] = element.get("favoriteName", "")
+    return out
+
+
+# Обязательные поля ответа. Отсутствие любого из них означает, что эталон
+# описывает НЕИЗВЕСТНЫЙ результат, и сравнивать его не с чем: без этой проверки
+# succeeded=true без addOnCommandResponse превращается в {} и PASS.
+REQUIRED_FIELDS = (
+    "status", "resultCode",
+    "elementsToCreate", "elementsToModify", "elementsToDelete",
+)
+
+
 def summarize(body):
     return {
         "status": body.get("status"),
@@ -180,14 +206,14 @@ def summarize(body):
     }
 
 
-def save(tag, raw, body, rows):
+def save(tag, raw, body, rows, deleted):
     os.makedirs(BASELINE_DIR, exist_ok=True)
     raw_path = os.path.join(BASELINE_DIR, "raw-%s.json" % tag)
     cmp_path = os.path.join(BASELINE_DIR, "compare-%s.json" % tag)
     with open(raw_path, "w", encoding="utf-8") as fh:
         json.dump(raw, fh, ensure_ascii=False, indent=2, sort_keys=True)
         fh.write("\n")
-    payload = {"summary": summarize(body), "rows": rows}
+    payload = {"summary": summarize(body), "rows": rows, "deleted": deleted}
     with open(cmp_path, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, ensure_ascii=False, indent=2, sort_keys=True)
         fh.write("\n")
@@ -233,6 +259,34 @@ def diff_rows(expected, actual):
     return problems
 
 
+def diff_deleted(expected, actual):
+    """Расхождения по списку удалений. Пустой эталон сравнивается с непустым
+    фактом: исчезновение удалений - тоже изменение результата."""
+    problems = []
+    exp, act = expected or {}, actual or {}
+    for guid in sorted(set(exp) - set(act)):
+        problems.append("DELETED lost: %s" % guid)
+    for guid in sorted(set(act) - set(exp)):
+        problems.append("DELETED new:   %s" % guid)
+    for guid in sorted(set(exp) & set(act)):
+        if exp[guid] != act[guid]:
+            problems.append("DELETED changed: %s %r -> %r" % (guid, exp[guid], act[guid]))
+    return problems
+
+
+def validate_schema(body, where):
+    """Проверка обязательной схемы ответа.
+
+    Отсутствие поля означает, что результат НЕИЗВЕСТЕН: сравнение с таким
+    эталоном проходит по None == None и доказывает ровно ничего. Возвращает
+    список недостающих полей.
+    """
+    missing = [key for key in REQUIRED_FIELDS if key not in (body or {})]
+    if missing:
+        print("%s: missing required field(s): %s" % (where, ", ".join(missing)))
+    return missing
+
+
 def main():
     if len(sys.argv) < 3:
         print(__doc__)
@@ -254,14 +308,21 @@ def main():
         print("command failed: %s" % json.dumps(raw, ensure_ascii=False)[:800])
         return 1
     body = raw.get("result", {}).get("addOnCommandResponse", {})
+    # Схема проверяется ДО любого сравнения: эталон неизвестного результата
+    # нельзя ни сохранять, ни с чем-либо сравнивать.
+    if validate_schema(body, "response"):
+        print("rejected: response does not carry the required schema")
+        return 1
     rows = {}
     for section in ("created", "modified"):
         rows.update(collect_rows(body, section))
+    deleted = collect_deleted(body)
     print("summary: %s" % json.dumps(summarize(body), ensure_ascii=False))
     print("rows: %d" % len(rows))
+    print("deleted: %d" % len(deleted))
 
     if action == "capture":
-        raw_path, cmp_path = save(tag, raw, body, rows)
+        raw_path, cmp_path = save(tag, raw, body, rows, deleted)
         print("saved:\n  %s\n  %s" % (raw_path, cmp_path))
         return 0
 
@@ -282,6 +343,7 @@ def main():
           % (exp_sum.get("elapsedSeconds"), act_sum.get("elapsedSeconds")))
 
     problems.extend(diff_rows(expected["rows"], rows))
+    problems.extend(diff_deleted(expected.get("deleted", {}), deleted))
     if problems:
         print("\nFAIL: %d difference(s)" % len(problems))
         for line in problems[:80]:
@@ -289,7 +351,8 @@ def main():
         if len(problems) > 80:
             print("  ... and %d more" % (len(problems) - 80))
         return 1
-    print("\nPASS: values of %d row(s) identical (elapsedSeconds not compared)" % len(rows))
+    print("\nPASS: values of %d row(s) and %d deletion(s) identical "
+          "(elapsedSeconds not compared)" % (len(rows), len(deleted)))
     return 0
 
 

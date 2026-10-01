@@ -606,13 +606,23 @@ namespace Spec {
         // Согласованность плана с реально выполненным. Сверка пишет план и
         // фактические списки из одних и тех же точек, поэтому проверка должна
         // всегда проходить; она существует как страховка от будущей правки.
-        bool Matches (const ElementDict &elementsMod, const GS::Array<API_Guid> &elementsDelete) const {
+        //
+        // deleteOffset — начало удалений ЭТОГО правила в общем накопительном
+        // массиве запуска. Без него второе правило, ничего не удалившее,
+        // сравнивалось бы с удалениями предыдущих правил и давало ложное
+        // расхождение. Сравнивается суффикс, а не весь массив.
+        bool Matches (const ElementDict &elementsMod,
+                      const GS::Array<API_Guid> &elementsDelete,
+                      UIndex deleteOffset = 0) const {
             if (deleteOld == 0)
                 return removals.IsEmpty () && update.IsEmpty () && create.IsEmpty () && unchanged == 0;
-            if (removals.GetSize () != elementsDelete.GetSize ())
+            if (deleteOffset > elementsDelete.GetSize ())
+                return false;
+            const UInt32 ownRemovals = elementsDelete.GetSize () - deleteOffset;
+            if (removals.GetSize () != ownRemovals)
                 return false;
             for (UInt32 i = 0; i < removals.GetSize (); ++i)
-                if (removals[i].guid != elementsDelete[i])
+                if (removals[i].guid != elementsDelete[deleteOffset + i])
                     return false;
             if (update.GetSize () != elementsMod.GetSize ())
                 return false;
