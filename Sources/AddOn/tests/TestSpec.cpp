@@ -119,7 +119,7 @@ namespace TestFunc {
 
             void Existing (const API_Guid &guid, const GS::UniString &t, Int32 q) {
                 rule.delete_old = true;
-                rule.exsist_elements.Push (guid);
+                rule.runState.exsist_elements.Push (guid);
                 Text (guid, outText, t);
                 Number (guid, outQuantity, q);
             }
@@ -380,7 +380,7 @@ namespace TestFunc {
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec unchanged");
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec unchanged repeat");
             DBtest (f.rule.elements.GetSize (), 1, "Spec rule sources preserved");
-            DBtest (f.rule.exsist_elements.GetSize (), 1, "Spec existing list preserved");
+            DBtest (f.rule.runState.exsist_elements.GetSize (), 1, "Spec existing list preserved");
             f.Number (f.first, f.quantity, 3);
             f.Shape (f.Run (), 1, 0, 1, 0, "Spec quantity changed");
             const Spec::Element *row = f.modified.GetPtr ("@A");
@@ -990,7 +990,7 @@ namespace TestFunc {
             found.Push (APIGuidFromString ("{22222222-2222-2222-2222-222222222222}"));
             UnicGuid selected;
             Spec::SelectExistingElements (rule, found, selected);
-            DBtest (rule.exsist_elements.GetSize (), 2, "empty selection takes all");
+            DBtest (rule.runState.exsist_elements.GetSize (), 2, "empty selection takes all");
         }
 
         // Непустое выделение фильтрует по составу.
@@ -1003,8 +1003,9 @@ namespace TestFunc {
             UnicGuid selected;
             selected.Add (keep, true);
             Spec::SelectExistingElements (rule, found, selected);
-            DBtest (rule.exsist_elements.GetSize (), 1, "selection filters found");
-            DBtest (!rule.exsist_elements.IsEmpty () && rule.exsist_elements[0] == keep, "selection keeps chosen");
+            DBtest (rule.runState.exsist_elements.GetSize (), 1, "selection filters found");
+            DBtest (!rule.runState.exsist_elements.IsEmpty () && rule.runState.exsist_elements[0] == keep,
+                    "selection keeps chosen");
         }
 
         // Непустое выделение ДОПИСЫВАЕТ элементы, а не заменяет прежнее
@@ -1013,14 +1014,14 @@ namespace TestFunc {
         {
             Spec::SpecRule rule;
             const API_Guid before = APIGuidFromString ("{33333333-3333-3333-3333-333333333333}");
-            rule.exsist_elements.Push (before);
+            rule.runState.exsist_elements.Push (before);
             GS::Array<API_Guid> found;
             const API_Guid keep = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
             found.Push (keep);
             UnicGuid selected;
             selected.Add (keep, true);
             Spec::SelectExistingElements (rule, found, selected);
-            DBtest (rule.exsist_elements.GetSize (), 2, "selection appends to existing");
+            DBtest (rule.runState.exsist_elements.GetSize (), 2, "selection appends to existing");
         }
 
         // Пустое выделение ПРИСВАИВАЕТ найденное, заменяя прежнее содержимое -
@@ -1028,12 +1029,12 @@ namespace TestFunc {
         {
             Spec::SpecRule rule;
             const API_Guid before = APIGuidFromString ("{33333333-3333-3333-3333-333333333333}");
-            rule.exsist_elements.Push (before);
+            rule.runState.exsist_elements.Push (before);
             GS::Array<API_Guid> found;
             found.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
             UnicGuid selected;
             Spec::SelectExistingElements (rule, found, selected);
-            DBtest (rule.exsist_elements.GetSize (), 1, "empty selection replaces existing");
+            DBtest (rule.runState.exsist_elements.GetSize (), 1, "empty selection replaces existing");
         }
 
         // Несовпадение выделения с найденным даёт пустой результат.
@@ -1044,7 +1045,7 @@ namespace TestFunc {
             UnicGuid selected;
             selected.Add (APIGuidFromString ("{99999999-9999-9999-9999-999999999999}"), true);
             Spec::SelectExistingElements (rule, found, selected);
-            DBtest (rule.exsist_elements.IsEmpty (), true, "selection misses all found");
+            DBtest (rule.runState.exsist_elements.IsEmpty (), true, "selection misses all found");
         }
 
         // AddExistingReadRequests: запрашиваются выход, суммы и носитель GUID.
@@ -2258,7 +2259,7 @@ namespace TestFunc {
             f.Existing (f.old, "Alpha", 5); // значения старого совпадают с новыми
             // Второй дубль старого объекта с тем же выходным значением.
             API_Guid dupGuid = APIGuidFromString ("{55555555-5555-5555-5555-555555555555}");
-            f.rule.exsist_elements.Push (dupGuid);
+            f.rule.runState.exsist_elements.Push (dupGuid);
             f.Text (dupGuid, f.outText, "Alpha");
             f.Number (dupGuid, f.outQuantity, 5);
 
@@ -2285,7 +2286,7 @@ namespace TestFunc {
             // попадает в ветку «строка уже удалена».
             f.Existing (f.old, "Alpha", 5);
             API_Guid second = APIGuidFromString ("{66666666-6666-6666-6666-666666666666}");
-            f.rule.exsist_elements.Push (second);
+            f.rule.runState.exsist_elements.Push (second);
             f.Text (second, f.outText, "Alpha");
             f.Number (second, f.outQuantity, 5);
 
@@ -2426,7 +2427,7 @@ namespace TestFunc {
             f.Source (f.first, "A", "Alpha", 5);
             f.Existing (f.old, "Alpha", 5);
             const API_Guid dup = APIGuidFromString ("{88888888-8888-8888-8888-888888888888}");
-            f.rule.exsist_elements.Push (dup);
+            f.rule.runState.exsist_elements.Push (dup);
             f.Text (dup, f.outText, "Alpha");
             f.Number (dup, f.outQuantity, 5);
 
@@ -2485,7 +2486,7 @@ namespace TestFunc {
             SpecFixture f;
             f.Source (f.first, "A", "Alpha", 5);
             f.rule.delete_old = false;
-            f.rule.exsist_elements.Push (f.old);
+            f.rule.runState.exsist_elements.Push (f.old);
             Spec::SpecChangePlan plan = {};
             Spec::GetElementsForRule (f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, &plan);
             // Ранний выход ДО записи deleteOld: план остаётся в исходном
@@ -2901,7 +2902,7 @@ namespace TestFunc {
             // Сверки не было: ни удалений, ни модификаций — эти контейнеры
             // не входят в расчётную часть вовсе.
             DBtest (planned.GetSize (), 1, "R6.1 delete_old does not add rows");
-            DBtest (f.rule.exsist_elements.GetSize (), 1, "R6.1 existing list untouched by planning");
+            DBtest (f.rule.runState.exsist_elements.GetSize (), 1, "R6.1 existing list untouched by planning");
         }
 
         // --- суммирование одинаковых ключей в расчётной части ---
@@ -3317,6 +3318,84 @@ namespace TestFunc {
     // прошла бы сверку чисел, и суммирование сложило бы ВЫХОДНОЙ слот вместо
     // суммарного — тихо. Это статический риск, а не наблюдавшаяся регрессия:
     // производственный BuildOutputSlots порядок соблюдает.
+    // R3.5: ГРАНИЦА ТИПОВ. Первым вынесено exsist_elements (R3.4), у него один
+    // писатель. Набор фиксирует, что:
+    //   - состояние запуска — отдельный тип, а не поле в SpecRule;
+    //   - заполнение состояния НЕ трогает определение правила (схему, признаки
+    //     готовности, выбор) — то есть перенос не смешал данные с местом;
+    //   - правило ПО УМОЛЧАНИЮ пригодно к запуску (IsRunnableForRun), и наполнение
+    //     состояния этого не меняет.
+    // Политика удаления и признак полноты здесь НЕ проверяются: они принадлежат
+    // F1, и R3 не должен влиять на них.
+    void TestSpecRunStateBoundary () {
+        // --- отдельный тип состояния компилируется и самодостаточен ---
+        {
+            Spec::SpecRuleRunState state = {};
+            DBtest (state.exsist_elements.IsEmpty (), true, "R3.5 fresh state is empty");
+            state.exsist_elements.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
+            DBtest (state.exsist_elements.GetSize (), 1, "R3.5 state holds existing list");
+            // Копия состояния независима от правила: это данные запуска, а не
+            // определение, поэтому присваивание структуры не должно тащить за
+            // собой определение.
+            Spec::SpecRuleRunState copy = state;
+            DBtest (copy.exsist_elements.GetSize (), 1, "R3.5 state copies by value");
+        }
+
+        // --- заполнение состояния не трогает определение ---
+        {
+            Spec::SpecRule rule;
+            rule.out_paramrawname.Push ("{@property:out}");
+            rule.out_sum_paramrawname.Push ("{@property:sum}");
+            const UInt32 outBefore = rule.out_paramrawname.GetSize ();
+            const UInt32 sumBefore = rule.out_sum_paramrawname.GetSize ();
+            const bool parseBefore = rule.parseValid;
+            const bool readyBefore = rule.destinationReady;
+            const bool selectedBefore = rule.selected;
+            const UInt32 groupsBefore = rule.groups.GetSize ();
+
+            GS::Array<API_Guid> found;
+            found.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
+            UnicGuid selected;
+            Spec::SelectExistingElements (rule, found, selected);
+
+            DBtest (rule.runState.exsist_elements.GetSize (), 1, "R3.5 state filled");
+            DBtest (rule.out_paramrawname.GetSize (), outBefore, "R3.5 out schema untouched");
+            DBtest (rule.out_sum_paramrawname.GetSize (), sumBefore, "R3.5 sum schema untouched");
+            DBtest (rule.groups.GetSize (), groupsBefore, "R3.5 groups untouched");
+            DBtest (rule.parseValid, parseBefore, "R3.5 parse flag untouched");
+            DBtest (rule.destinationReady, readyBefore, "R3.5 readiness untouched");
+            DBtest (rule.selected, selectedBefore, "R3.5 selection untouched");
+        }
+
+        // --- наполнение состояния не меняет готовность правила к запуску ---
+        {
+            Spec::SpecRule rule;
+            rule.runState.exsist_elements.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
+            DBtest (rule.IsRunnableForRun (), true, "R3.5 existing list does not block run");
+            // Находка №1 инвентаря: элементы заполняются ДО выбора, поэтому
+            // наличие источников само по себе не делает правило непригодным.
+            rule.elements.Push (APIGuidFromString ("{22222222-2222-2222-2222-222222222222}"));
+            DBtest (rule.IsRunnableForRun (), true, "R3.5 sources do not change runnability");
+            DBtest (rule.runState.exsist_elements.GetSize (), 1, "R3.5 existing list independent");
+            DBtest (rule.elements.GetSize (), 1, "R3.5 source list independent");
+        }
+
+        // --- прежнее поле отсутствует: доступ идёт через состояние ---
+        {
+            Spec::SpecRule rule;
+            GS::Array<API_Guid> found;
+            found.Push (APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"));
+            UnicGuid selected;
+            Spec::SelectExistingElements (rule, found, selected);
+            // Порядок в состоянии совпадает с порядком found — сверка и второй
+            // обход зависят от исходного порядка обхода.
+            DBtest (!rule.runState.exsist_elements.IsEmpty () &&
+                        rule.runState.exsist_elements[0] ==
+                            APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"),
+                    "R3.5 found order preserved in state");
+        }
+    }
+
     void TestSpecSlotOrder () {
         // --- перемешанная схема отвергается, даже когда числа сходятся ---
         {
@@ -4089,7 +4168,7 @@ namespace TestFunc {
                 DBtest (group.is_Valid && !group.fromMaterial && !group.fromLibData && group.n_layer == 0,
                         label + " ordinary group");
             }
-            DBtest (rule.elements.IsEmpty () && rule.exsist_elements.IsEmpty (), label + " no elements");
+            DBtest (rule.elements.IsEmpty () && rule.runState.exsist_elements.IsEmpty (), label + " no elements");
             // Ключ словаря строится из той же строки ПОСЛЕ разбора - раньше это
             // было невозможно, потому что парсер оставлял строку в обрезанном виде.
             const GS::UniString keyAfter = description.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);

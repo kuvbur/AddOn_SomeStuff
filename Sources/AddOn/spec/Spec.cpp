@@ -713,10 +713,10 @@ namespace Spec {
             GS::Array<API_Guid> exsist_elements =
                 GetElementByPropertyDescription (subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase ());
             SelectExistingElements (rule, exsist_elements, selected_elements);
-            if (rule.exsist_elements.IsEmpty ())
+            if (rule.runState.exsist_elements.IsEmpty ())
                 continue;
             // Собираем список параметрв для чтения у существующих элементов
-            AddExistingReadRequests (rule, rule.exsist_elements, readContext.read);
+            AddExistingReadRequests (rule, rule.runState.exsist_elements, readContext.read);
         }
         // Если для размещаемого объекта не удалось найти нужные параметры, дальнейшая работа бессмысленна.
         if (!error_name.IsEmpty ()) {
@@ -1479,17 +1479,17 @@ namespace Spec {
     // это изменило бы объём удаляемых строк.
     void SelectExistingElements (SpecRule &rule, const GS::Array<API_Guid> &found, const UnicGuid &selected_elements) {
         if (selected_elements.IsEmpty ()) {
-            rule.exsist_elements = found;
+            rule.runState.exsist_elements = found;
             return;
         }
         // Не присваивание, а ДОПИСЫВАНИЕ: прежде здесь был Push, и поле к
         // этому моменту не очищается. Присваивание изменило бы поведение в
-        // случае непустого exsist_elements на входе (сейчас безопасен только
+        // случае непустого runState.exsist_elements на входе (сейчас безопасен только
         // тем, что словарь правил создаётся заново на каждый запуск).
         for (const API_Guid &exsist_element : found) {
             if (!selected_elements.ContainsKey (exsist_element))
                 continue;
-            rule.exsist_elements.Push (exsist_element);
+            rule.runState.exsist_elements.Push (exsist_element);
         }
     }
 
@@ -2129,7 +2129,6 @@ namespace Spec {
         }
     }
 
-    // -----------------------------------------------------------------------------
     // --------------------------------------------------------------------
     // Раскрытие группы в итоговые группы правила:
     //   min_row > 0 - параметры-массивы "[N]" разворачиваются в min_row отдельных
@@ -2397,6 +2396,7 @@ namespace Spec {
         return true;
     }
 
+    // -----------------------------------------------------------------------------
     // Разбирает ВЫХОДНУЮ СХЕМУ правила - часть описания после "s@@".
     // Формат: s (Pn1, Pn2, Pn3; Qn1, Qn2), где
     //   часть 0 (до точки с запятой) - свойства элемента-результата;

@@ -15,6 +15,7 @@ namespace Spec {
         // является ошибкой, а строки со второй и далее проходят молча
         // (R5.5, S13). Обратный порядок здесь ломает S13: при fromMaterial и
         // array_row_start > 1 отказ стал бы ошибкой элемента.
+        // Возвращает, нужно ли считать неудачное чтение ошибкой источника для отчёта.
         inline bool ReadIsError (const ParamValue &pvalue, bool fromMaterial) {
             bool is_error = !fromMaterial;
             if (pvalue.fromGDLArray)
@@ -23,6 +24,9 @@ namespace Spec {
         }
     } // namespace
 
+    // Формирует первую часть вклада одного источника: проверяет флаг группы,
+    // собирает ключ строки и читает суммы. Не читает выходные поля и не решает,
+    // создавать ли строку; непрочитанные поля возвращает во вкладе вызывающему.
     RuleContribution BuildContribution (const API_Guid &elemguid,
                                         UInt32 groupIndex,
                                         const GroupSpec &group,
@@ -114,6 +118,9 @@ namespace Spec {
         return contribution;
     }
 
+    // Дополняет вклад выходными значениями и ключом выхода. Вызывающий делает
+    // это только для первого источника с данным ключом строки; ошибки чтения
+    // остаются во вкладе, а решение о сообщении принимает PlanRuleRows.
     void ReadContributionOutputs (const API_Guid &elemguid,
                                   const GroupSpec &group,
                                   const GroupSlotBinding &binding,
@@ -142,6 +149,9 @@ namespace Spec {
         contribution.isComplete = contribution.hasOutSlots && contribution.hasSumSlots;
     }
 
+    // Определяет статус вклада по включению источника, выполнению второй фазы
+    // и фактическому числу прочитанных слотов. Не меняет вклад и не заменяет
+    // проверку схемы перед добавлением строки.
     ContributionStatus ClassifyContribution (const RuleContribution &contribution,
                                              UInt32 schemaOutSlots,
                                              UInt32 schemaSumSlots) {
@@ -173,6 +183,8 @@ namespace Spec {
         // Длина берётся из самого вклада (contribution), а не из прежних полей
         // строки, но порядок и способ добирания имени прежние: сначала выходные
         // слоты, затем суммы, имя — по позиции с проверкой границы схемы.
+        // Заполняет единую схему строки из значений первого вклада: сначала
+        // выходные слоты, затем суммы. Имена берёт по позиции из правила.
         void BuildOutputSlots (Element &row, const SpecRule &rule, const RuleContribution &contribution) {
             row.out_slots.Clear ();
             for (UInt32 i = 0; i < contribution.outParam.GetSize (); i++) {
@@ -192,6 +204,9 @@ namespace Spec {
         }
     } // namespace
 
+    // Добавляет суммы очередного источника в уже существующую строку.
+    // При разных длинах складывает только общую начальную часть суммарных
+    // слотов; невалидные пары и оставшиеся слоты не меняет.
     void SumContributionIntoRow (Element &row, const RuleContribution &contribution) {
         // Перенос дословно из цикла PlanRuleRows (R6.3). Именно эта арифметика
         // и её поведение на неполных массивах закреплены тестом, а не
@@ -223,6 +238,9 @@ namespace Spec {
         }
     }
 
+    // Добавляет вклад к строке с тем же ключом либо создаёт новую строку.
+    // При создании проверяет схему; при несовпадении строка не попадает в rows,
+    // но связь keyOut -> key уже могла попасть в outParam. Возвращает исход.
     RowAddition AddContributionToRow (ElementDict &rows,
                                       const RuleContribution &contribution,
                                       const SpecRule &rule,
@@ -261,6 +279,10 @@ namespace Spec {
         return RowAddition::Created;
     }
 
+    // Сопоставляет рассчитанные строки с ранее размещёнными объектами правила.
+    // Сопоставленные строки вынимает из elements; изменённые добавляет в
+    // elementsMod, лишние GUID — в elementsDelete, остальные строки оставляет
+    // для создания. plan, если передан, наблюдает те же решения, но не управляет ими.
     void ReconcileExistingRows (const SpecRule &rule,
                                 const SpecValueReader &reader,
                                 const FormatString &fstr,
@@ -281,7 +303,7 @@ namespace Spec {
         auto report = [&rule] (const GS::UniString &text) { msg_rep ("Spec", text, NoError, APINULLGuid); };
 
         UnicGuid guids = {};
-        for (const API_Guid &elemguid : rule.exsist_elements) {
+        for (const API_Guid &elemguid : rule.runState.exsist_elements) {
             GS::UniString key_out;
             bool hasunic = true;
             // Принадлежность субэлемента к группе определим по ключу - сцепке значений уникальных параметров
@@ -417,7 +439,7 @@ namespace Spec {
             guids.Add (elemguid, true);
         }
         // Удаляем все существующие устаревшие элементы
-        for (const API_Guid &elemguid : rule.exsist_elements) {
+        for (const API_Guid &elemguid : rule.runState.exsist_elements) {
             if (!guids.ContainsKey (elemguid)) {
                 elementsDelete.Push (elemguid);
                 if (plan)

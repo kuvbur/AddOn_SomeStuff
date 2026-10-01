@@ -194,7 +194,7 @@ namespace Spec {
     // Перенос тела из GetElementsForRule без изменения ПОРЯДКА операций. Порядок
     // здесь и есть контракт, а не деталь реализации:
     //
-    //   1) обход rule.exsist_elements в исходном порядке;
+    //   1) обход rule.runState.exsist_elements в исходном порядке;
     //   2) сборка key_out из полей ВЫХОДА правила (rule.out_paramrawname);
     //   3) три ветви удаления по порядку: !hasunic -> !out_param.ContainsKey ->
     //      !elements.ContainsKey; каждая пишет в guids значение false;
