@@ -1364,8 +1364,9 @@ unchanged (это делает R7.2). Зафиксировано ТЕКУЩЕЕ 
 - **S09-коллизия и кандидат в F1 остаются не тронутыми** — это отдельные
   согласования, R7 не должен их решать попутно.
 ### Last Checkpoint
-R7.1 — коммит этого шага (tests/TestSpec.cpp, tests/TestFunc.cpp,
-tests/TestFunc.hpp, AGENTS.md, Docs/modules/spec/Spec.md, IDEA.md, Refs: #228).
+R7.1 — `0ce39d2` (tests/TestSpec.cpp, tests/TestFunc.hpp, AGENTS.md,
+Docs/modules/spec/Spec.md, IDEA.md, Refs: #228). Регистрация набора попала в
+`f0ddbe6` (пользовательский коммит #231) — оттуда же TestKit::Note.
 Предыдущий: R6.6 — `18cbe4b`; пользователь — `f0ddbe6`/`a139b88` (#231).
 Предыдущий: R6.5 — `d3a91c9` (tests/TestSpec.cpp, tests/TestFunc.cpp,
 tests/TestFunc.hpp, Docs/modules/spec/Spec.md, Docs/modules/spec/SpecPlanning.md,
