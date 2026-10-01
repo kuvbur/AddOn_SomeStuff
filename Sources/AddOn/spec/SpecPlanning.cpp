@@ -160,4 +160,56 @@ namespace Spec {
             return ContributionStatus::Complete;
         return ContributionStatus::Partial;
     }
+
+    void SumContributionIntoRow (Element &row, const RuleContribution &contribution) {
+        // Перенос дословно из цикла PlanRuleRows (R6.3). Именно эта арифметика
+        // и её поведение на неполных массивах закреплены тестом, а не
+        // «улучшены».
+        UInt32 nsumm = row.out_sum_param.GetSize ();
+        if (nsumm != contribution.outSumParam.GetSize ()) {
+            nsumm = nsumm < contribution.outSumParam.GetSize () ? nsumm : contribution.outSumParam.GetSize ();
+        }
+        for (UInt32 j = 0; j < nsumm; j++) {
+            if (row.out_sum_param[j].isValid && contribution.outSumParam[j].isValid)
+                row.out_sum_param[j].val = row.out_sum_param[j].val + contribution.outSumParam[j].val;
+        }
+    }
+
+    RowAddition AddContributionToRow (ElementDict &rows,
+                                      const RuleContribution &contribution,
+                                      const SpecRule &rule,
+                                      UInt32 schemaOutSlots,
+                                      UInt32 schemaSumSlots,
+                                      GS::HashTable<GS::UniString, GS::UniString> &outParam) {
+        if (rows.ContainsKey (contribution.key)) {
+            Element &exsists_element = rows.Get (contribution.key);
+            // Порядок 2: источник дописывается ДО суммирования.
+            exsists_element.elements.Push (contribution.source);
+            SumContributionIntoRow (exsists_element, contribution);
+            return RowAddition::Merged;
+        }
+
+        // Порядок 1: запись в outParam делается ДО проверки схемы, поэтому
+        // ключ попадает в словарь даже для строки, которая будет отброшена.
+        if (!outParam.ContainsKey (contribution.keyOut))
+            outParam.Add (contribution.keyOut, contribution.key);
+
+        Element row = {};
+        row.out_param = contribution.outParam;
+        row.out_sum_param = contribution.outSumParam;
+        if (!OutSlotsMatchSchema (row, schemaOutSlots, schemaSumSlots))
+            return RowAddition::SchemaMismatch;
+
+        // Признаки правила копируются как есть — это данные первого
+        // представителя, они не вычисляются заново для последующих вкладов.
+        row.out_sum_paramrawname = rule.out_sum_paramrawname;
+        row.out_paramrawname = rule.out_paramrawname;
+        row.subguid_paramrawname = rule.destinationParamGuidName;
+        row.subguid_rulevalue = rule.subguid_rulevalue;
+        row.subguid_rulename = rule.subguid_rulename;
+        row.favorite_name = rule.favorite_name;
+        row.elements.Push (contribution.source);
+        rows.Add (contribution.key, row);
+        return RowAddition::Created;
+    }
 } // namespace Spec

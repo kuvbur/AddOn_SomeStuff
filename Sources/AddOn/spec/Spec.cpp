@@ -1769,7 +1769,6 @@ namespace Spec {
                 const RuleContribution contribution = BuildContribution (
                     elemguid, group_index, group, binding, reader, not_found_paramname, not_found_unic);
                 GS::UniString key = contribution.key;
-                Element element = {};
                 // Политика отказов осталась здесь, снаружи вклада: вклад лишь
                 // сообщает, ЧТО не прочитано, а решение (писать ли отчёт, вести
                 // ли счётчик, останавливать ли правило) — по-прежнему здесь.
@@ -1787,7 +1786,6 @@ namespace Spec {
                     }
                     continue;
                 }
-                element.out_sum_param = contribution.outSumParam;
                 // Отчёт по непрочитанным полям суммы. Раньше он стоял в ветке
                 // отказа чтения суммы; теперь чтение живёт во вкладе, а решение
                 // (писать ли отчёт, вести ли счётчик) осталось здесь.
@@ -1800,51 +1798,35 @@ namespace Spec {
                         not_found_paramname.Add ("sum:" + field.rawname, false);
                     }
                 }
-                if (elements.ContainsKey (key)) {
-                    Element &exsists_element = elements.Get (key);
-                    exsists_element.elements.Push (elemguid);
-                    UInt32 nsumm = exsists_element.out_sum_param.GetSize ();
-                    if (nsumm != element.out_sum_param.GetSize ()) {
-                        nsumm = nsumm < element.out_sum_param.GetSize () ? nsumm : element.out_sum_param.GetSize ();
+
+                // R6.2 фаза 2: выходные слоты читаются ТОЛЬКО для первого
+                // представителя ключа. Решение «первый ли это ключ» принимает
+                // раскладка ниже, поэтому фаза 2 вызывается лишь когда ключа
+                // ещё нет в словаре строк.
+                RuleContribution rowContribution = contribution;
+                if (!elements.ContainsKey (key))
+                    ReadContributionOutputs (elemguid, group, binding, reader, fstr, rowContribution);
+                // Отчёт по непрочитанным полям выхода: только для первого
+                // представителя, как и раньше.
+                for (const Spec::MissingField &field : rowContribution.missingOut) {
+                    if (!not_found_paramname.ContainsKey (field.rawname) && rule.stop_on_error && field.isError) {
+                        if (!error_element.ContainsKey (elemguid))
+                            error_element.Add (elemguid, true);
+                        not_found_paramname.Add ("out:" + field.rawname, false);
                     }
-                    for (UInt32 j = 0; j < nsumm; j++) {
-                        if (exsists_element.out_sum_param[j].isValid && element.out_sum_param[j].isValid)
-                            exsists_element.out_sum_param[j].val =
-                                exsists_element.out_sum_param[j].val + element.out_sum_param[j].val;
-                    }
-                } else {
-                    // R6.2 фаза 2: выходные слоты — только здесь, то есть
-                    // только для первого представителя ключа. Ветка с
-                    // существующим ключом выше этого места не доходит.
-                    RuleContribution firstContribution = contribution;
-                    ReadContributionOutputs (elemguid, group, binding, reader, fstr, firstContribution);
-                    GS::UniString key_out = firstContribution.keyOut;
-                    element.out_param = firstContribution.outParam;
-                    for (const Spec::MissingField &field : firstContribution.missingOut) {
-                        if (!not_found_paramname.ContainsKey (field.rawname) && rule.stop_on_error && field.isError) {
-                            if (!error_element.ContainsKey (elemguid))
-                                error_element.Add (elemguid, true);
-                            not_found_paramname.Add ("out:" + field.rawname, false);
-                        }
-                    }
-                    if (!out_param.ContainsKey (key_out))
-                        out_param.Add (key_out, key);
-                    if (OutSlotsMatchSchema (element, out_slots, sum_slots)) {
-                        element.out_sum_paramrawname = rule.out_sum_paramrawname;
-                        element.out_paramrawname = rule.out_paramrawname;
-                        element.subguid_paramrawname = rule.destinationParamGuidName;
-                        element.subguid_rulevalue = rule.subguid_rulevalue;
-                        element.subguid_rulename = rule.subguid_rulename;
-                        element.favorite_name = rule.favorite_name;
-                        element.elements.Push (elemguid);
-                        elements.Add (key, element);
-                        n_elements += 1;
-                    } else {
-                        if (rule.stop_on_error) {
-                            if (!error_element.ContainsKey (elemguid))
-                                error_element.Add (elemguid, true);
-                            n_elements = 0;
-                        }
+                }
+
+                // R6.3: раскладка вклада в строку — вынесена и проверяема
+                // отдельно. Суммирование неполных массивов сохранено дословно.
+                const RowAddition addition =
+                    AddContributionToRow (elements, rowContribution, rule, out_slots, sum_slots, out_param);
+                if (addition == RowAddition::Created) {
+                    n_elements += 1;
+                } else if (addition == RowAddition::SchemaMismatch) {
+                    if (rule.stop_on_error) {
+                        if (!error_element.ContainsKey (elemguid))
+                            error_element.Add (elemguid, true);
+                        n_elements = 0;
                     }
                 }
             }

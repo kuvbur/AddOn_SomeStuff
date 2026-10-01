@@ -16,6 +16,17 @@ namespace TestFunc {
 
     namespace {
         // Синтетические GUID используются только как ключи словарей, не как элементы модели.
+        // Числовой ParamValue для проверок суммирования (R6.3). valid=false
+        // даёт невалидный слот — на нём держится правило «isValid с обеих
+        // сторон». Локальной функцией быть не может: определение в теле
+        // функции запрещено, поэтому хелпер живёт здесь.
+        ParamValue Num (Int32 v, bool valid = true) {
+            ParamValue p = {};
+            ParamHelpers::ConvertIntToParamValue (p, EMPTYSTRING, v);
+            p.isValid = valid;
+            return p;
+        }
+
         struct SpecFixture {
             const API_Guid first = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
             const API_Guid second = APIGuidFromString ("{22222222-2222-2222-2222-222222222222}");
@@ -1396,6 +1407,242 @@ namespace TestFunc {
             DBtest (c2.source == f.second, true, "R6.2 second contribution source");
             DBtest (c1.outSumParam[0].val.intValue, 2, "R6.2 first contribution sum");
             DBtest (c2.outSumParam[0].val.intValue, 3, "R6.2 second contribution sum");
+        }
+    }
+
+    // R6.3: раскладка вклада в строку. Главное здесь — НЕ «улучшить»
+    // суммирование неполных массивов, а зафиксировать его как поведение.
+    // nsumm = MIN(длин), слот складывается только при isValid с обеих сторон,
+    // слоты сверх nsumm не трогаются. План прямо запрещает заменять это
+    // строгим конструктором: найденное расхождение оформляется F.
+    void TestSpecRowLayout () {
+        // --- суммирование равных массивов ---
+        {
+            Spec::Element row = {};
+            row.out_sum_param.Push (Num (2));
+            Spec::RuleContribution c = {};
+            c.outSumParam.Push (Num (3));
+            Spec::SumContributionIntoRow (row, c);
+            DBtest (row.out_sum_param.GetSize (), 1, "R6.3 equal sizes keep size");
+            DBtest (row.out_sum_param[0].val.intValue, 5, "R6.3 equal sizes summed");
+        }
+
+        // --- НЕПОЛНЫЕ массивы: вклад короче строки ---
+        // Поведение сохранено: складываются только первые 2 из 3, третий слот
+        // строки остаётся как был.
+        {
+            Spec::Element row = {};
+            row.out_sum_param.Push (Num (1));
+            row.out_sum_param.Push (Num (10));
+            row.out_sum_param.Push (Num (100));
+            Spec::RuleContribution c = {};
+            c.outSumParam.Push (Num (2));
+            c.outSumParam.Push (Num (20));
+            Spec::SumContributionIntoRow (row, c);
+            DBtest (row.out_sum_param.GetSize (), 3, "R6.3 short contribution does not resize row");
+            DBtest (row.out_sum_param[0].val.intValue, 3, "R6.3 short contribution sums first slot");
+            DBtest (row.out_sum_param[1].val.intValue, 30, "R6.3 short contribution sums second slot");
+            DBtest (row.out_sum_param[2].val.intValue, 100, "R6.3 slot beyond nsumm untouched");
+        }
+
+        // --- НЕПОЛНЫЕ массивы: строка короче вклада ---
+        {
+            Spec::Element row = {};
+            row.out_sum_param.Push (Num (7));
+            Spec::RuleContribution c = {};
+            c.outSumParam.Push (Num (1));
+            c.outSumParam.Push (Num (2));
+            c.outSumParam.Push (Num (4));
+            Spec::SumContributionIntoRow (row, c);
+            DBtest (row.out_sum_param.GetSize (), 1, "R6.3 longer contribution does not grow row");
+            DBtest (row.out_sum_param[0].val.intValue, 8, "R6.3 longer contribution sums overlap only");
+        }
+
+        // --- isValid требуется с ОБЕИХ сторон ---
+        {
+            Spec::Element row = {};
+            row.out_sum_param.Push (Num (5));
+            row.out_sum_param.Push (Num (50));
+            Spec::RuleContribution c = {};
+            c.outSumParam.Push (Num (5, false)); // невалидный: слот остаётся как есть
+            c.outSumParam.Push (Num (1));
+            Spec::SumContributionIntoRow (row, c);
+            DBtest (row.out_sum_param[0].val.intValue, 5, "R6.3 invalid side leaves slot untouched");
+            DBtest (row.out_sum_param[1].val.intValue, 51, "R6.3 valid pair still summed");
+        }
+        {
+            Spec::Element row = {};
+            row.out_sum_param.Push (Num (5, false)); // невалидная строка
+            Spec::RuleContribution c = {};
+            c.outSumParam.Push (Num (5));
+            Spec::SumContributionIntoRow (row, c);
+            DBtest (row.out_sum_param[0].val.intValue, 5, "R6.3 invalid row slot untouched");
+        }
+
+        // --- пустые массивы: ничего не происходит, размер не меняется ---
+        {
+            Spec::Element row = {};
+            row.out_sum_param.Push (Num (9));
+            Spec::RuleContribution c = {};
+            Spec::SumContributionIntoRow (row, c);
+            DBtest (row.out_sum_param.GetSize (), 1, "R6.3 empty contribution keeps row size");
+            DBtest (row.out_sum_param[0].val.intValue, 9, "R6.3 empty contribution keeps value");
+
+            Spec::Element emptyRow = {};
+            Spec::RuleContribution withValue = {};
+            withValue.outSumParam.Push (Num (3));
+            Spec::SumContributionIntoRow (emptyRow, withValue);
+            DBtest (emptyRow.out_sum_param.GetSize (), 0, "R6.3 empty row stays empty");
+        }
+
+        // --- Created: строка собирается из вклада и копирует признаки правила ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 6);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c);
+
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Spec::RowAddition r1 = Spec::AddContributionToRow (rows, c, f.rule, 1, 1, outParam);
+            DBtest (r1, Spec::RowAddition::Created, "R6.3 first contribution creates row");
+            DBtest (rows.GetSize (), 1, "R6.3 one row created");
+            const Spec::Element *row = rows.GetPtr ("@A");
+            DBrequire (row != nullptr, "R6.3 created row found");
+            DBtest (row->out_param.GetSize (), 1, "R6.3 created row has out slot");
+            DBtest (row->out_sum_param.GetSize (), 1, "R6.3 created row has sum slot");
+            DBtest (row->out_sum_param[0].val.intValue, 6, "R6.3 created row sum value");
+            DBtest (row->elements.GetSize (), 1, "R6.3 created row has one source");
+            DBtest (row->elements[0] == f.first, true, "R6.3 created row source is the contributor");
+            DBtest (row->favorite_name, f.rule.favorite_name, "R6.3 created row carries favorite");
+            DBtest (
+                row->out_paramrawname.GetSize (), f.rule.out_paramrawname.GetSize (), "R6.3 created row out schema");
+            DBtest (outParam.GetSize (), 1, "R6.3 outParam recorded on creation");
+        }
+
+        // --- Merged: источник дописан, сумма сложена, признаки НЕ пересчитываются ---
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.Source (f.second, "A", "Alpha", 3);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+
+            Spec::RuleContribution c1 =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c1);
+            Spec::RuleContribution c2 =
+                Spec::BuildContribution (f.second, 0, f.rule.groups[0], binding, reader, none1, none2);
+            // Второй вклад — фазой 1: выходные слоты не читаются, как в цикле.
+            Spec::ReadContributionOutputs (f.second, f.rule.groups[0], binding, reader, fstr, c2);
+
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            DBtest (Spec::AddContributionToRow (rows, c1, f.rule, 1, 1, outParam),
+                    Spec::RowAddition::Created,
+                    "R6.3 first creates");
+            DBtest (Spec::AddContributionToRow (rows, c2, f.rule, 1, 1, outParam),
+                    Spec::RowAddition::Merged,
+                    "R6.3 second merges");
+            DBtest (rows.GetSize (), 1, "R6.3 merge keeps one row");
+            const Spec::Element *row = rows.GetPtr ("@A");
+            DBrequire (row != nullptr, "R6.3 merged row found");
+            DBtest (row->out_sum_param[0].val.intValue, 5, "R6.3 merge summed both");
+            DBtest (row->elements.GetSize (), 2, "R6.3 merge collected both sources");
+            DBtest (row->elements[1] == f.second, true, "R6.3 merge appended second source");
+            DBtest (outParam.GetSize (), 1, "R6.3 merge does not duplicate outParam");
+        }
+
+        // --- SchemaMismatch: строка НЕ добавлена, но ключ в outParam УЖЕ записан ---
+        // Порядок операций сохранён: запись в outParam идёт ДО проверки схемы.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 6);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (f.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            Spec::RuleContribution c =
+                Spec::BuildContribution (f.first, 0, f.rule.groups[0], binding, reader, none1, none2);
+            Spec::ReadContributionOutputs (f.first, f.rule.groups[0], binding, reader, fstr, c);
+            // Схема объявлена шире фактически прочитанного: 2 вместо 1.
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            const Spec::RowAddition r = Spec::AddContributionToRow (rows, c, f.rule, 2, 2, outParam);
+            DBtest (r, Spec::RowAddition::SchemaMismatch, "R6.3 schema mismatch reported");
+            DBtest (rows.GetSize (), 0, "R6.3 schema mismatch adds no row");
+            DBtest (outParam.GetSize (), 1, "R6.3 outParam written before schema check");
+        }
+
+        // --- раскладка эквивалентна полному пути: та же строка ---
+        // Главная проверка выноса: агрегат, собранный раскладкой, совпадает с
+        // тем, что строит GetElementsForRule.
+        {
+            SpecFixture layout;
+            layout.Source (layout.first, "A", "Alpha", 2);
+            layout.Source (layout.second, "A", "Alpha", 3);
+            layout.Source (layout.extra, "B", "Beta", 7);
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (layout.rule)[0];
+            ParamDict none1 = {};
+            ParamDict none2 = {};
+            const Spec::SpecValueReader reader (layout.context);
+            FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
+            Spec::ElementDict rows = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam = {};
+            for (const API_Guid &guid : layout.rule.elements) {
+                Spec::RuleContribution c =
+                    Spec::BuildContribution (guid, 0, layout.rule.groups[0], binding, reader, none1, none2);
+                if (c.status == Spec::ContributionStatus::Excluded)
+                    continue;
+                if (!rows.ContainsKey (c.key))
+                    Spec::ReadContributionOutputs (guid, layout.rule.groups[0], binding, reader, fstr, c);
+                Spec::AddContributionToRow (rows, c, layout.rule, 1, 1, outParam);
+            }
+
+            SpecFixture full;
+            full.Source (full.first, "A", "Alpha", 2);
+            full.Source (full.second, "A", "Alpha", 3);
+            full.Source (full.extra, "B", "Beta", 7);
+            full.Run ();
+
+            DBtest (rows.GetSize (), full.created.GetSize (), "R6.3 layout and full path agree on rows");
+            // Ключ выхода строится из значений выходных слотов, поэтому у строк
+            // с РАЗНЫМИ значениями выхода он разный: "@Alpha" и "@Beta". Одна
+            // запись на каждый ключ строки, не на строку.
+            DBtest (outParam.GetSize (), 2, "R6.3 layout outParam has one entry per row");
+            for (auto it = rows.Begin (); it != rows.End (); ++it) {
+    #ifdef ServerMainVers_2800
+                const GS::UniString &key = it->key;
+    #else
+                const GS::UniString key = *it->key;
+    #endif
+                const Spec::Element *a = rows.GetPtr (key);
+                const Spec::Element *b = full.created.GetPtr (key);
+                DBrequire (a != nullptr && b != nullptr, "R6.3 both sides have the row");
+                DBtest (a->out_sum_param.GetSize (), b->out_sum_param.GetSize (), "R6.3 agree on sum slot count");
+                DBtest (a->out_param.GetSize (), b->out_param.GetSize (), "R6.3 agree on out slot count");
+                DBtest (a->elements.GetSize (), b->elements.GetSize (), "R6.3 agree on source count");
+                DBtest (a->favorite_name, b->favorite_name, "R6.3 agree on favorite");
+                for (UInt32 j = 0; j < a->out_sum_param.GetSize () && j < b->out_sum_param.GetSize (); j++)
+                    DBtest (
+                        a->out_sum_param[j].val.intValue, b->out_sum_param[j].val.intValue, "R6.3 agree on sum value");
+            }
+            const Spec::Element *mergedA = rows.GetPtr ("@A");
+            DBrequire (mergedA != nullptr, "R6.3 merged row A present");
+            DBtest (mergedA->out_sum_param[0].val.intValue, 5, "R6.3 layout summed 2+3");
+            const Spec::Element *rowB = rows.GetPtr ("@B");
+            DBrequire (rowB != nullptr, "R6.3 row B present");
+            DBtest (rowB->out_sum_param[0].val.intValue, 7, "R6.3 row B own sum");
         }
     }
 
