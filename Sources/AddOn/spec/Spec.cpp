@@ -931,7 +931,23 @@ namespace Spec {
         }
         ACAPI_CallUndoableCommand ("Writing properties to created spec elements", [&] () -> GSErrCode {
             if (!elements_delete.IsEmpty ()) {
+                if (runResult != nullptr) {
+                    runResult->deleteOld.attempted = elements_delete.GetSize ();
+                }
                 err = ACAPI_Element_Delete (elements_delete);
+                if (runResult != nullptr) {
+                    // Удаление одним вызовом: подтверждено либо всё, либо ничего.
+                    // Проверка каждого удалённого элемента здесь невозможна и не
+                    // нужна - об этом читатель узнает по create/delete счётчикам.
+                    if (err == NoError)
+                        runResult->deleteOld.succeeded = elements_delete.GetSize ();
+                    else {
+                        runResult->deleteOld.failed = elements_delete.GetSize ();
+                        // Удаление идёт ПОСЛЕ создания: элементы уже созданы,
+                        // поэтому отказ удаления - ошибка восстановления.
+                        runResult->hasRecoveryError = true;
+                    }
+                }
                 msg_rep ("Spec",
                          GS::UniString::Printf ("Removed %d obsolete spec elements", elements_delete.GetSize ()),
                          err,
@@ -2923,7 +2939,18 @@ namespace Spec {
                     BNZeroMemory (&element, sizeof (API_Element));
                     API_ElementMemo memo = {};
                     err = GetElementForPlace (el.favorite_name, element, memo);
+                    if (runResult != nullptr) {
+                        // Попытка создания засчитывается ДО вызова: отказ
+                        // GetElementForPlace — это отказ создания, а не
+                        // «элемента не было в избранном».
+                        runResult->create.attempted += 1;
+                    }
                     if (err != NoError) {
+                        if (runResult != nullptr) {
+                            runResult->create.failed += 1;
+                            runResult->hasPrimaryError = true;
+                            runResult->hasUnconfirmedCreate = true;
+                        }
                         ACAPI_DisposeElemMemoHdls (&memo);
                         msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
                         continue;
@@ -3007,6 +3034,15 @@ namespace Spec {
                     }
                     element.object.pos = pos;
                     err = ACAPI_Element_Create (&element, &memo);
+                    if (runResult != nullptr) {
+                        if (err == NoError)
+                            runResult->create.succeeded += 1;
+                        else {
+                            runResult->create.failed += 1;
+                            runResult->hasPrimaryError = true;
+                            runResult->hasUnconfirmedCreate = true;
+                        }
+                    }
                     if (err == NoError) {
                         elemsheader.Push (element.header);
                         n_elem += 1;
@@ -3035,6 +3071,8 @@ namespace Spec {
                 pos.y += 2 * dy;
                 if (group.GetSize () > 1) {
                     API_Guid groupGuid = APINULLGuid;
+                    if (runResult != nullptr)
+                        runResult->grouping.attempted += 1;
 #ifdef ServerMainVers_2700
                     err = ACAPI_Grouping_CreateGroup (group, &groupGuid);
                     if (err != NoError)
@@ -3045,21 +3083,52 @@ namespace Spec {
                 if (err != NoError) err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
     #endif
 #endif
-                    if (err != NoError)
+                    if (err != NoError) {
+                        if (runResult != nullptr) {
+                            runResult->grouping.failed += 1;
+                            // Группировка идёт ПОСЛЕ создания элементов, поэтому её
+                            // отказ — ошибка восстановления, а не первичная.
+                            runResult->hasRecoveryError = true;
+                        }
                         msg_rep ("Spec", "ACAPI_ElementGroup_Create", err, APINULLGuid);
+                    } else if (runResult != nullptr) {
+                        runResult->grouping.succeeded += 1;
+                    }
                 }
             }
             return NoError;
         });
+        // GDL-скрипты выполняются ПОСЛЕ транзакции создания (не внутри неё),
+        // поэтому отказ скрипта не откатывает уже созданный элемент.
         for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
+            if (runResult != nullptr)
+                runResult->gdl.attempted += 1;
 #ifdef ServerMainVers_2700
             err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
 #else
             err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &elemsheader[i], 0);
 #endif
+            if (runResult != nullptr) {
+                if (err == NoError)
+                    runResult->gdl.succeeded += 1;
+                else {
+                    runResult->gdl.failed += 1;
+                    // Элемент уже создан, поэтому отказ скрипта - ошибка
+                    // восстановления, а не первичная.
+                    runResult->hasRecoveryError = true;
+                }
+            }
             if (err != NoError)
                 msg_rep ("Spec", "APIAny_RunGDLParScriptID", err, APINULLGuid);
         }
+        // Возвращает NoError, если первичный этап (создание) не дал отказа.
+        // Раньше здесь всегда возвращалось NoError, и отказ создания был виден
+        // только через пустой paramOut; при частичном отказе вызывающий его не
+        // видел вовсе. Точное распределение отказов - в runResult->create.
+        // Ошибки восстановления (группировка, GDL) в возврат НЕ входят: они
+        // уже случились после того, как элемент создан, и откатом не являются.
+        if (runResult != nullptr && runResult->hasPrimaryError)
+            return APIERR_GENERAL;
         return NoError;
     }
 

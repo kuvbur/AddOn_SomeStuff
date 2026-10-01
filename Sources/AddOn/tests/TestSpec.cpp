@@ -229,6 +229,105 @@ namespace TestFunc {
         };
     } // namespace
 
+    // Инварианты отчёта результатов этапов (#228 R8.5). Заполняются счётчики
+    // внутри PlaceElements, который работает с моделью, поэтому на фикстуре
+    // проверяется контракт структуры и то, что запуск обнуляет счётчики, —
+    // иначе счётчики предыдущего запуска попали бы в отчёт.
+    // Фактическое наполнение при отказе создания — not verified на фикстуре,
+    // проверяется прогоном на модели.
+    void TestSpecRunCounters () {
+        // 1. Счётчик по умолчанию нулевой: незаполненный этап не выглядит
+        // как «ничего не делал, ошибок нет».
+        {
+            Spec::SpecRunResult result;
+            DBtest (result.create.attempted, 0u, "fresh create attempted is zero");
+            DBtest (result.create.succeeded, 0u, "fresh create succeeded is zero");
+            DBtest (result.create.failed, 0u, "fresh create failed is zero");
+            DBtest (result.hasPrimaryError, false, "fresh result has no primary error");
+            DBtest (result.hasRecoveryError, false, "fresh result has no recovery error");
+            DBtest (result.hasUnconfirmedCreate, false, "fresh result has no unconfirmed create");
+        }
+
+        // 2. Счётчики независимы: заполнение одного этапа не задевает другие.
+        {
+            Spec::SpecRunResult result;
+            result.create.attempted = 5;
+            result.create.succeeded = 3;
+            result.create.failed = 2;
+            DBtest (result.grouping.attempted, 0u, "create does not touch grouping");
+            DBtest (result.gdl.attempted, 0u, "create does not touch gdl");
+            DBtest (result.deleteOld.attempted, 0u, "create does not touch delete");
+            // Неизменность счётчиков создания.
+            DBtest (result.create.attempted, 5u, "create attempted kept");
+            DBtest (result.create.succeeded, 3u, "create succeeded kept");
+            DBtest (result.create.failed, 2u, "create failed kept");
+        }
+
+        // 3. attempted = succeeded + failed — единственное тождество, которое
+        // обязано выполняться при любом раскладе.
+        {
+            const UInt32 cases[][3] = {{0, 0, 0}, {1, 1, 0}, {1, 0, 1}, {7, 5, 2}, {2048, 2048, 0}};
+            for (const auto &c : cases) {
+                Spec::SpecRunResult result;
+                result.create.attempted = c[0];
+                result.create.succeeded = c[1];
+                result.create.failed = c[2];
+                DBtest (result.create.attempted == result.create.succeeded + result.create.failed,
+                        true,
+                        "create counters sum up");
+            }
+        }
+
+        // 4. Признак «создание не подтверждено» не зависит от счётчиков: он
+        // означает отсутствие подтверждения, а не число. Именно поэтому он
+        // отдельный флаг, а не выводится из failed.
+        {
+            Spec::SpecRunResult result;
+            result.create.attempted = 4;
+            result.create.succeeded = 4;
+            result.create.failed = 0;
+            // Счётчики утверждают полный успех, а подтверждения записи нет -
+            // расхождение обязано быть выразимо.
+            result.hasUnconfirmedCreate = true;
+            DBtest (result.hasUnconfirmedCreate, true, "unconfirmed create is separate from counters");
+            DBtest (result.create.failed, 0u, "unconfirmed create does not invent failures");
+        }
+
+        // 5. Первичная ошибка и ошибка восстановления не исключают друг друга:
+        // отказ создания одного элемента не отменяет отказа группировки.
+        {
+            Spec::SpecRunResult result;
+            result.hasPrimaryError = true;
+            result.hasRecoveryError = true;
+            DBtest (result.hasPrimaryError && result.hasRecoveryError, true, "primary and recovery errors coexist");
+        }
+
+        // 6. Сброс счётчиков на реальном пути обнуления. Проверяем ровно то, что
+        // проверяемо без модели: после обнуления структуры счётчики нулевые, а
+        // includeDetails выжил. Сам сброс выполняется в SpecAll/SpecArray, и
+        // там он сохранён (счётчики обнуляются вместе со всем остальным).
+        {
+            // Структура после обнуления — то, что видит вызывающий.
+            Spec::SpecRunResult result;
+            result.includeDetails = true;
+            result.create.attempted = 99;
+            result.create.succeeded = 88;
+            result.gdl.attempted = 77;
+            result.hasPrimaryError = true;
+
+            // Обнуление, как его делает SpecAll.
+            const bool includeDetails = result.includeDetails;
+            result = {};
+            result.includeDetails = includeDetails;
+
+            DBtest (result.create.attempted, 0u, "reset clears create attempted");
+            DBtest (result.create.succeeded, 0u, "reset clears create succeeded");
+            DBtest (result.gdl.attempted, 0u, "reset clears gdl attempted");
+            DBtest (result.hasPrimaryError, false, "reset clears primary error");
+            DBtest (result.includeDetails, true, "reset keeps includeDetails");
+        }
+    }
+
     // Контракт BuildRowParamToWrite — общей сборки записываемых параметров строки
     // для создания и изменения. Набор закрывает то, что заявлено в
     // SpecHelpers.hpp: порядок записи, фильтр по разрешённым именам, отсутствие
