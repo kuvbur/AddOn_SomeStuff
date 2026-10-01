@@ -27,6 +27,28 @@ namespace TestFunc {
             return p;
         }
 
+        // R7.4: построение строки сумм вручную для тестов суммирования.
+        // Прежде тесты писали в отдельный массив сумм, а поля удалены —
+        // теперь добавляется СЛОТ. isSum обязателен: по нему SumContributionIntoRow
+        // находит накопленные слоты, а без него строка выглядела бы состоящей
+        // только из выходных.
+        void PushSumSlot (Spec::Element &row, const ParamValue &value) {
+            Spec::OutputSlot slot = {};
+            slot.rawname = EMPTYSTRING;
+            slot.value = value;
+            slot.isSum = true;
+            row.out_slots.Push (slot);
+        }
+
+        // Симметричный хелпер для выходного (не суммарного) слота.
+        void PushOutSlot (Spec::Element &row, const ParamValue &value) {
+            Spec::OutputSlot slot = {};
+            slot.rawname = EMPTYSTRING;
+            slot.value = value;
+            slot.isSum = false;
+            row.out_slots.Push (slot);
+        }
+
         struct SpecFixture {
             const API_Guid first = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
             const API_Guid second = APIGuidFromString ("{22222222-2222-2222-2222-222222222222}");
@@ -216,20 +238,20 @@ namespace TestFunc {
             const Spec::Element *row = f.created.GetPtr ("@A");
             DBtest (row != nullptr, "Spec single exact key");
             if (row != nullptr) {
-                DBtest (row->out_param.GetSize (), 1, "Spec single text count");
-                DBtest (row->out_sum_param.GetSize (), 1, "Spec single sum count");
-                if (!row->out_param.IsEmpty ())
-                    DBtest (row->out_param[0].val.uniStringValue, GS::UniString ("Alpha"), "Spec single text");
-                if (!row->out_sum_param.IsEmpty ())
-                    DBtest (row->out_sum_param[0].val.intValue, 2, "Spec single sum");
+                DBtest (row->OutParamCount (), 1, "Spec single text count");
+                DBtest (row->OutSumCount (), 1, "Spec single sum count");
+                if (row->OutParamCount () != 0)
+                    DBtest (row->OutParamValue (0).val.uniStringValue, GS::UniString ("Alpha"), "Spec single text");
+                if (row->OutSumCount () != 0)
+                    DBtest (row->OutSumValue (0).val.intValue, 2, "Spec single sum");
                 DBtest (row->elements.GetSize (), 1, "Spec single source count");
                 DBtest (!row->elements.IsEmpty () && row->elements[0] == f.first, "Spec single source GUID");
                 DBtest (row->favorite_name, f.rule.favorite_name, "Spec favorite copied");
                 DBtest (row->subguid_paramrawname, f.rule.destinationParamGuidName, "Spec link copied");
                 DBtest (row->subguid_rulename, f.rule.subguid_rulename, "Spec rule name copied");
                 DBtest (row->subguid_rulevalue, f.rule.subguid_rulevalue, "Spec rule value copied");
-                DBtest (row->out_paramrawname[0], f.outText, "Spec text target copied");
-                DBtest (row->out_sum_paramrawname[0], f.outQuantity, "Spec sum target copied");
+                DBtest (row->OutParamName (0), f.outText, "Spec text target copied");
+                DBtest (row->OutSumName (0), f.outQuantity, "Spec sum target copied");
                 DBtest (row->exs_guid == APINULLGuid, "Spec new row no existing GUID");
             }
             DBtest (f.errors.IsEmpty (), "Spec valid problem list empty");
@@ -237,11 +259,11 @@ namespace TestFunc {
             f.Source (f.second, "A", "Beta", 3);
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec merge");
             row = f.created.GetPtr ("@A");
-            if (row != nullptr && row->out_sum_param.GetSize () == 1 && row->out_param.GetSize () == 1) {
-                DBtest (row->out_sum_param[0].val.intValue, 5, "Spec merged integer");
-                DBtest (row->out_sum_param[0].val.doubleValue, 5, "Spec merged real");
-                DBtest (row->out_sum_param[0].val.rawDoubleValue, 5, "Spec merged raw real");
-                DBtest (row->out_param[0].val.uniStringValue, GS::UniString ("Alpha"), "Spec first output wins");
+            if (row != nullptr && row->OutSumCount () == 1 && row->OutParamCount () == 1) {
+                DBtest (row->OutSumValue (0).val.intValue, 5, "Spec merged integer");
+                DBtest (row->OutSumValue (0).val.doubleValue, 5, "Spec merged real");
+                DBtest (row->OutSumValue (0).val.rawDoubleValue, 5, "Spec merged raw real");
+                DBtest (row->OutParamValue (0).val.uniStringValue, GS::UniString ("Alpha"), "Spec first output wins");
                 DBtest (row->elements.GetSize (), 2, "Spec merged source count");
                 DBtest (row->elements.GetSize () == 2 && row->elements[0] == f.first && row->elements[1] == f.second,
                         "Spec source order");
@@ -257,15 +279,15 @@ namespace TestFunc {
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec trim key");
             const Spec::Element *row = f.created.GetPtr ("@A B");
             DBtest (row != nullptr, "Spec normalized key");
-            if (row != nullptr && row->out_sum_param.GetSize () == 1)
-                DBtest (row->out_sum_param[0].val.intValue, 0, "Spec signed sum zero");
+            if (row != nullptr && row->OutSumCount () == 1)
+                DBtest (row->OutSumValue (0).val.intValue, 0, "Spec signed sum zero");
             f.rule.groups[0].sum_paramrawname[0] = "1";
             f.context.read.Get (f.first).Delete (f.quantity);
             f.context.read.Get (f.second).Delete (f.quantity);
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec literal count");
             row = f.created.GetPtr ("@A B");
-            if (row != nullptr && row->out_sum_param.GetSize () == 1)
-                DBtest (row->out_sum_param[0].val.intValue, 2, "Spec literal count value");
+            if (row != nullptr && row->OutSumCount () == 1)
+                DBtest (row->OutSumValue (0).val.intValue, 2, "Spec literal count value");
             f.rule.groups[0].unic_paramrawname.Push (f.text);
             f.Run ();
             DBtest (f.created.ContainsKey ("@A B@Alpha"), "Spec composite key order");
@@ -296,8 +318,8 @@ namespace TestFunc {
             f.rule.groups.Push (group);
             f.Shape (f.Run (), 1, 1, 0, 0, "Spec groups share key");
             const Spec::Element *row = f.created.GetPtr ("@A");
-            if (row != nullptr && row->out_sum_param.GetSize () == 1) {
-                DBtest (row->out_sum_param[0].val.intValue, 4, "Spec groups merge sums");
+            if (row != nullptr && row->OutSumCount () == 1) {
+                DBtest (row->OutSumValue (0).val.intValue, 4, "Spec groups merge sums");
                 DBtest (row->elements.GetSize (), 2, "Spec group source multiplicity");
             }
             f.rule.groups[1].unic_paramrawname[0] = f.text;
@@ -343,9 +365,9 @@ namespace TestFunc {
             f.Shape (f.Run (), 1, 0, 1, 0, "Spec quantity changed");
             const Spec::Element *row = f.modified.GetPtr ("@A");
             DBtest (row != nullptr, "Spec update key");
-            if (row != nullptr && row->out_sum_param.GetSize () == 1) {
+            if (row != nullptr && row->OutSumCount () == 1) {
                 DBtest (row->exs_guid == f.old, "Spec update preserves target GUID");
-                DBtest (row->out_sum_param[0].val.intValue, 3, "Spec update new sum");
+                DBtest (row->OutSumValue (0).val.intValue, 3, "Spec update new sum");
                 DBtest (row->elements.GetSize () == 1 && row->elements[0] == f.first, "Spec update source GUID");
             }
             f.context.read.Get (f.old).Delete (f.outQuantity);
@@ -418,9 +440,9 @@ namespace TestFunc {
             DBtest (f.created.GetSize (), 1, "Spec merge same key one row");
             const Spec::Element *row = f.created.GetPtr ("@A");
             DBtest (row != nullptr, "Spec merge same key found");
-            if (row != nullptr && row->out_sum_param.GetSize () == 1) {
-                DBtest (row->out_sum_param[0].val.intValue, 4, "Spec merge sums add up");
-                DBtest (row->out_param.GetSize () == 1 && row->out_param[0].val.uniStringValue == "Alpha",
+            if (row != nullptr && row->OutSumCount () == 1) {
+                DBtest (row->OutSumValue (0).val.intValue, 4, "Spec merge sums add up");
+                DBtest (row->OutParamCount () == 1 && row->OutParamValue (0).val.uniStringValue == "Alpha",
                         "Spec merge keeps first representative");
                 // Два вхождения одного GUID - наблюдаемый контракт, не описка:
                 // список источников строки допускает повтор.
@@ -461,8 +483,8 @@ namespace TestFunc {
             DBtest (f.created.GetSize (), 1, "Spec key collision collapses to one row");
             const Spec::Element *row = f.created.GetPtr ("@A@B");
             DBtest (row != nullptr, "Spec key collision shared key");
-            if (row != nullptr && row->out_sum_param.GetSize () == 1)
-                DBtest (row->out_sum_param[0].val.intValue, 4, "Spec key collision sums merged");
+            if (row != nullptr && row->OutSumCount () == 1)
+                DBtest (row->OutSumValue (0).val.intValue, 4, "Spec key collision sums merged");
         }
         // Контроль к коллизии: при НЕсовпадающей паре ("A@C" против "A"+"B")
         // ключи не совпадают и строки остаются двумя.
@@ -494,8 +516,8 @@ namespace TestFunc {
             DBtest (f.Run (), 1, "Spec literal count result");
             const Spec::Element *row = f.created.GetPtr ("@A");
             DBtest (row != nullptr, "Spec literal count row");
-            if (row != nullptr && row->out_sum_param.GetSize () == 1)
-                DBtest (row->out_sum_param[0].val.intValue, 2, "Spec literal count per source");
+            if (row != nullptr && row->OutSumCount () == 1)
+                DBtest (row->OutSumValue (0).val.intValue, 2, "Spec literal count per source");
         }
 
         // S07 (часть): отказ по размеру группы сделан в ExpandGroup, поэтому
@@ -1435,13 +1457,16 @@ namespace TestFunc {
         // PlanRuleRows до R6.3. Пишется максимально просто: цель не красота,
         // а независимость от нового кода.
         void SumInto (Spec::Element &row, const GS::Array<ParamValue> &contribution) {
-            UInt32 nsumm = row.out_sum_param.GetSize ();
+            UInt32 nsumm = row.OutSumCount ();
             if (nsumm != contribution.GetSize ()) {
                 nsumm = nsumm < contribution.GetSize () ? nsumm : contribution.GetSize ();
             }
             for (UInt32 j = 0; j < nsumm; j++) {
-                if (row.out_sum_param[j].isValid && contribution[j].isValid)
-                    row.out_sum_param[j].val = row.out_sum_param[j].val + contribution[j].val;
+                // Слот достаётся по индексу напрямую: accessor возвращает
+                // константную ссылку, а эталон суммирует ПО НАКОПЛЕННОМУ.
+                Spec::OutputSlot &slot = row.out_slots[row.OutParamCount () + j];
+                if (slot.value.isValid && contribution[j].isValid)
+                    slot.value.val = slot.value.val + contribution[j].val;
             }
         }
 
@@ -1468,13 +1493,28 @@ namespace TestFunc {
                     if (!outParam.ContainsKey (contribution.keyOut))
                         outParam.Add (contribution.keyOut, contribution.key);
                     Spec::Element row = {};
-                    row.out_param = contribution.outParam;
-                    row.out_sum_param = contribution.outSumParam;
+                    // Эталон «old» тоже строит строку через out_slots: прежних
+                    // полей больше нет, а сам принцип эталон не нарушает — он
+                    // по-прежнему НЕ вызывает новый модуль (BuildOutputSlots),
+                    // а раскладывает вклад сам, своими руками.
+                    for (UInt32 i = 0; i < contribution.outParam.GetSize (); i++) {
+                        Spec::OutputSlot slot = {};
+                        slot.rawname = i < rule.out_paramrawname.GetSize () ? rule.out_paramrawname[i] : EMPTYSTRING;
+                        slot.value = contribution.outParam[i];
+                        slot.isSum = false;
+                        row.out_slots.Push (slot);
+                    }
+                    for (UInt32 i = 0; i < contribution.outSumParam.GetSize (); i++) {
+                        Spec::OutputSlot slot = {};
+                        slot.rawname =
+                            i < rule.out_sum_paramrawname.GetSize () ? rule.out_sum_paramrawname[i] : EMPTYSTRING;
+                        slot.value = contribution.outSumParam[i];
+                        slot.isSum = true;
+                        row.out_slots.Push (slot);
+                    }
                     if (!Spec::OutSlotsMatchSchema (
                             row, rule.out_paramrawname.GetSize (), rule.out_sum_paramrawname.GetSize ()))
                         continue;
-                    row.out_sum_paramrawname = rule.out_sum_paramrawname;
-                    row.out_paramrawname = rule.out_paramrawname;
                     row.subguid_paramrawname = rule.destinationParamGuidName;
                     row.subguid_rulevalue = rule.subguid_rulevalue;
                     row.subguid_rulename = rule.subguid_rulename;
@@ -1583,15 +1623,17 @@ namespace TestFunc {
             const Spec::Element *a = freshRows.GetPtr ("@A");
             const Spec::Element *b = legacyRows.GetPtr ("@A");
             DBrequire (a != nullptr && b != nullptr, "R6.5 both engines produced the row");
-            DBtest (a->out_sum_param.GetSize (), b->out_sum_param.GetSize (), "R6.5 same sum slot count");
-            DBtest (a->out_sum_param[0].val.intValue, b->out_sum_param[0].val.intValue, "R6.5 same sum");
-            DBtest (a->out_sum_param[0].val.intValue, 9, "R6.5 sum is 2+3+4");
+            DBtest (a->OutSumCount (), b->OutSumCount (), "R6.5 same sum slot count");
+            DBtest (a->OutSumValue (0).val.intValue, b->OutSumValue (0).val.intValue, "R6.5 same sum");
+            DBtest (a->OutSumValue (0).val.intValue, 9, "R6.5 sum is 2+3+4");
             DBtest (a->elements.GetSize (), b->elements.GetSize (), "R6.5 same source count");
             DBtest (a->elements.GetSize (), 3, "R6.5 three sources collected");
             for (UInt32 i = 0; i < a->elements.GetSize () && i < b->elements.GetSize (); i++)
                 DBtest (a->elements[i] == b->elements[i], true, "R6.5 same source order");
-            DBtest (a->out_param.GetSize (), b->out_param.GetSize (), "R6.5 same out slot count");
-            DBtest (a->out_param[0].val.uniStringValue, b->out_param[0].val.uniStringValue, "R6.5 same out value");
+            DBtest (a->OutParamCount (), b->OutParamCount (), "R6.5 same out slot count");
+            DBtest (a->OutParamValue (0).val.uniStringValue,
+                    b->OutParamValue (0).val.uniStringValue,
+                    "R6.5 same out value");
         }
 
         // --- два ключа, перемешанные источники ---
@@ -1628,7 +1670,7 @@ namespace TestFunc {
                 const Spec::Element *a = freshRows.GetPtr (key);
                 const Spec::Element *b = legacyRows.GetPtr (key);
                 DBrequire (a != nullptr && b != nullptr, "R6.5 both engines have the row");
-                DBtest (a->out_sum_param[0].val.intValue, b->out_sum_param[0].val.intValue, "R6.5 mixed same sum");
+                DBtest (a->OutSumValue (0).val.intValue, b->OutSumValue (0).val.intValue, "R6.5 mixed same sum");
                 DBtest (a->elements.GetSize (), b->elements.GetSize (), "R6.5 mixed same sources");
                 for (UInt32 i = 0; i < a->elements.GetSize () && i < b->elements.GetSize (); i++)
                     DBtest (a->elements[i] == b->elements[i], true, "R6.5 mixed same source order");
@@ -1642,23 +1684,23 @@ namespace TestFunc {
         // «улучшаться».
         {
             Spec::Element freshRow = {};
-            freshRow.out_sum_param.Push (Num (1));
-            freshRow.out_sum_param.Push (Num (2));
-            freshRow.out_sum_param.Push (Num (3));
+            PushSumSlot (freshRow, Num (1));
+            PushSumSlot (freshRow, Num (2));
+            PushSumSlot (freshRow, Num (3));
             Spec::Element legacyRow = freshRow;
             GS::Array<ParamValue> shortContribution = {};
             shortContribution.Push (Num (10));
             shortContribution.Push (Num (20));
             Spec::SumContributionIntoRow (freshRow, asContribution (shortContribution));
             legacy::SumInto (legacyRow, shortContribution);
-            DBtest (freshRow.out_sum_param.GetSize (), legacyRow.out_sum_param.GetSize (), "R6.5 partial same size");
-            for (UInt32 i = 0; i < freshRow.out_sum_param.GetSize (); i++)
-                DBtest (freshRow.out_sum_param[i].val.intValue,
-                        legacyRow.out_sum_param[i].val.intValue,
+            DBtest (freshRow.OutSumCount (), legacyRow.OutSumCount (), "R6.5 partial same size");
+            for (UInt32 i = 0; i < freshRow.OutSumCount (); i++)
+                DBtest (freshRow.OutSumValue (i).val.intValue,
+                        legacyRow.OutSumValue (i).val.intValue,
                         "R6.5 partial same value");
 
             Spec::Element f2 = {};
-            f2.out_sum_param.Push (Num (5));
+            PushSumSlot (f2, Num (5));
             Spec::Element l2 = f2;
             GS::Array<ParamValue> longContribution = {};
             longContribution.Push (Num (1));
@@ -1666,25 +1708,24 @@ namespace TestFunc {
             longContribution.Push (Num (4));
             Spec::SumContributionIntoRow (f2, asContribution (longContribution));
             legacy::SumInto (l2, longContribution);
-            DBtest (f2.out_sum_param.GetSize (), l2.out_sum_param.GetSize (), "R6.5 longer same size");
-            DBtest (f2.out_sum_param[0].val.intValue, l2.out_sum_param[0].val.intValue, "R6.5 longer same value");
+            DBtest (f2.OutSumCount (), l2.OutSumCount (), "R6.5 longer same size");
+            DBtest (f2.OutSumValue (0).val.intValue, l2.OutSumValue (0).val.intValue, "R6.5 longer same value");
         }
 
         // --- isValid: обе стороны ведут себя одинаково ---
         {
             Spec::Element f1 = {};
-            f1.out_sum_param.Push (Num (4, false));
-            f1.out_sum_param.Push (Num (40));
+            PushSumSlot (f1, Num (4, false));
+            PushSumSlot (f1, Num (40));
             Spec::Element l1 = f1;
             GS::Array<ParamValue> contribution = {};
             contribution.Push (Num (4));
             contribution.Push (Num (1));
             Spec::SumContributionIntoRow (f1, asContribution (contribution));
             legacy::SumInto (l1, contribution);
-            for (UInt32 i = 0; i < f1.out_sum_param.GetSize (); i++)
-                DBtest (
-                    f1.out_sum_param[i].val.intValue, l1.out_sum_param[i].val.intValue, "R6.5 invalid handling same");
-            DBtest (f1.out_sum_param[1].val.intValue, 41, "R6.5 valid pair summed the same way");
+            for (UInt32 i = 0; i < f1.OutSumCount (); i++)
+                DBtest (f1.OutSumValue (i).val.intValue, l1.OutSumValue (i).val.intValue, "R6.5 invalid handling same");
+            DBtest (f1.OutSumValue (1).val.intValue, 41, "R6.5 valid pair summed the same way");
         }
     }
 
@@ -1773,7 +1814,7 @@ namespace TestFunc {
             DBtest (rows.GetSize (), 1, "S08 groups merged into one row");
             const Spec::Element *row = rows.GetPtr ("@A");
             DBrequire (row != nullptr, "S08 row present");
-            DBtest (row->out_sum_param[0].val.intValue, 24, "S08 sum across groups 2*(5+7)");
+            DBtest (row->OutSumValue (0).val.intValue, 24, "S08 sum across groups 2*(5+7)");
             DBtest (row->elements.GetSize (), 4, "S08 four source entries");
             // Первый представитель задаётся первым вкладом в порядке обхода.
             DBtest (row->out_slots.GetSize (), 2, "S08 schema built once");
@@ -1865,7 +1906,7 @@ namespace TestFunc {
             DBtest (snap.sourceOrder[0] == snap.sourceOrder[1], false, "S19 sources distinct and ordered");
             DBtest (snap.favorite, f.rule.favorite_name, "S19 favorite carried");
             DBtest (snap.subguidValue, GS::UniString ("RuleValue"), "S19 rule value carried");
-            DBtest (row->out_sum_param[0].val.intValue, 10, "S19 sum across sources");
+            DBtest (row->OutSumValue (0).val.intValue, 10, "S19 sum across sources");
             DBtest (row->out_slots[1].value.val.intValue, 10, "S19 schema sum matches");
         }
 
@@ -1930,7 +1971,7 @@ namespace TestFunc {
             DBtest (readOutputPasses, 1, "S26 output read once for repeated key");
             const Spec::Element *row = rows.GetPtr ("@A");
             DBrequire (row != nullptr, "S26 row present");
-            DBtest (row->out_sum_param[0].val.intValue, kSources, "S26 sum over all sources");
+            DBtest (row->OutSumValue (0).val.intValue, kSources, "S26 sum over all sources");
             DBtest (row->elements.GetSize (), (UInt32)kSources, "S26 provenance keeps every source");
             DBtest (row->out_slots.GetSize (), 2, "S26 schema size does not grow with sources");
         }
@@ -2300,7 +2341,7 @@ namespace TestFunc {
             // отсутствие не влияет на результат расчёта строки.
             const Spec::Element *mod = f.modified.GetPtr (GS::UniString ("@A"));
             DBrequire (mod != nullptr, "R7.1 modified row present after guid link");
-            DBtest (mod->out_sum_param[0].val.intValue, 5, "R7.1 guid link does not alter computed row");
+            DBtest (mod->OutSumValue (0).val.intValue, 5, "R7.1 guid link does not alter computed row");
         }
     }
 
@@ -2510,10 +2551,10 @@ namespace TestFunc {
 
             const Spec::Element *row = rows.GetPtr ("@A");
             DBrequire (row != nullptr, "R6.4 merged row present");
-            DBtest (row->out_sum_param[0].val.intValue, 5, "R6.4 merged sum in legacy array");
+            DBtest (row->OutSumValue (0).val.intValue, 5, "R6.4 merged sum in legacy array");
             DBtest (row->out_slots[1].value.val.intValue, 5, "R6.4 merged sum reflected in schema");
             DBtest (row->out_slots[1].value.val.intValue,
-                    row->out_sum_param[0].val.intValue,
+                    row->OutSumValue (0).val.intValue,
                     "R6.4 schema matches legacy sum");
             // Выходной слот первого представителя НЕ меняется при слиянии.
             DBtest (row->out_slots[0].value.val.uniStringValue,
@@ -2572,12 +2613,12 @@ namespace TestFunc {
         // --- суммирование равных массивов ---
         {
             Spec::Element row = {};
-            row.out_sum_param.Push (Num (2));
+            PushSumSlot (row, Num (2));
             Spec::RuleContribution c = {};
             c.outSumParam.Push (Num (3));
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.out_sum_param.GetSize (), 1, "R6.3 equal sizes keep size");
-            DBtest (row.out_sum_param[0].val.intValue, 5, "R6.3 equal sizes summed");
+            DBtest (row.OutSumCount (), 1, "R6.3 equal sizes keep size");
+            DBtest (row.OutSumValue (0).val.intValue, 5, "R6.3 equal sizes summed");
         }
 
         // --- НЕПОЛНЫЕ массивы: вклад короче строки ---
@@ -2585,67 +2626,67 @@ namespace TestFunc {
         // строки остаётся как был.
         {
             Spec::Element row = {};
-            row.out_sum_param.Push (Num (1));
-            row.out_sum_param.Push (Num (10));
-            row.out_sum_param.Push (Num (100));
+            PushSumSlot (row, Num (1));
+            PushSumSlot (row, Num (10));
+            PushSumSlot (row, Num (100));
             Spec::RuleContribution c = {};
             c.outSumParam.Push (Num (2));
             c.outSumParam.Push (Num (20));
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.out_sum_param.GetSize (), 3, "R6.3 short contribution does not resize row");
-            DBtest (row.out_sum_param[0].val.intValue, 3, "R6.3 short contribution sums first slot");
-            DBtest (row.out_sum_param[1].val.intValue, 30, "R6.3 short contribution sums second slot");
-            DBtest (row.out_sum_param[2].val.intValue, 100, "R6.3 slot beyond nsumm untouched");
+            DBtest (row.OutSumCount (), 3, "R6.3 short contribution does not resize row");
+            DBtest (row.OutSumValue (0).val.intValue, 3, "R6.3 short contribution sums first slot");
+            DBtest (row.OutSumValue (1).val.intValue, 30, "R6.3 short contribution sums second slot");
+            DBtest (row.OutSumValue (2).val.intValue, 100, "R6.3 slot beyond nsumm untouched");
         }
 
         // --- НЕПОЛНЫЕ массивы: строка короче вклада ---
         {
             Spec::Element row = {};
-            row.out_sum_param.Push (Num (7));
+            PushSumSlot (row, Num (7));
             Spec::RuleContribution c = {};
             c.outSumParam.Push (Num (1));
             c.outSumParam.Push (Num (2));
             c.outSumParam.Push (Num (4));
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.out_sum_param.GetSize (), 1, "R6.3 longer contribution does not grow row");
-            DBtest (row.out_sum_param[0].val.intValue, 8, "R6.3 longer contribution sums overlap only");
+            DBtest (row.OutSumCount (), 1, "R6.3 longer contribution does not grow row");
+            DBtest (row.OutSumValue (0).val.intValue, 8, "R6.3 longer contribution sums overlap only");
         }
 
         // --- isValid требуется с ОБЕИХ сторон ---
         {
             Spec::Element row = {};
-            row.out_sum_param.Push (Num (5));
-            row.out_sum_param.Push (Num (50));
+            PushSumSlot (row, Num (5));
+            PushSumSlot (row, Num (50));
             Spec::RuleContribution c = {};
             c.outSumParam.Push (Num (5, false)); // невалидный: слот остаётся как есть
             c.outSumParam.Push (Num (1));
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.out_sum_param[0].val.intValue, 5, "R6.3 invalid side leaves slot untouched");
-            DBtest (row.out_sum_param[1].val.intValue, 51, "R6.3 valid pair still summed");
+            DBtest (row.OutSumValue (0).val.intValue, 5, "R6.3 invalid side leaves slot untouched");
+            DBtest (row.OutSumValue (1).val.intValue, 51, "R6.3 valid pair still summed");
         }
         {
             Spec::Element row = {};
-            row.out_sum_param.Push (Num (5, false)); // невалидная строка
+            PushSumSlot (row, Num (5, false)); // невалидная строка
             Spec::RuleContribution c = {};
             c.outSumParam.Push (Num (5));
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.out_sum_param[0].val.intValue, 5, "R6.3 invalid row slot untouched");
+            DBtest (row.OutSumValue (0).val.intValue, 5, "R6.3 invalid row slot untouched");
         }
 
         // --- пустые массивы: ничего не происходит, размер не меняется ---
         {
             Spec::Element row = {};
-            row.out_sum_param.Push (Num (9));
+            PushSumSlot (row, Num (9));
             Spec::RuleContribution c = {};
             Spec::SumContributionIntoRow (row, c);
-            DBtest (row.out_sum_param.GetSize (), 1, "R6.3 empty contribution keeps row size");
-            DBtest (row.out_sum_param[0].val.intValue, 9, "R6.3 empty contribution keeps value");
+            DBtest (row.OutSumCount (), 1, "R6.3 empty contribution keeps row size");
+            DBtest (row.OutSumValue (0).val.intValue, 9, "R6.3 empty contribution keeps value");
 
             Spec::Element emptyRow = {};
             Spec::RuleContribution withValue = {};
             withValue.outSumParam.Push (Num (3));
             Spec::SumContributionIntoRow (emptyRow, withValue);
-            DBtest (emptyRow.out_sum_param.GetSize (), 0, "R6.3 empty row stays empty");
+            DBtest (emptyRow.OutSumCount (), 0, "R6.3 empty row stays empty");
         }
 
         // --- Created: строка собирается из вклада и копирует признаки правила ---
@@ -2668,14 +2709,13 @@ namespace TestFunc {
             DBtest (rows.GetSize (), 1, "R6.3 one row created");
             const Spec::Element *row = rows.GetPtr ("@A");
             DBrequire (row != nullptr, "R6.3 created row found");
-            DBtest (row->out_param.GetSize (), 1, "R6.3 created row has out slot");
-            DBtest (row->out_sum_param.GetSize (), 1, "R6.3 created row has sum slot");
-            DBtest (row->out_sum_param[0].val.intValue, 6, "R6.3 created row sum value");
+            DBtest (row->OutParamCount (), 1, "R6.3 created row has out slot");
+            DBtest (row->OutSumCount (), 1, "R6.3 created row has sum slot");
+            DBtest (row->OutSumValue (0).val.intValue, 6, "R6.3 created row sum value");
             DBtest (row->elements.GetSize (), 1, "R6.3 created row has one source");
             DBtest (row->elements[0] == f.first, true, "R6.3 created row source is the contributor");
             DBtest (row->favorite_name, f.rule.favorite_name, "R6.3 created row carries favorite");
-            DBtest (
-                row->out_paramrawname.GetSize (), f.rule.out_paramrawname.GetSize (), "R6.3 created row out schema");
+            DBtest (row->OutParamCount (), f.rule.out_paramrawname.GetSize (), "R6.3 created row out schema");
             DBtest (outParam.GetSize (), 1, "R6.3 outParam recorded on creation");
         }
 
@@ -2709,7 +2749,7 @@ namespace TestFunc {
             DBtest (rows.GetSize (), 1, "R6.3 merge keeps one row");
             const Spec::Element *row = rows.GetPtr ("@A");
             DBrequire (row != nullptr, "R6.3 merged row found");
-            DBtest (row->out_sum_param[0].val.intValue, 5, "R6.3 merge summed both");
+            DBtest (row->OutSumValue (0).val.intValue, 5, "R6.3 merge summed both");
             DBtest (row->elements.GetSize (), 2, "R6.3 merge collected both sources");
             DBtest (row->elements[1] == f.second, true, "R6.3 merge appended second source");
             DBtest (outParam.GetSize (), 1, "R6.3 merge does not duplicate outParam");
@@ -2782,20 +2822,20 @@ namespace TestFunc {
                 const Spec::Element *a = rows.GetPtr (key);
                 const Spec::Element *b = full.created.GetPtr (key);
                 DBrequire (a != nullptr && b != nullptr, "R6.3 both sides have the row");
-                DBtest (a->out_sum_param.GetSize (), b->out_sum_param.GetSize (), "R6.3 agree on sum slot count");
-                DBtest (a->out_param.GetSize (), b->out_param.GetSize (), "R6.3 agree on out slot count");
+                DBtest (a->OutSumCount (), b->OutSumCount (), "R6.3 agree on sum slot count");
+                DBtest (a->OutParamCount (), b->OutParamCount (), "R6.3 agree on out slot count");
                 DBtest (a->elements.GetSize (), b->elements.GetSize (), "R6.3 agree on source count");
                 DBtest (a->favorite_name, b->favorite_name, "R6.3 agree on favorite");
-                for (UInt32 j = 0; j < a->out_sum_param.GetSize () && j < b->out_sum_param.GetSize (); j++)
+                for (UInt32 j = 0; j < a->OutSumCount () && j < b->OutSumCount (); j++)
                     DBtest (
-                        a->out_sum_param[j].val.intValue, b->out_sum_param[j].val.intValue, "R6.3 agree on sum value");
+                        a->OutSumValue (j).val.intValue, b->OutSumValue (j).val.intValue, "R6.3 agree on sum value");
             }
             const Spec::Element *mergedA = rows.GetPtr ("@A");
             DBrequire (mergedA != nullptr, "R6.3 merged row A present");
-            DBtest (mergedA->out_sum_param[0].val.intValue, 5, "R6.3 layout summed 2+3");
+            DBtest (mergedA->OutSumValue (0).val.intValue, 5, "R6.3 layout summed 2+3");
             const Spec::Element *rowB = rows.GetPtr ("@B");
             DBrequire (rowB != nullptr, "R6.3 row B present");
-            DBtest (rowB->out_sum_param[0].val.intValue, 7, "R6.3 row B own sum");
+            DBtest (rowB->OutSumValue (0).val.intValue, 7, "R6.3 row B own sum");
         }
     }
 
@@ -2815,12 +2855,12 @@ namespace TestFunc {
             // правила перенесены.
             const Spec::Element *row = planned.GetPtr ("@A");
             DBrequire (row != nullptr, "R6.1 row found by key");
-            DBtest (row->out_param.GetSize (), 1, "R6.1 out slot filled");
-            DBtest (row->out_sum_param.GetSize (), 1, "R6.1 sum slot filled");
-            DBtest (row->out_param[0].val.uniStringValue, GS::UniString ("Alpha"), "R6.1 out value");
-            DBtest (row->out_sum_param[0].val.intValue, 2, "R6.1 sum value");
+            DBtest (row->OutParamCount (), 1, "R6.1 out slot filled");
+            DBtest (row->OutSumCount (), 1, "R6.1 sum slot filled");
+            DBtest (row->OutParamValue (0).val.uniStringValue, GS::UniString ("Alpha"), "R6.1 out value");
+            DBtest (row->OutSumValue (0).val.intValue, 2, "R6.1 sum value");
             DBtest (row->elements.GetSize (), 1, "R6.1 source multiplicity");
-            DBtest (row->out_paramrawname.GetSize (), f.rule.out_paramrawname.GetSize (), "R6.1 out schema carried");
+            DBtest (row->OutParamCount (), f.rule.out_paramrawname.GetSize (), "R6.1 out schema carried");
             DBtest (row->favorite_name, f.rule.favorite_name, "R6.1 favorite carried");
             // out_param: ключ - склеенные выходящие значения, значение - ключ
             // строки. Он пережил вынос и остаётся тем же словарём.
@@ -2858,7 +2898,7 @@ namespace TestFunc {
             DBtest (planned.GetSize (), 1, "R6.1 merged row single");
             const Spec::Element *row = planned.GetPtr ("@A");
             DBrequire (row != nullptr, "R6.1 merged row found");
-            DBtest (row->out_sum_param[0].val.intValue, 5, "R6.1 merged sum");
+            DBtest (row->OutSumValue (0).val.intValue, 5, "R6.1 merged sum");
             DBtest (row->elements.GetSize (), 2, "R6.1 merged sources");
         }
 
@@ -2883,10 +2923,12 @@ namespace TestFunc {
             const Spec::Element *a = planned.GetPtr ("@A");
             const Spec::Element *b = full.created.GetPtr ("@A");
             DBrequire (a != nullptr && b != nullptr, "R6.1 both rows available");
-            DBtest (a->out_param.GetSize (), b->out_param.GetSize (), "R6.1 agree on out slot count");
-            DBtest (a->out_sum_param.GetSize (), b->out_sum_param.GetSize (), "R6.1 agree on sum slot count");
-            DBtest (a->out_param[0].val.uniStringValue, b->out_param[0].val.uniStringValue, "R6.1 agree on out value");
-            DBtest (a->out_sum_param[0].val.intValue, b->out_sum_param[0].val.intValue, "R6.1 agree on sum value");
+            DBtest (a->OutParamCount (), b->OutParamCount (), "R6.1 agree on out slot count");
+            DBtest (a->OutSumCount (), b->OutSumCount (), "R6.1 agree on sum slot count");
+            DBtest (a->OutParamValue (0).val.uniStringValue,
+                    b->OutParamValue (0).val.uniStringValue,
+                    "R6.1 agree on out value");
+            DBtest (a->OutSumValue (0).val.intValue, b->OutSumValue (0).val.intValue, "R6.1 agree on sum value");
         }
 
         // --- отказ правила обнуляет расчёт, но НЕ трогает входные словари ---
@@ -3232,11 +3274,11 @@ namespace TestFunc {
             Spec::Element element = {};
             for (UInt32 i = 0; i < test.out; i++) {
                 ParamValue pv = {};
-                element.out_param.Push (pv);
+                PushOutSlot (element, pv);
             }
             for (UInt32 i = 0; i < test.sum; i++) {
                 ParamValue pv = {};
-                element.out_sum_param.Push (pv);
+                PushSumSlot (element, pv);
             }
             const bool ok = Spec::OutSlotsMatchSchema (element, test.outSlots, test.sumSlots);
             DBtest (ok, test.ok, GS::UniString (test.label));

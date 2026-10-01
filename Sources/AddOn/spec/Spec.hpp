@@ -198,18 +198,18 @@ namespace Spec {
 
     // Временный контейнер для одного элемента, который будет создан или обновлён по правилу.
     struct Element {
-        // Общая выходная схема этой строки (R6.4). Раньше параллельно хранились
-        // out_param/out_sum_param (значения) и out_paramrawname/
-        // out_sum_paramrawname (имена); теперь слот держит и то, и другое.
+        // Единственный владелец payload строки (R7.4). Раньше параллельно
+        // хранились out_param/out_sum_param (значения) и out_paramrawname/
+        // out_sum_paramrawname (имена) рядом со схемой слотов, то есть двойная
+        // правда: расхождение было возможно и требовало бы проверки на каждом
+        // чтении. Теперь значения и имена лежат в одном месте, и accessor-ы ниже
+        // читают именно его.
+        //
+        // ПОРЯДОК слотов прежний и значим: сначала выходные, затем суммы.
+        // Место источника у слота — флаг isSum, а не позиция, поэтому порядок
+        // сохраняется нарочно: по нему считаются индексы и в сверке, и при
+        // размещении.
         OutputSlots out_slots = {};
-        // Прежние поля. Оставлены как двойная правда до полного перевода
-        // потребителей (см. карточку SpecPlanning): accessor-ы ниже читают их,
-        // поэтому расхождение с out_slots возможно только в отладочной сборке,
-        // и это повод для теста, а не для «молчаливого» поведения.
-        GS::Array<ParamValue> out_param = {};
-        GS::Array<ParamValue> out_sum_param = {};
-        GS::Array<GS::UniString> out_paramrawname;
-        GS::Array<GS::UniString> out_sum_paramrawname;
         GS::UniString subguid_paramrawname = EMPTYSTRING;
         GS::UniString subguid_rulename = EMPTYSTRING;
         GS::UniString subguid_rulevalue = EMPTYSTRING;
@@ -217,21 +217,64 @@ namespace Spec {
         GS::Array<API_Guid> elements = {};         // Элементы, которые обрабатываются правилом
         API_Guid exs_guid = APINULLGuid;           // GUID существующего элемента для перезаписи
 
-        // Значение слота по индексу в ПРЕЖНЕМ порядке: сначала выходные, затем
-        // суммы. Порядок сохранён, чтобы accessor давал то же, что давал
-        // прежний код обращения к массиву.
+        // Значение слота по индексу в прежнем порядке: сначала выходные, затем
+        // суммы. Индекс вне схемы даёт ЗАВЕДОМО БЕЗОПАСНЫЙ ответ, а не выход за
+        // границу: потребитель сам решает, что делать с отсутствующим значением.
         const ParamValue &OutParam (UInt32 index) const {
-            return index < out_param.GetSize () ? out_param[index] : out_sum_param[index - out_param.GetSize ()];
+            static const ParamValue emptyValue = {};
+            return index < out_slots.GetSize () ? out_slots[index].value : emptyValue;
         }
 
         // Имя поля слота в том же прежнем порядке.
         const GS::UniString &OutSlotName (UInt32 index) const {
-            return index < out_paramrawname.GetSize () ? out_paramrawname[index]
-                                                       : out_sum_paramrawname[index - out_paramrawname.GetSize ()];
+            return index < out_slots.GetSize () ? out_slots[index].rawname : EMPTYSTRING;
         }
 
         // Число слотов схемы: выходные плюс суммы.
-        UInt32 OutSlotCount () const { return out_paramrawname.GetSize () + out_sum_paramrawname.GetSize (); }
+        UInt32 OutSlotCount () const { return out_slots.GetSize (); }
+
+        // Число выходных (не суммарных) слотов — нужно там, где прежний код
+        // спрашивал размер out_param, а по схеме это позиция первого слота суммы.
+        UInt32 OutParamSlotCount () const {
+            UInt32 count = 0;
+            for (const OutputSlot &slot : out_slots)
+                if (!slot.isSum)
+                    ++count;
+            return count;
+        }
+
+        // Аксессоры с ПРЕЖНЕЙ индексацией — по отдельному массиву на выходные и
+        // на суммы. Ими переведены тесты: снаружи индекс остаётся в старой
+        // системе координат, а отображение на слоты живёт здесь, в единственном
+        // месте. OutParam (index) выше — по объединённой схеме, для нового кода.
+        //
+        // Выходные слоты занимают первые OutParamSlotCount () позиций схемы
+        // (порядок прежний: сначала выходные, затем суммы).
+        UInt32 OutSumSlotCount () const { return out_slots.GetSize () - OutParamSlotCount (); }
+
+        // Число слотов каждого вида — для мест, где прежний код спрашивал
+        // GetSize () прежнего массива.
+        UInt32 OutParamCount () const { return OutParamSlotCount (); }
+
+        UInt32 OutSumCount () const { return OutSumSlotCount (); }
+
+        const ParamValue &OutParamValue (UInt32 index) const {
+            return index < OutParamSlotCount () ? out_slots[index].value : OutParam (out_slots.GetSize ());
+        }
+
+        const ParamValue &OutSumValue (UInt32 index) const {
+            const UInt32 offset = OutParamSlotCount ();
+            return index < OutSumSlotCount () ? out_slots[offset + index].value : OutParam (out_slots.GetSize ());
+        }
+
+        const GS::UniString &OutParamName (UInt32 index) const {
+            return index < OutParamSlotCount () ? out_slots[index].rawname : EMPTYSTRING;
+        }
+
+        const GS::UniString &OutSumName (UInt32 index) const {
+            const UInt32 offset = OutParamSlotCount ();
+            return index < OutSumSlotCount () ? out_slots[offset + index].rawname : EMPTYSTRING;
+        }
 
         // Имя и значение одного слота — то, ради чего слот и введён. Возвращает
         // false, если индекс вне схемы: потребитель решает сам, а получает

@@ -989,6 +989,39 @@
   `status=success`. **A/B:** `r73-final` — C=2/M=12/D=2, 14 строк; `diff_rows` = **0**
   против `p0-smoke`, `r72-final`; sha256 фикстуры `db1690f…` совпал.
 
+### R7.4 — один владелец payload строки (#228)
+- **Четыре прежних поля `Element` удалены** (`out_param`, `out_sum_param`,
+  `out_paramrawname`, `out_sum_paramrawname`). Единственный владелец — `out_slots`.
+  Ноль обращений к прежним полям в `spec/` и в тестах. [по коду + компиляции]
+- **`BuildOutputSlots` строит слоты напрямую из вклада**, а не «скопировать в поля
+  строки, затем разложить их по схеме» — то есть исчезло промежуточное
+  представление. [по коду]
+- **`SumContributionIntoRow` складывает по слотам с `isSum`**; «сложены первые
+  MIN(длин)» сохранено дословно, первый суммарный слот = `out_slots.GetSize () -
+  accumulated`. [по коду + прогону]
+- **`OutSlotsMatchSchema` НЕ удалён, а переведён на схему слотов. Ошибка моей
+  разведки R7.4:** я назвал его мёртвым, искав вызовы только в `Spec.cpp`, и
+  пропустил вызов в `SpecPlanning.cpp:248` — удаление сломало бы сборку. [по
+  компиляции]
+- **Accessors с прежней индексацией** (`OutParamValue`/`OutSumValue`/
+  `OutParamName`/`OutSumName`/`OutParamCount`/`OutSumCount`): внешний индекс
+  остался в старой системе координат, отображение на слоты живёт в одном месте.
+  Новый код читает `OutParam (index)` по объединённой схеме. [по коду]
+- **118 строк тестов переведены на слоты**; строки сумм вручную собираются
+  хелперами `PushSumSlot`/`PushOutSlot` — без `isSum` строка выглядела бы
+  состоящей только из выходных. [по коду]
+- Прогон (AC25, схема #231): `SUMMARY suites=59 passed=2280 failed=1` — **числа
+  ровно те же, что до R7.4**; `TestSpecEngineEquivalence` 49/49,
+  `TestSpecRowLayout` 54/54, `TestSpecContribution` 51/51, `TestSpecReconcile`
+  57/57, `TestSpecReconcileFixtures` 37/37, `TestSpecChangePlan` 30/30,
+  `TestSpecScenarioMatrix` 75/75, `TestSpecRowSlots` 28/28, `TestSpecOutputSchema`
+  49/49; `FAILED_SUITE TestConvertPropertyToParamValue` — предсуществующая вне
+  области. Инвариант чтений: 8 в `SpecPlanning.cpp`, 0 в `Spec.cpp`.
+  [по отчёту, runtime AC25 2026-10-01]
+- Проверка: clang-format; AC25 — `Build succeeded!`; sweep AC26–29 —
+  `status=success`. **A/B:** база `p2-before-r74` снята ДО правок (2C/12M/2D, 14
+  строк), `r74-final` — те же 2C/12M/2D, 14 строк; `diff_rows` = **0**.
+
 ## Карточки
 
 ### R3 — `SpecRule`: разведение определения и состояния запуска (#228)

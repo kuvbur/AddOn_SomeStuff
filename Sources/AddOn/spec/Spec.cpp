@@ -1675,9 +1675,22 @@ namespace Spec {
     // цикла, а не на каждом элементе.
     // ---------------------------------------------------------------------
     bool OutSlotsMatchSchema (const Element &element, UInt32 outSlots, UInt32 sumSlots) {
-        if (element.out_sum_param.IsEmpty () || element.out_param.IsEmpty ())
+        // R7.4: сверка по СХЕМЕ СЛОТОВ, а не по прежним массивам. Условие прежнее
+        // (ни один набор не пуст, числа совпадают), но источник прежних полей —
+        // флаг isSum, поэтому порядок схемы не влияет на результат.
+        if (element.out_slots.IsEmpty ())
             return false;
-        return element.out_sum_param.GetSize () == sumSlots && element.out_param.GetSize () == outSlots;
+        UInt32 nonSum = 0;
+        UInt32 sum = 0;
+        for (const OutputSlot &slot : element.out_slots) {
+            if (slot.isSum)
+                ++sum;
+            else
+                ++nonSum;
+        }
+        if (nonSum == 0 || sum == 0)
+            return false;
+        return sum == sumSlots && nonSum == outSlots;
     }
 
     // -----------------------------------------------------------------------------
