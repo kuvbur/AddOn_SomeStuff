@@ -128,21 +128,22 @@ namespace Spec {
         }
         if (has_element && !has_elementspec) {
             msg_rep ("Spec", "All elements is off", APIERR_GENERAL, APINULLGuid);
-            const Int32 iseng = ID_ADDON_STRINGS + isEng ();
-            GS::UniString SpecRuleNotFoundString = RSGetIndString (iseng, SpecFlagOff, ACAPI_GetOwnResModule ());
-            if (!error_name.IsEmpty ()) {
-                for (auto &cIt : error_name) {
+            if (showUserInterface) {
+                const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+                GS::UniString SpecRuleNotFoundString = RSGetIndString (iseng, SpecFlagOff, ACAPI_GetOwnResModule ());
+                if (!error_name.IsEmpty ()) {
+                    for (auto &cIt : error_name) {
     #ifdef ServerMainVers_2800
-                    GS::UniString s = cIt.key;
+                        GS::UniString s = cIt.key;
     #else
-                    GS::UniString s = *cIt.key;
+                        GS::UniString s = *cIt.key;
     #endif
-                    SpecRuleNotFoundString.Append (LINEBRAKE);
-                    SpecRuleNotFoundString.Append (s);
+                        SpecRuleNotFoundString.Append (LINEBRAKE);
+                        SpecRuleNotFoundString.Append (s);
+                    }
                 }
-            }
-            if (showUserInterface)
                 ACAPI_WriteReport (SpecRuleNotFoundString, true);
+            }
         }
         return has_element;
 #endif
@@ -223,6 +224,7 @@ namespace Spec {
     void SpecFilter (API_Guid &elemguid, API_DatabaseInfo &homedatabaseInfo) {
         GSErrCode err = NoError;
         API_ElemTypeID elementType = GetElemTypeID (elemguid);
+        // TODO переписать на switch-case
         if (elementType == API_ZombieElemID) {
             elemguid = APINULLGuid;
             return;
@@ -374,6 +376,7 @@ namespace Spec {
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
             API_Guid elemguid = guidArray[i];
             API_ElemTypeID elementType = GetElemTypeID (elemguid);
+            // TODO переписать на switch-case
             if (elementType == API_ZombieElemID)
                 continue;
             if (elementType == API_DimensionID)
@@ -597,10 +600,11 @@ namespace Spec {
             }
             if (!flagfindspec) {
                 msg_rep ("Spec", "Rules not found", APIERR_GENERAL, APINULLGuid);
-                GS::UniString SpecRuleNotFoundString =
-                    RSGetIndString (iseng, SpecRuleNotFoundId, ACAPI_GetOwnResModule ());
-                if (showUserInterface)
+                if (showUserInterface) {
+                    GS::UniString SpecRuleNotFoundString =
+                        RSGetIndString (iseng, SpecRuleNotFoundId, ACAPI_GetOwnResModule ());
                     ACAPI_WriteReport (SpecRuleNotFoundString, true);
+                }
                 return APIERR_GENERAL;
             }
         }
@@ -638,18 +642,20 @@ namespace Spec {
         }
         if (readContext.read.IsEmpty ()) {
             msg_rep ("Spec", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
-            GS::UniString SpecRuleReadFoundString =
-                RSGetIndString (iseng, SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
-            if (showUserInterface)
+            if (showUserInterface) {
+                GS::UniString SpecRuleReadFoundString =
+                    RSGetIndString (iseng, SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
                 ACAPI_WriteReport (SpecRuleReadFoundString, true);
+            }
             return APIERR_GENERAL;
         }
         if (paramToWrite.IsEmpty ()) {
             msg_rep ("Spec", "Parameters for write not found", APIERR_GENERAL, APINULLGuid);
-            GS::UniString SpecWriteNotFoundString =
-                RSGetIndString (iseng, SpecWriteNotFoundId, ACAPI_GetOwnResModule ());
-            if (showUserInterface)
+            if (showUserInterface) {
+                GS::UniString SpecWriteNotFoundString =
+                    RSGetIndString (iseng, SpecWriteNotFoundId, ACAPI_GetOwnResModule ());
                 ACAPI_WriteReport (SpecWriteNotFoundString, true);
+            }
             return APIERR_GENERAL;
         }
         subtitle = GS::UniString::Printf ("Reading parameters from %d elements", readContext.read.GetSize ());
@@ -728,10 +734,11 @@ namespace Spec {
                 out.Append (LINEBRAKE);
             }
             msg_rep ("Spec", "Can't find parameters in place element: " + out, err, APINULLGuid);
-            GS::UniString SpecEmptyListdString =
-                RSGetIndString (iseng, SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ());
-            if (showUserInterface)
+            if (showUserInterface) {
+                GS::UniString SpecEmptyListdString =
+                    RSGetIndString (iseng, SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ());
                 ACAPI_WriteReport (SpecEmptyListdString + out, true);
+            }
             return APIERR_GENERAL;
         }
         // Перед формированием итоговых элементов читаются данные уже размещённых объектов, чтобы их можно было сравнить
@@ -970,13 +977,15 @@ namespace Spec {
         }
         if (!has_action && !rule_produced_rows) {
             msg_rep ("Spec", "Elements list empty", NoError, APINULLGuid);
-            GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecEmptyListdId, ACAPI_GetOwnResModule ());
-            if (has_v2)
-                SpecEmptyListdString += LINEBRAKE + RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
-            if (showUserInterface)
+            if (showUserInterface) {
+                GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecEmptyListdId, ACAPI_GetOwnResModule ());
+                if (has_v2)
+                    SpecEmptyListdString += LINEBRAKE + RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
                 ACAPI_WriteReport (SpecEmptyListdString, true);
+            }
             return APIERR_GENERAL;
         }
+
         Point2D startpos = {0, 0};
         finish = clock ();
         duration = (double)(finish - start) / CLOCKS_PER_SEC;
@@ -1011,7 +1020,7 @@ namespace Spec {
             ParamHelpers::ElementsWrite (paramOut);
             return NoError;
         });
-        if (has_v2) {
+        if (has_v2 && showUserInterface) {
             GS::UniString msg;
             if (!elements_delete.IsEmpty ()) {
                 msg += RSGetIndString (iseng, 70, ACAPI_GetOwnResModule ()) +
@@ -1033,8 +1042,7 @@ namespace Spec {
             }
             if (msg.IsEmpty ())
                 msg = RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
-            if (showUserInterface)
-                ACAPI_WriteReport (msg, true);
+            ACAPI_WriteReport (msg, true);
         }
 
         for (ParamDictElement::PairIterator cIt = paramOut.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -1854,10 +1862,11 @@ namespace Spec {
         if (rule.stop_on_error) {
             const Int32 iseng = ID_ADDON_STRINGS + isEng ();
             if (!not_found_paramname.IsEmpty ()) {
-                GS::UniString SpecNotFoundParametersString =
-                    RSGetIndString (iseng, SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
-                if (showUserInterface)
+                if (showUserInterface) {
+                    GS::UniString SpecNotFoundParametersString =
+                        RSGetIndString (iseng, SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
                     ACAPI_WriteReport (SpecNotFoundParametersString, true);
+                }
                 GS::UniString out = "Not found param:";
                 for (auto &cIt : not_found_paramname) {
 #ifdef ServerMainVers_2800
@@ -1876,10 +1885,11 @@ namespace Spec {
                 msg_rep ("Spec", out, NoError, APINULLGuid);
             }
             if (!not_found_unic.IsEmpty ()) {
-                GS::UniString SpecNotFoundParametersString =
-                    RSGetIndString (iseng, SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
-                if (showUserInterface)
+                if (showUserInterface) {
+                    GS::UniString SpecNotFoundParametersString =
+                        RSGetIndString (iseng, SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
                     ACAPI_WriteReport (SpecNotFoundParametersString, true);
+                }
                 GS::UniString out = "Not found unic:";
                 for (auto &cIt : not_found_unic) {
 #ifdef ServerMainVers_2800
