@@ -2653,6 +2653,8 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
     // Шаг 5. Выделяем найденные элементы и приближаем к ним; при частичном
     // результате (errmsg не пуст) ZoomToSelected не делаем, чтобы не дезориентировать
     // пользователя, и показываем предупреждение.
+
+    // TODO вынести в отдульную функцию - выделить и приблизить
     #ifdef ServerMainVers_2700
     err = ACAPI_Selection_Select (selNeigs, true);
     if (err == NoError && errmsg.IsEmpty ())

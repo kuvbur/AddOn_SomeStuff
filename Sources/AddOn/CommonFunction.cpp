@@ -90,8 +90,8 @@ GS::UniString GetDBName (API_DatabaseInfo &databaseInfo) {
         break;
     }
     // Добавляем к имени пробел и заголовок окна
-    рname = рname + SPACESTRING;
-    рname = рname + databaseInfo.title;
+    рname += SPACESTRING;
+    рname += databaseInfo.title;
     return рname;
 }
 
@@ -678,22 +678,22 @@ void msg_rep (const GS::UniString &modulename,
         elem_head.guid = elemGuid;
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
             if (elem_head.hotlinkGuid != APINULLGuid)
-                error_type = error_type + " IN HOTLINK";
+                error_type += " IN HOTLINK";
             switch (elem_head.renovationStatus) {
             case API_UndefinedStatus:
-                error_type = error_type + " Undefined renovation Status";
+                error_type += " Undefined renovation Status";
                 break;
             case API_NewStatus:
-                error_type = error_type + " New renovation Status";
+                error_type += " New renovation Status";
                 break;
             case API_DemolishedStatus:
-                error_type = error_type + " Demolished renovation Status";
+                error_type += " Demolished renovation Status";
                 break;
             default:
                 break;
             }
             if (elem_head.renovationFilterGuid != APINULLGuid)
-                error_type = error_type + " IN renovationFilter";
+                error_type += " IN renovationFilter";
             GS::UniString elemName;
 #ifdef ServerMainVers_2700
             if (ACAPI_Element_GetElemTypeName (elem_head.type, elemName) == NoError) {
