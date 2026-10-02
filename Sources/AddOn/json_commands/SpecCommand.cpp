@@ -8,6 +8,7 @@
 
 #include "dialogs/SyncSettings.hpp"
 #include "spec/Spec.hpp"
+#include "spec/SpecCompat.hpp"
 
 #if defined(ServerMainVers_2500)
 
@@ -64,10 +65,10 @@ GS::Optional<GS::UniString> SpecCommand::GetResponseSchema () const { return GS:
 // -----------------------------------------------------------------------------
 static GS::ObjectState GuidListToObjectState (const GS::Array<API_Guid> &guids) {
     GS::ObjectState list;
-    const auto addGuid = list.AddList<GS::ObjectState> ("element");
+    const auto addGuid = list.AddList<GS::ObjectState> (SpecCompat::NestedFieldNames::element);
     for (UIndex i = 0; i < guids.GetSize (); ++i) {
         GS::ObjectState guid;
-        guid.Add ("guid", APIGuidToString (guids[i]));
+        guid.Add (SpecCompat::NestedFieldNames::guid, APIGuidToString (guids[i]));
         addGuid (guid);
     }
     return list;
@@ -80,9 +81,9 @@ static GS::ObjectState GuidListToObjectState (const GS::Array<API_Guid> &guids) 
 // -----------------------------------------------------------------------------
 static GS::ObjectState StageCountersToObjectState (const Spec::SpecStageCounters &stage) {
     GS::ObjectState object;
-    object.Add ("attempted", static_cast<GS::Int32> (stage.attempted));
-    object.Add ("succeeded", static_cast<GS::Int32> (stage.succeeded));
-    object.Add ("failed", static_cast<GS::Int32> (stage.failed));
+    object.Add (SpecCompat::NestedFieldNames::attempted, static_cast<GS::Int32> (stage.attempted));
+    object.Add (SpecCompat::NestedFieldNames::succeeded, static_cast<GS::Int32> (stage.succeeded));
+    object.Add (SpecCompat::NestedFieldNames::failed, static_cast<GS::Int32> (stage.failed));
     return object;
 }
 
@@ -126,17 +127,20 @@ static const char *PrepareStageName (Spec::SpecPrepareStage stage) {
 // счётчиков.
 // -----------------------------------------------------------------------------
 static void AddStageCounters (GS::ObjectState &response, const Spec::SpecRunResult &runResult) {
-    response.Add ("create", StageCountersToObjectState (runResult.create));
-    response.Add ("grouping", StageCountersToObjectState (runResult.grouping));
-    response.Add ("gdl", StageCountersToObjectState (runResult.gdl));
-    response.Add ("deleteOld", StageCountersToObjectState (runResult.deleteOld));
-    response.Add ("hasPrimaryError", runResult.hasPrimaryError);
-    response.Add ("hasRecoveryError", runResult.hasRecoveryError);
-    response.Add ("hasUnconfirmedCreate", runResult.hasUnconfirmedCreate);
+    // Счётчики идут в порядке StageCounterNames, поэтому имена берутся оттуда:
+    // так порядок полей в ответе и в контракте не могут разойтись.
+    const Spec::SpecStageCounters stages[4] = {
+        runResult.create, runResult.grouping, runResult.gdl, runResult.deleteOld};
+    for (UIndex i = 0; i < 4; ++i)
+        response.Add (SpecCompat::StageCounterNames[i], StageCountersToObjectState (stages[i]));
+    response.Add (SpecCompat::ResponseFieldNames::hasPrimaryError, runResult.hasPrimaryError);
+    response.Add (SpecCompat::ResponseFieldNames::hasRecoveryError, runResult.hasRecoveryError);
+    response.Add (SpecCompat::ResponseFieldNames::hasUnconfirmedCreate, runResult.hasUnconfirmedCreate);
     // Отказ подготовки не отражается ни в одном счётчике выше - он происходит
     // до обращения к модели, поэтому все счётчики остаются нулевыми. Без этого
     // поля отчёт неотличим от «создавать было нечего».
-    response.Add ("prepareFailureStage", PrepareStageName (runResult.prepareFailureStage));
+    response.Add (SpecCompat::ResponseFieldNames::prepareFailureStage,
+                  PrepareStageName (runResult.prepareFailureStage));
 }
 
 // -----------------------------------------------------------------------------
@@ -167,8 +171,8 @@ static void AddDumpedValues (GS::ObjectState &target,
         if (value == nullptr)
             continue;
         GS::ObjectState entry;
-        entry.Add ("name", name);
-        entry.Add ("value", *value);
+        entry.Add (SpecCompat::PropertyFieldNames::name, name);
+        entry.Add (SpecCompat::PropertyFieldNames::value, *value);
         addParameter (entry);
     }
 }
@@ -180,19 +184,19 @@ static void AddElementDumps (GS::ObjectState &response,
                              const char *fieldName,
                              const GS::Array<Spec::SpecElementDump> &dumps) {
     GS::ObjectState list;
-    const auto addElement = list.AddList<GS::ObjectState> ("element");
+    const auto addElement = list.AddList<GS::ObjectState> (SpecCompat::NestedFieldNames::element);
     for (const Spec::SpecElementDump &dump : dumps) {
         GS::ObjectState element;
-        element.Add ("guid", APIGuidToString (dump.guid));
+        element.Add (SpecCompat::ElementFieldNames::guid, APIGuidToString (dump.guid));
         element.Add ("favoriteName", dump.favorite_name);
-        const auto addSource = element.AddList<GS::ObjectState> ("sourceElement");
+        const auto addSource = element.AddList<GS::ObjectState> (SpecCompat::ElementFieldNames::sourceElement);
         for (const API_Guid &sourceGuid : dump.sourceElements) {
             GS::ObjectState source;
-            source.Add ("guid", APIGuidToString (sourceGuid));
+            source.Add (SpecCompat::NestedFieldNames::guid, APIGuidToString (sourceGuid));
             addSource (source);
         }
-        AddDumpedValues (element, "property", dump.properties);
-        AddDumpedValues (element, "gdlParameter", dump.gdlParameters);
+        AddDumpedValues (element, SpecCompat::ElementFieldNames::property, dump.properties);
+        AddDumpedValues (element, SpecCompat::ElementFieldNames::gdlParameter, dump.gdlParameters);
         addElement (element);
     }
     response.Add (fieldName, list);
@@ -203,7 +207,7 @@ static void AddElementDumps (GS::ObjectState &response,
 // -----------------------------------------------------------------------------
 GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
                                       GS::ProcessControl & /*processControl*/) const {
-    const GS::ObjectState *placementPointObject = parameters.Get ("placementPoint");
+    const GS::ObjectState *placementPointObject = parameters.Get (SpecCompat::InputFieldNames::placementPoint);
     if (placementPointObject == nullptr)
         return CreateErrorResponse (APIERR_BADPARS, "placementPoint is missing");
 
@@ -212,10 +216,10 @@ GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
         return CreateErrorResponse (APIERR_BADPARS, "placementPoint.x and placementPoint.y are required");
 
     GS::Array<GS::UniString> ruleNames;
-    const bool hasRuleNames = parameters.Get ("ruleNames", ruleNames);
+    const bool hasRuleNames = parameters.Get (SpecCompat::InputFieldNames::ruleNames, ruleNames);
     // По умолчанию выключено: обычный запуск Spec не должен платить за сбор дампа.
     bool includeParameters = false;
-    parameters.Get ("includeParameters", includeParameters);
+    parameters.Get (SpecCompat::InputFieldNames::includeParameters, includeParameters);
     const auto start = std::chrono::steady_clock::now ();
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings);
@@ -227,18 +231,21 @@ GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
 
     const double elapsedSeconds = std::chrono::duration<double> (finish - start).count ();
     GS::ObjectState response;
-    response.Add ("status", err == NoError ? "completed" : "failed");
-    response.Add ("resultCode", static_cast<GS::Int32> (err));
-    response.Add ("elementsToCreate", static_cast<GS::Int32> (runResult.elementsToCreate));
-    response.Add ("elementsToModify", static_cast<GS::Int32> (runResult.elementsToModify));
-    response.Add ("elementsToDelete", static_cast<GS::Int32> (runResult.elementsToDelete));
-    response.Add ("elapsedSeconds", elapsedSeconds);
-    response.Add ("includeParameters", includeParameters);
+    response.Add (SpecCompat::ResponseFieldNames::status, SpecCompat::StatusText (err));
+    response.Add (SpecCompat::ResponseFieldNames::resultCode, static_cast<GS::Int32> (err));
+    response.Add (SpecCompat::ResponseFieldNames::elementsToCreate,
+                  static_cast<GS::Int32> (runResult.elementsToCreate));
+    response.Add (SpecCompat::ResponseFieldNames::elementsToModify,
+                  static_cast<GS::Int32> (runResult.elementsToModify));
+    response.Add (SpecCompat::ResponseFieldNames::elementsToDelete,
+                  static_cast<GS::Int32> (runResult.elementsToDelete));
+    response.Add (SpecCompat::ResponseFieldNames::elapsedSeconds, elapsedSeconds);
+    response.Add (SpecCompat::ResponseFieldNames::includeParameters, includeParameters);
     AddStageCounters (response, runResult);
     if (includeParameters) {
-        AddElementDumps (response, "created", runResult.created);
-        AddElementDumps (response, "modified", runResult.modified);
-        response.Add ("deleted", GuidListToObjectState (runResult.deleted));
+        AddElementDumps (response, SpecCompat::ResponseFieldNames::created, runResult.created);
+        AddElementDumps (response, SpecCompat::ResponseFieldNames::modified, runResult.modified);
+        response.Add (SpecCompat::ResponseFieldNames::deleted, GuidListToObjectState (runResult.deleted));
     }
     return response;
 }

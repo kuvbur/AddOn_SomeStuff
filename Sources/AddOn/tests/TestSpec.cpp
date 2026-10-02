@@ -9,6 +9,7 @@
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "spec/Spec.hpp"
+    #include "spec/SpecCompat.hpp"
     #include "spec/SpecHelpers.hpp"
     #include "spec/SpecPlanning.hpp"
     #include "Sync.hpp"
@@ -228,6 +229,71 @@ namespace TestFunc {
             }
         };
     } // namespace
+
+    // Форма публичного контракта запуска Spec (#228 R9.3): имена полей ответа и
+    // входа, порядок счётчиков этапов, обе ветви статуса.
+    //
+    // Проверяются инварианты формы, а не совпадение с эталонным списком строк:
+    // сверка с литералами из того же модуля всегда зелёная и поймала бы
+    // только опечатку в самом себе. Реальные дефекты, которые ловит набор:
+    // пустое имя, разделитель в имени, совпадение имён внутри группы, выход
+    // имени этапа на поле верхнего уровня, неверная ветвь статуса.
+    //
+    // Значения полей здесь не проверяются — они зависят от модели, которой в
+    // наборе нет; их проверяют прогоны на стенде (Tools/spec_baseline.py).
+    void TestSpecResponseContract () {
+        // 1. Форма ответа без нарушений: это базовое ожидание, при котором
+        // остальные проверки имеют смысл.
+        DBtest (SpecCompat::VerifyResponseFields (), 0, "response contract has no form violations");
+
+        // 2. Порядок счётчиков этапов задан контрактом, и набор идёт по нему же:
+        // так перестановка в SpecRunResult сломала бы сборку или этот набор,
+        // а не молча изменила бы порядок полей в ответе.
+        DBtest (GS::UniString (SpecCompat::StageCounterNames[0]), GS::UniString ("create"), "stage 0 is create");
+        DBtest (GS::UniString (SpecCompat::StageCounterNames[1]), GS::UniString ("grouping"), "stage 1 is grouping");
+        DBtest (GS::UniString (SpecCompat::StageCounterNames[2]), GS::UniString ("gdl"), "stage 2 is gdl");
+        DBtest (GS::UniString (SpecCompat::StageCounterNames[3]), GS::UniString ("deleteOld"), "stage 3 is deleteOld");
+
+        // 3. Поля верхнего уровня ответа присутствуют всегда, даже при отказе:
+        // без них отчёт об отказе неотличим от пустого.
+        DBtest (SpecCompat::ResponseFieldNames::status != nullptr, true, "status name is set");
+        DBtest (SpecCompat::ResponseFieldNames::resultCode != nullptr, true, "resultCode name is set");
+        DBtest (
+            SpecCompat::ResponseFieldNames::prepareFailureStage != nullptr, true, "prepareFailureStage name is set");
+        DBtest (SpecCompat::ResponseFieldNames::hasPrimaryError != nullptr, true, "hasPrimaryError name is set");
+        DBtest (SpecCompat::ResponseFieldNames::hasRecoveryError != nullptr, true, "hasRecoveryError name is set");
+        DBtest (
+            SpecCompat::ResponseFieldNames::hasUnconfirmedCreate != nullptr, true, "hasUnconfirmedCreate name is set");
+
+        // 4. Имена счётчиков не совпадают между собой: второе Add с тем же
+        // именем ObjectState отверг бы, и поле молча пропало бы из ответа.
+        DBtest (GS::UniString (SpecCompat::StageCounterNames[0]) != GS::UniString (SpecCompat::StageCounterNames[1]),
+                true,
+                "create and grouping names differ");
+        DBtest (GS::UniString (SpecCompat::StageCounterNames[2]) != GS::UniString (SpecCompat::StageCounterNames[3]),
+                true,
+                "gdl and deleteOld names differ");
+
+        // 5. Имя входа, без которого запуск невозможен, и необязательные имена.
+        DBtest (GS::UniString (SpecCompat::InputFieldNames::placementPoint),
+                GS::UniString ("placementPoint"),
+                "placementPoint input name is stable");
+        DBtest (GS::UniString (SpecCompat::InputFieldNames::ruleNames),
+                GS::UniString ("ruleNames"),
+                "ruleNames input name is stable");
+
+        // 6. Статус - единственное место, где код переводится в строку, и обе
+        // ветви различаются. Если бы отказ давал "completed", отчёт вводил бы в
+        // заблуждение сильнее отсутствия поля.
+        DBtest (
+            GS::UniString (SpecCompat::StatusText (NoError)), GS::UniString ("completed"), "NoError maps to completed");
+        DBtest (GS::UniString (SpecCompat::StatusText (APIERR_GENERAL)) != GS::UniString ("completed"),
+                true,
+                "APIERR_GENERAL does not map to completed");
+        DBtest (GS::UniString (SpecCompat::StatusText (APIERR_CANCEL)) != GS::UniString ("completed"),
+                true,
+                "APIERR_CANCEL does not map to completed");
+    }
 
     // Инварианты отчёта результатов этапов (#228 R8.5). Заполняются счётчики
     // внутри PlaceElements, который работает с моделью, поэтому на фикстуре
