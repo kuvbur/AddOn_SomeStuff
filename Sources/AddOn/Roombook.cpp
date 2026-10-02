@@ -601,49 +601,6 @@ namespace Roombook
         }
     }
 
-    static bool PrepareElementsForUpdate (UnicGuid &reserv_elements) {
-        // Перед обновлением элементов их слои временно разблокируются и резервируются.
-        // Это нужно, чтобы ArchiCAD позволил изменить существующие элементы без конфликтов.
-        GSErrCode err = NoError;
-        if (!reserv_elements.IsEmpty ()) {
-    #ifndef ServerMainVers_2400
-            GS::PagedArray<API_Guid> reserv;
-    #else
-            GS::Array<API_Guid> reserv;
-    #endif
-            GS::HashTable<API_Guid, short> conflicts;
-            for (UnicGuid::PairIterator cIt_3 = reserv_elements.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
-    #ifdef ServerMainVers_2800
-                API_Guid guid = cIt_3->key;
-    #else
-                API_Guid guid = *cIt_3->key;
-    #endif
-                UnhideUnlockElementLayer (guid);
-                reserv.Push (guid);
-            }
-    #ifdef ServerMainVers_2700
-            if (ACAPI_Teamwork_HasConnection () && !reserv.IsEmpty ()) {
-    #else
-            if (ACAPI_TeamworkControl_HasConnection () && !reserv.IsEmpty ()) {
-    #endif
-    #ifdef ServerMainVers_2700
-                err = ACAPI_Teamwork_ReserveElements (reserv, &conflicts, true);
-    #else
-                err = ACAPI_TeamworkControl_ReserveElements (reserv, &conflicts);
-    #endif
-                if (err != NoError) {
-                    msg_rep ("Roombook", "ACAPI_TeamworkControl_ReserveElements", err, APINULLGuid);
-                    return false;
-                }
-                if (!conflicts.IsEmpty ()) {
-                    msg_rep ("Roombook", "Can't reserve elements", err, APINULLGuid, true);
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
     // Запись в зону информации об отделке
     // -----------------------------------------------------------------------------
     // REFACTOR PLAN FOR NEXT AGENT:
@@ -739,7 +696,10 @@ namespace Roombook
                 return;
         }
         RemoveUnusedFinishingElements (context);
-        if (!PrepareElementsForUpdate (reserv_elements))
+        // Причина неудачи пока не различается вызывающим: и конфликт Teamwork,
+        // и отказ разблокировки приводят к одному и тому же - работа не идёт.
+        PrepareElementsResult prepareResult = PrepareElementsResult::NothingToDo;
+        if (!PrepareElementsForUpdate (reserv_elements, prepareResult))
             return;
 
         UnicElementByType subelementByparent; // Словарь с созданными родительскими

@@ -562,6 +562,27 @@ void UnhideUnlockElementLayer (const API_Guid &elemGuid);
 void UnhideUnlockElementLayer (const API_Elem_Head &elem_head);
 void UnhideUnlockElementLayer (const API_AttributeIndex &layer);
 
+// Причина неудачи PrepareElementsForUpdate. Нужна вызывающему, потому что
+// отказ разблокировки и конфликт резервирования требуют разных действий:
+// первый - снять блокировку вручную, второй - дождаться освобождения
+// элемента другим пользователем.
+enum class PrepareElementsResult {
+    Ok = 0,        // разблокировано и (при наличии Teamwork) зарезервировано
+    NothingToDo,   // нечего готовить: список элементов пуст
+    UnlockFailed,  // инструмент разблокировки отказал (слой или элемент заблокирован, нет прав)
+    ReserveFailed, // резервирование в Teamwork отказало
+    Conflict,      // элемент занят другим пользователем (конфликт резервирования)
+};
+
+// Готовит существующие элементы к обновлению: снимает блокировку с самих
+// элементов и с их слоёв, затем резервирует их в Teamwork.
+//
+// Причина неудачи возвращается по ссылке result, а не через текст сообщения:
+// вызывающий обязан различать отказ разблокировки и конфликт резервирования,
+// они требуют разных действий пользователя. При успехе result = Ok.
+//
+bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult &result);
+
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &type, API_AttributeIndex &attribinx);
 
 GSErrCode Favorite_GetNum (const API_ElemTypeID &type,
@@ -579,7 +600,13 @@ void SetElemTypeID (API_Element &element, const API_ElemTypeID eltype);
 
 void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype);
 
-GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &definition, const GS::UniString value);
+// Находит элементы по описанию значения свойства внутри классификации.
+// Заблокированные элементы разблокируются и включаются в результат.
+// lockedOut - [OUT] true, если элементы найдены, но разблокировать их не удалось.
+GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
+                                           const GS::UniString value,
+                                           GS::Array<API_Guid> &elements,
+                                           bool &lockedOut);
 
 namespace GDLHelpers {
     struct Param {

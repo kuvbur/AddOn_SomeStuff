@@ -337,15 +337,16 @@ namespace Spec {
     // JSON-ответ буквами: числовые коды GSErrCode одинаковы для разных причин,
     // а строки читаются и сравниваются между прогонами без таблицы соответствия.
     enum class SpecPrepareStage {
-        None = 0,             // отказа не было
-        RulesNotFound,        // правила спецификации не найдены
-        ReadParamsNotFound,   // параметры чтения не найдены у избранного
-        WriteParamsNotFound,  // параметры записи не найдены у избранного
-        PlaceParamsNotFound,  // у избранного нет нужных параметров
-        TooManyErrorElements, // слишком много элементов с ошибкой для подсветки
-        EmptyElementsList,    // ни правил, ни строк - работать не над чем
-        NothingCreated,       // создание не дало ни одного элемента
-        CanceledByUser,       // пользователь прервал запуск
+        None = 0,               // отказа не было
+        RulesNotFound,          // правила спецификации не найдены
+        ReadParamsNotFound,     // параметры чтения не найдены у избранного
+        WriteParamsNotFound,    // параметры записи не найдены у избранного
+        PlaceParamsNotFound,    // у избранного нет нужных параметров
+        TooManyErrorElements,   // слишком много элементов с ошибкой для подсветки
+        EmptyElementsList,      // ни правил, ни строк - работать не над чем
+        NothingCreated,         // создание не дало ни одного элемента
+        CanceledByUser,         // пользователь прервал запуск
+        ExistingElementsLocked, // существующие строки заблокированы, разблокировать не удалось
     };
 
     struct SpecRunResult {

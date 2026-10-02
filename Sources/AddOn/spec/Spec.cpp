@@ -694,8 +694,21 @@ namespace Spec {
 #endif
                 continue;
             }
-            GS::Array<API_Guid> exsist_elements =
-                GetElementByPropertyDescription (subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase ());
+            // Заблокированные строки разблокируются внутри поиска: иначе они не нашлись бы,
+            // и вместо обновления создавались бы дубликаты.
+            GS::Array<API_Guid> exsist_elements = {};
+            bool existingLockedOut = false;
+            GSErrCode findErr = GetElementByPropertyDescription (
+                subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase (), exsist_elements, existingLockedOut);
+            UNUSED_VARIABLE (findErr);
+            if (existingLockedOut) {
+                if (runResult != nullptr)
+                    runResult->hasRecoveryError = true;
+                msg_rep ("Spec", "Existing spec elements are locked and cannot be unlocked", err, APINULLGuid, true);
+                if (runResult != nullptr)
+                    runResult->prepareFailureStage = SpecPrepareStage::ExistingElementsLocked;
+                return APIERR_GENERAL;
+            }
             SelectExistingElements (rule, exsist_elements, selected_elements);
             if (rule.runState.exsist_elements.IsEmpty ())
                 continue;

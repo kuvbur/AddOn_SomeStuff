@@ -2540,6 +2540,90 @@ void UnhideUnlockElementLayer (const API_AttributeIndex &layer) {
 }
 
 // -----------------------------------------------------------------------------
+// Готовит существующие элементы к обновлению: снимает блокировку с самих
+// элементов и с их слоёв, затем резервирует их в Teamwork.
+//
+// Разблокировка элемента и разблокировка слоя - разные вещи. Слой снимается
+// вызовом UnhideUnlockElementLayer, а сам элемент - инструментом
+// APITool_Unlock. Без второго заблокированная строка не находится при отборе
+// существующих строк (GetElementByPropertyDescription фильтрует
+// APIFilt_IsEditable), и вместо обновления создаются дубликаты.
+//
+// ACAPI_Element_Tool существует только до AC26, в AC27+ тот же инструмент
+// доступен как ACAPI_Grouping_Tool с тем же API_ToolCmdID.
+// Параметр pars в обоих случаях не используется для Unlock и передаётся nullptr.
+//
+// reserv_elements - элементы, которые будут изменяться. Причина неудачи
+// возвращается по ссылке result, а не через текст сообщения: вызывающий
+// обязан различать отказ разблокировки и конфликт резервирования, они требуют
+// разных действий пользователя. Возвращает false, если готовить не удалось
+// или делать было нечего.
+// --------------------------------------------------------------------
+bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult &result) {
+    result = PrepareElementsResult::NothingToDo;
+    GSErrCode err = NoError;
+    if (reserv_elements.IsEmpty ())
+        return true;
+
+    GS::Array<API_Guid> reserv;
+    GS::HashTable<API_Guid, short> conflicts;
+    for (UnicGuid::PairIterator cIt = reserv_elements.EnumeratePairs (); cIt != NULL; ++cIt) {
+#ifdef ServerMainVers_2800
+        API_Guid guid = cIt->key;
+#else
+        API_Guid guid = *cIt->key;
+#endif
+        // Слой разблокируется раньше элемента: разблокировка элемента сама по
+        // себе не снимает блокировку слоя, а без неё инструмент откажет.
+        UnhideUnlockElementLayer (guid);
+        reserv.Push (guid);
+    }
+
+    // Снимаем блокировку с самих элементов одним вызовом на весь набор: иначе
+    // пришлось бы делать вызов на каждый элемент отдельно.
+    //
+    // Вызов обязателен внутри undo-транзакции: инструмент меняет модель, и без
+    // неё ArchiCAD отвечает APIERR_NEEDSUNDOSCOPE (проверено отладчиком на
+    // AC25: -2130312307 = APIErrorStart + 909). Транзакция не пустая - внутри
+    // снимается блокировка, - поэтому откат по undo реально что-то вернёт.
+    err = ACAPI_CallUndoableCommand ("Unlock spec elements", [&reserv] () -> GSErrCode {
+#ifdef ServerMainVers_2700
+        return ACAPI_Grouping_Tool (reserv, APITool_Unlock, nullptr);
+#else
+        return ACAPI_Element_Tool (reserv, APITool_Unlock, nullptr);
+#endif
+    });
+    if (err != NoError) {
+        msg_rep ("PrepareElementsForUpdate", "Unlock elements", err, APINULLGuid);
+        result = PrepareElementsResult::UnlockFailed;
+        return false;
+    }
+
+#ifdef ServerMainVers_2700
+    if (ACAPI_Teamwork_HasConnection () && !reserv.IsEmpty ()) {
+        err = ACAPI_Teamwork_ReserveElements (reserv, &conflicts, true);
+    }
+#else
+    if (ACAPI_TeamworkControl_HasConnection () && !reserv.IsEmpty ()) {
+        err = ACAPI_TeamworkControl_ReserveElements (reserv, &conflicts);
+    }
+#endif
+    if (err != NoError) {
+        msg_rep ("PrepareElementsForUpdate", "ReserveElements", err, APINULLGuid);
+        result = PrepareElementsResult::ReserveFailed;
+        return false;
+    }
+    if (!conflicts.IsEmpty ()) {
+        msg_rep ("PrepareElementsForUpdate", "Can't reserve elements", err, APINULLGuid);
+        result = PrepareElementsResult::Conflict;
+        return false;
+    }
+
+    result = PrepareElementsResult::Ok;
+    return true;
+}
+
+// -----------------------------------------------------------------------------
 // Ищет индекс атрибута по имени или числовому значению
 // -----------------------------------------------------------------------------
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &type, API_AttributeIndex &attribinx) {
@@ -2665,16 +2749,36 @@ void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype) {
 
 // -----------------------------------------------------------------------------
 // Находит элементы по описанию значения свойства внутри классификации
+//
+// Заблокированные элементы включаются в результат и разблокируются: без этого
+// движок считает, что размещённых строк нет, и создаёт дубликаты вместо
+// обновления. Блокировку снимает PrepareElementsForUpdate - она же различает
+// отказ разблокировки и конфликт Teamwork.
+//
+// Порядок проверок именно такой: сначала разблокировка и только потом
+// остальные фильтры. Сначала снять блокировку слоя, потом элемента - иначе
+// инструмент разблокировки откажет.
+//
+// Параметр lockResult - [OUT] причина неудачи разблокировки. Значим только при
+// возврате false: элементы найдены, но разблокировать их не удалось, и читать
+// их свойства бессмысленно.
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &definition, const GS::UniString value) {
+GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
+                                           const GS::UniString value,
+                                           GS::Array<API_Guid> &elements,
+                                           bool &lockedOut) {
     const GS::UniString lowerValue = value.ToLowerCase ();
     GSErrCode error = NoError;
-    GS::Array<API_Guid> elements = {};
+    elements = {};
+    lockedOut = false;
 #ifndef ServerMainVers_2300
-    return elements;
+    return NoError;
 #else
     GS::Array<API_Guid> elemGuids = {};
     API_Property propertyflag = {};
+    // Кандидаты, у которых свойство совпадает, но которые могут быть
+    // заблокированы. Они попадут в результат только после разблокировки.
+    GS::Array<API_Guid> candidates = {};
     for (const auto &classificationItemGuid : definition.availability) {
         elemGuids.Clear ();
         error = ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids);
@@ -2686,9 +2790,11 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &def
             continue;
         }
         for (const auto &elemGuid : elemGuids) {
+            // Видимость и принадлежность рабочей области не зависят от
+            // блокировки элемента, поэтому проверяются и для заблокированных.
             if (!ACAPI_Element_Filter (elemGuid,
                                        APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation |
-                                           APIFilt_IsInStructureDisplay | APIFilt_IsEditable | APIFilt_InMyWorkspace |
+                                           APIFilt_IsInStructureDisplay | APIFilt_InMyWorkspace |
                                            APIFilt_HasAccessRight))
                 continue;
             error = ACAPI_Element_GetPropertyValue (elemGuid, definition.guid, propertyflag);
@@ -2703,8 +2809,8 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &def
                 continue;
             if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ())
                 continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase () == lowerValue)
-                elements.Push (elemGuid);
+            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase () == lowerValue) {
+                candidates.Push (elemGuid);
     #else
             if (propertyflag.status != API_Property_HasValue)
                 continue;
@@ -2712,12 +2818,35 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &def
                 continue;
             if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ())
                 continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (lowerValue))
-                elements.Push (elemGuid);
+            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (lowerValue)) {
+                candidates.Push (elemGuid);
     #endif
+            }
         }
     }
-    return elements;
+
+    // Разблокировка и резервирование кандидатов. Слой снимается первым: снятие
+    // блокировки элемента не снимает блокировку слоя.
+    if (!candidates.IsEmpty ()) {
+        UnicGuid locked;
+        for (const API_Guid &guid : candidates)
+            locked.Put (guid, true);
+        PrepareElementsResult prepareResult = PrepareElementsResult::NothingToDo;
+        if (!PrepareElementsForUpdate (locked, prepareResult)) {
+            lockedOut = true;
+            msg_rep ("GetElementByPropertyDescription", "PrepareElementsForUpdate", APIERR_GENERAL, APINULLGuid);
+            return error;
+        }
+    }
+
+    // Фильтр редактируемости применяется ПОСЛЕ разблокировки: он отсекает уже
+    // разблокированные элементы, если разблокировка не дала эффекта.
+    for (const API_Guid &elemGuid : candidates) {
+        if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable))
+            continue;
+        elements.Push (elemGuid);
+    }
+    return error;
 #endif // AC_22
 }
 

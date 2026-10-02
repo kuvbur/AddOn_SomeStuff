@@ -111,6 +111,8 @@ static const char *PrepareStageName (Spec::SpecPrepareStage stage) {
         return "nothingCreated";
     case Spec::SpecPrepareStage::CanceledByUser:
         return "canceledByUser";
+    case Spec::SpecPrepareStage::ExistingElementsLocked:
+        return "existingElementsLocked";
     }
     return "unknown";
 }
