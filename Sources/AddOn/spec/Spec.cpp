@@ -585,6 +585,8 @@ namespace Spec {
                         RSGetIndString (iseng, SpecRuleNotFoundId, ACAPI_GetOwnResModule ());
                     ACAPI_WriteReport (SpecRuleNotFoundString, true);
                 }
+                if (runResult != nullptr)
+                    runResult->prepareFailureStage = SpecPrepareStage::RulesNotFound;
                 return APIERR_GENERAL;
             }
         }
@@ -627,6 +629,8 @@ namespace Spec {
                     RSGetIndString (iseng, SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
                 ACAPI_WriteReport (SpecRuleReadFoundString, true);
             }
+            if (runResult != nullptr)
+                runResult->prepareFailureStage = SpecPrepareStage::ReadParamsNotFound;
             return APIERR_GENERAL;
         }
         if (paramToWrite.IsEmpty ()) {
@@ -636,6 +640,8 @@ namespace Spec {
                     RSGetIndString (iseng, SpecWriteNotFoundId, ACAPI_GetOwnResModule ());
                 ACAPI_WriteReport (SpecWriteNotFoundString, true);
             }
+            if (runResult != nullptr)
+                runResult->prepareFailureStage = SpecPrepareStage::WriteParamsNotFound;
             return APIERR_GENERAL;
         }
         subtitle = GS::UniString::Printf ("Reading parameters from %d elements", readContext.read.GetSize ());
@@ -717,6 +723,8 @@ namespace Spec {
                     RSGetIndString (iseng, SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ());
                 ACAPI_WriteReport (SpecEmptyListdString + out, true);
             }
+            if (runResult != nullptr)
+                runResult->prepareFailureStage = SpecPrepareStage::PlaceParamsNotFound;
             return APIERR_GENERAL;
         }
         // Перед формированием итоговых элементов читаются данные уже размещённых объектов, чтобы их можно было сравнить
@@ -725,6 +733,8 @@ namespace Spec {
             bool rule_from_one = false;
             if (!SpecDG (rules, rule_from_one)) {
                 msg_rep ("ReNumSelected", "Execution interrupted by user", NoError, APINULLGuid);
+                if (runResult != nullptr)
+                    runResult->prepareFailureStage = SpecPrepareStage::CanceledByUser;
                 return APIERR_CANCEL;
             }
         }
@@ -812,6 +822,8 @@ namespace Spec {
                              APINULLGuid);
                 }
             }
+            if (runResult != nullptr)
+                runResult->prepareFailureStage = SpecPrepareStage::TooManyErrorElements;
             return APIERR_GENERAL;
         }
 #endif
@@ -904,6 +916,8 @@ namespace Spec {
                     SpecEmptyListdString += LINEBRAKE + RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
                 ACAPI_WriteReport (SpecEmptyListdString, true);
             }
+            if (runResult != nullptr)
+                runResult->prepareFailureStage = SpecPrepareStage::EmptyElementsList;
             return APIERR_GENERAL;
         }
 
@@ -925,6 +939,8 @@ namespace Spec {
                 runResult->elementsToCreate = createdCount;
             if (createdCount == 0 && elements_mod.IsEmpty () && elements_delete.IsEmpty ()) {
                 msg_rep ("Spec", "Elements not created", APIERR_GENERAL, APINULLGuid);
+                if (runResult != nullptr)
+                    runResult->prepareFailureStage = SpecPrepareStage::NothingCreated;
                 return APIERR_GENERAL;
             }
         } else {

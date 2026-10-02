@@ -87,6 +87,35 @@ static GS::ObjectState StageCountersToObjectState (const Spec::SpecStageCounters
 }
 
 // -----------------------------------------------------------------------------
+// Идентификатор этапа подготовки в объекте ответа. Выводится строкой, а не
+// числом: коды GSErrCode у разных причин отказа одинаковы (все точки отказа
+// подготовки возвращают APIERR_GENERAL), и по одному коду этап не различить.
+// -----------------------------------------------------------------------------
+static const char *PrepareStageName (Spec::SpecPrepareStage stage) {
+    switch (stage) {
+    case Spec::SpecPrepareStage::None:
+        return "none";
+    case Spec::SpecPrepareStage::RulesNotFound:
+        return "rulesNotFound";
+    case Spec::SpecPrepareStage::ReadParamsNotFound:
+        return "readParamsNotFound";
+    case Spec::SpecPrepareStage::WriteParamsNotFound:
+        return "writeParamsNotFound";
+    case Spec::SpecPrepareStage::PlaceParamsNotFound:
+        return "placeParamsNotFound";
+    case Spec::SpecPrepareStage::TooManyErrorElements:
+        return "tooManyErrorElements";
+    case Spec::SpecPrepareStage::EmptyElementsList:
+        return "emptyElementsList";
+    case Spec::SpecPrepareStage::NothingCreated:
+        return "nothingCreated";
+    case Spec::SpecPrepareStage::CanceledByUser:
+        return "canceledByUser";
+    }
+    return "unknown";
+}
+
+// -----------------------------------------------------------------------------
 // Фактические результаты этапов запуска. Именно эти поля, а не
 // elementsToCreate/Modify/Delete, показывают, чем закончился каждый этап:
 // счётчик успеха подтверждает возврат вызова ACAPI, а не наличие элемента в
@@ -102,6 +131,10 @@ static void AddStageCounters (GS::ObjectState &response, const Spec::SpecRunResu
     response.Add ("hasPrimaryError", runResult.hasPrimaryError);
     response.Add ("hasRecoveryError", runResult.hasRecoveryError);
     response.Add ("hasUnconfirmedCreate", runResult.hasUnconfirmedCreate);
+    // Отказ подготовки не отражается ни в одном счётчике выше - он происходит
+    // до обращения к модели, поэтому все счётчики остаются нулевыми. Без этого
+    // поля отчёт неотличим от «создавать было нечего».
+    response.Add ("prepareFailureStage", PrepareStageName (runResult.prepareFailureStage));
 }
 
 // -----------------------------------------------------------------------------
