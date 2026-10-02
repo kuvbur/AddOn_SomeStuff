@@ -204,28 +204,35 @@ static void AddElementDumps (GS::ObjectState &response,
 
 // Per-rule статистика: одна строка на правило. Порядок — обход правил, а не
 // хеш-таблицы, чтобы два одинаковых запуска давали одинаковый ответ.
+//
+// Список наполняется через AddList, а не Add: ObjectState::Add требует
+// уникального имени поля, поэтому повторный Add с именем "rule" не накопил бы
+// элементы, а оставил бы только последнее правило.
 void AddRuleStats (GS::ObjectState &response, const Spec::SpecRunResult &runResult) {
     GS::ObjectState list;
+    const auto addRule = list.AddList<GS::ObjectState> (SpecCompat::NestedFieldNames::rule);
     for (UIndex i = 0; i < runResult.ruleNames.GetSize (); ++i) {
         GS::ObjectState rule;
         rule.Add (SpecCompat::RuleFieldNames::name, runResult.ruleNames[i]);
         rule.Add (SpecCompat::RuleFieldNames::created, static_cast<GS::UInt32> (runResult.ruleStats[i].created));
         rule.Add (SpecCompat::RuleFieldNames::modified, static_cast<GS::UInt32> (runResult.ruleStats[i].modified));
         rule.Add (SpecCompat::RuleFieldNames::deleted, static_cast<GS::UInt32> (runResult.ruleStats[i].deleted));
-        list.Add (SpecCompat::NestedFieldNames::rule, rule);
+        addRule (rule);
     }
     response.Add (SpecCompat::ResponseFieldNames::rules, list);
 }
 
 // Сообщения запуска. Поле ruleName пустое у ошибок без правила, и оно не
 // опускается: читатель обязан отличить привязанное сообщение от общего.
+// Список наполняется через AddList по той же причине, что и в AddRuleStats.
 void AddMessages (GS::ObjectState &response, const Spec::SpecRunResult &runResult) {
     GS::ObjectState list;
+    const auto addMessage = list.AddList<GS::ObjectState> (SpecCompat::NestedFieldNames::message);
     for (const Spec::SpecMessage &message : runResult.messages) {
         GS::ObjectState item;
         item.Add (SpecCompat::MessageFieldNames::ruleName, message.ruleName);
         item.Add (SpecCompat::MessageFieldNames::text, message.text);
-        list.Add (SpecCompat::NestedFieldNames::message, item);
+        addMessage (item);
     }
     response.Add (SpecCompat::ResponseFieldNames::messages, list);
 }
