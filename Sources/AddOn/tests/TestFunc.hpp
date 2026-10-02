@@ -126,8 +126,9 @@ namespace TestFunc {
     void TestFormula ();
     void TestFormatString ();
 
-    // --- renum: логика нумерации (1) ---
+    // --- renum: логика нумерации (2) ---
     void TestRenumPosLogic ();
+    void TestRenumFormulaParse ();
 
     // --- core: разное (2) ---
     void TestStringSplt ();

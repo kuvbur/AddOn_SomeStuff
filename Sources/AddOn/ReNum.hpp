@@ -159,6 +159,11 @@ struct RenumRule {
     GS::UniString criteria = "";
     // Описание свойства-разбивки для группировки элементов.
     GS::UniString delimetr = "";
+    // Шаблон формулы критерия — то, что стояло в двойных кавычках в Renum{...}.
+    // Пусто, если критерий задан обычным свойством.
+    GS::UniString criteria_formula = "";
+    // Шаблон формулы разбивки. Пусто, если разбивка не задана или задана свойством.
+    GS::UniString delimetr_formula = "";
     // Тип постановки нулей или пробелов в позиционном значении.
     ZeroPaddingMode nulltype = NOZEROS;
     // Количество нулей или пробелов, если задано жёсткое количество.
@@ -214,6 +219,27 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                        Rules &rules,
                        GS::HashTable<GS::UniString, bool> &error_propertyname,
                        const GS::Array<API_PropertyDefinition> &definitions);
+
+// Роль части правила в имени параметра-формулы. Критерий и разбивка получают
+// разные имена, иначе формулы с одинаковым шаблоном получили бы один ключ.
+enum class RenumPart { Criteria, Delimetr };
+
+// Имя (без префикса) параметра-формулы для критерия/разбивки правила.
+GS::UniString RenumFormulaName (RenumPart part);
+
+// Имя параметра-формулы целиком: префикс FORMULANAMEPREFIX + имя + ';' + шаблон
+// (как в Sync.cpp). Шаблон входит в имя, поэтому две разные формулы одного
+// правила не склеиваются и не совпадают с формулой такого же шаблона в другом
+// правиле.
+GS::UniString GetFormulaRawName (const GS::UniString &paramName, const GS::UniString &templateFormula);
+
+// Вырезает шаблон формулы из части правила Renum{...} вида «"...%A%x<%B%>..."».
+// Кавычки считаются детектором, берётся первая пара — как в ParseSyncString.
+// Возвращает false, если часть не кавычена (тогда это обычное свойство) или
+// кавычки непарные. templateOut получает текст между кавычками без
+// приведения к нижнему регистру: литерал шаблона регистрозависим, в отличие
+// от имени свойства (то, что между процентами, приводит ReplaceProcToBrace).
+bool GetFormulaTemplate (const GS::UniString &rulepart, GS::UniString &templateOut);
 
 // Выбирает наиболее частую позицию среди вариантов для одного правила.
 RenumPos GetMostFrequentPos (const GS::Array<RenumPos> &eleminpos);

@@ -112,5 +112,85 @@ namespace TestFunc {
         return;
     }
 
+    // -----------------------------------------------------------------------------
+    // Разбор формулы в Renum{...}: детектор - двойные кавычки, всё между ними -
+    // шаблон. Регистр литерала сохраняется, имя свойства между процентами
+    // приводится к нижнему регистру (ReplaceProcToBrace).
+    // -----------------------------------------------------------------------------
+    void TestRenumFormulaParse () {
+        GS::UniString templatestring;
+
+        // ---- обычная часть без кавычек - это свойство, не формула ----
+        DBtest (!GetFormulaTemplate (GS::UniString ("Property:Этаж"), templatestring),
+                "GetFormulaTemplate no quotes -> not a formula");
+        DBtest (templatestring.IsEmpty (), "GetFormulaTemplate no quotes -> output cleared");
+
+        // ---- непарные кавычки - трактуем как обычное свойство ----
+        DBtest (!GetFormulaTemplate (GS::UniString ("\"%Помещение%x<%Этаж%>"), templatestring),
+                "GetFormulaTemplate unpaired quote -> not a formula");
+
+        // ---- пустые кавычки - не формула (иначе пустой критерий у всех) ----
+        DBtest (!GetFormulaTemplate (GS::UniString ("\"\""), templatestring),
+                "GetFormulaTemplate empty quotes -> not a formula");
+
+        // ---- обычная формула: шаблон вырезается целиком ----
+        DBtest (GetFormulaTemplate (GS::UniString ("\"%Помещение%x<%Этаж%-%h%>\""), templatestring),
+                "GetFormulaTemplate plain formula -> true");
+        DBtest (
+            templatestring, GS::UniString ("%Помещение%x<%Этаж%-%h%>"), "GetFormulaTemplate plain formula -> value");
+
+        // ---- берётся первая пара кавычек, вторая - литерал ----
+        DBtest (GetFormulaTemplate (GS::UniString ("\"%A%\" + \"%B%\""), templatestring),
+                "GetFormulaTemplate two pairs -> true");
+        DBtest (templatestring, GS::UniString ("%A%"), "GetFormulaTemplate two pairs -> first pair only");
+
+        // ---- пробелы вокруг шаблона отбрасываются ----
+        DBtest (GetFormulaTemplate (GS::UniString (" \" %A% \" "), templatestring),
+                "GetFormulaTemplate spaces around quotes -> true");
+        DBtest (templatestring, GS::UniString ("%A%"), "GetFormulaTemplate spaces around quotes -> trimmed");
+
+        // ---- имя параметра-формулы: роли различаются, шаблон входит в имя ----
+        GS::UniString critName = RenumFormulaName (RenumPart::Criteria);
+        GS::UniString delimName = RenumFormulaName (RenumPart::Delimetr);
+        DBtest (critName != delimName, "RenumFormulaName criteria != delimetr");
+
+        GS::UniString rawOne = GetFormulaRawName (critName, GS::UniString ("%A%"));
+        GS::UniString rawTwo = GetFormulaRawName (critName, GS::UniString ("%B%"));
+        GS::UniString rawDelim = GetFormulaRawName (delimName, GS::UniString ("%A%"));
+        // Разные шаблоны одного правила не должны слиться в одно имя
+        DBtest (rawOne != rawTwo, "GetFormulaRawName different templates -> different names");
+        // Одинаковый шаблон критерия и разбивки тоже не должен слиться
+        DBtest (rawOne != rawDelim, "GetFormulaRawName same template different role -> different names");
+        // Имя начинается с префикса формулы и закрывается скобкой - по нему
+        // GetTypeInxByRawnamePrefix определяет FORMULATYPEINX
+        DBtest (rawOne.BeginsWith (FORMULANAMEPREFIX), "GetFormulaRawName begins with FORMULANAMEPREFIX");
+        DBtest (rawOne.EndsWith (BRACEEND), "GetFormulaRawName ends with BRACEEND");
+        DBtest (ParamHelpers::GetTypeInxByRawnamePrefix (rawOne) == FORMULATYPEINX,
+                "GetFormulaRawName resolves to FORMULATYPEINX");
+
+        // ---- разбор зависимостей шаблона: %имя% -> {@property:имя} ----
+        // ReplaceProcToBrace переписывает ВСЕ пары %…%, в том числе %h% внутри
+        // <…>: «h» здесь - обычное свойство, как и в Sync/Spec.
+        ParamDictValue deps = {};
+        GS::UniString formula = GS::UniString ("%Помещение%x<%Этаж%-%h%>");
+        DBtest (ParamHelpers::ParseParamNameMaterial (formula, deps), "ParseParamNameMaterial formula");
+        // Имя свойства между процентами уходит в нижний регистр (ключи словаря тоже)
+        DBtest (deps.ContainsKey ("{@property:помещение}"), "ParseParamNameMaterial adds criteria dependency");
+        DBtest (deps.ContainsKey ("{@property:этаж}"), "ParseParamNameMaterial adds delimetr dependency");
+        DBtest (deps.ContainsKey ("{@property:h}"), "ParseParamNameMaterial rewrites % inside formula");
+        // Литерал шаблона не приводится к нижнему регистру
+        DBtest (formula,
+                GS::UniString ("{@property:помещение}x<{@property:этаж}-{@property:h}>"),
+                "ParseParamNameMaterial keeps literal case");
+
+        // ---- шаблон без зависимостей: разбирать нечего, значение остаётся шаблоном ----
+        ParamDictValue nodeps = {};
+        GS::UniString plain = GS::UniString ("Помещение");
+        DBtest (!ParamHelpers::ParseParamNameMaterial (plain, nodeps),
+                "ParseParamNameMaterial plain text -> nothing parsed");
+
+        return;
+    }
+
 } // namespace TestFunc
 #endif

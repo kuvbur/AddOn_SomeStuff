@@ -352,6 +352,80 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
+// Вырезает шаблон формулы из части правила Renum{...}
+// Кавычки - детектор формулы, берётся первая пара (как в ParseSyncString).
+// Подстрока берётся ДО ToLowerCase правила - литерал шаблона должен сохранить
+// исходный регистр, тогда как имя свойства между процентами к нижнему регистру
+// приводит уже ReplaceProcToBrace.
+// Возвращает true, если часть кавычена и между кавычками непустой шаблон
+// -----------------------------------------------------------------------------------------------------------------------
+bool GetFormulaTemplate (const GS::UniString &rulepart, GS::UniString &templateOut) {
+    templateOut.Clear ();
+    if (!rulepart.Contains (CHARDQUT))
+        return false;
+    UIndex firstQuote = rulepart.FindFirst (CHARDQUT);
+    UIndex secondQuote = rulepart.FindFirst (CHARDQUT, firstQuote + 1);
+    if (secondQuote == MaxUIndex) // непарные кавычки - трактуем как обычное свойство
+        return false;
+    if (secondQuote == firstQuote + 1)
+        return false; // пустые кавычки - не формула
+    templateOut = rulepart.GetSubstring (firstQuote + 1, secondQuote - firstQuote - 1);
+    templateOut.Trim ();
+    return !templateOut.IsEmpty ();
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
+// Имя параметра-формулы по роли части правила
+// Критерий и разбивка получают разные имена, иначе формулы с одинаковым
+// шаблоном получили бы один ключ в словаре параметров элемента.
+// -----------------------------------------------------------------------------------------------------------------------
+GS::UniString RenumFormulaName (RenumPart part) {
+    return part == RenumPart::Criteria ? GS::UniString ("renum_criteria") : GS::UniString ("renum_delimetr");
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
+// Имя параметра-формулы для критерия/разбивки правила
+// Уникально в пределах правила: префикс + имя + ';' + шаблон (как в Sync.cpp).
+// Шаблон входит в имя, поэтому две разные формулы одного правила не склеиваются
+// и не совпадают с формулой такого же шаблона в другом правиле.
+// -----------------------------------------------------------------------------------------------------------------------
+GS::UniString GetFormulaRawName (const GS::UniString &paramName, const GS::UniString &templateFormula) {
+    return FORMULANAMEPREFIX + paramName + SEMICOLON + templateFormula + BRACEEND;
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
+// Добавляет в paramToRead значение-формулу по шаблону правила
+// Работает существующий путь чтения: ParamValue с hasFormula уходит в
+// ParamHelpers::Read -> ReadFormula -> ReplaceParamInExpression -> EvalExpression,
+// поэтому ElementsSeparation получает уже вычисленную строку.
+// Зависимости %имя% разбираются как свойства (fromMaterial по умолчанию),
+// как в BuildReadParamDict (Spec.cpp) - критерий нумерации задаётся именем
+// свойства Archicad, а не параметром библиотечного элемента.
+// -----------------------------------------------------------------------------------------------------------------------
+void AddFormulaToRead (const API_Guid &elemGuid,
+                       const GS::UniString &paramName,
+                       const GS::UniString &templateFormula,
+                       ParamDictElement &paramToRead) {
+    ParamDictValue paramDict = {}; // Зависимости шаблона для одного элемента
+    GS::UniString templatestring = templateFormula;
+    // %имя% -> {@property:имя} и добавление самих зависимостей в словарь
+    ParamHelpers::ParseParamNameMaterial (templatestring, paramDict);
+    ParamValue param = {};
+    param.rawName = GetFormulaRawName (paramName, templateFormula);
+    param.name = paramName;
+    param.typeinx = FORMULATYPEINX;
+    param.val.hasFormula = true;
+    // Шаблон НЕ оборачивается в <...>: EvalExpression вычисляет каждую пару
+    // <...> на месте, поэтому внешняя обёртка сломала бы внутреннюю формулу
+    // (парсер ищет первую '>' и обрезал бы по ней). Так же поступает и Sync для
+    // кавыченной формулы (Sync.cpp:1774) — обёртка там только для <...>-формы.
+    param.val.uniStringValue = templatestring;
+    ParamHelpers::AddParamValue2ParamDict (elemGuid, param, paramDict);
+    // Переносим зависимости шаблона в словарь элемента (как BuildReadParamDict в Spec)
+    ParamHelpers::AddParamDictValue2ParamDictElement (elemGuid, paramDict, paramToRead);
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // Для каждого свойства элемента с флагом Renum_flag{...}:
 // 1. Парсит описание флага, извлекает имя свойства-позиции и настройки нулей
@@ -446,25 +520,49 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                     if (StringSplt (ruleparamName, BRACEEND, partstring, "enum") > 0) {
                         ruleparamName = partstring[0] + BRACEEND;
                     }
-                    ruleparamName = ruleparamName.ToLowerCase ().GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+                    // Шаблоны формул вырезаются ДО ToLowerCase: литерал шаблона
+                    // должен сохранить исходный регистр, а к нижнему регистру
+                    // приводится только имя свойства (ReNum.cpp:502).
+                    GS::UniString ruleBody = ruleparamName.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+                    GS::Array<GS::UniString> ruleParts = {};
+                    int nRulePart = StringSplt (ruleBody, SEMICOLON, ruleParts, true, &local_scratch);
+                    GS::UniString criteria_formula;
+                    GS::UniString delimetr_formula;
+                    // Кавычки - детектор формулы; некавыченная часть остаётся свойством
+                    if (nRulePart > 0)
+                        GetFormulaTemplate (ruleParts[0], criteria_formula);
+                    if (nRulePart > 1)
+                        GetFormulaTemplate (ruleParts[1], delimetr_formula);
+                    ruleparamName = ruleBody.ToLowerCase ();
                     GS::UniString rawNamecriteria = PVALPREFIX;
                     GS::UniString rawNamedelimetr;
                     if (ruleparamName.Contains (SEMICOLON)) { // Есть указание на нули
                         partstring.Clear ();
                         int nparam = StringSplt (ruleparamName, SEMICOLON, partstring, true, &local_scratch);
-                        rawNamecriteria = rawNamecriteria + partstring[0] + BRACEEND;
-                        if (nparam > 1)
+                        // Формульная часть не является свойством - имя для неё не строим
+                        if (criteria_formula.IsEmpty ())
+                            rawNamecriteria = rawNamecriteria + partstring[0] + BRACEEND;
+                        if (nparam > 1 && delimetr_formula.IsEmpty ())
                             rawNamedelimetr = PVALPREFIX + rawNamedelimetr + partstring[1] + BRACEEND;
                     } else {
-                        rawNamecriteria = rawNamecriteria + ruleparamName + BRACEEND;
+                        if (criteria_formula.IsEmpty ())
+                            rawNamecriteria = rawNamecriteria + ruleparamName + BRACEEND;
                     }
-                    if (!rawNamecriteria.Contains (PROPERTYSTRING))
-                        rawNamecriteria.ReplaceAll (BRACESTART, GDLNAMEPREFIX);
+                    // Формульная часть не является свойством - для неё имя не строим
+                    // (иначе ReplaceAll ниже склеил бы "{@" в несуществующий ключ)
+                    if (criteria_formula.IsEmpty ()) {
+                        if (!rawNamecriteria.Contains (PROPERTYSTRING))
+                            rawNamecriteria.ReplaceAll (BRACESTART, GDLNAMEPREFIX);
+                    }
                     if (!rawNamedelimetr.IsEmpty () && !rawNamedelimetr.Contains (PROPERTYSTRING))
                         rawNamedelimetr.ReplaceAll (BRACESTART, GDLNAMEPREFIX);
                     // Если такие свойства есть - записываем правило
-                    if (propertyParams.ContainsKey (rawNamecriteria) &&
-                        (propertyParams.ContainsKey (rawNamedelimetr) || rawNamedelimetr.IsEmpty ())) {
+                    // Для формульной части проверки свойства не делаем: за неё
+                    // отвечают зависимости шаблона, они собираются при чтении.
+                    bool has_criteria = !criteria_formula.IsEmpty () || propertyParams.ContainsKey (rawNamecriteria);
+                    bool has_delimetr = !delimetr_formula.IsEmpty () || rawNamedelimetr.IsEmpty () ||
+                                        propertyParams.ContainsKey (rawNamedelimetr);
+                    if (has_criteria && has_delimetr) {
                         rulecritetia.state = true;
                         rulecritetia.oldalgoritm = false;
                         rulecritetia.position = rawNameposition;
@@ -474,8 +572,19 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         rawName.Append (fname.ToLowerCase ());
                         rawName.Append (BRACEEND);
                         rulecritetia.flag = rawName;
-                        rulecritetia.criteria = rawNamecriteria;
-                        rulecritetia.delimetr = rawNamedelimetr;
+                        // Формульная часть не имеет имени свойства - вместо него
+                        // правило ссылается на параметр-формулу, который будет
+                        // прочитан как обычный параметр элемента.
+                        rulecritetia.criteria =
+                            criteria_formula.IsEmpty ()
+                                ? rawNamecriteria
+                                : GetFormulaRawName (RenumFormulaName (RenumPart::Criteria), criteria_formula);
+                        rulecritetia.delimetr =
+                            delimetr_formula.IsEmpty ()
+                                ? rawNamedelimetr
+                                : GetFormulaRawName (RenumFormulaName (RenumPart::Delimetr), delimetr_formula);
+                        rulecritetia.criteria_formula = criteria_formula;
+                        rulecritetia.delimetr_formula = delimetr_formula;
                         rulecritetia.guid = definition.guid;
                         rulecritetia.rule_name = definition.description;
                         partstring.Clear ();
@@ -489,10 +598,14 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                             rulecritetia.rule_name.GetSubstring (CHARBSEMICOLON, CHARBSEMICOLON, 0);
                         rulecritetia.rule_name.Trim ();
                     } else {
-                        if (!propertyParams.ContainsKey (rawNamecriteria) &&
+                        // Формульные части в error_propertyname не попадают: имени
+                        // свойства у них нет, а пустое имя отчиталось бы как
+                        // отсутствующее свойство.
+                        if (criteria_formula.IsEmpty () && !propertyParams.ContainsKey (rawNamecriteria) &&
                             !error_propertyname.ContainsKey (rawNamecriteria))
                             error_propertyname.Add (rawNamecriteria, false);
-                        if (!rawNamedelimetr.IsEmpty () && !propertyParams.ContainsKey (rawNamedelimetr) &&
+                        if (delimetr_formula.IsEmpty () && !rawNamedelimetr.IsEmpty () &&
+                            !propertyParams.ContainsKey (rawNamedelimetr) &&
                             !error_propertyname.ContainsKey (rawNamedelimetr))
                             error_propertyname.Add (rawNamedelimetr, false);
                     }
@@ -541,6 +654,8 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
             bool has_flag = false;
             bool has_criteria = false;
             bool has_delimetr = false;
+            // Формульные критерий/разбивка не читаются из кэша свойств: им
+            // соответствует параметр-формула, который собирается ниже.
             if (!rulecritetiaPtr->position.IsEmpty ())
                 has_position = ParamHelpers::GetParamValueFromCache (rulecritetiaPtr->position, pvalue_position);
             if (!rulecritetiaPtr->flag.IsEmpty ())
@@ -561,6 +676,14 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                 ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_criteria, paramToRead);
             if (has_delimetr)
                 ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_delimetr, paramToRead);
+            // Критерий-формула и разбивка-формула: имя параметра известно уже на
+            // этапе разбора правила, само значение вычислит ReadFormula.
+            if (!rulecritetiaPtr->criteria_formula.IsEmpty ())
+                AddFormulaToRead (
+                    elemGuid, RenumFormulaName (RenumPart::Criteria), rulecritetiaPtr->criteria_formula, paramToRead);
+            if (!rulecritetiaPtr->delimetr_formula.IsEmpty ())
+                AddFormulaToRead (
+                    elemGuid, RenumFormulaName (RenumPart::Delimetr), rulecritetiaPtr->delimetr_formula, paramToRead);
         }
     }
     return hasRenum;
