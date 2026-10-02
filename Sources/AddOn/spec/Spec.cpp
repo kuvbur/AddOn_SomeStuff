@@ -704,7 +704,7 @@ namespace Spec {
             if (existingLockedOut) {
                 if (runResult != nullptr)
                     runResult->hasRecoveryError = true;
-                msg_rep ("Spec", "Existing spec elements are locked and cannot be unlocked", err, APINULLGuid, true);
+                msg_rep ("Spec", "Existing spec elements are locked and cannot be unlocked", err, APINULLGuid);
                 if (runResult != nullptr)
                     runResult->prepareFailureStage = SpecPrepareStage::ExistingElementsLocked;
                 return APIERR_GENERAL;

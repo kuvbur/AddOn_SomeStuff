@@ -2582,17 +2582,15 @@ bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult 
     // Снимаем блокировку с самих элементов одним вызовом на весь набор: иначе
     // пришлось бы делать вызов на каждый элемент отдельно.
     //
-    // Вызов обязателен внутри undo-транзакции: инструмент меняет модель, и без
-    // неё ArchiCAD отвечает APIERR_NEEDSUNDOSCOPE (проверено отладчиком на
-    // AC25: -2130312307 = APIErrorStart + 909). Транзакция не пустая - внутри
-    // снимается блокировка, - поэтому откат по undo реально что-то вернёт.
-    err = ACAPI_CallUndoableCommand ("Unlock spec elements", [&reserv] () -> GSErrCode {
+    // Вызов НЕ оборачивается здесь в ACAPI_CallUndoableCommand: инструмент
+    // меняет модель и требует undo-контекста, но собственная транзакция на
+    // каждый вызов даёт отдельную запись в истории Undo. Вызывающий обязан
+    // обеспечить undo-контекст сам - тогда запись в истории одна на операцию.
 #ifdef ServerMainVers_2700
-        return ACAPI_Grouping_Tool (reserv, APITool_Unlock, nullptr);
+    err = ACAPI_Grouping_Tool (reserv, APITool_Unlock, nullptr);
 #else
-        return ACAPI_Element_Tool (reserv, APITool_Unlock, nullptr);
+    err = ACAPI_Element_Tool (reserv, APITool_Unlock, nullptr);
 #endif
-    });
     if (err != NoError) {
         msg_rep ("PrepareElementsForUpdate", "Unlock elements", err, APINULLGuid);
         result = PrepareElementsResult::UnlockFailed;
@@ -2827,14 +2825,25 @@ GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
 
     // Разблокировка и резервирование кандидатов. Слой снимается первым: снятие
     // блокировки элемента не снимает блокировку слоя.
+    //
+    // Транзакция ровно одна на этот вызов, а не одна на элемент: разблокировка
+    // меняет модель и требует undo-контекста (иначе APIERR_NEEDSUNDOSCOPE), но
+    // ACAPI_CallUndoableCommand на каждый элемент дал бы отдельную запись в
+    // истории Undo. Поэтому транзакция открывается один раз на весь набор
+    // кандидатов. Набор непустой (проверено выше), транзакция не окажется
+    // пустой и APIERR_UNDOEMPTY не возникнет.
     if (!candidates.IsEmpty ()) {
         UnicGuid locked;
         for (const API_Guid &guid : candidates)
             locked.Put (guid, true);
         PrepareElementsResult prepareResult = PrepareElementsResult::NothingToDo;
-        if (!PrepareElementsForUpdate (locked, prepareResult)) {
+        bool prepareOk = true;
+        GSErrCode unlockErr = ACAPI_CallUndoableCommand ("Unlock existing spec elements", [&] () -> GSErrCode {
+            return PrepareElementsForUpdate (locked, prepareResult) ? NoError : APIERR_GENERAL;
+        });
+        if (unlockErr != NoError || !prepareOk) {
             lockedOut = true;
-            msg_rep ("GetElementByPropertyDescription", "PrepareElementsForUpdate", APIERR_GENERAL, APINULLGuid);
+            msg_rep ("GetElementByPropertyDescription", "PrepareElementsForUpdate", unlockErr, APINULLGuid);
             return error;
         }
     }
