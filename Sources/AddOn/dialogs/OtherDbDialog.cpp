@@ -87,46 +87,51 @@ namespace SyncDialogs {
 #endif
         }
 
-        // Переключает активное окно на 3D-окно модели. Собственное окно 3D есть
-        // почти всегда; если его нет, ArchiCAD создаст его само.
-        GSErrCode SwitchTo3DWindow () {
-            API_WindowInfo windowInfo = {};
-            windowInfo.typeID = APIWind_3DModelID;
-#ifdef ServerMainVers_2700
-            GSErrCode err = ACAPI_Window_ChangeWindow (&windowInfo);
-#else
-            GSErrCode err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
-#endif
-            if (err != NoError)
-                msg_rep ("SyncShowSubelement", "APIDo_ChangeWindowID", err, APINULLGuid);
-            return err;
-        }
-
-        // Переход к элементам в 3D-окне. Базу и этаж не меняем: 3D-окно не
-        // привязано к конкретной базе и показывает модель целиком, поэтому
-        // элементы базы/этажа в нём уже есть.
+        // Переход к элементам в 3D-окне.
+        // Порядок вызовов — как в примерах DevKit (Interface_Functions.cpp:1687,
+        // MarkUp_Manager/MarkUp_Test.cpp:507): сначала выделить элементы, потом
+        // одной командой перейти в 3D, потом поверх — подсветка цветом.
+        // Отдельный перенос окна сюда НЕ годится: после APIDo_ChangeWindowID
+        // текущей базой становится 3D-окно, и элементы из другой базы (а это и
+        // есть смысл диалога) становятся для него недоступны — не подсвечиваются
+        // и не зумятся. ShowSelectionIn3D работает по текущему выделению.
         GSErrCode ShowOtherDbTargetIn3D (const OtherDbTarget &target) {
-            GSErrCode err = SwitchTo3DWindow ();
-            if (err != NoError)
-                return err;
+            GS::Array<API_Neig> selNeigs;
+            for (const auto &guid : target.guids)
+                selNeigs.PushNew (guid);
 
+            GSErrCode err = NoError;
+#ifdef ServerMainVers_2700
+            err = ACAPI_Selection_Select (selNeigs, true);
+#else
+            err = ACAPI_Element_Select (selNeigs, true);
+#endif
+            if (err != NoError) {
+                msg_rep ("SyncShowSubelement", "ACAPI_Selection_Select", err, APINULLGuid);
+                return err;
+            }
+
+#ifdef ServerMainVers_2700
+            err = ACAPI_View_ShowSelectionIn3D ();
+#else
+            err = ACAPI_Automate (APIDo_ShowSelectionIn3DID);
+#endif
+            if (err != NoError) {
+                msg_rep ("SyncShowSubelement", "ShowSelectionIn3D", err, APINULLGuid);
+                return err;
+            }
+
+            // Поверх перехода — подсветка цветом: она не трогает выделение.
             GS::Array<API_Guid> guids;
             for (const auto &guid : target.guids)
                 guids.PushNew (guid);
 
             HighlightElements (guids);
-
 #ifdef ServerMainVers_2700
-            err = ACAPI_View_ZoomToElements (&guids);
-            if (err == NoError)
-                ACAPI_View_Redraw ();
+            ACAPI_View_Redraw ();
 #else
-            err = ACAPI_Automate (APIDo_ZoomToElementsID, &guids);
-            if (err == NoError)
-                ACAPI_Automate (APIDo_RedrawID);
+            ACAPI_Automate (APIDo_RedrawID);
 #endif
-            if (err != NoError)
-                msg_rep ("SyncShowSubelement", "APIDo_ZoomToElementsID", err, APINULLGuid);
             return err;
         }
 
