@@ -2763,12 +2763,10 @@ void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype) {
 // -----------------------------------------------------------------------------
 GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
                                            const GS::UniString value,
-                                           GS::Array<API_Guid> &elements,
-                                           bool &lockedOut) {
+                                           GS::Array<API_Guid> &elements) {
     const GS::UniString lowerValue = value.ToLowerCase ();
     GSErrCode error = NoError;
     elements = {};
-    lockedOut = false;
 #ifndef ServerMainVers_2300
     return NoError;
 #else
@@ -2823,36 +2821,11 @@ GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
         }
     }
 
-    // Разблокировка и резервирование кандидатов. Слой снимается первым: снятие
-    // блокировки элемента не снимает блокировку слоя.
-    //
-    // Транзакция ровно одна на этот вызов, а не одна на элемент: разблокировка
-    // меняет модель и требует undo-контекста (иначе APIERR_NEEDSUNDOSCOPE), но
-    // ACAPI_CallUndoableCommand на каждый элемент дал бы отдельную запись в
-    // истории Undo. Поэтому транзакция открывается один раз на весь набор
-    // кандидатов. Набор непустой (проверено выше), транзакция не окажется
-    // пустой и APIERR_UNDOEMPTY не возникнет.
-    if (!candidates.IsEmpty ()) {
-        UnicGuid locked;
-        for (const API_Guid &guid : candidates)
-            locked.Put (guid, true);
-        PrepareElementsResult prepareResult = PrepareElementsResult::NothingToDo;
-        bool prepareOk = true;
-        GSErrCode unlockErr = ACAPI_CallUndoableCommand ("Unlock existing spec elements", [&] () -> GSErrCode {
-            return PrepareElementsForUpdate (locked, prepareResult) ? NoError : APIERR_GENERAL;
-        });
-        if (unlockErr != NoError || !prepareOk) {
-            lockedOut = true;
-            msg_rep ("GetElementByPropertyDescription", "PrepareElementsForUpdate", unlockErr, APINULLGuid);
-            return error;
-        }
-    }
-
-    // Фильтр редактируемости применяется ПОСЛЕ разблокировки: он отсекает уже
-    // разблокированные элементы, если разблокировка не дала эффекта.
+    // Кандидаты возвращаются БЕЗ разблокировки и без отсечения
+    // APIFilt_IsEditable: разблокировка меняет модель и требует открытой
+    // undo-транзакции, а она открывается позже - в изменяющей части запуска.
+    // Отбор по редактируемости делает вызывающий, уже внутри транзакции.
     for (const API_Guid &elemGuid : candidates) {
-        if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable))
-            continue;
         elements.Push (elemGuid);
     }
     return error;

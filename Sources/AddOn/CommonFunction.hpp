@@ -606,12 +606,13 @@ void SetElemTypeID (API_Element &element, const API_ElemTypeID eltype);
 void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype);
 
 // Находит элементы по описанию значения свойства внутри классификации.
-// Заблокированные элементы разблокируются и включаются в результат.
-// lockedOut - [OUT] true, если элементы найдены, но разблокировать их не удалось.
+// Заблокированные элементы ВКЛЮЧАЮТСЯ в результат: APIFilt_IsEditable не
+// применяется, потому что разблокировка меняет модель и требует открытой
+// undo-транзакции, а она открывается позже - в изменяющей части запуска.
+// Вызывающий разблокирует найденное и отбирает по редактируемости сам.
 GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
                                            const GS::UniString value,
-                                           GS::Array<API_Guid> &elements,
-                                           bool &lockedOut);
+                                           GS::Array<API_Guid> &elements);
 
 namespace GDLHelpers {
     struct Param {

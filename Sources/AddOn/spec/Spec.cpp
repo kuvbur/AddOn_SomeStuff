@@ -654,6 +654,11 @@ namespace Spec {
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
         }
+        // Накопитель кандидатов на обновление: все элементы, найденные по
+        // свойству-правилу, включая заблокированные. Разблокируются и
+        // отбираются по редактируемости в изменяющей части запуска, внутри
+        // общей undo-транзакции.
+        GS::Array<API_Guid> existingCandidates = {};
         // Читаем свойства избранного
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
 #ifdef ServerMainVers_2800
@@ -694,21 +699,14 @@ namespace Spec {
 #endif
                 continue;
             }
-            // Заблокированные строки разблокируются внутри поиска: иначе они не нашлись бы,
-            // и вместо обновления создавались бы дубликаты.
+            // Отбор по редактируемости выполняется внутри общей транзакции,
+            // после разблокировки, поэтому здесь берутся ВСЕ кандидаты: иначе
+            // заблокированные строки не попали бы в набор на разблокировку.
             GS::Array<API_Guid> exsist_elements = {};
-            bool existingLockedOut = false;
-            GSErrCode findErr = GetElementByPropertyDescription (
-                subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase (), exsist_elements, existingLockedOut);
-            UNUSED_VARIABLE (findErr);
-            if (existingLockedOut) {
-                if (runResult != nullptr)
-                    runResult->hasRecoveryError = true;
-                msg_rep ("Spec", "Existing spec elements are locked and cannot be unlocked", err, APINULLGuid);
-                if (runResult != nullptr)
-                    runResult->prepareFailureStage = SpecPrepareStage::ExistingElementsLocked;
-                return APIERR_GENERAL;
-            }
+            GetElementByPropertyDescription (
+                subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase (), exsist_elements);
+            for (const API_Guid &exsist_element : exsist_elements)
+                existingCandidates.Push (exsist_element);
             SelectExistingElements (rule, exsist_elements, selected_elements);
             if (rule.runState.exsist_elements.IsEmpty ())
                 continue;
@@ -937,33 +935,83 @@ namespace Spec {
         Point2D startpos = {0, 0};
         finish = clock ();
         duration = (double)(finish - start) / CLOCKS_PER_SEC;
-        if (!elements_new.IsEmpty ()) {
+        // Диалог выбора точки стоит ДО транзакции: держать открытую
+        // undo-операцию во время ожидания пользователя нельзя, а отмена
+        // здесь должна давать чистый APIERR_CANCEL.
+        const bool willCreate = !elements_new.IsEmpty ();
+        if (willCreate) {
             if (placementPoint == nullptr) {
                 if (!ClickAPoint ("Click the lower corner of the spec elements creation", &startpos))
                     return APIERR_CANCEL;
             } else {
                 startpos = *placementPoint;
             }
-            start = clock ();
-            const UInt32 previousCount = paramOut.GetSize ();
-            PlaceElements (elements_new, paramToWrite, paramOut, startpos, runResult);
-            const UInt32 createdCount = paramOut.GetSize () - previousCount;
-            if (runResult != nullptr)
-                runResult->elementsToCreate = createdCount;
-            if (createdCount == 0 && elements_mod.IsEmpty () && elements_delete.IsEmpty ()) {
+        }
+
+        // ------------------------------------------------------------------
+        // Изменяющая часть запуска - одна undo-транзакция на всю операцию.
+        //
+        // Внутри: разблокировка существующих строк, создание новых, запись
+        // свойств и удаление устаревших строк. Вложенные
+        // ACAPI_CallUndoableCommand запрещены (APIERR_NOTMINE), поэтому все
+        // три этапа разнесены по функциям без собственных транзакций и
+        // собираются здесь.
+        //
+        // Транзакция не открывается, если менять нечего: пустая undo-операция
+        // вернула бы APIERR_UNDOEMPTY, а штатный no-op должен оставаться
+        // успехом. Признак изменения - непустой deleteOld или созданные
+        // элементы; кандидаты на обновление сами по себе изменением не
+        // являются, пока для них не записаны свойства.
+        // ------------------------------------------------------------------
+        const bool willDelete = !elements_delete.IsEmpty ();
+        const bool mayWriteProperties = willCreate || willDelete || !existingCandidates.IsEmpty ();
+        if (mayWriteProperties) {
+            bool prepareFailed = false;
+            UInt32 createdCount = 0;
+            err = ACAPI_CallUndoableCommand ("Update spec elements", [&] () -> GSErrCode {
+                // Шаг 1: разблокировка и резервирование существующих строк.
+                // Без неё заблокированные строки не обновляются, а дублируются.
+                if (!existingCandidates.IsEmpty ()) {
+                    UnicGuid toPrepare;
+                    for (const API_Guid &guid : existingCandidates)
+                        toPrepare.Put (guid, true);
+                    PrepareElementsResult prepareResult = PrepareElementsResult::NothingToDo;
+                    if (!PrepareElementsForUpdate (toPrepare, prepareResult)) {
+                        prepareFailed = true;
+                        return APIERR_GENERAL;
+                    }
+                }
+
+                // Шаг 2: создание новых строк.
+                if (willCreate) {
+                    const UInt32 previousCount = paramOut.GetSize ();
+                    PlaceElements (elements_new, paramToWrite, paramOut, startpos, runResult);
+                    createdCount = paramOut.GetSize () - previousCount;
+                    if (runResult != nullptr)
+                        runResult->elementsToCreate = createdCount;
+                }
+
+                // Шаг 3: запись свойств и удаление устаревших строк.
+                err = WriteSpecProperties (elements_delete, paramOut, runResult);
+                return err;
+            });
+
+            if (prepareFailed) {
+                if (runResult != nullptr) {
+                    runResult->hasRecoveryError = true;
+                    runResult->prepareFailureStage = SpecPrepareStage::ExistingElementsLocked;
+                }
+                msg_rep ("Spec", "Existing spec elements are locked and cannot be unlocked", err, APINULLGuid);
+                return APIERR_GENERAL;
+            }
+            if (willCreate && createdCount == 0 && elements_mod.IsEmpty () && elements_delete.IsEmpty ()) {
                 msg_rep ("Spec", "Elements not created", APIERR_GENERAL, APINULLGuid);
                 if (runResult != nullptr)
                     runResult->prepareFailureStage = SpecPrepareStage::NothingCreated;
                 return APIERR_GENERAL;
             }
-        } else {
-            start = clock ();
         }
-        // Запись свойств и удаление устаревших строк - отдельный этап (#228 R8.4).
-        // Результат удаления возвращается этапом и присваивается накопителю
-        // ошибок функции запуска: так ошибка удаления доходит до вызывающего,
-        // как и до выделения. Sync выполняется ниже и в транзакцию записи не входит.
-        err = WriteSpecProperties (elements_delete, paramOut, runResult);
+        start = clock ();
         if (has_v2 && showUserInterface) {
             GS::UniString msg;
             if (!elements_delete.IsEmpty ()) {
@@ -2708,6 +2756,23 @@ namespace Spec {
         }
 
         result.checkedElement = true;
+        CheckRuleElementByRule (rule, propertyGuid, elemguid, result);
+        return true;
+    }
+
+    // --------------------------------------------------------------------
+    // Проверка ОДНОГО элемента по УЖЕ разобранному правилу.
+    // Вынесено из CheckRuleByPropertyGuid, чтобы вызывающий, которому нужно
+    // проверить много элементов, разбирал описание и читал избранное один раз,
+    // а не на каждый элемент: эти операции не зависят от элемента, а
+    // CheckRuleByPropertyGuid начинается с result = {} и затирает переданное.
+    // Правило передаётся константой: функция его не меняет (в отличие от
+    // MatchDestinationProperties, работающего на копии правила).
+    // --------------------------------------------------------------------
+    void CheckRuleElementByRule (const SpecRule &rule,
+                                 const API_Guid &propertyGuid,
+                                 const API_Guid &elemguid,
+                                 RuleCheckResult &result) {
         ReadElementRuleFlag (elemguid, propertyGuid, result.elementFlag, RuleFlagOrigin::ElementValue);
         // Чтение элемента идёт существующим путём чтения аддона: собираются те
         // же имена, что и для запуска, и выполняется одно чтение на элемент.
@@ -2723,7 +2788,6 @@ namespace Spec {
             ParamHelpers::ElementsRead (paramToRead, paramComposite, listData, true, true);
         }
         CollectUnreadRuleNames (rule, elemguid, paramToRead, result.missingRead);
-        return true;
     }
 
     GSErrCode GetElementForPlaceProperties (const GS::UniString &favorite_name,

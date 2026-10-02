@@ -33,7 +33,7 @@ namespace Spec {
             find_stor = true;
             BMKillHandle ((GSHandle *)&storyInfo.data);
         }
-        err = ACAPI_CallUndoableCommand ("Create Spec element", [&] () -> GSErrCode {
+        {
             int n_elem = 0;
             API_Element element = {};
             GS::Array<API_Guid> group;
@@ -47,7 +47,7 @@ namespace Spec {
 #ifdef ServerMainVers_2800
                     Element el = cIt.value;
 #else
-        Element el = *cIt.value;
+                    Element el = *cIt.value;
 #endif
                     BNZeroMemory (&element, sizeof (API_Element));
                     API_ElementMemo memo = {};
@@ -191,9 +191,10 @@ namespace Spec {
                     if (err != NoError)
                         err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
 #else
-        err = ACAPI_ElementGroup_Create (group, &groupGuid);
+                    err = ACAPI_ElementGroup_Create (group, &groupGuid);
     #ifdef ServerMainVers_2300
-        if (err != NoError) err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
+                    if (err != NoError)
+                        err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
     #endif
 #endif
                     if (err != NoError) {
@@ -209,9 +210,8 @@ namespace Spec {
                     }
                 }
             }
-            return NoError;
-        });
-        // GDL-скрипты выполняются ПОСЛЕ транзакции создания (не внутри неё),
+        }
+        // GDL-скрипты выполняются ПОСЛЕ общей транзакции операции (не внутри неё),
         // поэтому отказ скрипта не откатывает уже созданный элемент.
         for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
             if (runResult != nullptr)
@@ -246,41 +246,44 @@ namespace Spec {
     }
 
     // Запись свойств и удаление устаревших строк. Тело перенесено из Spec.cpp
-    // без изменений (R8.4): границы транзакции и порядок вызовов сохранены.
-    // Отличие одно и намеренное: результат удаления возвращается, а не
-    // пишется во внешний накопитель ошибок - это позволяет вынести этап из
-    // функции запуска. Вызывающий присваивает его своему накопителю.
+    // без изменений (R8.4): порядок вызовов сохранён.
+    //
+    // Транзакции внутри функции нет намеренно: вызывающий выполняет создание,
+    // запись и удаление в одной общей транзакции, а вложенные
+    // ACAPI_CallUndoableCommand запрещены (APIERR_NOTMINE). Функция обязана
+    // вызываться изнутри открытой undo-транзакции.
+    //
+    // Результат удаления возвращается, а не пишется во внешний накопитель
+    // ошибок - это позволяет отличить отказ удаления от успеха. Вызывающий
+    // присваивает его своему накопителю.
     GSErrCode WriteSpecProperties (const GS::Array<API_Guid> &elementsDelete,
                                    ParamDictElement &paramOut,
                                    SpecRunResult *runResult) {
         GSErrCode err = NoError;
-        ACAPI_CallUndoableCommand ("Writing properties to created spec elements", [&] () -> GSErrCode {
-            if (!elementsDelete.IsEmpty ()) {
-                if (runResult != nullptr) {
-                    runResult->deleteOld.attempted = elementsDelete.GetSize ();
-                }
-                err = ACAPI_Element_Delete (elementsDelete);
-                if (runResult != nullptr) {
-                    // Удаление одним вызовом: подтверждено либо всё, либо ничего.
-                    // Проверка каждого удалённого элемента здесь невозможна и не
-                    // нужна - об этом читатель узнает по create/delete счётчикам.
-                    if (err == NoError)
-                        runResult->deleteOld.succeeded = elementsDelete.GetSize ();
-                    else {
-                        runResult->deleteOld.failed = elementsDelete.GetSize ();
-                        // Удаление идёт ПОСЛЕ создания: элементы уже созданы,
-                        // поэтому отказ удаления - ошибка восстановления.
-                        runResult->hasRecoveryError = true;
-                    }
-                }
-                msg_rep ("Spec",
-                         GS::UniString::Printf ("Removed %d obsolete spec elements", elementsDelete.GetSize ()),
-                         err,
-                         APINULLGuid);
+        if (!elementsDelete.IsEmpty ()) {
+            if (runResult != nullptr) {
+                runResult->deleteOld.attempted = elementsDelete.GetSize ();
             }
-            ParamHelpers::ElementsWrite (paramOut);
-            return NoError;
-        });
+            err = ACAPI_Element_Delete (elementsDelete);
+            if (runResult != nullptr) {
+                // Удаление одним вызовом: подтверждено либо всё, либо ничего.
+                // Проверка каждого удалённого элемента здесь невозможна и не
+                // нужна - об этом читатель узнает по create/delete счётчикам.
+                if (err == NoError)
+                    runResult->deleteOld.succeeded = elementsDelete.GetSize ();
+                else {
+                    runResult->deleteOld.failed = elementsDelete.GetSize ();
+                    // Удаление идёт ПОСЛЕ создания: элементы уже созданы,
+                    // поэтому отказ удаления - ошибка восстановления.
+                    runResult->hasRecoveryError = true;
+                }
+            }
+            msg_rep ("Spec",
+                     GS::UniString::Printf ("Removed %d obsolete spec elements", elementsDelete.GetSize ()),
+                     err,
+                     APINULLGuid);
+        }
+        ParamHelpers::ElementsWrite (paramOut);
         return err;
     }
 } // namespace Spec
