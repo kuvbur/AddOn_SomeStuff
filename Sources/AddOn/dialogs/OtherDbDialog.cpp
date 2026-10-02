@@ -87,46 +87,67 @@ namespace SyncDialogs {
 #endif
         }
 
-        // Переход к элементам в 3D-окне.
-        // Порядок вызовов — как в примерах DevKit (Interface_Functions.cpp:1687,
-        // MarkUp_Manager/MarkUp_Test.cpp:507): сначала выделить элементы, потом
-        // одной командой перейти в 3D, потом поверх — подсветка цветом.
-        // Отдельный перенос окна сюда НЕ годится: после APIDo_ChangeWindowID
-        // текущей базой становится 3D-окно, и элементы из другой базы (а это и
-        // есть смысл диалога) становятся для него недоступны — не подсвечиваются
-        // и не зумятся. ShowSelectionIn3D работает по текущему выделению.
-        GSErrCode ShowOtherDbTargetIn3D (const OtherDbTarget &target) {
-            GS::Array<API_Neig> selNeigs;
-            for (const auto &guid : target.guids)
-                selNeigs.PushNew (guid);
+        // Переход в 3D-окно и показ элементов сразу из ВСЕХ баз/этажей списка.
+        // Выбор строки на результат не влияет: кнопка показывает всю совокупность.
+        //
+        // Порядок вызовов — экспериментальный (#246): сначала переход в 3D
+        // (APIDo_ShowAllIn3D, чтобы в кадр попала модель целиком — иначе 3D-окно
+        // может открыться «пустым» и зум по элементам другой базы не найдёт цели),
+        // затем выделение уже в 3D-окне, затем подсветка цветом и зум к элементам.
+        // Раньше выделение шло ПЕРЕД переходом — работало как «выделить + подсветить
+        // в плане», но элементы чужой базы в 3D не выделялись; ACAPI_Selection_Select
+        // документирует APIERR_BADDATABASE, однако это не доказывает запрет на
+        // выделение после перехода, поэтому порядок проверяется на живом ArchiCAD.
+        // Подсветка нужна в любом случае: она, в отличие от выделения, работает
+        // и для элементов другой базы (контракт — «in the 2D … and 3D window»).
+        GSErrCode ShowAllOtherDbTargetsIn3D (const GS::Array<OtherDbTarget> &targets) {
+            GS::Array<API_Guid> guids;
+            for (const auto &target : targets) {
+                for (const auto &guid : target.guids)
+                    guids.PushNew (guid);
+            }
+            if (guids.IsEmpty ())
+                return NoError;
 
+            // Переход в 3D с показом всей модели: элементы из разных баз не могут
+            // быть в кадре одновременно, пока в 3D-окне не включён весь проект.
             GSErrCode err = NoError;
 #ifdef ServerMainVers_2700
-            err = ACAPI_Selection_Select (selNeigs, true);
+            err = ACAPI_View_ShowAllIn3D ();
 #else
-            err = ACAPI_Element_Select (selNeigs, true);
+            err = ACAPI_Automate (APIDo_ShowAllIn3DID);
 #endif
-            if (err != NoError) {
-                msg_rep ("SyncShowSubelement", "ACAPI_Selection_Select", err, APINULLGuid);
-                return err;
-            }
+            if (err != NoError)
+                msg_rep ("SyncShowSubelement", "ShowAllIn3D", err, APINULLGuid);
 
+            // Выделение уже в 3D-окне — не блокирует дальнейшие шаги: элементы
+            // из чужой базы могут не выделиться, и это не повод прерывать показ.
+            GS::Array<API_Neig> selNeigs;
+            for (const auto &guid : guids)
+                selNeigs.PushNew (guid);
+            GSErrCode selErr = NoError;
 #ifdef ServerMainVers_2700
-            err = ACAPI_View_ShowSelectionIn3D ();
+            selErr = ACAPI_Selection_Select (selNeigs, true);
 #else
-            err = ACAPI_Automate (APIDo_ShowSelectionIn3DID);
+            selErr = ACAPI_Element_Select (selNeigs, true);
 #endif
-            if (err != NoError) {
-                msg_rep ("SyncShowSubelement", "ShowSelectionIn3D", err, APINULLGuid);
-                return err;
-            }
+            if (selErr != NoError)
+                msg_rep ("SyncShowSubelement", "Selection in 3D", selErr, APINULLGuid);
 
-            // Поверх перехода — подсветка цветом: она не трогает выделение.
-            GS::Array<API_Guid> guids;
-            for (const auto &guid : target.guids)
-                guids.PushNew (guid);
-
+            // Подсветка цветом — работает по любой базе, в том числе после перехода.
             HighlightElements (guids);
+
+            // Камера — к самим элементам (контракт: «works both in the 2D and 3D
+            // window»). Если элементы недоступны для 3D-окна, зум вернёт отказ и
+            // кадр останется на том, что показал ShowAllIn3D.
+#ifdef ServerMainVers_2700
+            err = ACAPI_View_ZoomToElements (&guids);
+#else
+            err = ACAPI_Automate (APIDo_ZoomToElementsID, &guids);
+#endif
+            if (err != NoError)
+                msg_rep ("SyncShowSubelement", "ZoomToElements in 3D", err, APINULLGuid);
+
 #ifdef ServerMainVers_2700
             ACAPI_View_Redraw ();
 #else
@@ -338,14 +359,18 @@ namespace SyncDialogs {
         if (!dialog.Invoke ())
             return;
 
+        // Кнопка «Показать в 3Д» показывает все цели сразу, поэтому выбранная
+        // строка ей не нужна — проверяем её только для перехода в базу/этаж.
+        if (dialog.GetResult () == OtherDbDialog::ShowIn3DResult) {
+            ShowAllOtherDbTargetsIn3D (targets);
+            return;
+        }
+
         const short selectedIndex = dialog.GetSelectedTargetIndex ();
         if (selectedIndex < 0 || selectedIndex >= static_cast<short> (targets.GetSize ()))
             return;
 
-        if (dialog.GetResult () == OtherDbDialog::ShowIn3DResult)
-            ShowOtherDbTargetIn3D (targets[selectedIndex]);
-        else
-            SelectOtherDbTarget (targets[selectedIndex]);
+        SelectOtherDbTarget (targets[selectedIndex]);
     }
 
 } // namespace SyncDialogs
