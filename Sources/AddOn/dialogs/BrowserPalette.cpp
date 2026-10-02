@@ -1757,7 +1757,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     };
 
     jsACAPI->AddItem (new DG::JSFunction (
-        "GetSpecRuleProperties", [this, collectSpecRuleProperties] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
+        "GetSpecRuleProperties", [collectSpecRuleProperties] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
             try {
                 GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
                 GS::UniString jsonStr =
