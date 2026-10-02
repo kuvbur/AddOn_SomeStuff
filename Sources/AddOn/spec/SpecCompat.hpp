@@ -39,6 +39,8 @@ namespace SpecCompat {
         static const char *const created;
         static const char *const modified;
         static const char *const deleted;
+        static const char *const rules;
+        static const char *const messages;
     };
 
     // Имена полей вложенных объектов счётчиков этапа и списков элементов.
@@ -48,6 +50,11 @@ namespace SpecCompat {
         static const char *const failed;
         static const char *const element;
         static const char *const guid;
+        // Имена элементов списков: каждый список ответа добавляется через
+        // AddList с таким именем, поэтому повторное имя в одном объекте
+        // отверг бы второе добавление и поле пропало бы молча.
+        static const char *const rule;
+        static const char *const message;
     };
 
     // Имена полей объекта одного элемента в дампе.
@@ -78,6 +85,23 @@ namespace SpecCompat {
     struct ErrorFieldNames {
         static const char *const errorCode;
         static const char *const errorMessage;
+    };
+
+    // Поля строки статистики по правилу и поля сообщения запуска.
+    //
+    // Имя правила в статистике и в сообщении различаются намеренно: в
+    // сообщении оно пустое у ошибок без правила, и читатель обязан различить
+    // случаи по наличию поля, поэтому оно не опускается.
+    struct RuleFieldNames {
+        static const char *const name;
+        static const char *const created;
+        static const char *const modified;
+        static const char *const deleted;
+    };
+
+    struct MessageFieldNames {
+        static const char *const ruleName;
+        static const char *const text;
     };
 
     // Этапы, счётчики которых входят в контракт ответа. Порядок объявления

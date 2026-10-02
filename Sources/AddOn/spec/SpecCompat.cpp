@@ -20,12 +20,24 @@ namespace SpecCompat {
     const char *const ResponseFieldNames::created = "created";
     const char *const ResponseFieldNames::modified = "modified";
     const char *const ResponseFieldNames::deleted = "deleted";
+    const char *const ResponseFieldNames::rules = "rules";
+    const char *const ResponseFieldNames::messages = "messages";
 
     const char *const NestedFieldNames::attempted = "attempted";
     const char *const NestedFieldNames::succeeded = "succeeded";
     const char *const NestedFieldNames::failed = "failed";
     const char *const NestedFieldNames::element = "element";
     const char *const NestedFieldNames::guid = "guid";
+    const char *const NestedFieldNames::rule = "rule";
+    const char *const NestedFieldNames::message = "message";
+
+    const char *const RuleFieldNames::name = "name";
+    const char *const RuleFieldNames::created = "created";
+    const char *const RuleFieldNames::modified = "modified";
+    const char *const RuleFieldNames::deleted = "deleted";
+
+    const char *const MessageFieldNames::ruleName = "ruleName";
+    const char *const MessageFieldNames::text = "text";
 
     const char *const ElementFieldNames::guid = "guid";
     const char *const ElementFieldNames::property = "property";
@@ -116,7 +128,9 @@ namespace SpecCompat {
                                                     ResponseFieldNames::prepareFailureStage,
                                                     ResponseFieldNames::created,
                                                     ResponseFieldNames::modified,
-                                                    ResponseFieldNames::deleted};
+                                                    ResponseFieldNames::deleted,
+                                                    ResponseFieldNames::rules,
+                                                    ResponseFieldNames::messages};
         static const char *const inputNames[] = {InputFieldNames::placementPoint,
                                                  InputFieldNames::ruleNames,
                                                  InputFieldNames::includeParameters,
@@ -130,14 +144,24 @@ namespace SpecCompat {
         static const char *const nestedNames[] = {NestedFieldNames::attempted,
                                                   NestedFieldNames::succeeded,
                                                   NestedFieldNames::failed,
-                                                  NestedFieldNames::element};
+                                                  NestedFieldNames::element,
+                                                  NestedFieldNames::rule,
+                                                  NestedFieldNames::message};
 
         int failures = 0;
-        failures += CountGroupFailures (responseNames, 14);
+        failures += CountGroupFailures (responseNames, 16);
         failures += CountGroupFailures (inputNames, 5);
         failures += CountGroupFailures (elementNames, 4);
         failures += CountGroupFailures (propertyNames, 2);
-        failures += CountGroupFailures (nestedNames, 4);
+        failures += CountGroupFailures (nestedNames, 6);
+        // Группы новых полей проверяются отдельно: иначе добавление полей в
+        // responseNames расширило бы верхнюю группу, а имена вложенных объектов
+        // остались бы молча непроверенными.
+        static const char *const ruleNames[] = {
+            RuleFieldNames::name, RuleFieldNames::created, RuleFieldNames::modified, RuleFieldNames::deleted};
+        static const char *const messageNames[] = {MessageFieldNames::ruleName, MessageFieldNames::text};
+        failures += CountGroupFailures (ruleNames, 4);
+        failures += CountGroupFailures (messageNames, 2);
 
         // Имена счётчиков этапов - отдельная группа: они добавляются в ответ
         // как вложенные объекты и не должны совпадать между собой.
@@ -148,7 +172,7 @@ namespace SpecCompat {
             if (StageCounterNames[i] == nullptr)
                 continue;
             const GS::UniString stage (StageCounterNames[i]);
-            for (UIndex j = 0; j < 14; ++j) {
+            for (UIndex j = 0; j < 16; ++j) {
                 if (responseNames[j] != nullptr && GS::UniString (responseNames[j]) == stage) {
                     ++failures;
                     break;

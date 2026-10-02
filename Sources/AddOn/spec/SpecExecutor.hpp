@@ -41,7 +41,13 @@ namespace Spec {
                              ParamDictValue &paramToWrite,
                              ParamDictElement &paramOut,
                              Point2D &startpos,
-                             SpecRunResult *runResult);
+                             SpecRunResult *runResult,
+                             // Индекс правила, которому принадлежит elementstocreate.
+                             // Индексы правил по элементам elementstocreate: счётчик
+                             // созданий ведётся по факту успеха, а не по плану.
+                             // Необязателен: nullptr означает прежнее поведение,
+                             // когда подтверждённых созданий не считается.
+                             GS::Array<GS::UInt32> *createdByRuleIndex);
 
     // Записывает свойства в размещённые элементы и удаляет устаревшие строки.
     //

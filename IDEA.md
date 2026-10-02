@@ -1,5 +1,79 @@
 ﻿# Current Task
 
+### #245 — единое окно результата запуска Spec (R9.2) — РЕАЛИЗОВАНО, ждёт checkpoint
+
+- Scope: накопитель ошибок и per-rule счётчиков в `SpecRunResult`; фактические
+  (а не плановые) счётчики созданий; окно результата на данных
+  `RuleSelectData::columnTitles`/`valuesPerRule`/`footerText`/`isReadOnly`;
+  снятие всех всплывающих окон запуска; `rules`/`messages` в JSON за
+  `includeParameters`. `BrowserPalette.cpp`, `Interface_ru.html`,
+  `ТЗ интерфейс.md` — чужая работа #246, не тронута.
+- Status: **код готов, собран, прогнан.** Остался только checkpoint.
+- Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/245
+- Реализовано: `SpecMessage`/`SpecRuleStats` + `ruleNames`/`ruleStats`/`messages`
+  и `EnsureRuleStats`/`AddGeneralMessage`/`AddRuleMessage`/`HasRuleError`
+  (`Spec.hpp`); `PlaceElements` получил `createdByRuleIndex` и считает
+  подтверждённые создания, после транзакции план заменяется фактом
+  (`SpecExecutor.*`); `ShowRunResult` собирает строки/цвет/подвал
+  (`Spec.cpp:528`); `RuleSelectData` расширен пятью полями, вёрстка `AddOn.grc`
+  не менялась; `SpecCompat` — `rules`/`messages`/`RuleFieldNames`/
+  `MessageFieldNames`, `VerifyResponseFields` 14→16.
+- Сознательные решения: (1) ошибки чтения привязаны к правилу — источник полей
+  у него один; (2) ошибки без правила идут вниз без привязки; (3) подсветка
+  в модели и лимит «< 20 элементов» сохранены — это работа с моделью, а не
+  показ сообщения; (4) `runResult == nullptr` при интерактивном запуске создаёт
+  локальный накопитель, иначе отказ остался бы невидимым; (5) при пустых
+  `columnTitles` поведение окна прежнее — `ReNum.cpp`/`Summ.cpp` не затронуты.
+- Грабли (все пойманы в этом шаге): `itemCount` — ЧИСЛО колонок, а не последний
+  индекс, поэтому граница окраски `tab <= itemCount`, иначе последняя колонка
+  строки осталась бы некрасной; `SetSize` обязан брать `QtyTab_w` для колонки
+  количества и `ValueTab_w` для колонок значений — общая ширина развела бы
+  заголовок и поле; `UniString::CStr` некопируем и не годится как аргумент
+  `Printf` (C2280) — строка «[ИМЯ] — текст» склеивается конкатенацией.
+- Валидация: clang-format на 13 файлов; clangd 0 ошибок (2 warning
+  `unused-includes` в `DG4rule.cpp` предсуществующие); AC25 `Build succeeded!`;
+  sweep AC26–29 `success`; `restart_archicad_for_test.ps1` exit_code=70 →
+  `suites=70 passed=2847 failed=1`, `TestSpecRunReport` 29/29,
+  `TestSpecResponseContract` 26/26, дельта по 69 прежним наборам = 0 (+37 =
+  29 нового набора + 8 контракта). Единственный `FAILED_SUITE
+  TestConvertPropertyToParamValue` предсуществующий и вне области.
+  **Поведение окна в Archicad НЕ наблюдалось** — `not verified`: вёрстка,
+  перенос текста в подвале и число колонок проверены только сборкой.
+  A/B (`spec_baseline.py`) не выполнялся: `rules`/`messages` за
+  `includeParameters`, прежние базы собраны без флага — сравнение было бы
+  сравнением разных форм ответа. AC22–24 и macOS — `not verified`.
+- **ID-коллизия, найденная при подготовке чекпоинта.** Незакоммиченная правка
+  `IDEA.md` — это issue **#246** («Показать в 3Д» в `SyncShowSubelement`), и в
+  ней записано «свободен 87» под `ShowButtonId`. Я занимал 87/88/89 →
+  перенёс свои строки на **90/91/92** (`Constants.hpp`, `Tools/AddOn.grc.in`),
+  87 остаётся за #246. Пересборка после переноса — `Build succeeded!`.
+- Next Step: **ждёт коммит #245** (код готов, собран, прогнан).
+
+### Разделение на #245 и готовые файлы в `Reviews/`
+
+- Чужое (ваш коммит, вариант 2): `foreign_234_Spec_hpp.patch`, `foreign_234_Spec_cpp.patch`
+  — 1 хунк в `.hpp` + 1 в `.cpp` (при `-U15`; при `-U3` hpp-патч не применяется).
+- Моё (поверх вашего коммита): `mine_245_Spec_hpp.patch` (5 хунков),
+  `mine_245_Spec_cpp.patch` (18). Остальное — старая чистая статья: `Constants.hpp`,
+  `DG4rule.*`, `SpecCommand.cpp`, `SpecCompat.*`, `SpecExecutor.*`, `TestFunc.*`,
+  `TestSpec.cpp`, `Tools/AddOn.grc.in`.
+- Проверено сборкой: `foreign_*` применяются к чистому HEAD, после них `mine_*`
+  дают побайтово полные файлы. Сборка `foreign_*` без моих правок — `Build succeeded!`.
+- **Выполнено:** чужая часть закоммичена отдельно (`dbcfde6`, `Refs: #234`), мой
+  коммит — следующий. `IDEA_ARCHIVE.md` и блок `#246` в `IDEA.md` в него НЕ вошли:
+  архив относится к #211-#233 (работа владельца), блок #246 — «Показать в 3Д».
+
+
+### Головная находка к чекпоинту
+
+- `Spec.hpp` единственный файл с очужими хунками, но они не мои: `CheckRuleElementByRule` уже вызывается
+  из `HEAD:Sources/AddOn/spec/Spec.cpp:2759`, а объявляться только в незакоммитом `Spec.hpp` — то есть
+  **предсуществующий незакоммитный фикс**, а не новая работа. `HEAD` в таком состоянии
+  не сборается. `destinationNamePropFound`/`destinationGuidPropFound` — тоже незакоммитные поля с
+  расширением виртуальной связки (#234). Из моих хунков в `Spec.cpp` смешанных
+  с чужими нет не в одном хунке. Разделение по этим хункам — независимый
+  вопрос владельцу.
+
 ## Task — рефакторинг Spec (R7.6 закрыт; далее R8 SpecExecutor, затем R9-R10)
 
 Issue: #228 (kuvbur/AddOn_SomeStuff) — рефакторинг; #227 — дамп значений элементов.
@@ -69,6 +143,7 @@ Issue: #228 (kuvbur/AddOn_SomeStuff) — рефакторинг; #227 — дам
   `Spec::CheckRuleByPropertyGuid` по элементам с лимитом), оба ответами
   JSON-строкой.
 - Next Step: показать макет владельцу.
+
 
 ### Scope
 

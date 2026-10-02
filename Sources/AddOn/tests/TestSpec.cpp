@@ -264,6 +264,22 @@ namespace TestFunc {
         DBtest (SpecCompat::ResponseFieldNames::hasRecoveryError != nullptr, true, "hasRecoveryError name is set");
         DBtest (
             SpecCompat::ResponseFieldNames::hasUnconfirmedCreate != nullptr, true, "hasUnconfirmedCreate name is set");
+        // Per-rule статистика и сообщения — часть формы ответа наравне с
+        // остальным: их имена обязаны быть заданы, иначе данные собирались бы
+        // в поле, которого в контракте нет.
+        DBtest (SpecCompat::ResponseFieldNames::rules != nullptr, true, "rules name is set");
+        DBtest (SpecCompat::ResponseFieldNames::messages != nullptr, true, "messages name is set");
+
+        // 3a. Имена полей per-rule статистики и сообщения. Имя правила в
+        // статистике и в сообщении различаются намеренно: в сообщении оно
+        // пустое у ошибок без правила, и читатель обязан различить случаи по
+        // наличию поля, поэтому оно не опускается.
+        DBtest (SpecCompat::RuleFieldNames::name != nullptr, true, "rule name field is set");
+        DBtest (SpecCompat::RuleFieldNames::created != nullptr, true, "rule created field is set");
+        DBtest (SpecCompat::RuleFieldNames::modified != nullptr, true, "rule modified field is set");
+        DBtest (SpecCompat::RuleFieldNames::deleted != nullptr, true, "rule deleted field is set");
+        DBtest (SpecCompat::MessageFieldNames::ruleName != nullptr, true, "message ruleName field is set");
+        DBtest (SpecCompat::MessageFieldNames::text != nullptr, true, "message text field is set");
 
         // 4. Имена счётчиков не совпадают между собой: второе Add с тем же
         // именем ObjectState отверг бы, и поле молча пропало бы из ответа.
@@ -293,6 +309,141 @@ namespace TestFunc {
         DBtest (GS::UniString (SpecCompat::StatusText (APIERR_CANCEL)) != GS::UniString ("completed"),
                 true,
                 "APIERR_CANCEL does not map to completed");
+    }
+
+    // Накопление результата по правилам и сообщений запуска.
+    //
+    // Окно результата ничего не вычисляет: оно показывает то, что накопил
+    // запуск. Поэтому набор закрывает именно накопитель - то, что без него
+    // окно показало бы пустоту или, что хуже, привязала бы ошибку не к той
+    // строке.
+    //
+    // Чего набор НЕ проверяет: сбор данных в ходе реального запуска. Он идёт
+    // после обращения к модели (PlaceElements, ReconcileExistingRows), а
+    // фикстуры модели здесь нет. Проверяется контракт структуры и решения
+    // накопителя; наполнение подтверждается прогонами на стенде.
+    void TestSpecRunReport () {
+        // 1. Пустой результат: ни строк, ни сообщений. Окно по такому не
+        // показывается вовсе - ShowRunResult проверяет это перед показом.
+        {
+            Spec::SpecRunResult result;
+            DBtest (result.ruleNames.IsEmpty (), true, "no rules in empty result");
+            DBtest (result.messages.IsEmpty (), true, "no messages in empty result");
+        }
+
+        // 2. Повторная регистрация правила не создаёт второй строки: окно
+        // строит строки по индексам, и дубль дал бы две строки об одном
+        // правиле плюс рассинхронизацию с именами.
+        {
+            Spec::SpecRunResult result;
+            const UIndex first = result.EnsureRuleStats ("RuleA");
+            const UIndex second = result.EnsureRuleStats ("RuleA");
+            DBtest (first, second, "repeat registration returns same index");
+            DBtest (result.ruleNames.GetSize (), 1u, "repeat registration keeps one row");
+            DBtest (result.ruleStats.GetSize (), 1u, "stats array matches names");
+        }
+
+        // 3. Порядок регистрации сохраняется: иначе строки окна и JSON
+        // приходили бы в произвольном порядке между запусками.
+        {
+            Spec::SpecRunResult result;
+            result.EnsureRuleStats ("First");
+            result.EnsureRuleStats ("Second");
+            result.EnsureRuleStats ("Third");
+            DBtest (result.ruleNames.GetSize (), 3u, "three rules registered");
+            DBtest (GS::UniString (result.ruleNames[0]), GS::UniString ("First"), "registration order 0");
+            DBtest (GS::UniString (result.ruleNames[1]), GS::UniString ("Second"), "registration order 1");
+            DBtest (GS::UniString (result.ruleNames[2]), GS::UniString ("Third"), "registration order 2");
+        }
+
+        // 4. Счётчики пишутся по индексу правила и не путаются между
+        // правилами: переуказка индекса переносила бы числа чужой строке.
+        {
+            Spec::SpecRunResult result;
+            const UIndex a = result.EnsureRuleStats ("RuleA");
+            const UIndex b = result.EnsureRuleStats ("RuleB");
+            result.ruleStats[a].created = 5;
+            result.ruleStats[a].modified = 1;
+            result.ruleStats[a].deleted = 2;
+            result.ruleStats[b].created = 7;
+            DBtest (result.ruleStats[a].created, 5u, "rule A created kept");
+            DBtest (result.ruleStats[a].deleted, 2u, "rule A deleted kept");
+            DBtest (result.ruleStats[b].created, 7u, "rule B created kept");
+            DBtest (result.ruleStats[b].modified, 0u, "rule B modified untouched");
+        }
+
+        // 5. Сообщение без правила не создаёт строки: у него нет правила,
+        // которому оно соответствовало бы, и строка была бы пустой.
+        {
+            Spec::SpecRunResult result;
+            result.AddGeneralMessage ("Rules not found");
+            DBtest (result.ruleNames.IsEmpty (), true, "general message adds no rule row");
+            DBtest (result.messages.GetSize (), 1u, "general message stored");
+            DBtest (GS::UniString (result.messages[0].ruleName).IsEmpty (), true, "general message has no rule");
+            DBtest (GS::UniString (result.messages[0].text),
+                    GS::UniString ("Rules not found"),
+                    "general message keeps text");
+        }
+
+        // 6. Сообщение по правилу регистрирует правило само: вызывающий не
+        // обязан объявлять участие правила отдельным вызовом, иначе правило
+        // с ошибкой осталось бы без строки, то есть без подсветки.
+        {
+            Spec::SpecRunResult result;
+            result.AddRuleMessage ("RuleA", "Not found param: x");
+            DBtest (result.ruleNames.GetSize (), 1u, "rule message registers its rule");
+            DBtest (GS::UniString (result.messages[0].ruleName), GS::UniString ("RuleA"), "message carries rule name");
+            DBtest (result.HasRuleError (0), true, "rule with message is marked as error");
+        }
+
+        // 7. Подсветка определяется сообщением, а не счётчиками: нулевые
+        // счётчики при отказе подготовки - законное состояние, и по ним
+        // ошибку не увидеть.
+        {
+            Spec::SpecRunResult result;
+            const UIndex ok = result.EnsureRuleStats ("Good");
+            const UIndex bad = result.EnsureRuleStats ("Bad");
+            result.ruleStats[bad].created = 0;
+            result.AddRuleMessage ("Bad", "Created 0 of 3 elements");
+            DBtest (result.HasRuleError (ok), false, "silent rule is not marked");
+            DBtest (result.HasRuleError (bad), true, "rule with message is marked");
+        }
+
+        // 8. Граница индекса: индекс вне диапазона даёт "без ошибки", а не
+        // выход за границу. Проверяется именно выразимость состояния.
+        {
+            Spec::SpecRunResult result;
+            result.EnsureRuleStats ("Only");
+            DBtest (result.HasRuleError (99), false, "index beyond range is safe");
+        }
+
+        // 9. Порядок сообщений сохраняется, и типы сообщений различимы по
+        // имени правила: окно разводит их по привязке, а читатель ответа
+        // обязан различить те же два случая.
+        {
+            Spec::SpecRunResult result;
+            result.AddGeneralMessage ("first general");
+            result.AddRuleMessage ("RuleA", "rule message");
+            result.AddGeneralMessage ("second general");
+            DBtest (result.messages.GetSize (), 3u, "all messages kept in order");
+            DBtest (GS::UniString (result.messages[0].text), GS::UniString ("first general"), "message 0 order");
+            DBtest (GS::UniString (result.messages[1].ruleName), GS::UniString ("RuleA"), "message 1 has rule");
+            DBtest (GS::UniString (result.messages[2].text), GS::UniString ("second general"), "message 2 order");
+        }
+
+        // 10. Сброс структуры уносит и сообщения, и строки: запуски идут один за
+        // другим, и сообщения прошлого запуска в отчёте нового были бы ложью.
+        {
+            Spec::SpecRunResult result;
+            result.AddRuleMessage ("RuleA", "stale message");
+            result.EnsureRuleStats ("RuleA");
+            result.ruleStats[0].created = 9;
+            const bool includeDetails = result.includeDetails;
+            result = {};
+            result.includeDetails = includeDetails;
+            DBtest (result.messages.IsEmpty (), true, "reset clears messages");
+            DBtest (result.ruleNames.IsEmpty (), true, "reset clears rule rows");
+        }
     }
 
     // Инварианты отчёта результатов этапов (#228 R8.5). Заполняются счётчики

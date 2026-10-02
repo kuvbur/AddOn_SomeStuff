@@ -202,6 +202,34 @@ static void AddElementDumps (GS::ObjectState &response,
     response.Add (fieldName, list);
 }
 
+// Per-rule статистика: одна строка на правило. Порядок — обход правил, а не
+// хеш-таблицы, чтобы два одинаковых запуска давали одинаковый ответ.
+void AddRuleStats (GS::ObjectState &response, const Spec::SpecRunResult &runResult) {
+    GS::ObjectState list;
+    for (UIndex i = 0; i < runResult.ruleNames.GetSize (); ++i) {
+        GS::ObjectState rule;
+        rule.Add (SpecCompat::RuleFieldNames::name, runResult.ruleNames[i]);
+        rule.Add (SpecCompat::RuleFieldNames::created, static_cast<GS::UInt32> (runResult.ruleStats[i].created));
+        rule.Add (SpecCompat::RuleFieldNames::modified, static_cast<GS::UInt32> (runResult.ruleStats[i].modified));
+        rule.Add (SpecCompat::RuleFieldNames::deleted, static_cast<GS::UInt32> (runResult.ruleStats[i].deleted));
+        list.Add (SpecCompat::NestedFieldNames::rule, rule);
+    }
+    response.Add (SpecCompat::ResponseFieldNames::rules, list);
+}
+
+// Сообщения запуска. Поле ruleName пустое у ошибок без правила, и оно не
+// опускается: читатель обязан отличить привязанное сообщение от общего.
+void AddMessages (GS::ObjectState &response, const Spec::SpecRunResult &runResult) {
+    GS::ObjectState list;
+    for (const Spec::SpecMessage &message : runResult.messages) {
+        GS::ObjectState item;
+        item.Add (SpecCompat::MessageFieldNames::ruleName, message.ruleName);
+        item.Add (SpecCompat::MessageFieldNames::text, message.text);
+        list.Add (SpecCompat::NestedFieldNames::message, item);
+    }
+    response.Add (SpecCompat::ResponseFieldNames::messages, list);
+}
+
 // -----------------------------------------------------------------------------
 // Загружает настройки, запускает non-interactive построение спецификации и возвращает его результат.
 // -----------------------------------------------------------------------------
@@ -246,6 +274,11 @@ GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
         AddElementDumps (response, SpecCompat::ResponseFieldNames::created, runResult.created);
         AddElementDumps (response, SpecCompat::ResponseFieldNames::modified, runResult.modified);
         response.Add (SpecCompat::ResponseFieldNames::deleted, GuidListToObjectState (runResult.deleted));
+        // Статистика по правилам и сообщения идут за тем же флагом: без него
+        // запуску незачем ни собирать, ни отдавать. Поля добавляются даже при
+        // пустых списках — иначе форма ответа зависела бы от данных.
+        AddRuleStats (response, runResult);
+        AddMessages (response, runResult);
     }
     return response;
 }

@@ -195,7 +195,19 @@ namespace Spec {
         // и должны быть обработаны SpecArray даже при пустом guidArray.
         if (guidArray.IsEmpty () && !has_elementspec)
             return NoError;
-        err = SpecArray (syncSettings, guidArray, rules, selected_elements, ruleNames, placementPoint, runResult);
+        // Накопитель результата нужен всегда, в том числе при запуске из меню:
+        // именно в него точки отказа пишут сообщения, которые показывает
+        // окно результата. Без него сообщениям некуда деваться, и отказ
+        // остался бы невидимым.
+        SpecRunResult localResult = {};
+        SpecRunResult *result = runResult;
+        if (result == nullptr && showUserInterface)
+            result = &localResult;
+        err = SpecArray (syncSettings, guidArray, rules, selected_elements, ruleNames, placementPoint, result);
+        // Окно результата показывается после завершения запуска, а не в
+        // точках отказа: одно окно вместо всплывающих на каждом этапе.
+        if (showUserInterface)
+            ShowRunResult (rules, result);
         return err;
     }
 
@@ -498,6 +510,84 @@ namespace Spec {
     }
 
     // --------------------------------------------------------------------
+    // Окно результата запуска
+    //
+    // Показывается ОДИН раз, в конце работы функции, накопителем сообщений.
+    // Раньше каждая точка отказа открывала своё всплывающее окно, поэтому при
+    // нескольких проблемах пользователь получал их по одной и терял
+    // предыдущие из виду. Теперь сообщения копятся, а окно показывает их все
+    // разом.
+    //
+    // Окно только показывает: повторный запуск из него не запускается.
+    // --------------------------------------------------------------------
+    void ShowRunResult (const SpecRuleDict &rules, SpecRunResult *runResult) {
+        // Без накопителя показывать нечего: все точки отказа пишут сообщения
+        // именно в него.
+        if (runResult == nullptr)
+            return;
+        const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+        // Окно показывается, если есть что показать: либо строки правил, либо
+        // сообщения. Пустой отчёт не должен занимать экран диалогом.
+        if (runResult->ruleNames.IsEmpty () && runResult->messages.IsEmpty ())
+            return;
+
+        RuleSelectData data = {};
+        data.isReadOnly = true;
+        data.titleResID = UndoSumId;
+        // Тире в строке «[ИМЯ] — текст»: символ U+2014. Задан константой,
+        // а не литералом в вызове, потому что иначе он неотличим от
+        // машинописного дефиса при просмотре кода.
+        const GS::UniString DASHES ("\xE2\x80\x94");
+        // Подписи колонок берутся из ресурса, а не пишутся литералами: они
+        // показываются пользователю и должны переводиться.
+        data.columnTitles.Push (RSGetIndString (iseng, SpecCreatedId, ACAPI_GetOwnResModule ()));
+        data.columnTitles.Push (RSGetIndString (iseng, SpecModifiedId, ACAPI_GetOwnResModule ()));
+        data.columnTitles.Push (RSGetIndString (iseng, SpecDeletedId, ACAPI_GetOwnResModule ()));
+
+        GS::UniString footer;
+        for (UIndex i = 0; i < runResult->ruleNames.GetSize (); ++i) {
+            const GS::UniString &name = runResult->ruleNames[i];
+            data.rules.Add (name, true);
+            GS::Array<GS::UniString> values = {};
+            const SpecRuleStats &stats = runResult->ruleStats[i];
+            values.Push (GS::UniString::Printf ("%d", (int)stats.created));
+            values.Push (GS::UniString::Printf ("%d", (int)stats.modified));
+            values.Push (GS::UniString::Printf ("%d", (int)stats.deleted));
+            data.valuesPerRule.Add (name, values);
+            // Ошибка правила показывается под строкой в виде «[ИМЯ] — текст».
+            if (runResult->HasRuleError (i)) {
+                data.color.Add (name, Gfx::Color::Red);
+                for (const SpecMessage &message : runResult->messages) {
+                    if (message.ruleName != name)
+                        continue;
+                    if (!footer.IsEmpty ())
+                        footer.Append (LINEBRAKE);
+                    // Строки склеиваются конкатенацией, а не Printf с
+                    // ToCStr: CStr — некопируемый класс, и передача его в
+                    // функцию с переменным числом аргументов не компилируется
+                    // (C2280/C4839 в UniString.hpp). Шаблон же принимает
+                    // GS::UniString по значению.
+                    footer.Append ("[" + name + "] " + DASHES + " " + message.text);
+                }
+            }
+        }
+        // Ошибки без правила идут вниз без привязки к строке: правила, к
+        // которому их можно было бы отнести, у них нет.
+        for (const SpecMessage &message : runResult->messages) {
+            if (!message.ruleName.IsEmpty ())
+                continue;
+            if (!footer.IsEmpty ())
+                footer.Append (LINEBRAKE);
+            footer.Append (message.text);
+        }
+        data.footerText = footer;
+        data.is_warn = !runResult->messages.IsEmpty ();
+        data.footerIsWarn = !runResult->messages.IsEmpty ();
+        RuleSelectDialog dialog (data);
+        dialog.Invoke ();
+    }
+
+    // --------------------------------------------------------------------
     // Основная функция создания спецификации из массива элементов
     // Назначение: обрабатывает элементы согласно правилам и создаёт/модифицирует элементы спецификации
     // Параметры:
@@ -550,6 +640,15 @@ namespace Spec {
         ParamDictValue paramToWrite = {};         // Словарь с параметрами для записи (с нулевым GUID)
         GS::Array<ElementDict> elements_new = {}; // Массив со словарём создаваемых элементов
         GS::Array<ElementDict> elements_mod = {}; // Массив со словарём модифицируемых элементов
+        // Имена правил, породивших словари выше. Заполняются только для
+        // непустых словарей, поэтому индексы элементов_new / elements_mod
+        // соответствуют индексам здесь, а не индексу правила в обходе.
+        SpecRuleNameList new_rule_names = {};
+        SpecRuleNameList mod_rule_names = {};
+        // Удаления накапливаются в одном массиве запуска, поэтому здесь
+        // запоминается, сколько их было до обработки очередного правила:
+        // по этой границе считается вклад правила в удаления.
+        GS::Array<GS::UniString> delete_rule_names = {};
         GS::Array<API_Guid> elements_delete = {}; // Массив удаляемых элементов
         ParamDictElement paramOut = {};           // Словарь свойств для записи в расставленные элементы
         GS::Array<API_Guid> guidArraysync = {};   // Список элементов, которые требуется синхронизировать (расставленные
@@ -580,13 +679,14 @@ namespace Spec {
             }
             if (!flagfindspec) {
                 msg_rep ("Spec", "Rules not found", APIERR_GENERAL, APINULLGuid);
-                if (showUserInterface) {
-                    GS::UniString SpecRuleNotFoundString =
-                        RSGetIndString (iseng, SpecRuleNotFoundId, ACAPI_GetOwnResModule ());
-                    ACAPI_WriteReport (SpecRuleNotFoundString, true);
-                }
-                if (runResult != nullptr)
+                // Всплывающего окна здесь нет: сообщение копится и показывается
+                // в общем окне результата в конце запуска.
+                if (runResult != nullptr) {
                     runResult->prepareFailureStage = SpecPrepareStage::RulesNotFound;
+                    if (showUserInterface)
+                        runResult->AddGeneralMessage (
+                            RSGetIndString (iseng, SpecRuleNotFoundId, ACAPI_GetOwnResModule ()));
+                }
                 return APIERR_GENERAL;
             }
         }
@@ -624,24 +724,22 @@ namespace Spec {
         }
         if (readContext.read.IsEmpty ()) {
             msg_rep ("Spec", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
-            if (showUserInterface) {
-                GS::UniString SpecRuleReadFoundString =
-                    RSGetIndString (iseng, SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
-                ACAPI_WriteReport (SpecRuleReadFoundString, true);
-            }
-            if (runResult != nullptr)
+            if (runResult != nullptr) {
                 runResult->prepareFailureStage = SpecPrepareStage::ReadParamsNotFound;
+                if (showUserInterface)
+                    runResult->AddGeneralMessage (
+                        RSGetIndString (iseng, SpecRuleReadFoundId, ACAPI_GetOwnResModule ()));
+            }
             return APIERR_GENERAL;
         }
         if (paramToWrite.IsEmpty ()) {
             msg_rep ("Spec", "Parameters for write not found", APIERR_GENERAL, APINULLGuid);
-            if (showUserInterface) {
-                GS::UniString SpecWriteNotFoundString =
-                    RSGetIndString (iseng, SpecWriteNotFoundId, ACAPI_GetOwnResModule ());
-                ACAPI_WriteReport (SpecWriteNotFoundString, true);
-            }
-            if (runResult != nullptr)
+            if (runResult != nullptr) {
                 runResult->prepareFailureStage = SpecPrepareStage::WriteParamsNotFound;
+                if (showUserInterface)
+                    runResult->AddGeneralMessage (
+                        RSGetIndString (iseng, SpecWriteNotFoundId, ACAPI_GetOwnResModule ()));
+            }
             return APIERR_GENERAL;
         }
         subtitle = GS::UniString::Printf ("Reading parameters from %d elements", readContext.read.GetSize ());
@@ -729,13 +827,15 @@ namespace Spec {
                 out.Append (LINEBRAKE);
             }
             msg_rep ("Spec", "Can't find parameters in place element: " + out, err, APINULLGuid);
-            if (showUserInterface) {
-                GS::UniString SpecEmptyListdString =
-                    RSGetIndString (iseng, SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ());
-                ACAPI_WriteReport (SpecEmptyListdString + out, true);
-            }
-            if (runResult != nullptr)
+            // Имена полей копятся в общем словаре запуска, а не по правилам,
+            // поэтому привязать это сообщение к строке нельзя — оно идёт
+            // внизу окна без привязки, как и требует владелец.
+            if (runResult != nullptr) {
                 runResult->prepareFailureStage = SpecPrepareStage::PlaceParamsNotFound;
+                if (showUserInterface)
+                    runResult->AddGeneralMessage (
+                        RSGetIndString (iseng, SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ()) + out);
+            }
             return APIERR_GENERAL;
         }
         // Перед формированием итоговых элементов читаются данные уже размещённых объектов, чтобы их можно было сравнить
@@ -762,14 +862,33 @@ namespace Spec {
 #endif
             if (!rule.IsRunnableForRun ())
                 continue;
+            // Удаления копятся в общем массиве запуска, поэтому вклад правила
+            // отсчитывается по границе ДО его обработки: ровно тот же
+            // приём, что и deleteOffset в GetElementsForRule.
+            const UIndex deleteOffsetBeforeRule = elements_delete.GetSize ();
             ElementDict elements_n = {}; // Словарь создаваемых элементов для правила
             ElementDict elements_m = {};
-            n_elements += GetElementsForRule (
-                rule, readContext, elements_n, elements_m, elements_delete, error_element, showUserInterface);
-            if (!elements_n.IsEmpty ())
+            n_elements += GetElementsForRule (rule,
+                                              readContext,
+                                              elements_n,
+                                              elements_m,
+                                              elements_delete,
+                                              error_element,
+                                              showUserInterface,
+                                              nullptr,
+                                              runResult);
+            // Пустой словарь в массив не попадает, поэтому имя добавляется
+            // только вместе с ним: иначе индексы разошлись бы.
+            if (!elements_n.IsEmpty ()) {
                 elements_new.Push (elements_n);
-            if (!elements_m.IsEmpty ())
+                new_rule_names.Push (rule.rule_name);
+            }
+            if (!elements_m.IsEmpty ()) {
                 elements_mod.Push (elements_m);
+                mod_rule_names.Push (rule.rule_name);
+            }
+            for (UIndex i = deleteOffsetBeforeRule; i < elements_delete.GetSize (); ++i)
+                delete_rule_names.Push (rule.rule_name);
             if (rule.delete_old)
                 has_v2 = true;
         }
@@ -779,62 +898,98 @@ namespace Spec {
             for (const ElementDict &elements : elements_mod)
                 runResult->elementsToModify += elements.GetSize ();
             runResult->elementsToDelete = elements_delete.GetSize ();
+            // Разложение суммарных счётчиков по правилам. Порядок тот же, что
+            // у элементных словарей, поэтому индексы совпадают.
+            //
+            // created здесь ещё ПЛАН, а не факт: строки создаются позже, и
+            // подтверждённый успех ACAPI считается в PlaceElements. Поэтому
+            // плановое число записывается, а расхождение с фактом приходит
+            // сообщением по конкретному правилу.
+            for (UIndex i = 0; i < elements_new.GetSize (); ++i) {
+                const UIndex index = runResult->EnsureRuleStats (new_rule_names[i]);
+                runResult->ruleStats[index].created = elements_new[i].GetSize ();
+            }
+            for (UIndex i = 0; i < elements_mod.GetSize (); ++i) {
+                const UIndex index = runResult->EnsureRuleStats (mod_rule_names[i]);
+                runResult->ruleStats[index].modified = elements_mod[i].GetSize ();
+            }
+            for (const GS::UniString &name : delete_rule_names)
+                runResult->ruleStats[runResult->EnsureRuleStats (name)].deleted += 1;
+            // Каждое правило, дошедшее до расчёта, показывается строкой, даже
+            // если ничего не создало: иначе «правило отработало вхолостую»
+            // выглядело бы как «правила не было».
+            for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL;
+                 ++cIt) {
+#ifdef ServerMainVers_2800
+                const SpecRule &rule = cIt->value;
+#else
+                const SpecRule &rule = *cIt->value;
+#endif
+                if (rule.IsRunnableForRun ())
+                    runResult->EnsureRuleStats (rule.rule_name);
+            }
             if (runResult->includeDetails)
                 runResult->deleted = elements_delete;
         }
         SuspendGroupsGuard suspGuard;
 #ifdef ServerMainVers_2300
         if (!error_element.IsEmpty ()) {
-            if (showUserInterface) {
-                if (error_element.GetSize () < 20) {
+            // Подсветка ошибочных элементов в модели остаётся: это работа с
+            // моделью, а не показ сообщения — иначе пользователь потерял бы
+            // указание, где именно ошибка. Сообщение при этом копится и
+            // показывается в общем окне результата.
+            if (showUserInterface && error_element.GetSize () < 20) {
     #ifdef ServerMainVers_2700
-                    ACAPI_UserInput_ClearElementHighlight ();
+                ACAPI_UserInput_ClearElementHighlight ();
     #else
         #ifdef ServerMainVers_2600
-                    ACAPI_Interface_ClearElementHighlight ();
+                ACAPI_Interface_ClearElementHighlight ();
         #else
-                    ACAPI_Interface (APIIo_HighlightElementsID);
+                ACAPI_Interface (APIIo_HighlightElementsID);
         #endif
     #endif
-                    GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
-                    API_RGBAColor hlColor = {1, 0.0, 0.0, 1};
-                    GS::Array<API_Neig> error_elements = {};
-                    for (const auto &cIt : error_element) {
+                GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
+                API_RGBAColor hlColor = {1, 0.0, 0.0, 1};
+                GS::Array<API_Neig> error_elements = {};
+                for (const auto &cIt : error_element) {
     #ifdef ServerMainVers_2800
-                        API_Guid el = cIt.key;
+                    API_Guid el = cIt.key;
     #else
-                        API_Guid el = *cIt.key;
+                    API_Guid el = *cIt.key;
     #endif
-                        hlElems.Add (el, hlColor);
-                        error_elements.PushNew (el);
-                    }
+                    hlElems.Add (el, hlColor);
+                    error_elements.PushNew (el);
+                }
     #ifdef ServerMainVers_2700
-                    ACAPI_UserInput_SetElementHighlight (hlElems);
+                ACAPI_UserInput_SetElementHighlight (hlElems);
     #else
         #ifdef ServerMainVers_2600
-                    ACAPI_Interface_SetElementHighlight (hlElems);
+                ACAPI_Interface_SetElementHighlight (hlElems);
         #else
-                    ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+                ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
         #endif
     #endif
     #ifdef ServerMainVers_2700
-                    err = ACAPI_Selection_Select (error_elements, true);
-                    if (err == NoError)
-                        ACAPI_View_ZoomToSelected ();
+                err = ACAPI_Selection_Select (error_elements, true);
+                if (err == NoError)
+                    ACAPI_View_ZoomToSelected ();
     #else
-                    err = ACAPI_Element_Select (error_elements, true);
-                    if (err == NoError)
-                        ACAPI_Automate (APIDo_ZoomToSelectedID);
+                err = ACAPI_Element_Select (error_elements, true);
+                if (err == NoError)
+                    ACAPI_Automate (APIDo_ZoomToSelectedID);
     #endif
-                } else {
-                    msg_rep ("Spec",
-                             GS::UniString::Printf ("Too many element for highlight - %d", error_element.GetSize ()),
-                             err,
-                             APINULLGuid);
-                }
             }
-            if (runResult != nullptr)
+            msg_rep ("Spec",
+                     GS::UniString::Printf ("Too many element for highlight - %d", error_element.GetSize ()),
+                     err,
+                     APINULLGuid);
+            if (runResult != nullptr) {
                 runResult->prepareFailureStage = SpecPrepareStage::TooManyErrorElements;
+                // Ошибка не привязана к правилу: элементы с ошибкой собраны в
+                // общий словарь запуска, а не по правилам.
+                runResult->AddGeneralMessage (
+                    GS::UniString::Printf ("Too many elements with error - %d", (int)error_element.GetSize ()));
+            }
             return APIERR_GENERAL;
         }
 #endif
@@ -921,14 +1076,15 @@ namespace Spec {
         }
         if (!has_action && !rule_produced_rows) {
             msg_rep ("Spec", "Elements list empty", NoError, APINULLGuid);
-            if (showUserInterface) {
-                GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecEmptyListdId, ACAPI_GetOwnResModule ());
-                if (has_v2)
-                    SpecEmptyListdString += LINEBRAKE + RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
-                ACAPI_WriteReport (SpecEmptyListdString, true);
-            }
-            if (runResult != nullptr)
+            if (runResult != nullptr) {
                 runResult->prepareFailureStage = SpecPrepareStage::EmptyElementsList;
+                if (showUserInterface) {
+                    GS::UniString emptyList = RSGetIndString (iseng, SpecEmptyListdId, ACAPI_GetOwnResModule ());
+                    if (has_v2)
+                        emptyList += LINEBRAKE + RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
+                    runResult->AddGeneralMessage (emptyList);
+                }
+            }
             return APIERR_GENERAL;
         }
 
@@ -965,6 +1121,10 @@ namespace Spec {
         // ------------------------------------------------------------------
         const bool willDelete = !elements_delete.IsEmpty ();
         const bool mayWriteProperties = willCreate || willDelete || !existingCandidates.IsEmpty ();
+        // Подтверждённые создания по индексам элементов elements_new. Заполняется
+        // исполнителем; без него остались бы плановые числа, а результат должен
+        // показывать фактический.
+        GS::Array<UInt32> createdByRuleIndex = {};
         if (mayWriteProperties) {
             bool prepareFailed = false;
             UInt32 createdCount = 0;
@@ -985,7 +1145,7 @@ namespace Spec {
                 // Шаг 2: создание новых строк.
                 if (willCreate) {
                     const UInt32 previousCount = paramOut.GetSize ();
-                    PlaceElements (elements_new, paramToWrite, paramOut, startpos, runResult);
+                    PlaceElements (elements_new, paramToWrite, paramOut, startpos, runResult, &createdByRuleIndex);
                     createdCount = paramOut.GetSize () - previousCount;
                     if (runResult != nullptr)
                         runResult->elementsToCreate = createdCount;
@@ -1000,41 +1160,43 @@ namespace Spec {
                 if (runResult != nullptr) {
                     runResult->hasRecoveryError = true;
                     runResult->prepareFailureStage = SpecPrepareStage::ExistingElementsLocked;
+                    runResult->AddGeneralMessage ("Existing spec elements are locked and cannot be unlocked");
                 }
                 msg_rep ("Spec", "Existing spec elements are locked and cannot be unlocked", err, APINULLGuid);
                 return APIERR_GENERAL;
             }
             if (willCreate && createdCount == 0 && elements_mod.IsEmpty () && elements_delete.IsEmpty ()) {
                 msg_rep ("Spec", "Elements not created", APIERR_GENERAL, APINULLGuid);
-                if (runResult != nullptr)
+                if (runResult != nullptr) {
                     runResult->prepareFailureStage = SpecPrepareStage::NothingCreated;
+                    runResult->AddGeneralMessage ("Elements not created");
+                }
                 return APIERR_GENERAL;
             }
         }
         start = clock ();
-        if (has_v2 && showUserInterface) {
-            GS::UniString msg;
-            if (!elements_delete.IsEmpty ()) {
-                msg += RSGetIndString (iseng, 70, ACAPI_GetOwnResModule ()) +
-                       GS::UniString::Printf (" %d \n", elements_delete.GetSize ());
-            }
-            if (!elements_new.IsEmpty ()) {
-                UInt32 n_elem = 0;
-                for (UInt32 i = 0; i < elements_new.GetSize (); i++) {
-                    n_elem += elements_new[i].GetSize ();
+        // Замена планового created подтверждённым, по индексам словарей.
+        //
+        // План заполнялся по словарям строк, факт — успехом вызова создания.
+        // Расхождение означает, что элементы не созданы: правило получает
+        // сообщение, и его строка в окне становится красной. Само число created
+        // при этом заменяется подтверждённым, чтобы окно не показывало план
+        // как результат.
+        //
+        // Индексы элементов elements_new и имён new_rule_names совпадают,
+        // поэтому сопоставление не требует поиска по имени.
+        if (runResult != nullptr) {
+            for (UIndex i = 0; i < elements_new.GetSize (); ++i) {
+                const UInt32 planned = elements_new[i].GetSize ();
+                const UInt32 actual = (i < createdByRuleIndex.GetSize ()) ? createdByRuleIndex[i] : 0;
+                const UIndex index = runResult->EnsureRuleStats (new_rule_names[i]);
+                runResult->ruleStats[index].created = actual;
+                if (planned > actual) {
+                    runResult->AddRuleMessage (
+                        new_rule_names[i],
+                        GS::UniString::Printf ("Created %d of %d elements", (int)actual, (int)planned));
                 }
-                msg += RSGetIndString (iseng, 68, ACAPI_GetOwnResModule ()) + GS::UniString::Printf (" %d \n", n_elem);
             }
-            if (!elements_mod.IsEmpty ()) {
-                UInt32 n_elem = 0;
-                for (UInt32 i = 0; i < elements_mod.GetSize (); i++) {
-                    n_elem += elements_mod[i].GetSize ();
-                }
-                msg += RSGetIndString (iseng, 69, ACAPI_GetOwnResModule ()) + GS::UniString::Printf (" %d \n", n_elem);
-            }
-            if (msg.IsEmpty ())
-                msg = RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
-            ACAPI_WriteReport (msg, true);
         }
 
         for (ParamDictElement::PairIterator cIt = paramOut.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -1708,7 +1870,8 @@ namespace Spec {
                         UnicGuid &error_element,
                         bool showUserInterface,
                         GS::HashTable<GS::UniString, GS::UniString> &out_param,
-                        SpecChangePlan *plan) {
+                        SpecChangePlan *plan,
+                        SpecRunResult *runResult) {
         ParamDict not_found_paramname = {};
         ParamDict not_found_unic = {};
         Int32 n_elements = 0;
@@ -1858,13 +2021,7 @@ namespace Spec {
             }
         }
         if (rule.stop_on_error) {
-            const Int32 iseng = ID_ADDON_STRINGS + isEng ();
             if (!not_found_paramname.IsEmpty ()) {
-                if (showUserInterface) {
-                    GS::UniString SpecNotFoundParametersString =
-                        RSGetIndString (iseng, SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
-                    ACAPI_WriteReport (SpecNotFoundParametersString, true);
-                }
                 GS::UniString out = "Not found param:";
                 for (auto &cIt : not_found_paramname) {
 #ifdef ServerMainVers_2800
@@ -1881,13 +2038,13 @@ namespace Spec {
                 out.ReplaceAll (STRINGPROC, EMPTYSTRING);
                 out.ReplaceAll ("nosyncname", EMPTYSTRING);
                 msg_rep ("Spec", out, NoError, APINULLGuid);
+                // Эти имена относятся к ОДНОМУ правилу — оно и есть источник
+                // полей, поэтому сообщение привязывается к его строке, а не
+                // идёт вниз без привязки.
+                if (runResult != nullptr && showUserInterface)
+                    runResult->AddRuleMessage (rule.rule_name, out);
             }
             if (!not_found_unic.IsEmpty ()) {
-                if (showUserInterface) {
-                    GS::UniString SpecNotFoundParametersString =
-                        RSGetIndString (iseng, SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
-                    ACAPI_WriteReport (SpecNotFoundParametersString, true);
-                }
                 GS::UniString out = "Not found unic:";
                 for (auto &cIt : not_found_unic) {
 #ifdef ServerMainVers_2800
@@ -1904,6 +2061,8 @@ namespace Spec {
                 out.ReplaceAll (STRINGPROC, EMPTYSTRING);
                 out.ReplaceAll ("nosyncname", EMPTYSTRING);
                 msg_rep ("Spec", out, NoError, APINULLGuid);
+                if (runResult != nullptr && showUserInterface)
+                    runResult->AddRuleMessage (rule.rule_name, out);
             }
             if (!not_found_paramname.IsEmpty () || !not_found_unic.IsEmpty ()) {
                 n_elements = 0;
@@ -1945,7 +2104,8 @@ namespace Spec {
                               GS::Array<API_Guid> &elements_delete,
                               UnicGuid &error_element,
                               bool showUserInterface,
-                              SpecChangePlan *plan) {
+                              SpecChangePlan *plan,
+                              SpecRunResult *runResult) {
         Int32 n_elements = 0;
         // out_param — словарь рассчитанных строк: он
         // строится в расчётной части и читается в сверке существующих строк.
@@ -1959,7 +2119,8 @@ namespace Spec {
         // Передаётся и когда сверка не пойдёт (delete_old = false): неполное
         // чтение делает расчёт недостоверным независимо от того, удаляются ли
         // существующие строки. Здесь фиксируется полнота без решения о применении.
-        n_elements = PlanRuleRows (rule, context, elements, error_element, showUserInterface, out_param, plan);
+        n_elements =
+            PlanRuleRows (rule, context, elements, error_element, showUserInterface, out_param, plan, runResult);
         if (!rule.delete_old)
             return n_elements;
         // План наблюдает решение сверки, но не становится вторым источником

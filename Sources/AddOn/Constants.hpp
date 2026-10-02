@@ -127,23 +127,30 @@ static const Int32 Annul_StringID = 31; // ID строки "Аннул."
 static const Int32 RVI_StringID = 33;   // ID строки "РВИ"
 
 // --- ID сообщений/статусов обработки подэлементов и спецификаций ---
-static const Int32 SubElementHotFoundId = 34;           // Подэлемент найден (горячая точка)
-static const Int32 SubElementHotFoundId1 = 35;          // Вариант 1 найденного подэлемента
-static const Int32 SubElementHotFoundId2 = 36;          // Вариант 2 найденного подэлемента
-static const Int32 SubElementOtherPlanId = 37;          // Подэлемент расположен на другом плане
-static const Int32 SubElementHiddenId = 38;             // Подэлемент скрыт
-static const Int32 SubElementTotalId = 39;              // Итоговое количество подэлементов
-static const Int32 SubElementNoSelectId = 40;           // Подэлемент не выбран
-static const Int32 SubElementHalfId = 41;               // Подэлемент учтен частично
-static const Int32 SpecRuleNotFoundId = 42;             // Правило спецификации не найдено
-static const Int32 SpecRuleReadFoundId = 43;            // Правило чтение спецификации найдено
-static const Int32 SpecWriteNotFoundId = 44;            // Ошибка записи спецификации: не найдено
-static const Int32 SpecEmptyListdId = 45;               // Список спецификации пуст
-static const Int32 SpecNotFoundParametersId = 46;       // Не найдены параметры спецификации
-static const Int32 RoombookId = 47;                     // ID модуля экспликации помещений (Roombook)
-static const Int32 SubElementNotExsistId = 48;          // Подэлемент не существует
-static const Int32 SpecParamPlaceNotFoundId = 65;       // Не найдено место размещения параметра спецификации
-static const Int32 SpecFlagOff = 66;                    // Флаг спецификации выключен
+static const Int32 SubElementHotFoundId = 34;     // Подэлемент найден (горячая точка)
+static const Int32 SubElementHotFoundId1 = 35;    // Вариант 1 найденного подэлемента
+static const Int32 SubElementHotFoundId2 = 36;    // Вариант 2 найденного подэлемента
+static const Int32 SubElementOtherPlanId = 37;    // Подэлемент расположен на другом плане
+static const Int32 SubElementHiddenId = 38;       // Подэлемент скрыт
+static const Int32 SubElementTotalId = 39;        // Итоговое количество подэлементов
+static const Int32 SubElementNoSelectId = 40;     // Подэлемент не выбран
+static const Int32 SubElementHalfId = 41;         // Подэлемент учтен частично
+static const Int32 SpecRuleNotFoundId = 42;       // Правило спецификации не найдено
+static const Int32 SpecRuleReadFoundId = 43;      // Правило чтение спецификации найдено
+static const Int32 SpecWriteNotFoundId = 44;      // Ошибка записи спецификации: не найдено
+static const Int32 SpecEmptyListdId = 45;         // Список спецификации пуст
+static const Int32 SpecNotFoundParametersId = 46; // Не найдены параметры спецификации
+static const Int32 RoombookId = 47;               // ID модуля экспликации помещений (Roombook)
+static const Int32 SubElementNotExsistId = 48;    // Подэлемент не существует
+static const Int32 SpecParamPlaceNotFoundId = 65; // Не найдено место размещения параметра спецификации
+static const Int32 SpecFlagOff = 66;              // Флаг спецификации выключен
+// Заголовки колонок окна результата запуска спецификации. И начинаются не с
+// 87: 87 зарезервирован под кнопку «Показать в 3Д» окна SyncShowSubelement,
+// поэтому spec занял 90-92. Пропуск идентификаторов обязателен — иначе
+// перевод строки едет на чужую кнопку.
+static const Int32 SpecCreatedId = 90;                  // Создано элементов
+static const Int32 SpecModifiedId = 91;                 // Изменено элементов
+static const Int32 SpecDeletedId = 92;                  // Удалено элементов
 static const Int32 SomeStuffSchedulesNameID = 81;       // Имя раздела ведомостей SomeStuff в Navigator
 static const Int32 SomeStuffScheduleDefaultNameID = 82; // Имя нового каталога SomeStuff в Navigator
 static const Int32 OtherDbCloseId = 83;                 // Закрыть диалог перехода в другую базу данных

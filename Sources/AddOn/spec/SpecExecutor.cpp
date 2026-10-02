@@ -13,10 +13,19 @@ namespace Spec {
                              ParamDictValue &paramToWrite,
                              ParamDictElement &paramOut,
                              Point2D &startpos,
-                             SpecRunResult *runResult) {
+                             SpecRunResult *runResult,
+                             GS::Array<GS::UInt32> *createdByRuleIndex) {
         GSErrCode err = NoError;
         // Дамп собирается только по запросу (includeParameters в JSON-команде).
         const bool collectDetails = runResult != nullptr && runResult->includeDetails;
+        // Создания, подтверждённые успешным ACAPI_Element_Create, ПО СЛОВАРЯМ.
+        // План считается ДО размещения и ошибается: элемент может не создаться.
+        // Показывать план как результат нельзя, поэтому по каждому словарю
+        // ведётся свой счётчик успеха, и вызывающий сопоставляет их с планом
+        // того же индекса. Индексы элементов и словарей совпадают по построению.
+        GS::Array<GS::UInt32> confirmedCreated;
+        if (createdByRuleIndex != nullptr)
+            confirmedCreated.SetCapacity (elementstocreate.GetSize ());
         API_Coord pos = {startpos.x, startpos.y};
         GS::Array<API_Elem_Head> elemsheader = {};
         double dx = 0;
@@ -38,7 +47,10 @@ namespace Spec {
             int n_elem = 0;
             API_Element element = {};
             GS::Array<API_Guid> group;
+            UIndex dictIndex = 0;
             for (auto &groups : elementstocreate) {
+                if (createdByRuleIndex != nullptr)
+                    confirmedCreated.Push (0);
                 if (group.IsEmpty ()) {
                     group.SetCapacity (groups.GetSize ());
                 } else {
@@ -158,6 +170,8 @@ namespace Spec {
                         }
                     }
                     if (err == NoError) {
+                        if (createdByRuleIndex != nullptr && dictIndex < confirmedCreated.GetSize ())
+                            confirmedCreated[dictIndex] += 1;
                         elemsheader.Push (element.header);
                         n_elem += 1;
                         if (flag_find_row) {
@@ -182,6 +196,8 @@ namespace Spec {
                     }
                     ACAPI_DisposeElemMemoHdls (&memo);
                 }
+                // Счётчик этого словаря закрыт: следующий проход начнёт свой.
+                dictIndex += 1;
                 pos.y += 2 * dy;
                 if (group.GetSize () > 1) {
                     API_Guid groupGuid = APINULLGuid;
@@ -243,6 +259,12 @@ namespace Spec {
         // уже случились после того, как элемент создан, и откатом не являются.
         if (runResult != nullptr && runResult->hasPrimaryError)
             return APIERR_GENERAL;
+        // Подтверждённое число созданий отдаётся вызывающему: план счётчика он
+        // знает сам, а факт не знает. Присваивается перед возвратом в любом
+        // случае — иначе при отказе создания вызывающий получил бы прежний
+        // план, а это ровно то значение, которое показывать нельзя.
+        if (createdByRuleIndex != nullptr)
+            *createdByRuleIndex = confirmedCreated;
         return NoError;
     }
 

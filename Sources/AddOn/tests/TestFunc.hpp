@@ -76,6 +76,7 @@ namespace TestFunc {
     void TestSpecBuildRowParam ();
     void TestSpecResponseContract ();
     void TestSpecRunCounters ();
+    void TestSpecRunReport ();
     void TestSpecScenarioMatrix ();
     void TestSpecEngineEquivalence ();
     void TestSpecValueEdges ();

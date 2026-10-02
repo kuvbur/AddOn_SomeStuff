@@ -144,6 +144,9 @@
 /* [  84] */	"Показать"
 /* [  85] */	"Имя БД"
 /* [  86] */	"Элементов"
+/* [  90] */	"Создано"
+/* [  91] */	"Изменено"
+/* [  92] */	"Удалено"
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -282,6 +285,9 @@
 /* [  84] */	"Show"
 /* [  85] */	"Database"
 /* [  86] */	"Elements"
+/* [  90] */	"Created"
+/* [  91] */	"Modified"
+/* [  92] */	"Deleted"
 }
 
 'GDLG'  32590  Modal | grow         0    0  500  300  "RuleSelect Dialog" {

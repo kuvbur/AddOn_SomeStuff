@@ -26,10 +26,22 @@ RuleSelectDialog::RuleSelectDialog (RuleSelectData &rulelist)
     DGSetItemText (ID_ADDON_RULE_DLG, CloseButtonId, text);
     const DG::Icon &icon = DG::Icon (SysResModule, rulelist.is_warn ? DG_WARNING_ICON : DG_INFORMATION_ICON);
     DGSetDialogIcon (ID_ADDON_RULE_DLG, icon);
-    if (rulelist.is_warn) {
+    // Непустой columnTitles переключает список на колонки вызывающего.
+    // Присваивается здесь, до InitListBox, потому что от него зависит и число
+    // колонок, и ширина колонки, и источник значений.
+    useQtyColumn = rulelist.columnTitles.IsEmpty ();
+    // Текст под списком задаёт вызывающий. Он важнее заголовка из ресурса
+    // (строка 80 — общее предупреждение), поэтому при заданном тексте
+    // заголовок не показывается: два красных сообщения подряд сбивают с толку.
+    const bool hasFooter = !rulelist.footerText.IsEmpty ();
+    if (rulelist.is_warn && !hasFooter) {
         text = RSGetIndString (iseng, 80, ACAPI_GetOwnResModule ());
         TextBox.SetText (text);
         TextBox.SetTextColor (Gfx::Color::Red);
+    } else if (hasFooter) {
+        TextBox.SetText (rulelist.footerText);
+        if (rulelist.footerIsWarn)
+            TextBox.SetTextColor (Gfx::Color::Red);
     } else {
         TextBox.Hide ();
         short lx = ListBox.GetPosition ().GetY () - TextBox.GetHeight () + 5;
@@ -56,46 +68,75 @@ RuleSelectDialog::~RuleSelectDialog () {
 // -----------------------------------------------------------------------------
 void RuleSelectDialog::SetSize () {
     short width = ListBox.GetItemWidth ();
-    short NameTab_w = width - ChekboxTab_w - QtyTab_w;
-    if (rulelist.is_warn)
+    // Ширина колонки флажка в режиме показа нулевая: флажков нет, и место под
+    // них иначе съедало бы ширину колонок значений.
+    const short leadWidth = rulelist.isReadOnly ? 0 : ChekboxTab_w;
+    const short valueCount = useQtyColumn ? 1 : static_cast<short> (rulelist.columnTitles.GetSize ());
+    // Ширина колонки значений. У колонки из qty_elements она своя (QtyTab_w),
+    // и у колонок columnTitles тоже своя (ValueTab_w): брать одну и ту же
+    // нельзя, заголовок и поле разошлись бы по ширине, и это было бы видно
+    // ещё и в обычном диалоге выбора правил.
+    const short valueWidth = useQtyColumn ? QtyTab_w : ValueTab_w;
+    const short fixedWidth = leadWidth + static_cast<short> (valueCount * valueWidth);
+    short NameTab_w = width - fixedWidth;
+    if (rulelist.is_warn || !rulelist.footerText.IsEmpty ())
         TextBox.SetWidth (width);
     ListBox.SetHeaderItemSize (NameTab, NameTab_w);
 
     short pos = 0;
     ListBox.SetTabFieldProperties (
-        ChekboxTab, pos, pos + ChekboxTab_w, DG::ListBox::Center, DG::ListBox::NoTruncate, false, true);
-    pos += ChekboxTab_w;
+        ChekboxTab, pos, pos + leadWidth, DG::ListBox::Center, DG::ListBox::NoTruncate, false, true);
+    pos += leadWidth;
     ListBox.SetTabFieldProperties (
         NameTab, pos, pos + NameTab_w, DG::ListBox::Left, DG::ListBox::NoTruncate, false, true);
     pos += NameTab_w;
-    ListBox.SetTabFieldProperties (
-        QtyTab, pos, pos + QtyTab_w, DG::ListBox::Center, DG::ListBox::NoTruncate, false, true);
+    // Колонки значений идут подряд; их число задаёт вызывающий.
+    for (short i = 0; i < valueCount; ++i) {
+        const short tab = useQtyColumn ? QtyTab : static_cast<short> (NameTab + 1 + i);
+        ListBox.SetTabFieldProperties (
+            tab, pos, pos + valueWidth, DG::ListBox::Center, DG::ListBox::NoTruncate, false, true);
+        pos += valueWidth;
+    }
 }
 
 // -----------------------------------------------------------------------------
 // Инициализация таблицы правил и заполнение списка значениями из RuleSelectData.
 // -----------------------------------------------------------------------------
 void RuleSelectDialog::InitListBox () {
-    ListBox.SetTabFieldCount (itemCount);
-    ListBox.SetHeaderItemCount (itemCount);
+    // Число колонок: флажок + имя + колонки значений. В режиме показа флажок
+    // не занимает места, но индексы табов от него не сдвигаются — иначе
+    // пришлось бы пересчитывать NameTab в двух местах.
+    const short valueCount = useQtyColumn ? 1 : static_cast<short> (rulelist.columnTitles.GetSize ());
+    const short totalCount = static_cast<short> (itemCount - 1 + valueCount);
+    ListBox.SetTabFieldCount (totalCount);
+    ListBox.SetHeaderItemCount (totalCount);
     ListBox.SetHeaderSynchronState (true);
     ListBox.SetHeaderPushableButtons (false);
 
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString text = RSGetIndString (iseng, 78, ACAPI_GetOwnResModule ());
     ListBox.SetHeaderItemText (NameTab, text);
-    text = RSGetIndString (iseng, 79, ACAPI_GetOwnResModule ());
-    ListBox.SetHeaderItemText (QtyTab, text);
+    if (useQtyColumn) {
+        text = RSGetIndString (iseng, 79, ACAPI_GetOwnResModule ());
+        ListBox.SetHeaderItemText (QtyTab, text);
+    } else {
+        for (short i = 0; i < valueCount; ++i)
+            ListBox.SetHeaderItemText (static_cast<short> (NameTab + 1 + i), rulelist.columnTitles[i]);
+    }
 
     ListBox.SetHeaderItemText (ChekboxTab, "");
-    ListBox.SetHeaderItemSize (ChekboxTab, ChekboxTab_w);
+    ListBox.SetHeaderItemSize (ChekboxTab, rulelist.isReadOnly ? 0 : ChekboxTab_w);
     ListBox.SetHeaderItemSizeableFlag (ChekboxTab, false);
 
-    ListBox.SetHeaderItemSize (QtyTab, QtyTab_w);
-    ListBox.SetHeaderItemSizeableFlag (QtyTab, false);
+    const short valueWidth = useQtyColumn ? QtyTab_w : ValueTab_w;
+    for (short i = 0; i < valueCount; ++i) {
+        const short tab = useQtyColumn ? QtyTab : static_cast<short> (NameTab + 1 + i);
+        ListBox.SetHeaderItemSize (tab, valueWidth);
+        ListBox.SetHeaderItemSizeableFlag (tab, false);
+        ListBox.SetHeaderItemStyle (tab, DG::ListBox::Center, DG::ListBox::NoTruncate);
+    }
 
     ListBox.SetHeaderItemStyle (ChekboxTab, DG::ListBox::Center, DG::ListBox::NoTruncate);
-    ListBox.SetHeaderItemStyle (QtyTab, DG::ListBox::Center, DG::ListBox::NoTruncate);
     ListBox.SetHeaderItemStyle (NameTab, DG::ListBox::Center, DG::ListBox::NoTruncate);
 
     ListBox.SetHeaderItemMinSize (NameTab, 200);
@@ -114,18 +155,29 @@ void RuleSelectDialog::InitListBox () {
         const GS::UniString &rname = *rulename.key;
 #endif
         ListBox.AppendItem ();
-        if (rulelist.rules[rname]) {
-            ListBox.SetTabItemIcon (DG::ListBox::BottomItem, ChekboxTab, icon);
-        } else {
-            ListBox.SetTabItemIcon (DG::ListBox::BottomItem, ChekboxTab, unicon);
+        // В режиме показа иконки нет: строка — отчёт, её нельзя переключить.
+        if (!rulelist.isReadOnly) {
+            if (rulelist.rules[rname]) {
+                ListBox.SetTabItemIcon (DG::ListBox::BottomItem, ChekboxTab, icon);
+            } else {
+                ListBox.SetTabItemIcon (DG::ListBox::BottomItem, ChekboxTab, unicon);
+            }
         }
         ListBox.SetTabItemText (DG::ListBox::BottomItem, NameTab, rname);
-        if (!rulelist.qty_elements.ContainsKey (rname))
-            continue;
-        ListBox.SetTabItemText (DG::ListBox::BottomItem, QtyTab, rulelist.qty_elements.Get (rname));
+        if (useQtyColumn) {
+            if (rulelist.qty_elements.ContainsKey (rname))
+                ListBox.SetTabItemText (DG::ListBox::BottomItem, QtyTab, rulelist.qty_elements.Get (rname));
+        } else if (rulelist.valuesPerRule.ContainsKey (rname)) {
+            const GS::Array<GS::UniString> &values = rulelist.valuesPerRule.Get (rname);
+            for (short i = 0; i < valueCount && i < static_cast<short> (values.GetSize ()); ++i)
+                ListBox.SetTabItemText (DG::ListBox::BottomItem, static_cast<short> (NameTab + 1 + i), values[i]);
+        }
         if (rulelist.color.ContainsKey (rname)) {
-            ListBox.SetTabItemColor (DG::ListBox::BottomItem, NameTab, rulelist.color.Get (rname));
-            ListBox.SetTabItemColor (DG::ListBox::BottomItem, QtyTab, rulelist.color.Get (rname));
+            // Окрашиваются все колонки строки, иначе ошибка правила была бы
+            // видна не везде. Граница ВКЛЮЧИТЕЛЬНАЯ: totalCount — это ЧИСЛО
+            // колонок, а последний индекс на единицу меньше.
+            for (short tab = QtyTab; tab <= totalCount; ++tab)
+                ListBox.SetTabItemColor (DG::ListBox::BottomItem, tab, rulelist.color.Get (rname));
         } else {
             if (rulelist.is_warn)
                 ListBox.SetTabItemColor (DG::ListBox::BottomItem, QtyTab, Gfx::Color::Red);
@@ -137,6 +189,9 @@ void RuleSelectDialog::InitListBox () {
 // Переключение иконки чекбокса и обновление состояния правила.
 // -----------------------------------------------------------------------------
 void RuleSelectDialog::SetIcon (short dwListItem) {
+    // В режиме показа переключать нечего: иконки нет.
+    if (rulelist.isReadOnly)
+        return;
     DG::Icon myIcon = ListBox.GetTabItemIcon (dwListItem, ChekboxTab);
     bool bWasChecked = (myIcon.GetResourceId () == DG::ListBox::CheckedIcon);
     if (!bWasChecked) {
@@ -158,6 +213,10 @@ void RuleSelectDialog::SetIcon (short dwListItem) {
 // переключается состояние правила.
 // -----------------------------------------------------------------------------
 void RuleSelectDialog::ListBoxClicked (const DG::ListBoxClickEvent &ev) {
+    // В режиме только показа переключение не работает: окно ничего не меняет,
+    // поэтому и флажков у него нет.
+    if (rulelist.isReadOnly)
+        return;
     short pos = ev.GetMouseOffset ().GetX ();
     short begCheckBox = ListBox.GetTabFieldBeginPosition (ChekboxTab);
     short endCheckBox = ListBox.GetTabFieldEndPosition (ChekboxTab);
