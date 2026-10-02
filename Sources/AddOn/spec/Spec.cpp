@@ -1241,8 +1241,8 @@ namespace Spec {
             // Флаг добавляется ДО проверки is_Valid: элементы невалидной группы
             // всё равно отбрасываются по значению флага, поэтому читать его надо.
             // Пустое имя флага попадает в набор, но BuildReadParamDict его
-            // пропускает (AddValueToParamDictValue игнорирует пустое имя) -
-            // поведение прежнее.
+            // пропускает: AddValueToParamDictValue игнорирует пустое имя, и
+            // читать нечего.
             if (!dependencies.read.ContainsKey (group.flag_paramrawname))
                 dependencies.read.Add (group.flag_paramrawname, true);
             if (!group.is_Valid) {
@@ -1448,7 +1448,7 @@ namespace Spec {
     }
 
     // Отбирает ранее созданные элементы правила. ПУСТОЙ selected_elements
-    // означает «взять все найденные» — прежнее поведение, менять его нельзя:
+    // означает «взять все найденные»: сузить этот случай до выбранных нельзя,
     // это изменило бы объём удаляемых строк.
     void SelectExistingElements (SpecRule &rule, const GS::Array<API_Guid> &found, const UnicGuid &selected_elements) {
         if (selected_elements.IsEmpty ()) {
