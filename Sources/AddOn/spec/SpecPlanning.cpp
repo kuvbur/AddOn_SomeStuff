@@ -222,7 +222,8 @@ namespace Spec {
                                       const SpecRule &rule,
                                       UInt32 schemaOutSlots,
                                       UInt32 schemaSumSlots,
-                                      GS::HashTable<GS::UniString, GS::UniString> &outParam) {
+                                      GS::HashTable<GS::UniString, GS::UniString> &outParam,
+                                      GS::HashSet<GS::UniString> *rejectedKeys) {
         if (rows.ContainsKey (contribution.key)) {
             Element &exsists_element = rows.Get (contribution.key);
             // Порядок 2: источник дописывается ДО суммирования.
@@ -239,8 +240,16 @@ namespace Spec {
         Element row = {};
         // Схема строится до проверки соответствия; ключ уже записан в outParam.
         BuildOutputSlots (row, rule, contribution);
-        if (!OutSlotsMatchSchema (row, schemaOutSlots, schemaSumSlots))
+        if (!OutSlotsMatchSchema (row, schemaOutSlots, schemaSumSlots)) {
+            // Отброшенная строка пометим ПО КЛЮЧУ СТРОКИ, а не по ключу выхода:
+            // по ключу выхода отметился бы и отказ всего правила (все строки
+            // отброшены разом), а сверке нужен именно факт «этой строки нет по
+            // вине расчёта». Ключ строки уникален для elements, поэтому отметка
+            // не смешивается с реально созданными строками.
+            if (rejectedKeys)
+                rejectedKeys->Add (contribution.key);
             return RowAddition::SchemaMismatch;
+        }
         // Значения первого источника берутся из уже собранной схемы.
         row.subguid_paramrawname = rule.runState.destinationParamGuidName;
         row.subguid_rulevalue = rule.subguid_rulevalue;
@@ -261,6 +270,7 @@ namespace Spec {
                                 const SpecValueReader &reader,
                                 const FormatString &fstr,
                                 const GS::HashTable<GS::UniString, GS::UniString> &outParam,
+                                const GS::HashSet<GS::UniString> *rejectedKeys,
                                 ElementDict &elements,
                                 ElementDict &elementsMod,
                                 GS::Array<API_Guid> &elementsDelete,
@@ -301,10 +311,19 @@ namespace Spec {
             }
             GS::UniString key = outParam.Get (key_out);
             if (!elements.ContainsKey (key)) {
-                report ("!elements.ContainsKey (key) " + key_out);
+                // Строка по key_out есть в словаре выходов, но её нет в словаре
+                // строк. Две причины, и их надо различать: строку могла забрать
+                // другая пара раньше по этому же выходу, а могла отбросить
+                // расчёт (проверка схемы либо отказ правила целиком). Порядок
+                // сверки не меняется — меняется только НАЗВАНИЕ причины.
+                const bool rejectedByCalc = rejectedKeys != nullptr && rejectedKeys->Contains (key);
+                report (rejectedByCalc ? "!elements.ContainsKey (key), row rejected by calc " + key_out
+                                       : "!elements.ContainsKey (key) " + key_out);
                 elementsDelete.Push (elemguid);
                 if (plan)
-                    plan->removals.Push ({elemguid, SpecChangePlan::DeleteReason::RowAlreadyClaimed});
+                    plan->removals.Push ({elemguid,
+                                          rejectedByCalc ? SpecChangePlan::DeleteReason::RowRejectedByCalc
+                                                         : SpecChangePlan::DeleteReason::RowAlreadyClaimed});
                 guids.Add (elemguid, false);
                 continue;
             }

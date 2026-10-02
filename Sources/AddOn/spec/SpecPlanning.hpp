@@ -3,6 +3,7 @@
 #if !defined(SPECPLANNING_HPP)
     #define SPECPLANNING_HPP
 
+    #include "HashSet.hpp"
     #include "Spec.hpp"
 
 // Вклад одного источника хранит прочитанные значения и ошибки; итоговая строка
@@ -110,7 +111,13 @@ namespace Spec {
     // --------------------------------------------------------------------
     // Сверяет существующие объекты со строками в порядке rule.runState.exsist_elements.
     // Ключ выхода собирается из выходных полей. Удаление проверяется в порядке:
-    // нет прочитанных полей -> нет ключа выхода -> строка уже израсходована.
+    // нет прочитанных полей -> нет ключа выхода -> строка отброшена расчётом ->
+    // строка уже израсходована.
+    // rejectedKeys — ключи СТРОК, которых нет в elements по вине расчёта:
+    // проверка схемы отбросила строку либо правило остановилось целиком. Связь
+    // keyOut -> key при этом остаётся в outParam (порядок операций), поэтому
+    // без этого множества ветка «строка уже израсходована» называла бы причину
+    // неверно. Необязателен: nullptr означает «ни одна строка не отброшена».
     // Затем сравниваются выходные и суммарные поля; GUID-поле читается, но
     // не влияет на решение об обновлении. Изменённая строка
     // попадает в elementsMod. Сопоставленная строка удаляется из elements,
@@ -121,6 +128,7 @@ namespace Spec {
                                 const SpecValueReader &reader,
                                 const FormatString &fstr,
                                 const GS::HashTable<GS::UniString, GS::UniString> &outParam,
+                                const GS::HashSet<GS::UniString> *rejectedKeys,
                                 ElementDict &elements,
                                 ElementDict &elementsMod,
                                 GS::Array<API_Guid> &elementsDelete,
@@ -129,11 +137,15 @@ namespace Spec {
     // При слиянии источник добавляется до суммирования. При создании связь
     // keyOut -> key записывается до проверки схемы (даже если строка отвергнута);
     // выходные значения первого источника используются без повторного чтения.
+    // rejectedKeys, если передан, наполняется ключами строк, отброшенных
+    // проверкой схемы, — сверке они нужны, чтобы отличить отказ расчёта от
+    // «строка израсходована другим объектом».
     RowAddition AddContributionToRow (ElementDict &rows,
                                       const RuleContribution &contribution,
                                       const SpecRule &rule,
                                       UInt32 schemaOutSlots,
                                       UInt32 schemaSumSlots,
-                                      GS::HashTable<GS::UniString, GS::UniString> &outParam);
+                                      GS::HashTable<GS::UniString, GS::UniString> &outParam,
+                                      GS::HashSet<GS::UniString> *rejectedKeys = nullptr);
 } // namespace Spec
 #endif // SPECPLANNING_HPP

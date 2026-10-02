@@ -3400,15 +3400,20 @@ namespace TestFunc {
         }
 
         // --- та же неполнота при stop_on_error: расчёт отбрасывается, а
-        //     размещённые строки УДАЛЯЮТСЯ ---
+        //     размещённые строки УДАЛЯЮТСЯ --
         // Здесь закрепляется действующая политика разрушительных действий,
         // а не предпочтительная. Отказ очищает словарь строк и возвращает ноль,
-        // но сверка всё равно выполняется по ПУСТОМУ словарю выходов, поэтому
+        // но сверка всё равно выполняется по ПУСТОМУ словарю строк, поэтому
         // прежний объект не находит себе пары и удаляется. Политика
         // принадлежит владельцу (поток F1) и здесь не меняется: изменение
         // удаления при недостоверных данных — отдельное решение, а не
         // побочный эффект этого шага. Заметим, что это худший из возможных
         // исходов: недостоверный расчёт приводит к потере размещённых строк.
+        //
+        // ПРИЧИНА удаления при этом называется верно: связь key_out -> key
+        // остаётся в словаре выходов (запись идёт до проверки схемы), но сам
+        // ключ строки помечен отброшенным расчётом, поэтому план сообщает
+        // «строку отбросил расчёт», а не «строку забрал другой объект».
         {
             SpecFixture f;
             f.rule.delete_old = true;
@@ -3432,17 +3437,9 @@ namespace TestFunc {
             DBtest (plan.deleteOld, 1, "v2 rejected rule still reconciles");
             DBtest (plan.removals.GetSize (), 1, "v2 rejected rule removes the placed object");
             DBtest (plan.removals[0].guid == f.old, true, "v2 rejected rule names the removed object");
-            // Причина здесь НЕ «нет такой строки», а «строка уже израсходована»,
-            // и это следствие действующего порядка вещей: строка была посчитана,
-            // связана в словаре выходов, но отброшена проверкой схемы, поэтому
-            // в словаре строк её нет. Словарь выходов при отказе НЕ очищается,
-            // и прежний объект находит в нём свою пару — на строку, которой
-            // уже не существует. Само удаление от этого не меняется, но
-            // диагностика плана называет причину неверно, а именно по причине
-            // судят о том, чего не хватило.
             DBtest (plan.removals[0].reason,
-                    Spec::SpecChangePlan::DeleteReason::RowAlreadyClaimed,
-                    "v2 rejected removal blamed on a row rejected by the schema check");
+                    Spec::SpecChangePlan::DeleteReason::RowRejectedByCalc,
+                    "v2 rejected removal blamed on the rejected calculation");
             DBtest (plan.create.IsEmpty (), true, "v2 rejected rule creates nothing");
             DBtest (plan.unchanged, 0, "v2 rejected rule counts no unchanged row");
         }
@@ -3650,10 +3647,54 @@ namespace TestFunc {
             DBtest (plan.CalcComplete (), false, "schema mismatch calc incomplete");
             // Побочный эффект действующего порядка: связь выход -> строка
             // записывается ДО проверки схемы, поэтому отброшенная строка
-            // остаётся в словаре выходов. Закреплено как есть: изменить
-            // значит сломать сопоставление по этому словарю.
+            // остаётся в словаре выходов. Ключ строки при этом помечается
+            // как отброшенный расчётом — сверке он нужен, чтобы назвать причину.
             DBtest (outParam.GetSize (), 1, "rejected row still recorded in the output dictionary");
             DBtest (outParam.Get (EMPTYSTRING), GS::UniString ("@A"), "rejected row keyed by the row key");
+            // Тот же расчёт, но с накопителем отброшенных ключей. План и словари
+            // здесь новые: повторный проход по уже заполненным удвоил бы
+            // счётчики плана и ничего не проверял бы.
+            Spec::ElementDict rows2 = {};
+            UnicGuid errors2 = {};
+            GS::HashTable<GS::UniString, GS::UniString> outParam2 = {};
+            GS::HashSet<GS::UniString> rejectedKeys = {};
+            const Int32 n2 = Spec::PlanRuleRows (
+                f.rule, f.context, rows2, errors2, false, outParam2, nullptr, nullptr, &rejectedKeys);
+            DBtest (n2, 0, "run with the collector still rejects the row");
+            DBtest (rows2.IsEmpty (), true, "run with the collector leaves no row");
+            DBtest (rejectedKeys.GetSize (), 1, "rejected row key collected");
+            DBtest (rejectedKeys.Contains (GS::UniString ("@A")), true, "rejected key is the row key");
+        }
+
+        // --- частичный расчёт: одна строка отброшена схемой, другая создана --
+        // Здесь отказ правила НЕ происходит (stop_on_error = false), но строка
+        // @A отброшена проверкой схемы, а её выходное значение осталось в словаре
+        // выходов. Прежний объект с таким выходом находит связь и не находит
+        // строки — это и есть второй исход из issue: потеря части размещённых
+        // строк при неполных данных. Причина обязана называть отказ расчёта, а
+        // не «строку забрал другой объект»: строки @B никто не забирал.
+        {
+            SpecFixture f;
+            f.rule.delete_old = true;
+            f.rule.stop_on_error = false;
+            f.rule.only_visible = false;
+            f.Source (f.first, "A", "Alpha", 5);
+            f.Source (f.second, "B", "Beta", 7);
+            f.Existing (f.old, "Alpha", 5);
+            f.DropField (f.first, f.quantity);
+            Spec::SpecChangePlan plan = {};
+            // Возвращаемое число пересобирается ПОСЛЕ сверки как удаление +
+            // изменение + создание: здесь это 1 удаление (@A) плюс 1 создание
+            // (@B), то есть 2. Отказ расчёта строки @A не отменяет создание
+            // здоровой @B — это не полный отказ правила.
+            f.Shape (f.RunWithPlan (plan), 2, 1, 0, 1, "partial calc drops one row");
+            DBtest (plan.schemaMismatchCount, 1, "partial calc dropped one row by schema");
+            DBtest (plan.removals.GetSize (), 1, "partial calc plans the removal");
+            DBtest (plan.removals[0].guid == f.old, true, "partial calc names the removed object");
+            DBtest (plan.removals[0].reason,
+                    Spec::SpecChangePlan::DeleteReason::RowRejectedByCalc,
+                    "partial calc removal blamed on the rejected row");
+            DBtest (plan.create.GetSize (), 1, "partial calc still creates the good row");
         }
 
         // ----------------------------------------------------------------

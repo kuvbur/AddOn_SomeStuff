@@ -1871,7 +1871,8 @@ namespace Spec {
                         bool showUserInterface,
                         GS::HashTable<GS::UniString, GS::UniString> &out_param,
                         SpecChangePlan *plan,
-                        SpecRunResult *runResult) {
+                        SpecRunResult *runResult,
+                        GS::HashSet<GS::UniString> *rejected_keys) {
         ParamDict not_found_paramname = {};
         ParamDict not_found_unic = {};
         Int32 n_elements = 0;
@@ -1998,8 +1999,8 @@ namespace Spec {
                 }
 
                 // Раскладка вклада в строку суммирует только общие допустимые слоты.
-                const RowAddition addition =
-                    AddContributionToRow (elements, rowContribution, rule, out_slots, sum_slots, out_param);
+                const RowAddition addition = AddContributionToRow (
+                    elements, rowContribution, rule, out_slots, sum_slots, out_param, rejected_keys);
                 if (addition == RowAddition::Created) {
                     n_elements += 1;
                 } else if (addition == RowAddition::SchemaMismatch) {
@@ -2066,6 +2067,19 @@ namespace Spec {
             }
             if (!not_found_paramname.IsEmpty () || !not_found_unic.IsEmpty ()) {
                 n_elements = 0;
+                // Отказ правила отбрасывает ВСЕ рассчитанные строки, но связи
+                // keyOut -> key в out_param остаются (порядок операций). Помечаем
+                // строки ДО очистки — иначе обходить было бы уже нечего, и сверка
+                // назвала бы их «строка уже израсходована другим объектом».
+                // Пометка идёт по ключу строки — он и есть ключ в elements.
+                if (rejected_keys)
+                    for (auto &cIt : elements) {
+#ifdef ServerMainVers_2800
+                        rejected_keys->Add (cIt.key);
+#else
+                        rejected_keys->Add (*cIt.key);
+#endif
+                    }
                 elements.Clear ();
                 return 0;
             }
@@ -2111,6 +2125,12 @@ namespace Spec {
         // строится в расчётной части и читается в сверке существующих строк.
 
         GS::HashTable<GS::UniString, GS::UniString> out_param = {};
+        // Ключи строк, отброшенных расчётом: проверкой схемы либо отказом правила
+        // целиком. Связь keyOut -> key при отказе остаётся в out_param (порядок
+        // операций), поэтому без этого множества сверка назвала бы отказ расчёта
+        // «строка уже израсходована другим объектом» — а это не то, чего не
+        // хватило. Наполняет расчётная часть, читает сверка.
+        GS::HashSet<GS::UniString> rejected_keys = {};
         // Для сверки существующих строк используется тот же контекст чтения
         // и формат ".2m"; расчёт и сверка не изменяют контекст.
         const SpecValueReader reader (context);
@@ -2119,8 +2139,8 @@ namespace Spec {
         // Передаётся и когда сверка не пойдёт (delete_old = false): неполное
         // чтение делает расчёт недостоверным независимо от того, удаляются ли
         // существующие строки. Здесь фиксируется полнота без решения о применении.
-        n_elements =
-            PlanRuleRows (rule, context, elements, error_element, showUserInterface, out_param, plan, runResult);
+        n_elements = PlanRuleRows (
+            rule, context, elements, error_element, showUserInterface, out_param, plan, runResult, &rejected_keys);
         if (!rule.delete_old)
             return n_elements;
         // План наблюдает решение сверки, но не становится вторым источником
@@ -2136,7 +2156,8 @@ namespace Spec {
         // сопоставляет с планом только свой суффикс, иначе второе правило,
         // ничего не удалившее, дало бы ложное расхождение.
         const UIndex deleteOffset = elements_delete.GetSize ();
-        ReconcileExistingRows (rule, reader, fstr, out_param, elements, elements_mod, elements_delete, plan);
+        ReconcileExistingRows (
+            rule, reader, fstr, out_param, &rejected_keys, elements, elements_mod, elements_delete, plan);
         if (plan != nullptr && !plan->Matches (elements_mod, elements_delete, deleteOffset)) {
             // Страховка: план и фактические списки пишутся из одних точек, так
             // что расхождение указывает на нарушение согласованности списков.
