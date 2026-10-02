@@ -64,5 +64,6 @@
 Sync, Spec, Summ, ResetProperty, Helpers и др. через `PROPERTYCACHE()` [по коду]
 
 ## Инварианты
+- `GetAllAttributeToParamDict` (`Propertycache.cpp:718`) кэширует имена и индексы Layer, CompWall и BuildingMaterial под `{@attrib:<тип>_name_<нижний регистр>}` и `{@attrib:<тип>_inx_<индекс>}`. Удалённые атрибуты пропускаются. Общий `ReadAttribute`/`Clear` обновляет и сбрасывает все три списка; кэш компонентов `compositeCache` — отдельный. [по коду, #235]
 - Ключи кэша всегда в нижнем регистре (`ToLowerCase` + `BRACEEND`) — AGENTS.md §6 [из AGENTS.md]
 - Значения свойств — только из PROPERTYCACHE(), не ACAPI_Property_GetPropertyValue [из AGENTS.md]

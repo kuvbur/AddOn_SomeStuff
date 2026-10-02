@@ -45,10 +45,10 @@ NOTE [Verbose] TestPropertyRuleFlagOnProjectElements | RuleFlagProj.desc | name=
 таблицы в анонимном namespace, наборы гоняют их циклом:
 - `TestParsePrefixes` — 62 сверки констант против литералов, таблицы
   `uniConstCases` (38 строковых) и `intConstCases` (24 числовых);
-- `TestName2Rawname` / `TestName2RawnameWithBrackets` — по 13 пар
+- `TestName2Rawname` / `TestName2RawnameWithBrackets` — изначально по 13 пар
   (вход -> rawname), таблицы `plainNameCases` / `bracketedNameCases`,
-  структура `RawNameCase`.
-Число ВЫПОЛНЕННЫХ проверок не изменилось; упало только число мест в коде
+  структура `RawNameCase`; в #235 первая таблица расширена до 16 пар.
+До #235, при переносе тестов в таблицы, число ВЫПОЛНЕННЫХ проверок не изменилось; упало только число мест в коде
 (`TestSync.cpp` 220 -> 172). Сверка эквивалентности делается ДО подстановки:
 пары сравниваются как множества (вход, ожидание, лейбл), и лейблы — посимвольно.
 Исключения из таблиц остаются явными: `BeginsWith` там, где ключ несёт хвост
@@ -100,6 +100,9 @@ NOTE [Verbose] TestPropertyRuleFlagOnProjectElements | RuleFlagProj.desc | name=
 
 ### Утилиты отладки [из комментариев]
 `DumpAllBuiltInProperties` (113) — все встроенные свойства в журнал; `ResetSyncPropertyArray` (116) / `ResetSyncPropertyOne` (119, 122 — перегрузка с набором свойств) — сброс свойств синхронизации.
+
+### #235 — имена атрибутов Sync [по коду]
+`TestName2Rawname`: в `plainNameCases` добавлены `Attribute:Composite`, `Attribute:BuildingMaterial`, `Attribute:CompositeType` → `{@attrib:...}` (шесть проверок). `TestSyncString`: три правила `Sync_to{Attribute:...}` проверяют направление и признак `fromAttribElement` (девять проверок). Проверяются парсер и диспетчеризация правил, не запись конструкции элемента. Результат исполнения — в `Docs/_progress.md`.
 
 ## Зависимости
 - `api_headers/APICommon25/26/27.h` [по include]

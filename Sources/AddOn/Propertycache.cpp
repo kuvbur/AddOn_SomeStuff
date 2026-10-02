@@ -723,33 +723,35 @@ namespace ParamHelpers {
         GS::Array<API_Attribute> attributes = {};
         GS::UniString rawName;
         GS::UniString attribname;
-        err = ACAPI_Attribute_GetAttributesByType (API_LayerID, attributes);
-        if (err != NoError) {
-            msg_rep ("GetAllAttributeToParamDict", "ACAPI_Attribute_GetAttributesByType", err, APINULLGuid);
-            return false;
-        }
-        for (API_Attribute &attrib : attributes) {
-            attribname.Clear ();
-            attrib.header.uniStringNamePtr = &attribname;
-            err = ACAPI_Attribute_Get (&attrib);
-            if (err == NoError) {
-                ParamValue pvalue = {};
-                rawName = "layer_name_" + attribname;
-                ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
-                propertyParams.Add (pvalue.rawName, pvalue);
-                pvalue.name = EMPTYSTRING;
-                pvalue.rawName = EMPTYSTRING;
+        const API_AttrTypeID types[] = {API_LayerID, API_CompWallID, API_BuildingMaterialID};
+        const GS::UniString prefixes[] = {"layer", "composite", "buildingmaterial"};
+        for (UIndex typeInx = 0; typeInx < 3; ++typeInx) {
+            attributes.Clear ();
+            err = ACAPI_Attribute_GetAttributesByType (types[typeInx], attributes);
+            if (err != NoError) {
+                msg_rep ("GetAllAttributeToParamDict", "ACAPI_Attribute_GetAttributesByType", err, APINULLGuid);
+                return false;
+            }
+            for (API_Attribute &attrib : attributes) {
+                attribname.Clear ();
+                attrib.header.uniStringNamePtr = &attribname;
+                err = ACAPI_Attribute_Get (&attrib);
+                if (err == NoError) {
+                    ParamValue pvalue = {};
+                    rawName = prefixes[typeInx] + "_name_" + attribname.ToLowerCase ();
+                    ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
+                    propertyParams.Add (pvalue.rawName, pvalue);
+                    pvalue.name = EMPTYSTRING;
+                    pvalue.rawName = EMPTYSTRING;
 #ifdef ServerMainVers_2700
-                rawName = "layer_inx_" + GS::UniString::Printf ("%d", attrib.header.index.ToInt32_Deprecated ());
+                    rawName = prefixes[typeInx] + "_inx_" +
+                              GS::UniString::Printf ("%d", attrib.header.index.ToInt32_Deprecated ());
 #else
-                rawName = "layer_inx_" + GS::UniString::Printf ("%d", attrib.header.index);
+                    rawName = prefixes[typeInx] + "_inx_" + GS::UniString::Printf ("%d", attrib.header.index);
 #endif
-                ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
-                propertyParams.Add (pvalue.rawName, std::move (pvalue));
-            } else {
-                if (err == APIERR_DELETED)
-                    err = NoError;
-                if (err != NoError) {
+                    ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
+                    propertyParams.Add (pvalue.rawName, std::move (pvalue));
+                } else if (err != APIERR_DELETED) {
                     msg_rep ("GetAllAttributeToParamDict", "ACAPI_Attribute_Get", err, APINULLGuid);
                     return false;
                 }

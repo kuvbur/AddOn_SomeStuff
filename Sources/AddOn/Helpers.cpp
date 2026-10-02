@@ -4803,8 +4803,36 @@ void ParamHelpers::WriteID (const API_Guid &elemGuid, ParamDictValue &params) {
 }
 
 // --------------------------------------------------------------------
-// Запись ParamDictValue в аттрибуты элемента (слой)
+// Запись ParamDictValue в аттрибуты элемента
 // --------------------------------------------------------------------
+static bool ResolveConstructionAttribute (const ParamValue &value,
+                                          const GS::UniString &prefix,
+                                          API_AttributeIndex &index) {
+    GS::UniString key = ATTRIBNAMEPREFIX + prefix;
+    if (value.val.type == API_PropertyIntegerValueType) {
+        key += "_inx_" + GS::UniString::Printf ("%d", value.val.intValue);
+    } else if (value.val.type == API_PropertyRealValueType) {
+        const double number = value.val.doubleValue;
+        if (!std::isfinite (number) || number < 1 || number > std::numeric_limits<Int32>::max () ||
+            std::trunc (number) != number)
+            return false;
+        key += "_inx_" + GS::UniString::Printf ("%d", static_cast<Int32> (number));
+    } else if (value.val.type == API_PropertyStringValueType && !value.val.uniStringValue.IsEmpty ()) {
+        key += "_name_" + value.val.uniStringValue.ToLowerCase ();
+    } else {
+        return false;
+    }
+    ParamValue cached;
+    if (!ParamHelpers::GetParamValueFromCache (key + BRACEEND, cached) || !cached.isValid || cached.val.intValue <= 0)
+        return false;
+#ifdef ServerMainVers_2700
+    index = ACAPI_CreateAttributeIndex (cached.val.intValue);
+#else
+    index = cached.val.intValue;
+#endif
+    return true;
+}
+
 void ParamHelpers::WriteAttribute (const API_Guid &elemGuid, ParamDictValue &params) {
     GSErrCode err = NoError;
     if (params.IsEmpty ())
@@ -4815,46 +4843,173 @@ void ParamHelpers::WriteAttribute (const API_Guid &elemGuid, ParamDictValue &par
     if (elemGuid == APINULLGuid)
         return;
     const auto *p = params.GetPtr (attrlayerRawname);
-    if (p == nullptr) {
-#if defined(TESTING)
-        DBprnt ("WriteAttribute err", "{ @attrib:layer } not found");
-#endif
-        return;
+    if (p != nullptr && p->isValid) {
+        API_AttributeIndex newlayer = {};
+        if (!API_AttributeIndexFindByName (p->val.uniStringValue, API_LayerID, newlayer)) {
+            msg_rep (
+                "ParamHelpers::WriteAttribute", "ACAPI_Attribute_Search - " + p->val.uniStringValue, err, elemGuid);
+            return;
+        }
+        API_Element element = {};
+        API_Element elementMask = {};
+        element.header.guid = elemGuid;
+        err = ACAPI_Element_Get (&element);
+        if (err != NoError) {
+            msg_rep ("ParamHelpers::WriteAttribute", "ACAPI_Element_Get", err, elemGuid);
+            return;
+        }
+        if (newlayer != element.header.layer) {
+            ACAPI_ELEMENT_MASK_CLEAR (elementMask);
+            ACAPI_ELEMENT_MASK_SET (elementMask, API_Elem_Head, layer);
+            element.header.layer = newlayer;
+            err = ACAPI_Element_Change (&element, &elementMask, nullptr, 0, true);
+            if (err != NoError)
+                msg_rep ("ParamHelpers::WriteAttribute", "ACAPI_Element_Change", err, elemGuid);
+        }
     }
-    if (!p->isValid) {
-#if defined(TESTING)
-        DBprnt ("WriteAttribute err", "{ @attrib:layer } not valid");
-#endif
+
+    const ParamValue *comp = params.GetPtr ("{@attrib:composite}");
+    const ParamValue *mat = params.GetPtr ("{@attrib:buildingmaterial}");
+    const ParamValue *kind = params.GetPtr ("{@attrib:compositetype}");
+    if (comp == nullptr && mat == nullptr && kind == nullptr)
         return;
-    }
-    // Поиск номера слоя по имени, если номер не найден
-    API_AttributeIndex newlayer = {};
-    if (!API_AttributeIndexFindByName (p->val.uniStringValue, API_LayerID, newlayer)) {
-        msg_rep ("ParamHelpers::WriteAttribute", "ACAPI_Attribute_Search - " + p->val.uniStringValue, err, elemGuid);
-        return;
-    }
+
     API_Element element = {};
-    API_Element elementMask = {};
     element.header.guid = elemGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError) {
         msg_rep ("ParamHelpers::WriteAttribute", "ACAPI_Element_Get", err, elemGuid);
         return;
     }
-    if (newlayer == element.header.layer) {
-#if defined(TESTING)
-        DBprnt ("      WriteAttribute not need");
-#endif
+    const API_ElemTypeID type = GetElemTypeID (element.header);
+    if (type != API_WallID && type != API_SlabID && type != API_RoofID && type != API_ShellID)
+        return;
+    API_ModelElemStructureType current = API_ProfileStructure;
+    API_AttributeIndex currentComp = {};
+    API_AttributeIndex currentMat = {};
+    short compatibleFlag = 0;
+    switch (type) {
+    case API_WallID:
+        current = element.wall.modelElemStructureType;
+        currentComp = element.wall.composite;
+        currentMat = element.wall.buildingMaterial;
+        compatibleFlag = APICWall_ForWall;
+        break;
+    case API_SlabID:
+        current = element.slab.modelElemStructureType;
+        currentComp = element.slab.composite;
+        currentMat = element.slab.buildingMaterial;
+        compatibleFlag = APICWall_ForSlab;
+        break;
+    case API_RoofID:
+        current = element.roof.shellBase.modelElemStructureType;
+        currentComp = element.roof.shellBase.composite;
+        currentMat = element.roof.shellBase.buildingMaterial;
+        compatibleFlag = APICWall_ForRoof;
+        break;
+    case API_ShellID:
+        current = element.shell.shellBase.modelElemStructureType;
+        currentComp = element.shell.shellBase.composite;
+        currentMat = element.shell.shellBase.buildingMaterial;
+        compatibleFlag = APICWall_ForShell;
+        break;
+    default:
         return;
     }
+    if (current == API_ProfileStructure)
+        return;
+
+    API_ModelElemStructureType desired = current;
+    API_AttributeIndex index = {};
+    bool setIndex = false;
+    if (comp != nullptr && comp->isValid && ResolveConstructionAttribute (*comp, "composite", index)) {
+        desired = API_CompositeStructure;
+        setIndex = true;
+    } else if (mat != nullptr && mat->isValid && ResolveConstructionAttribute (*mat, "buildingmaterial", index)) {
+        desired = API_BasicStructure;
+        setIndex = true;
+    } else if (kind != nullptr && kind->isValid) {
+        const GS::UniString text = kind->val.uniStringValue.ToLowerCase ();
+        if (text == "многослойка") {
+            desired = API_CompositeStructure;
+            index = currentComp;
+        } else if (text == "строительный материал") {
+            desired = API_BasicStructure;
+            index = currentMat;
+        } else {
+            return;
+        }
+    } else {
+        return;
+    }
+    if (desired == API_CompositeStructure) {
+        API_Attribute attribute = {};
+        attribute.header.typeID = API_CompWallID;
+        attribute.header.index = index;
+        if (ACAPI_Attribute_Get (&attribute) != NoError || !(attribute.header.flags & compatibleFlag))
+            return;
+    } else {
+        API_Attribute attribute = {};
+        attribute.header.typeID = API_BuildingMaterialID;
+        attribute.header.index = index;
+        if (ACAPI_Attribute_Get (&attribute) != NoError)
+            return;
+    }
+    if (desired == current && (!setIndex || index == (desired == API_CompositeStructure ? currentComp : currentMat)))
+        return;
+    API_Element elementMask = {};
     ACAPI_ELEMENT_MASK_CLEAR (elementMask);
-    ACAPI_ELEMENT_MASK_SET (elementMask, API_Elem_Head, layer);
-    element.header.layer = newlayer;
-    err = ACAPI_Element_Change (&element, &elementMask, nullptr, 0, true);
-    if (err != NoError) {
-        msg_rep ("ParamHelpers::WriteAttribute", "ACAPI_Element_Change", err, elemGuid);
+    switch (type) {
+    case API_WallID:
+        element.wall.modelElemStructureType = desired;
+        ACAPI_ELEMENT_MASK_SET (elementMask, API_WallType, modelElemStructureType);
+        if (desired == API_CompositeStructure) {
+            element.wall.composite = index;
+            ACAPI_ELEMENT_MASK_SET (elementMask, API_WallType, composite);
+        } else {
+            element.wall.buildingMaterial = index;
+            ACAPI_ELEMENT_MASK_SET (elementMask, API_WallType, buildingMaterial);
+        }
+        break;
+    case API_SlabID:
+        element.slab.modelElemStructureType = desired;
+        ACAPI_ELEMENT_MASK_SET (elementMask, API_SlabType, modelElemStructureType);
+        if (desired == API_CompositeStructure) {
+            element.slab.composite = index;
+            ACAPI_ELEMENT_MASK_SET (elementMask, API_SlabType, composite);
+        } else {
+            element.slab.buildingMaterial = index;
+            ACAPI_ELEMENT_MASK_SET (elementMask, API_SlabType, buildingMaterial);
+        }
+        break;
+    case API_RoofID:
+        element.roof.shellBase.modelElemStructureType = desired;
+        ACAPI_ELEMENT_MASK_SET (elementMask, API_RoofType, shellBase.modelElemStructureType);
+        if (desired == API_CompositeStructure) {
+            element.roof.shellBase.composite = index;
+            ACAPI_ELEMENT_MASK_SET (elementMask, API_RoofType, shellBase.composite);
+        } else {
+            element.roof.shellBase.buildingMaterial = index;
+            ACAPI_ELEMENT_MASK_SET (elementMask, API_RoofType, shellBase.buildingMaterial);
+        }
+        break;
+    case API_ShellID:
+        element.shell.shellBase.modelElemStructureType = desired;
+        ACAPI_ELEMENT_MASK_SET (elementMask, API_ShellType, shellBase.modelElemStructureType);
+        if (desired == API_CompositeStructure) {
+            element.shell.shellBase.composite = index;
+            ACAPI_ELEMENT_MASK_SET (elementMask, API_ShellType, shellBase.composite);
+        } else {
+            element.shell.shellBase.buildingMaterial = index;
+            ACAPI_ELEMENT_MASK_SET (elementMask, API_ShellType, shellBase.buildingMaterial);
+        }
+        break;
+    default:
         return;
     }
+    err = ACAPI_Element_Change (&element, &elementMask, nullptr, 0, true);
+    if (err != NoError)
+        msg_rep ("ParamHelpers::WriteAttribute", "ACAPI_Element_Change", err, elemGuid);
 }
 
 // --------------------------------------------------------------------
@@ -5549,7 +5704,7 @@ void ParamHelpers::Read (const API_Guid &elemGuid,
         if (param.fromGDLdescription && can_read_fromGDL)
             needGetElement = true;
         if (param.fromElement || param.fromCoord || (param.fromMorph && eltype == API_MorphID) ||
-            param.fromAttribDefinition)
+            param.fromAttribDefinition || (param.fromAttribElement && param.rawName != attrlayerRawname))
             needGetElement = true;
         if (can_read_fromMaterial && param.fromMaterial)
             needGetElement = true;
@@ -5594,7 +5749,7 @@ void ParamHelpers::Read (const API_Guid &elemGuid,
             return;
         }
     } else {
-        UNUSED_VARIABLE (element);
+        element.header = elem_head;
     }
     ParamDictValue paramByType = {};
     GS::Array<API_PropertyDefinition> propertyDefinitions = {};
@@ -5692,7 +5847,7 @@ void ParamHelpers::Read (const API_Guid &elemGuid,
             ParamHelpers::ReadFormula (params, false);
             break;
         case ATTRIBTYPEINX:
-            ParamHelpers::ReadAttributeValues (elem_head, params);
+            ParamHelpers::ReadAttributeValues (element, params);
             break;
         case ELEMENTTYPEINX:
             ParamHelpers::ReadElementValues (element, params);
@@ -6025,12 +6180,72 @@ bool ParamHelpers::ReadClassification (const API_Guid &elemGuid, ParamDictValue 
 // -----------------------------------------------------------------------------
 // Получение аттрибутов элемента
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadAttributeValues (const API_Elem_Head &elem_head, ParamDictValue &params) {
+bool ParamHelpers::ReadAttributeValues (const API_Element &element, ParamDictValue &params) {
+    const API_Elem_Head &elem_head = element.header;
     if (params.IsEmpty ())
         return false;
 #if defined(TESTING)
     DBprnt ("      ReadAttributeValues");
 #endif
+
+    const API_ElemTypeID type = GetElemTypeID (elem_head);
+    API_ModelElemStructureType structure = API_ProfileStructure;
+    API_AttributeIndex composite = {};
+    API_AttributeIndex material = {};
+    switch (type) {
+    case API_WallID:
+        structure = element.wall.modelElemStructureType;
+        composite = element.wall.composite;
+        material = element.wall.buildingMaterial;
+        break;
+    case API_SlabID:
+        structure = element.slab.modelElemStructureType;
+        composite = element.slab.composite;
+        material = element.slab.buildingMaterial;
+        break;
+    case API_RoofID:
+        structure = element.roof.shellBase.modelElemStructureType;
+        composite = element.roof.shellBase.composite;
+        material = element.roof.shellBase.buildingMaterial;
+        break;
+    case API_ShellID:
+        structure = element.shell.shellBase.modelElemStructureType;
+        composite = element.shell.shellBase.composite;
+        material = element.shell.shellBase.buildingMaterial;
+        break;
+    default:
+        break;
+    }
+    if (structure != API_ProfileStructure) {
+        const GS::UniString names[] = {"composite", "buildingmaterial"};
+        const API_AttributeIndex indices[] = {composite, material};
+        for (UIndex i = 0; i < 2; ++i) {
+            ParamValue *target = params.GetPtr (ATTRIBNAMEPREFIX + names[i] + BRACEEND);
+            if (target == nullptr)
+                continue;
+            target->isValid = true;
+            target->fromAttribElement = true;
+            target->val.type = API_PropertyStringValueType;
+            if ((i == 0 && structure == API_CompositeStructure) || (i == 1 && structure == API_BasicStructure)) {
+#ifdef ServerMainVers_2700
+                const Int32 index = indices[i].ToInt32_Deprecated ();
+#else
+                const Int32 index = indices[i];
+#endif
+                ParamValue cached;
+                if (index > 0 &&
+                    ParamHelpers::GetParamValueFromCache (
+                        ATTRIBNAMEPREFIX + names[i] + "_inx_" + GS::UniString::Printf ("%d", index) + BRACEEND, cached))
+                    target->val = cached.val;
+            }
+        }
+        if (ParamValue *target = params.GetPtr ("{@attrib:compositetype}")) {
+            target->isValid = true;
+            target->fromAttribElement = true;
+            target->val.type = API_PropertyStringValueType;
+            target->val.uniStringValue = structure == API_BasicStructure ? "строительный материал" : "многослойка";
+        }
+    }
 
     auto *p = params.GetPtr (attrlayerRawname);
     // Атрибут слоя читается не как обычное свойство, а как специальный

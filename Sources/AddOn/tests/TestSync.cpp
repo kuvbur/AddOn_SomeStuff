@@ -50,6 +50,9 @@ namespace TestFunc {
             {"Element:property", "{@element:property}", ""},
             {"File:filename", "{@file:filename}", ""},
             {"Attrib:Layer", "{@attrib:layer}", ""},
+            {"Attribute:Composite", "{@attrib:composite}", ""},
+            {"Attribute:BuildingMaterial", "{@attrib:buildingmaterial}", ""},
+            {"Attribute:CompositeType", "{@attrib:compositetype}", ""},
         };
 
         const RawNameCase bracketedNameCases[] = {
@@ -152,6 +155,16 @@ namespace TestFunc {
                 "SyncString Sync_to Property -> true");
         DBtest (syncdirection, SYNC_TO, "SyncString Sync_to -> direction TO");
         DBtest (param.fromProperty, "SyncString Sync_to Property -> fromProperty");
+
+        for (const char *field : {"Composite", "BuildingMaterial", "CompositeType"}) {
+            param = ParamValue ();
+            syncdirection = SYNC_NO;
+            GS::UniString rule = GS::UniString ("Sync_to{Attribute:") + field + "}";
+            DBtest (SyncString (API_WallID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                    GS::UniString ("SyncString Attribute:") + field + " -> true");
+            DBtest (syncdirection, SYNC_TO, GS::UniString ("SyncString Attribute:") + field + " -> TO");
+            DBtest (param.fromAttribElement, GS::UniString ("SyncString Attribute:") + field + " -> fromAttribElement");
+        }
 
         // Тест: SYNC_FROM_SUB
         param = ParamValue ();

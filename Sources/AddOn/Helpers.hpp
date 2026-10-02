@@ -452,7 +452,7 @@ namespace ParamHelpers {
     // -----------------------------------------------------------------------------
     // Обработка данных о аттрибутах
     // -----------------------------------------------------------------------------
-    bool ReadAttributeValues (const API_Elem_Head &elem_head, ParamDictValue &params);
+    bool ReadAttributeValues (const API_Element &element, ParamDictValue &params);
 
     // -----------------------------------------------------------------------------
     // Получение ID элемента
