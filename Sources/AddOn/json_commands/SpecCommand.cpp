@@ -74,6 +74,37 @@ static GS::ObjectState GuidListToObjectState (const GS::Array<API_Guid> &guids) 
 }
 
 // -----------------------------------------------------------------------------
+// Счётчики одного этапа в объекте ответа. Поля добавляются всегда, в том числе
+// нулевые, чтобы форма ответа не зависела от данных: иначе сравнение прогонов
+// отличало бы «этап не выполнялся» от «этап не выведен».
+// -----------------------------------------------------------------------------
+static GS::ObjectState StageCountersToObjectState (const Spec::SpecStageCounters &stage) {
+    GS::ObjectState object;
+    object.Add ("attempted", static_cast<GS::Int32> (stage.attempted));
+    object.Add ("succeeded", static_cast<GS::Int32> (stage.succeeded));
+    object.Add ("failed", static_cast<GS::Int32> (stage.failed));
+    return object;
+}
+
+// -----------------------------------------------------------------------------
+// Фактические результаты этапов запуска. Именно эти поля, а не
+// elementsToCreate/Modify/Delete, показывают, чем закончился каждый этап:
+// счётчик успеха подтверждает возврат вызова ACAPI, а не наличие элемента в
+// модели. Признак hasUnconfirmedCreate выведен в отдельное поле, потому что
+// состояние «счётчик утверждает успех, подтверждения нет» не выводится из
+// счётчиков.
+// -----------------------------------------------------------------------------
+static void AddStageCounters (GS::ObjectState &response, const Spec::SpecRunResult &runResult) {
+    response.Add ("create", StageCountersToObjectState (runResult.create));
+    response.Add ("grouping", StageCountersToObjectState (runResult.grouping));
+    response.Add ("gdl", StageCountersToObjectState (runResult.gdl));
+    response.Add ("deleteOld", StageCountersToObjectState (runResult.deleteOld));
+    response.Add ("hasPrimaryError", runResult.hasPrimaryError);
+    response.Add ("hasRecoveryError", runResult.hasRecoveryError);
+    response.Add ("hasUnconfirmedCreate", runResult.hasUnconfirmedCreate);
+}
+
+// -----------------------------------------------------------------------------
 // Сериализует значения в список ответа под именем fieldName.
 // Имена выводятся отсортированными: словарь - хеш-таблица, порядок обхода
 // нестабилен между запусками, а результат используется для сравнения прогонов.
@@ -168,6 +199,7 @@ GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
     response.Add ("elementsToDelete", static_cast<GS::Int32> (runResult.elementsToDelete));
     response.Add ("elapsedSeconds", elapsedSeconds);
     response.Add ("includeParameters", includeParameters);
+    AddStageCounters (response, runResult);
     if (includeParameters) {
         AddElementDumps (response, "created", runResult.created);
         AddElementDumps (response, "modified", runResult.modified);
