@@ -71,13 +71,11 @@ namespace TestFunc {
     void TestSpecRowSlots ();
     void TestSpecReconcileFixtures ();
     void TestSpecChangePlan ();
-    void TestSpecOperationMatrix ();
     void TestSpecReconcileScaling ();
     void TestSpecBuildRowParam ();
     void TestSpecResponseContract ();
     void TestSpecRunCounters ();
     void TestSpecRunReport ();
-    void TestSpecScenarioMatrix ();
     void TestSpecEngineEquivalence ();
     void TestSpecValueEdges ();
     void TestSpecOutSlots ();
