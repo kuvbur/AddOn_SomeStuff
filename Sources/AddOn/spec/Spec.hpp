@@ -541,11 +541,19 @@ namespace Spec {
         bool definitionFound = false;             // Определение свойства найдено в проекте
         bool ruleParsed = false;                  // Описание разобрано без ошибок
         ParseError parseError = ParseError::None;
-        bool checkedElement = false;                       // Проверялось ли наличие у элемента
-        RuleFlagCheck elementFlag = {};                    // Флаг на переданном элементе
-        RuleFlagCheck destinationFlag = {};                // Флаг у избранного или объекта по умолчанию
-        bool favoriteFound = false;                        // Избранное найдено по имени
-        bool fromDefaultElem = false;                      // Назначение прочитано по умолчанию (fallback)
+        bool checkedElement = false;        // Проверялось ли наличие у элемента
+        RuleFlagCheck elementFlag = {};     // Флаг на переданном элементе
+        RuleFlagCheck destinationFlag = {}; // Флаг у избранного или объекта по умолчанию
+        bool favoriteFound = false;         // Избранное найдено по имени
+        bool fromDefaultElem = false;       // Назначение прочитано по умолчанию (fallback)
+        // Два служебных свойства, без которых спецификация не пишется,
+        // проверяются отдельно от missingWrite: там проверяются свойства ИМЕНИ
+        // элементов спецификации, а здесь — носители СВЯЗИ с правилом. Ищет их
+        // ResolveFavoriteLinks, и без него правило разбирается, но элементы не
+        // создаются. Отсутствие — самостоятельный дефект правила, поэтому его
+        // нельзя смешивать с прочими «нет выходного свойства».
+        bool destinationNamePropFound = false;             // У назначения есть носитель имени правила (spec_rule_name)
+        bool destinationGuidPropFound = false;             // У назначения есть носитель GUID-связи (sync_guid)
         GS::Array<GS::UniString> missingRead = {};         // Не прочитано у элемента
         GS::Array<GS::UniString> missingWrite = {};        // Нет выходных свойств у избранного/объекта по умолчанию
         GS::Array<GS::UniString> unresolvedInProject = {}; // Не подтверждено наличием определения в проекте
@@ -557,6 +565,17 @@ namespace Spec {
     // Правило всегда возвращается в result.rule (в том числе неразобранным), а
     // признак удачи — result.definitionFound.
     bool CheckRuleByPropertyGuid (const API_Guid &propertyGuid, const API_Guid &elemguid, RuleCheckResult &result);
+
+    // Проверка одного элемента по уже разобранному правилу — элементная часть
+    // CheckRuleByPropertyGuid без чтения определения, разбора описания и
+    // проверки назначения. Для вызывающих, которые проверяют много элементов
+    // одного правила: эти операции не зависят от элемента, а повторный
+    // CheckRuleByPropertyGuid затирал бы результат (начинается с result = {}).
+    // Заполняет в result: checkedElement, elementFlag, missingRead.
+    void CheckRuleElementByRule (const SpecRule &rule,
+                                 const API_Guid &propertyGuid,
+                                 const API_Guid &elemguid,
+                                 RuleCheckResult &result);
 
     // Формирует набор свойств, которые нужно передать в элемент для размещения.
     // readInfo — необязательный наблюдатель источника чтения: при nullptr

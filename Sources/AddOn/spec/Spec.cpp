@@ -2686,6 +2686,16 @@ namespace Spec {
         result.favoriteFound = source.favoriteFound;
         result.fromDefaultElem = source.fromDefaultElem || destErr != NoError;
         if (destErr == NoError) {
+            // Служебные носители (spec_rule_name и sync_guid) ищутся ТЕМ ЖЕ
+            // ResolveFavoriteLinks, что и при запуске: он и при запуске
+            // пропускает несовпавшие свойства молча, поэтому проверка обязана
+            // вызывать его отдельно. Работаем на копии правила — функция
+            // заполняет runState, а result.rule должен остаться разобранным,
+            // а не «уже применённым к назначению».
+            SpecRule linkProbe = rule;
+            ParamDictValue linkProbeToWrite = {};
+            result.destinationGuidPropFound = ResolveFavoriteLinks (linkProbe, destination, linkProbeToWrite);
+            result.destinationNamePropFound = !linkProbe.subguid_rulename.IsEmpty ();
             SpecRule destinationRule = rule;
             ParamDict destinationErrors = {};
             MatchDestinationProperties (destinationRule, destination, destinationErrors);
