@@ -230,8 +230,11 @@ namespace TestKit {
 
             ++g_stats.failed;
             if (g_stats.failed <= GetConfig ().maxFailuresPerTest) {
-                Emit ("FAIL " + text + " | expected " + expected + " got " + actual + " | " + l.file + ":" +
-                      detail::FmtInt (l.line));
+                // Имя набора впереди: строка FAIL читается сама по себе, вне
+                // контекста, и без него непонятно, к какому набору относится
+                // падение — метки проверок в разных наборах повторяются.
+                Emit ("FAIL [" + std::string (g_suite) + "] " + text + " | expected " + expected + " got " + actual +
+                      " | " + l.file + ":" + detail::FmtInt (l.line));
             } else if (g_stats.failed == GetConfig ().maxFailuresPerTest + 1) {
                 Emit ("FAIL ... further failures suppressed (maxFailuresPerTest=" +
                       detail::FmtInt (GetConfig ().maxFailuresPerTest) + ")");
@@ -242,7 +245,7 @@ namespace TestKit {
             // DBrequire останавливает набор: следующая строка обычно разыменует
             // результат, и без остановки ArchiCAD упал бы целиком.
             if (l.required) {
-                Emit ("ABORT " + text + " (DBrequire)");
+                Emit ("ABORT [" + std::string (g_suite) + "] " + text + " (DBrequire)");
                 g_stats.aborted = true;
                 throw AbortTest ();
             }

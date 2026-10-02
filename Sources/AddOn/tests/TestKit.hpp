@@ -63,6 +63,19 @@ namespace TestKit {
     // Пропустить весь набор с причиной (нет проекта, нет элемента).
     [[noreturn]] void SkipTest (const GS::UniString &reason);
 
+    // Формы строк отчёта. Имя набора в квадратных скобках — то, по чему отчёт
+    // фильтруется: метки проверок в разных наборах повторяются, а строка
+    // читается вне контекста. Оно есть в строках отклонений (FAIL/ABORT),
+    // которые важнее всего остального, и в BEGIN/END набора.
+    //
+    //   BEGIN TestSpecMergeAndKey
+    //   FAIL  [TestSpecMergeAndKey] метка | expected A got B | файл.cpp:123
+    //   ABORT [TestSpecMergeAndKey] метка (DBrequire)
+    //   END   TestSpecMergeAndKey passed=24 failed=0
+    //
+    // Успешные проверки молчат по умолчанию (Config::printPass), измерения
+    // выходят через Note.
+
     // Аналог DBprnt для тестов. Прод-DBprnt не годится: печатает
     // "== ERROR ==" префикс, если текст случайно содержит "err"/"ERROR"
     // (CommonFunction.cpp:310) — измерение выглядит как ошибка; склеивает

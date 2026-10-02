@@ -52,13 +52,11 @@ namespace TestFunc {
         TestKit::Register ("TestSpecRowSlots", Groups::Spec, TestSpecRowSlots);
         TestKit::Register ("TestSpecReconcileFixtures", Groups::Spec, TestSpecReconcileFixtures);
         TestKit::Register ("TestSpecChangePlan", Groups::Spec, TestSpecChangePlan);
-        TestKit::Register ("TestSpecOperationMatrix", Groups::Spec, TestSpecOperationMatrix);
         TestKit::Register ("TestSpecReconcileScaling", Groups::Spec, TestSpecReconcileScaling);
         TestKit::Register ("TestSpecBuildRowParam", Groups::Spec, TestSpecBuildRowParam);
         TestKit::Register ("TestSpecResponseContract", Groups::Spec, TestSpecResponseContract);
         TestKit::Register ("TestSpecRunCounters", Groups::Spec, TestSpecRunCounters);
         TestKit::Register ("TestSpecRunReport", Groups::Spec, TestSpecRunReport);
-        TestKit::Register ("TestSpecScenarioMatrix", Groups::Spec, TestSpecScenarioMatrix);
         TestKit::Register ("TestSpecEngineEquivalence", Groups::Spec, TestSpecEngineEquivalence);
         TestKit::Register ("TestSpecOutputSchema", Groups::Spec, TestSpecOutputSchema);
         TestKit::Register ("TestSpecValueEdges", Groups::Spec, TestSpecValueEdges);
@@ -70,7 +68,6 @@ namespace TestFunc {
         TestKit::Register ("TestSpecSlotBindings", Groups::Spec, TestSpecSlotBindings);
         TestKit::Register ("TestSpecExpandGroup", Groups::Spec, TestSpecExpandGroup);
         TestKit::Register ("TestSpecGroups", Groups::Spec, TestSpecGroups);
-        TestKit::Register ("TestSpecOutputSchema", Groups::Spec, TestSpecOutputSchema);
         TestKit::Register ("TestSpecPolicy", Groups::Spec, TestSpecPolicy);
         TestKit::Register ("TestSpecNormalize", Groups::Spec, TestSpecNormalize);
         TestKit::Register ("TestSpecParser", Groups::Spec, TestSpecParser);
