@@ -280,7 +280,7 @@ namespace Spec {
         if (plan)
             plan->deleteOld = 1;
         // Отклонения в сверке сообщаются через msg_rep.
-        auto report = [&rule] (const GS::UniString &text) { msg_rep ("Spec", text, NoError, APINULLGuid); };
+        auto report = [] (const GS::UniString &text) { msg_rep ("Spec", text, NoError, APINULLGuid); };
 
         UnicGuid guids = {};
         for (const API_Guid &elemguid : rule.runState.exsist_elements) {
