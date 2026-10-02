@@ -1,6 +1,6 @@
 # REPOMAP — Карта репозитория
 
-> Обновлено 2026-09-25 (рабочее дерево `llm_test`, HEAD `13c1948`): добавлены `json_commands/` и `dialogs/OtherDbDialog.*`; статистика пересобрана. Точечно 2026-09-27 (#213): добавлена `json_commands/SyncAllCommand.*`, статистика и `compile_commands.json` пересобраны для AC25.
+> Обновлено 2026-10-02 (HEAD `2101967`): полностью обновлена секция `spec/` — 6 карточек, `symbols.json` 940 → 1011, `callgraph.json` 155 → 418 рёбер; статистика пересобрана по `compile_commands.json` (AC25), `_progress.md` добавлен в схему каталога. Предыдущая ревизия: 2026-09-27 (#213).
 
 ## Корень
 `D:/SomeStuff_addon` — git repo. Код и документация ведутся в `master`; глобальные доработки по модулям идут в отдельных feature-ветках от него (AGENTS.md §17).
@@ -50,18 +50,20 @@ D:/SomeStuff_addon/
 │   ├── restart_archicad_for_test.ps1  # Final build + AC launch + JSON tests
 │   └── AddOn.grc.in            # Resources (IDs, RU/EN strings)
 ├── Docs/
+│   ├── _progress.md           # Состояние работ по документации (единственный источник resume)
 │   ├── ARCHITECTURE.md         # Architecture overview
 │   ├── REPOMAP.md              # This file
 │   ├── DISCREPANCIES.md        # Comment/code mismatches
 │   ├── SEQUENCES.md            # 10 sequence diagrams (Mermaid)
-│   ├── modules/                # Per-module cards (25, включая json_commands;
+│   ├── modules/                # Per-module cards (25 файлов: 13 в корне + spec/ 6,
+│   │                            #   dialogs/ 4, table/ 2, third_party/ 1;
 │   │                            #   dialogs/OtherDbDialog — описан в карточке Sync.md, #210)
 │   ├── tools/
-│   │   ├── generate_symbols.py  # symbols.json generator (callgraph: НЕ собирается, см. UPDATE_PROCEDURE.md)
+│   │   ├── generate_symbols.py  # НЕ запускать для данных: символы — regex-fallback, негоден
 │   │   └── UPDATE_PROCEDURE.md  # Doc update procedure
 │   └── _generated/
-│       ├── symbols.json         # Extracted symbols (8549 entries, regex fallback)
-│       └── callgraph.json       # Callgraph edges (155, clangd MCP + grep-fallback)
+│       ├── symbols.json         # Символы (1011 записей; spec — clangd MCP, 113)
+│       └── callgraph.json       # Рёбра вызовов (418; spec — 272, сверены с исходником)
 ├── compile_commands.json       # LSP compile commands (32 записи, AC25)
 ├── config.json                 # Build config
 ├── CMakeLists.txt              # CMake entry
@@ -83,10 +85,16 @@ D:/SomeStuff_addon/
 | Tests | TESTING-тесты | tests/ (TestFunc, TestKit, TestSpec/Sync/Param/Format/Renum/Core/Util) |
 | Third-party | Embedded libraries | third_party/qrcodegen |
 
-## Статистика (из compile_commands.json, 2026-09-30, AC25)
-- Всего записей: 42 (3 cmake_pch + 39 source-единиц)
-- `.cpp`: 39 (включая `json_commands/` ×6, `dialogs/OtherDbDialog.cpp` и `tests/` ×9)
-- **include paths**: 60 уникальных путей, 0 отсутствующих (пересобрано 2026-09-30, `Docs/_progress.md`)
+## Статистика (из compile_commands.json, 2026-10-02, AC25)
+- Всего записей: 46 (1 cmake_pch + 43 source-единицы + 2 записи с `-I SOURCE_DIR`)
+- `.cpp`: 43 — корень 11, `dialogs/` 5, `json_commands/` 6, `pk/` 3, **`spec/` 6**, `table/` 2, `tests/` 9, `third_party/` 1
+- **include paths**: 62 уникальных, из них 61 существующий; единственный «отсутствующий» — `SOURCE_DIR`, неразвёрнутая переменная CMake в 2 записях, а не путь (пересобрано 2026-10-02, `BuildAddOn.py --lsp`)
+- `compile_commands.json` пересобран 2026-10-02 (`BuildAddOn.py --lsp`): теперь **6 из 6 `spec/*.cpp`**. До пересборки `SpecCompat.cpp` и `SpecPlanning.cpp` в нём не было, хотя оба подключаются из других TU (`#include "spec/SpecCompat.hpp"`) — то есть сбор по нему не покрывал два реальных модуля. **Точное число записей в прежней версии восстановить нельзя:** файл не отслеживается git (`.gitignore`), прежняя копия не сохранилась.
+
+## Изменения с предыдущей ревизии карты (2026-10-02)
+- Полностью обновлена документация `spec/`: 6 карточек в `Docs/modules/spec/`, `symbols.json` 940 → 1011 записей (113 для spec), `callgraph.json` 155 → **418** рёбер. Все 272 новых spec-ребра сверены с исходником (0 расхождений).
+- Удалены 9 рёбер с устаревшими координатами; каждое заменено исправленным — `PlaceElements` переехал в `SpecExecutor.cpp:11`, `SpecAll` 139→143, `SpecArray` 515→609.
+- **140 рёбер (все не-spec) устарели** — унаследовано от сбора 2026-09-22, не результат этой сессии. Пример: `LoadSyncSettingsFromPreferences` помечена `:517`, реальное определение `:444`. Освежение не-spec части — отдельная задача (см. `callgraph.json` → `meta.known_stale_non_spec`).
 
 ## Изменения с предыдущей ревизии карты (2026-09-30)
 - Тесты вынесены в `Sources/AddOn/tests/` и разбиты по группам (#231): `TestFunc.cpp` 330 KB → 8 KB (реестр 49 наборов) + `TestKit.*` (файловый отчёт, счётчики, отбор `SMSTF_TEST`) + `Test{Spec,Sync,Param,Format,Renum,Core,Util}.*`. CMake не правился — `GLOB_RECURSE CONFIGURE_DEPENDS` подхватывает подпапку, а include-каталог содержит сам `Sources/AddOn`, поэтому `#include "tests/..."` резолвится изнутри, а снаружи — как `"tests/..."`.

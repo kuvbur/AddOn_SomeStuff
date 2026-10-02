@@ -36,7 +36,10 @@ Sources/AddOn/
 │   ├── CommandBase.*, JsonCommandRegistrar.*
 │   ├── RoomBookCommand.*, SpecCommand.*, HealthCommand.*
 │   └── How JSON Commands work.md
-├── spec/                    — Движок спецификаций (Spec.*, Spec_libpart.*)
+├── spec/                    — Движок спецификаций, 6 .cpp + 6 .hpp:
+│   │                          Spec (оркестратор), SpecPlanning (вклад источника),
+│   │                          SpecExecutor (этапы на модели), SpecHelpers (сетка/дамп),
+│   │                          SpecCompat (контракт имён), Spec_libpart (ListData)
 ├── table/                   — Рендерер таблиц, навигатор
 ├── pk/                      — Автоматизация, сброс свойств, ревизии
 ├── api_headers/             — Заголовки ArchiCAD API
@@ -57,7 +60,7 @@ Sources/AddOn/
 │  PROPERTYCACHE(), ReadSyncSettingsFromFile  │
 ├─────────────────────────────────────────────┤
 │           Application Logic                 │
-│  Sync, Summ, spec/Spec, ReNum,             │
+│  Sync, Summ, spec/ (6 модулей), ReNum,        │
 │  pk/(ResetProperty, Revision, Automate),   │
 │  MEPv1, ClassificationFunction, Roombook,  │
 │  Dimensions, SomeStuff_Main,               │
@@ -79,8 +82,8 @@ Sources/AddOn/
 ```mermaid
 graph TD
     Main[SomeStuff_Main] --> Sync
-    Main --> Summ
     Main --> Spec
+    Main --> Summ
     Main --> ReNum
     Main --> Helpers
     Main --> BP[dialogs/BrowserPalette]
@@ -88,6 +91,7 @@ graph TD
     JC --> RB2[Roombook]
     JC --> SS2[dialogs/SyncSettings]
     JC --> Spec
+    JC --> SC[spec/SpecCompat]
     JC --> CF
     JC --> Const[Constants]
     Sync --> OD[dialogs/OtherDbDialog]
@@ -120,6 +124,22 @@ graph TD
     BP --> Helpers
     CH[dialogs/CommandHelpers] --> Helpers
     SS --> CF
+
+    subgraph SPEC[spec/ — 6 .cpp, движок спецификаций]
+        Spec[Spec.cpp — оркестратор]
+        SP[SpecPlanning — вклад источника]
+        SE[SpecExecutor — этапы на модели]
+        SH[SpecHelpers — сетка/дамп]
+        SC2[SpecCompat — контракт имён]
+        SL2[Spec_libpart — ListData]
+    end
+    Spec --> SP
+    SP --> Spec
+    Spec --> SE
+    SE --> SH
+    Spec --> SH
+    Spec --> SL2
+    SE --> Spec
 ```
 
 ## Ключевые паттерны и правила
@@ -191,7 +211,7 @@ Sequence-диаграммы: `Docs/SEQUENCES.md` (набор согласова�
 
 1. Полная синхронизация: меню → SyncAndMonAll → SyncByType → SyncElement → SyncData → запись свойств
 2. Мониторинг изменений: ElementEventHandlerProc → SyncData (throttling через IsElementThrottled)
-3. Спецификация: SpecAll → GetRuleFromDescription → GetElementsForRule → PlaceElements
+3. Спецификация: SpecAll (Spec.cpp:143) → SpecArray (:609) → GetElementsForRule (:2099) → PlanRuleRows (:1866) → BuildContribution (SpecPlanning.cpp:19) → PlaceElements (SpecExecutor.cpp:11) → WriteSpecProperties (:280)
 4. Перенумерация: ReNumSelected → RenumDG (выбор правил) → ReNumOneRule
 5. Суммирование: SumSelected → Sum_GetElement → Sum_OneRule → запись в свойство/проект
 6. Округление размеров: DimRoundAll → DimAutoRound → DimParse (правила из PROPERTYCACHE)

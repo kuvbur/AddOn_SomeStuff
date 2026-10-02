@@ -1,5 +1,10 @@
 ## SpecPlanning (вклад источника)
 
+> Хеш состояния: `2101967` (2026-10-02), строки — определения в
+> `SpecPlanning.cpp` (1-based, собраны clangd и сверены с исходником).
+> Обновлено 2026-10-02: добавлены проверенные строки всех восьми функций и
+> карта вызовов; прежние строки в карточке отсутствовали.
+
 Новый внутренний модуль блока R6. Отвечает за одну сущность: **вклад одного
 источника** в итоговую строку спецификации.
 
@@ -8,9 +13,52 @@
 | `MissingField` | `SpecPlanning.hpp` — непрочитанное поле + признак «ошибка элемента» |
 | `ContributionStatus` | `SpecPlanning.hpp` — `Excluded` / `Empty` / `Partial` / `Complete` |
 | `RuleContribution` | `SpecPlanning.hpp` — источник, статус, значения по слотам, ключи, пропуски |
-| `BuildContribution` | `SpecPlanning.cpp` — **фаза 1**: флаг, уникальные параметры, ключ, суммы |
-| `ReadContributionOutputs` | `SpecPlanning.cpp` — **фаза 2**: выходные слоты и ключ выхода |
-| `ClassifyContribution` | `SpecPlanning.cpp` — статус от фактических размеров и схемы |
+
+## Публичный API
+
+Все восемь функций модуля, строки проверены по исходнику.
+
+| Функция | .cpp строка | Назначение |
+|---|---|---|
+| `ReadIsError` | 9 | признак «ошибка элемента» по словарю непрочитанных полей (анонимный namespace) |
+| `BuildContribution` | 20 | **фаза 1**: флаг, уникальные параметры, ключ, суммы |
+| `ReadContributionOutputs` | 112 | **фаза 2**: выходные слоты и ключ выхода |
+| `ClassifyContribution` | 143 | статус от фактических размеров и схемы |
+| `BuildOutputSlots` | 167 | пустые выходные слоты под схему (анонимный namespace) |
+| `SumContributionIntoRow` | 191 | сложение сумм вклада в накопленные слоты строки |
+| `AddContributionToRow` | 220 | раскладка вклада в агрегат: `Created`/`Merged`/`SchemaMismatch` |
+| `ReconcileExistingRows` | 260 | сверка строк с ранее размещёнными объектами (R7.2) |
+
+### Карта вызовов
+
+Собрана `prepareCallHierarchy` по всем восьми функциям, строки 1-based. Рёбер
+входящих — 29, из них 15 продуктовых и 14 из тестов. Полная карта — в
+`Docs/_generated/callgraph.json`.
+
+| Функция | Вызывается из (продукт) | Вызывает (проектное) |
+|---|---|---|
+| `BuildContribution` :20 | `PlanRuleRows` (Spec.cpp:1908) | `SpecValueReader::Read` (Spec.cpp:36, 51, 84), `ReadIsError` (:55, :89), `ParamHelpers::ConvertIntToParamValue` (Helpers.cpp:8546) |
+| `ReadContributionOutputs` :112 | `PlanRuleRows` (Spec.cpp:1987) | `SpecValueReader::Read` (Spec.cpp:122), `ReadIsError` (:128), `ParamHelpers::ToString` (Helpers.cpp:8734) |
+| `SumContributionIntoRow` :191 | `AddContributionToRow` (:230) | `ParamHelpers::operator+` (Helpers.cpp:4104) |
+| `AddContributionToRow` :220 | `PlanRuleRows` (Spec.cpp:2002) | `SumContributionIntoRow` (:230), `BuildOutputSlots` (:241), `OutSlotsMatchSchema` (Spec.cpp:1785 при вызове из :242) |
+| `ReconcileExistingRows` :260 | `GetElementsForRule` (Spec.cpp:2139) | `SpecValueReader::Read` (Spec.cpp:282, 329, 356, 381), `ParamHelpers::ConvertByFormatString` (Helpers.cpp:8709), `ParamHelpers::ToString` (:8734), `NumToString` (:296), `msg_rep` (CommonFunction.cpp:407) |
+| `ReadIsError` :9 | `BuildContribution` (:55, :89), `ReadContributionOutputs` (:128) | — |
+| `BuildOutputSlots` :167 | `AddContributionToRow` (:241) | — |
+| `ClassifyContribution` :143 | **в продукте не вызывается** — только `TestSpecContribution` (TestSpec.cpp:1958, 2001, 2060, 2073, 2074) | — |
+
+**Наблюдение о покрытии.** `ClassifyContribution` объявлена в публичном API
+`SpecPlanning.hpp:93`, но в обычной сборке не имеет ни одного вызывающего: статус
+вклада вычисляется в цикле `PlanRuleRows` самостоятельно, а функция осталась
+отдельной точкой проверки формы. Проверено grep по всему `Sources/AddOn` — других
+вызовов нет. Это стоит учитывать при правках: изменение сигнатуры не сломает
+сборку продуктового кода, пока не изменится тест, то есть расхождение функции и
+её реального применения не будет заметно до прогона набора. [по карте вызовов
+и grep]
+
+**Кто владеет разбором вклада.** Продуктовый путь входит в модуль через две
+функции — `BuildContribution` и `AddContributionToRow` (обе из `PlanRuleRows`),
+плюс `ReadContributionOutputs` для первого представителя ключа и
+`ReconcileExistingRows` для сверки. Иных входов из `spec/` нет. [по карте вызовов]
 
 ### Разделение двух сущностей
 

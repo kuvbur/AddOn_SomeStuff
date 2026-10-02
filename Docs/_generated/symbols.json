@@ -2650,266 +2650,357 @@
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 34
+    "line": 35
   },
   {
     "name": "Spec::SpecAll",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 143
+    "line": 144
   },
   {
     "name": "Spec::SpecFilter",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 215
+    "line": 228
+  },
+  {
+    "name": "Spec::SpecFilter",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 370
   },
   {
     "name": "Spec::SpecDG",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 457
+    "line": 470
+  },
+  {
+    "name": "Spec::ShowRunResult",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 523
   },
   {
     "name": "Spec::SpecArray",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 519
+    "line": 610
   },
   {
     "name": "Spec::GetRuleFromElement",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1054
+    "line": 1234
   },
   {
     "name": "Spec::NormalizeRuleDescription",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1117
+    "line": 1297
   },
   {
     "name": "Spec::AddRule",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1165
+    "line": 1345
+  },
+  {
+    "name": "Spec::CollectRuleDependencies",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1396
+  },
+  {
+    "name": "Spec::BuildReadParamDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1443
   },
   {
     "name": "Spec::GetParamToReadFromRule",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1312
+    "line": 1492
   },
   {
-    "name": "Spec::GetParamValue",
+    "name": "Spec::MatchDestinationProperties",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1446
+    "line": 1523
+  },
+  {
+    "name": "Spec::ResolveFavoriteLinks",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1550
+  },
+  {
+    "name": "Spec::SelectExistingElements",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1615
+  },
+  {
+    "name": "Spec::AddExistingReadRequests",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1635
+  },
+  {
+    "name": "Spec::SpecValueReader::Read",
+    "kind": "Method",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1675
   },
   {
     "name": "Spec::OutSlotsMatchSchema",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1597
+    "line": 1786
+  },
+  {
+    "name": "Spec::PrepareSlotBindings",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1824
+  },
+  {
+    "name": "Spec::IsSourceVisible",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1856
+  },
+  {
+    "name": "Spec::PlanRuleRows",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 1867
   },
   {
     "name": "Spec::GetElementsForRule",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1914
+    "line": 2100
   },
   {
     "name": "Spec::ParseErrorText",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1977
+    "line": 2172
   },
   {
     "name": "Spec::ApplyRulePolicy",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2009
+    "line": 2204
   },
   {
     "name": "Spec::ExpandGroup",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2052
+    "line": 2247
   },
   {
     "name": "Spec::ParseGroups",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2144
+    "line": 2339
   },
   {
     "name": "Spec::ParseOutputSchema",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2323
+    "line": 2518
   },
   {
     "name": "Spec::GetRuleFromDescription",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2365
-  },
-  {
-    "name": "Spec::GetElementForPlaceProperties",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2743
-  },
-  {
-    "name": "Spec::GetElementForPlace",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2871
-  },
-  {
-    "name": "Spec::PlaceElements",
-    "kind": "Function",
-    "file": "Sources/AddOn/spec/Spec.cpp",
-    "module": "spec",
-    "line": 2920
+    "line": 2560
   },
   {
     "name": "Spec::EvaluateRuleFlag",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2447
+    "line": 2642
   },
   {
     "name": "Spec::CollectUnreadRuleNames",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2520
+    "line": 2715
+  },
+  {
+    "name": "Spec::GetRulePropertyDefinition",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2754
+  },
+  {
+    "name": "Spec::ReadElementRuleFlag",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2766
   },
   {
     "name": "Spec::CheckRuleByPropertyGuid",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2608
+    "line": 2803
+  },
+  {
+    "name": "Spec::CheckRuleElementByRule",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2943
+  },
+  {
+    "name": "Spec::GetElementForPlaceProperties",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 2964
+  },
+  {
+    "name": "Spec::GetElementForPlace",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/Spec.cpp",
+    "module": "spec",
+    "line": 3092
   },
   {
     "name": "ListData::GetSubposKey",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 11
+    "line": 17
   },
   {
     "name": "ListData::GetKey",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 21
+    "line": 32
   },
   {
     "name": "ListData::GetKey",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 26
+    "line": 41
   },
   {
     "name": "ListData::GetKey",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 31
+    "line": 51
   },
   {
     "name": "ListData::GetKey",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 49
+    "line": 75
   },
   {
     "name": "ListData::GetKey",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 67
+    "line": 99
   },
   {
     "name": "ListData::GetParam",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 87
+    "line": 126
   },
   {
     "name": "ListData::AddMat",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 104
+    "line": 153
   },
   {
     "name": "ListData::AddArm",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 141
+    "line": 201
   },
   {
     "name": "ListData::AddSubpos",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 193
+    "line": 263
   },
   {
     "name": "ListData::AddProkat",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 240
+    "line": 322
   },
   {
     "name": "ListData::GetAllKeys",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 295
+    "line": 383
   },
   {
     "name": "ListData::Add",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 344
+    "line": 441
   },
   {
     "name": "ListData::AddLibdataToParamValueDict",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec_libpart.cpp",
     "module": "spec",
-    "line": 372
+    "line": 482
   },
   {
     "name": "IsDummyModeOn",
@@ -6556,27 +6647,433 @@
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecHelpers.cpp",
     "module": "spec",
-    "line": 27
+    "line": 29
   },
   {
     "name": "Spec::ParamValueToDumpString",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecHelpers.cpp",
     "module": "spec",
-    "line": 92
+    "line": 96
   },
   {
     "name": "Spec::FillDumpFromParamDict",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecHelpers.cpp",
     "module": "spec",
-    "line": 112
+    "line": 118
   },
   {
     "name": "Spec::FillDumpGDLParameter",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecHelpers.cpp",
     "module": "spec",
-    "line": 130
+    "line": 138
+  },
+  {
+    "name": "Spec::BuildRowParamToWrite",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecHelpers.cpp",
+    "module": "spec",
+    "line": 162
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::status",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 9
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::resultCode",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 10
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::elementsToCreate",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 11
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::elementsToModify",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 12
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::elementsToDelete",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 13
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::elapsedSeconds",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 14
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::includeParameters",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 15
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::hasPrimaryError",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 16
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::hasRecoveryError",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 17
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::hasUnconfirmedCreate",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 18
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::prepareFailureStage",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 19
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::created",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 20
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::modified",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 21
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::deleted",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 22
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::rules",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 23
+  },
+  {
+    "name": "SpecCompat::ResponseFieldNames::messages",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 24
+  },
+  {
+    "name": "SpecCompat::NestedFieldNames::attempted",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 26
+  },
+  {
+    "name": "SpecCompat::NestedFieldNames::succeeded",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 27
+  },
+  {
+    "name": "SpecCompat::NestedFieldNames::failed",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 28
+  },
+  {
+    "name": "SpecCompat::NestedFieldNames::element",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 29
+  },
+  {
+    "name": "SpecCompat::NestedFieldNames::guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 30
+  },
+  {
+    "name": "SpecCompat::NestedFieldNames::rule",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 31
+  },
+  {
+    "name": "SpecCompat::NestedFieldNames::message",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 32
+  },
+  {
+    "name": "SpecCompat::RuleFieldNames::name",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 34
+  },
+  {
+    "name": "SpecCompat::RuleFieldNames::created",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 35
+  },
+  {
+    "name": "SpecCompat::RuleFieldNames::modified",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 36
+  },
+  {
+    "name": "SpecCompat::RuleFieldNames::deleted",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 37
+  },
+  {
+    "name": "SpecCompat::MessageFieldNames::ruleName",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 39
+  },
+  {
+    "name": "SpecCompat::MessageFieldNames::text",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 40
+  },
+  {
+    "name": "SpecCompat::ElementFieldNames::guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 42
+  },
+  {
+    "name": "SpecCompat::ElementFieldNames::property",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 43
+  },
+  {
+    "name": "SpecCompat::ElementFieldNames::sourceElement",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 44
+  },
+  {
+    "name": "SpecCompat::ElementFieldNames::gdlParameter",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 45
+  },
+  {
+    "name": "SpecCompat::PropertyFieldNames::name",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 47
+  },
+  {
+    "name": "SpecCompat::PropertyFieldNames::value",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 48
+  },
+  {
+    "name": "SpecCompat::InputFieldNames::placementPoint",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 50
+  },
+  {
+    "name": "SpecCompat::InputFieldNames::ruleNames",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 51
+  },
+  {
+    "name": "SpecCompat::InputFieldNames::includeParameters",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 52
+  },
+  {
+    "name": "SpecCompat::InputFieldNames::x",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 53
+  },
+  {
+    "name": "SpecCompat::InputFieldNames::y",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 54
+  },
+  {
+    "name": "SpecCompat::ErrorFieldNames::errorCode",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 56
+  },
+  {
+    "name": "SpecCompat::ErrorFieldNames::errorMessage",
+    "kind": "Field",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 57
+  },
+  {
+    "name": "SpecCompat::StageCounterNames",
+    "kind": "Variable",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 59
+  },
+  {
+    "name": "SpecCompat::StatusText",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 65
+  },
+  {
+    "name": "IsUsableName",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 71
+  },
+  {
+    "name": "CountGroupFailures",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 83
+  },
+  {
+    "name": "SpecCompat::VerifyResponseFields",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecCompat.cpp",
+    "module": "spec",
+    "line": 117
+  },
+  {
+    "name": "Spec::PlaceElements",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecExecutor.cpp",
+    "module": "spec",
+    "line": 12
+  },
+  {
+    "name": "Spec::WriteSpecProperties",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecExecutor.cpp",
+    "module": "spec",
+    "line": 281
+  },
+  {
+    "name": "ReadIsError",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecPlanning.cpp",
+    "module": "spec",
+    "line": 9
+  },
+  {
+    "name": "Spec::BuildContribution",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecPlanning.cpp",
+    "module": "spec",
+    "line": 20
+  },
+  {
+    "name": "Spec::ReadContributionOutputs",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecPlanning.cpp",
+    "module": "spec",
+    "line": 112
+  },
+  {
+    "name": "Spec::ClassifyContribution",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecPlanning.cpp",
+    "module": "spec",
+    "line": 143
+  },
+  {
+    "name": "BuildOutputSlots",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecPlanning.cpp",
+    "module": "spec",
+    "line": 167
+  },
+  {
+    "name": "Spec::SumContributionIntoRow",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecPlanning.cpp",
+    "module": "spec",
+    "line": 191
+  },
+  {
+    "name": "Spec::AddContributionToRow",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecPlanning.cpp",
+    "module": "spec",
+    "line": 220
+  },
+  {
+    "name": "Spec::ReconcileExistingRows",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecPlanning.cpp",
+    "module": "spec",
+    "line": 260
   }
 ]

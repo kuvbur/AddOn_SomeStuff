@@ -1,12 +1,24 @@
 # spec/Spec — Движок спецификаций
 
-> Хеш состояния: рабочее дерево ветки `spec_refactor` поверх `c2d0ab4` (2026-10-01) — #234: read-only валидатор правила по GUID свойства-правила (`CheckRuleByPropertyGuid`, `EvaluateRuleFlag`, `CollectUnreadRuleNames`, наблюдатель `PlaceSourceInfo` в `GetElementForPlaceProperties`). Последний закоммиченный хеш до #234: `309606a`, раздел `GetParamValue` дополнен правкой #221. Номера строк — определения в `.cpp` (1-based, проверены source; функции внутри namespace Spec).
+> Хеш состояния: `2101967` (2026-10-02). Номера строк — определения в `.cpp`
+> (1-based, полностью пересобраны clangd 2026-10-02 и сверены с исходником:
+> 113 записей spec, расхождений 0). До этого шага таблица API и строки карточек
+> опирались на сбор 2026-09-28/2026-10-01 и были неточны: `SpecAll` числился на
+> :150 при определении на :144, `PlaceElements` — на :2518, хотя функция уже
+> переехала в `spec/SpecExecutor.cpp`; отсутствовали 13 функций, добавленных
+> рефакторингом (#228) и #234/#245. Последний закоммиченный хеш до #234:
+> `309606a`, раздел `GetParamValue` дополнен правкой #221.
 
 ## Назначение
 Генерация спецификаций по правилам: разбор описаний, выбор элементов, группировка, создание/обновление элементов. [из комментария, Spec.hpp:8-9]
 
 ## Файлы
-- `spec/Spec.cpp/hpp`
+- `spec/Spec.cpp/hpp` — оркестрация, разбор правил, чтение значений, планирование
+- `spec/SpecPlanning.cpp/hpp` — вклад источника и сверка существующих строк, карточка `SpecPlanning.md`
+- `spec/SpecExecutor.cpp/hpp` — этапы исполнения с моделью, карточка `SpecExecutor.md`
+- `spec/SpecHelpers.cpp/hpp` — шаг сетки, дамп значений, общий builder записи, карточка `SpecHelpers.md`
+- `spec/SpecCompat.cpp/hpp` — контракт запуска (имена полей), карточка `SpecCompat.md`
+- `spec/Spec_libpart.cpp/hpp` — сметные данные библиотечных элементов, карточка `Spec_libpart.md`
 - `json_commands/SpecCommand.cpp/hpp` — JSON-точка входа AC25–29 [по коду]
 
 ## Ключевые типы
@@ -18,28 +30,157 @@
 | `Element` / `ElementDict` | Временный контейнер создаваемого элемента / словарь по сцепке уникальных параметров [из комментария] |
 | `SpecRuleDict` | HashTable<string, SpecRule> [из комментария] |
 | `SpecElementDump` | Дамп одного созданного/изменённого элемента: `guid`, `favorite_name`, `sourceElements`, `properties`, `gdlParameters` (#227, Spec.hpp) |
+| `SpecRunResult` | Результат запуска: счётчики этапов (`SpecStageCounters` на create/grouping/gdl/deleteOld), флаги `hasPrimaryError`/`hasRecoveryError`/`hasUnconfirmedCreate`, `ruleNames`/`ruleStats`/`messages` (#245, R8.5) |
 
 ## Публичный API
 
+37 функций в `Spec.cpp` — полный пересбор строк. Функции, вынесенные в другие
+модули, помечены ссылкой на их карточку.
+
 | Функция | .cpp строка | Назначение |
 |---------|-------------|------------|
-| `SpecAll` | 150 | Создание спецификации из выбора/видимых/правил по умолчанию [из комментария] — карточка |
-| `SpecFilter` | 222, 366 | Исключение неподходящих типов/БД (две перегрузки) [из комментария] |
-| `GetRuleFromDefaultElem` | 42 | Правила из свойств элемента по умолчанию [из комментария] |
-| `GetRuleFromElement` | 1140 | Правила из выбранного элемента [из комментария] |
-| `AddRule` | 1207 | Разбор описания и добавление правила в словарь [из комментария] |
-| `GetRuleFromDescription` | 1930 | Разбор строки описания в SpecRule [из комментария] |
-| `GetParamValue` | 1416 | Чтение одного значения параметра [из комментария] |
-| `GetElementsForRule` | 1559 | Формирование элементов для одного правила [из комментария] |
-| `GetParamToReadFromRule` | 1294 | Параметры для предварительного чтения [из комментария] |
-| `GetElementForPlace` | 2391 | Создание/настройка элемента для размещения [из комментария] |
-| `EvaluateRuleFlag` | 2447 | Разбор `API_Property` как флага правила без схлопывания состояний (#234) |
-| `CollectUnreadRuleNames` | 2520 | Имена из `dependencies.read`, не прочитанные у элемента (#234) |
-| `CheckRuleByPropertyGuid` | 2608 | Read-only проверка правила по GUID свойства-правила (#234) |
-| `GetElementForPlaceProperties` | 2743 | Параметры избранного; `readInfo` — наблюдатель источника чтения (#234) |
-| ~~`GetSizePlaceElement`~~ | — | **вынесен** в `spec/SpecHelpers.cpp`, карточка `SpecHelpers.md` |
-| `PlaceElements` | 2518 | Размещение сформированных элементов и заполнение параметров [из комментария] — карточка |
+| `GetRuleFromDefaultElem` | 35 | Правила из свойств элемента по умолчанию [из комментария] |
+| `SpecAll` | 144 | Создание спецификации из выбора/видимых/правил по умолчанию [из комментария] — карточка |
+| `SpecFilter` | 228 | Исключение неподходящего типа элемента (одна перегрузка; внутренняя) [из комментария] |
+| `SpecFilter` | 370 | Исключение неподходящих типов/БД (перегрузка на массив) [из комментария] |
+| `SpecDG` | 470 | Диалог выбора правил [из комментария] |
+| `ShowRunResult` | 523 | Единое окно результата запуска (#245, R9.2) [по коду] |
+| `SpecArray` | 610 | Оркестрация запуска одного правила [из комментария] |
+| `GetRuleFromElement` | 1234 | Правила из выбранного элемента [из комментария] |
+| `NormalizeRuleDescription` | 1297 | Нормализация описания правила перед разбором (R4.1) [по коду] |
+| `AddRule` | 1345 | Разбор описания и добавление правила в словарь [из комментария] |
+| `CollectRuleDependencies` | 1396 | Сбор зависимостей правила от разворачивания имён (R5.1) [по коду] |
+| `BuildReadParamDict` | 1443 | Сбор словаря имён для чтения из правила (R5.1) [по коду] |
+| `GetParamToReadFromRule` | 1492 | Параметры для предварительного чтения [из комментария] |
+| `MatchDestinationProperties` | 1523 | Проверка, что у избранного есть все выходные свойства и суммы (R5.2) [по коду] |
+| `ResolveFavoriteLinks` | 1550 | Поиск выходных свойств у избранного, побайтовый поиск с откатом (R5.2) [по коду] |
+| `SelectExistingElements` | 1615 | Отбор ранее размещённых строк правила (R5.2) [по коду] |
+| `AddExistingReadRequests` | 1635 | Добавление чтения для ранее размещённых объектов (R5.2) [по коду] |
+| `SpecValueReader::Read` | 1675 | Единственная точка чтения значения параметра (R5.3) [по коду] |
+| `OutSlotsMatchSchema` | 1786 | Совпадение фактических слотов с выходной схемой (R4.3) [по коду] |
+| `PrepareSlotBindings` | 1824 | Привязка выходных слотов к группам и источникам (R4.3) [по коду] |
+| `IsSourceVisible` | 1856 | Проверка видимости источника, только при `only_visible` (R5.4) [по коду] |
+| `PlanRuleRows` | 1867 | Расчёт строк правила из вкладов источников (R6.1) [по коду] |
+| `GetElementsForRule` | 2100 | Формирование элементов для одного правила: расчёт + сверка [из комментария] |
+| `ParseErrorText` | 2172 | Текст ошибки разбора по виду ошибки (R4.4) [по коду] |
+| `ApplyRulePolicy` | 2204 | Политика правила, вынесена из парсера (R4.2) [по коду] |
+| `ExpandGroup` | 2247 | Раскрытие группы в диапазон строк (R4.2) [по коду] |
+| `ParseGroups` | 2339 | Разбор групп `g()` описания (R4.2) [по коду] |
+| `ParseOutputSchema` | 2518 | Разбор выходной схемы `s()` описания (R4.2) [по коду] |
+| `GetRuleFromDescription` | 2560 | Разбор строки описания в `SpecRule` [из комментария] |
+| `EvaluateRuleFlag` | 2642 | Разбор `API_Property` как флага правила без схлопывания состояний (#234) |
+| `CollectUnreadRuleNames` | 2715 | Имена из `dependencies.read`, не прочитанные у элемента (#234) |
+| `GetRulePropertyDefinition` | 2754 | `static` — определение свойства-правила по GUID (внутренняя, #234) |
+| `ReadElementRuleFlag` | 2766 | `static` — чтение флага у элемента (внутренняя, #234) |
+| `CheckRuleByPropertyGuid` | 2803 | Read-only проверка правила по GUID свойства-правила (#234) |
+| `CheckRuleElementByRule` | 2943 | Проверка правил по элементам (мост BrowserPalette, #234) |
+| `GetElementForPlaceProperties` | 2964 | Параметры избранного; `readInfo` — наблюдатель источника чтения (#234) |
+| `GetElementForPlace` | 3092 | Создание/настройка элемента для размещения [из комментария] |
+| ~~`GetSizePlaceElement`~~ | — | **вынесен** в `spec/SpecHelpers.cpp:29`, карточка `SpecHelpers.md` |
+| ~~`PlaceElements`~~ | — | **вынесен** в `spec/SpecExecutor.cpp:12`, карточка `SpecExecutor.md` |
+| ~~`WriteSpecProperties`~~ | — | **вынесен** в `spec/SpecExecutor.cpp:281`, карточка `SpecExecutor.md` (R8.4) |
 | ~~`ParamValueToDumpString` / `FillDumpFromParamDict` / `FillDumpGDLParameter`~~ | — | **вынесены** в `spec/SpecHelpers.cpp`, карточка `SpecHelpers.md` |
+
+## Карта вызовов модуля spec
+
+Собрана `prepareCallHierarchy` по **всем** 70 функциям шести файлов `spec/`
+(2026-10-02, clangd по `compile_commands.json` AC25). Полная карта с `call_sites` —
+`Docs/_generated/callgraph.json` (418 рёбер, из них 272 добавлены этим проходом;
+9 прежних spec-рёбер удалены как устаревшие — они указывали на `PlaceElements`
+в `Spec.cpp`, откуда он уехал в `SpecExecutor.cpp`).
+
+### Вход в модуль — три пути
+
+| Вход | Вызывающий | Что делает |
+|---|---|---|
+| `SpecAll` :144 | `MenuCommandHandler` (SomeStuff_Main.cpp:445); `SpecCommand::Execute` (SpecCommand.cpp:257) | единственная публичная точка входа; интерактивный и JSON-путь |
+| `CheckRuleByPropertyGuid` :2803 | `TestSpecRuleCheck` (TestSpec.cpp:6240, :6456) | read-only валидатор правила по GUID (#234), модель не пишет |
+| `CheckRuleElementByRule` :2943 | `RegisterACAPIJavaScriptObject` (BrowserPalette.cpp:1895) — JS-мост палитры | проверка правил по элементам (#234) |
+
+Плюс два входа из `Helpers.cpp`: `ParamHelpers::Read` → `ListData::GetAllKeys`
+(Helpers.cpp:5751) и `ParamHelpers::ReadListData` → `ListData::Add` (:6706). [по карте вызовов]
+
+### Внутри spec/ — граф по функциям `Spec.cpp`
+
+Показаны только рёбра между функциями spec; вызовы в `CommonFunction.cpp`,
+`Helpers.cpp`, `Propertycache.cpp`, `Sync.cpp` и `DG4rule.cpp` вынесены в
+«Зависимости» ниже.
+
+```
+SpecAll ──► GetRuleFromDefaultElem ──► AddRule ──► NormalizeRuleDescription
+   │            │                        ├──► GetRuleFromDescription ──┬─► ApplyRulePolicy
+   │            └──► SpecFilter (:370)     │                              ├─► ParseGroups ──► ExpandGroup
+   │                                          └─► ParseErrorText           └─► ParseOutputSchema
+   ├──► SpecFilter (:370)
+   ├──► SpecArray ──┬──► GetRuleFromElement ──► AddRule
+   │                ├──► GetParamToReadFromRule ──► CollectRuleDependencies
+   │                │                             └─► BuildReadParamDict
+   │                ├──► GetElementForPlaceProperties
+   │                ├──► MatchDestinationProperties
+   │                ├──► ResolveFavoriteLinks
+   │                ├──► SelectExistingElements
+   │                ├──► AddExistingReadRequests
+   │                ├──► SpecDG
+   │                ├──► GetElementsForRule ──┬──► PlanRuleRows ──┬──► PrepareSlotBindings
+   │                │                          │                   ├──► IsSourceVisible
+   │                │                          │                   ├──► BuildContribution (SpecPlanning)
+   │                │                          │                   ├──► ReadContributionOutputs (SpecPlanning)
+   │                │                          │                   └──► AddContributionToRow (SpecPlanning)
+   │                │                          └──► ReconcileExistingRows (SpecPlanning)
+   │                ├──► PlaceElements (SpecExecutor)
+   │                ├──► WriteSpecProperties (SpecExecutor)
+   │                ├──► BuildRowParamToWrite (SpecHelpers)
+   │                └──► FillDumpFromParamDict (SpecHelpers)
+   └──► ShowRunResult
+
+CheckRuleByPropertyGuid ──┬──► NormalizeRuleDescription
+                          ├──► GetRuleFromDescription
+                          ├──► CollectRuleDependencies
+                          ├──► BuildReadParamDict
+                          ├──► MatchDestinationProperties
+                          ├──► ResolveFavoriteLinks
+                          ├──► GetElementForPlaceProperties
+                          ├──► GetRulePropertyDefinition
+                          ├──► EvaluateRuleFlag
+                          └──► CheckRuleElementByRule ──┬──► CollectRuleDependencies
+                                                       ├──► BuildReadParamDict
+                                                       ├──► CollectUnreadRuleNames ──► CollectRuleDependencies
+                                                       └──► ReadElementRuleFlag ──► EvaluateRuleFlag
+```
+
+### Внешние зависимости spec/ (по карте вызовов)
+
+| Вызываемая | Кто зовёт | Строки вызовов |
+|---|---|---|
+| `ParamHelpers::ElementsRead` (Helpers.cpp:5444) | `SpecArray`, `CheckRuleElementByRule` | Spec.cpp:853, Spec.cpp:2959 |
+| `ParamHelpers::ElementsWrite` (Helpers.cpp:4588) | `WriteSpecProperties` (SpecExecutor) | — |
+| `GetElementByPropertyDescription` (CommonFunction.cpp:2764) | `SpecArray` | Spec.cpp:804 |
+| `PrepareElementsForUpdate` (CommonFunction.cpp:2562) | `SpecArray` | — |
+| `UnhideUnlockElementLayer` (CommonFunction.cpp:2494) | `PlaceElements` (SpecExecutor) | — |
+| `SyncArray` (Sync.cpp:477) | `SpecArray` | Spec.cpp:1210 |
+| `RuleSelectDialog` (DG4rule.cpp:15) | `SpecDG`, `ShowRunResult` | — |
+| `GetSelectedElements` (Helpers.cpp:696) | `SpecAll` | — |
+
+### Наблюдения по карте вызовов
+
+- **`SpecValueReader::Read` — единственная точка чтения значения в движке.**
+  Её зовут `BuildContribution` (SpecPlanning.cpp:36, :51, :84),
+  `ReadContributionOutputs` (:122) и `ReconcileExistingRows` (:282, :329, :356,
+  :381) — семь мест, все из модуля планирования. Прямых вызовов
+  `GetParamValueForElements` из `Spec.cpp` нет. [по карте вызовов]
+- **`GetElementsForRule` вызывается один раз** в пути запуска (`SpecArray:871`),
+  плюс дважды из тестов (`Run`/`RunWithPlan`, TestSpec.cpp:154, :165) —
+  это фикстура, строящая план явно. Второго прохода по правилам в продукте нет. [R9.4]
+- **`ParseErrorText` читается из UI**: кроме `AddRule` его зовёт
+  `SpecRuleCommonToJson` (BrowserPalette.cpp:190) — то есть палитра показывает
+  текст ошибки разбора из движка. [по карте вызовов]
+- **`SpecFilter` (перегрузка :228) не имеет вызывающих** — внешних и продуктовых;
+  это внутренняя перегрузка, оставшаяся после того, как путь запуска перешёл на
+  :370. [по карте вызовов]
+- **`ShowRunResult` вызывается только из `SpecAll` (:210)** и только при
+  `showUserInterface`, поэтому JSON-путь окон не открывает вовсе. [#245]
+- **`SpecDG` вызывается только из `SpecArray` (:845)**, причём после плана
+  чтения и после разрешения назначения, — то есть момент диалога не изменился. [#245]
 
 ### R4.9 — read-only валидатор правила по GUID свойства (#234)
 - `CheckRuleByPropertyGuid (const API_Guid &propertyGuid, const API_Guid &elemguid, RuleCheckResult &result)`
@@ -1502,33 +1643,44 @@
 - **A/B против эталона P0:** 3 прогона `SomeStuffCommand.Spec` на свежей модели (рестарт ArchiCAD) — каждый `completed`, C=2 / M=12 / D=2, 14 строк, `diff_rows` против `compare-p0-smoke.json` дал **0 расхождений** по значениям, gdl и числу источников. Первое же наблюдение дало регрессию в тесте (`Spec link copied`): тест сравнивал `Element::subguid_paramrawname` с маркером правила, что после R3.3 неверно по замыслу — фикстура разделена на `subguid_paramrawname` (маркер) и `destinationParamGuidName` (разрешённое), проверка переведена на второе.
 - Не покрыто `not verified`: create-from-scratch, update, delete_old и сохранность значений в конечной модели (независимого read-back нет). A/B выполнен на повторяемом сценарии «свежая модель из рестарта», который воспроизводит 2/12/2. [по коду]
 
-### `Spec::GetParamValue(...) -> bool` (#220, локальная правка)
-- Расположение: `Sources/AddOn/spec/Spec.cpp:1389`.
-- Контракт: читает обычное значение через `GetParamValueForElements`; материал выбирается по `pvalue.fromMaterial`, а не по аргументу `fromMaterial` (аргумент сохранён для совместимости). Для материалов и list-data отрицательный `n_layer` возвращает `false`. При отказе `pvalue.isValid == false`; остальные поля при отказе не являются результатом. [по коду]
+### `Spec::SpecValueReader::Read(const API_Guid &elemguid, const GS::UniString &rawname, ParamValue &pvalue, GS::Int32 n_layer) const -> bool` (прежняя карточка `GetParamValue`, R5.3)
+- Расположение: `Sources/AddOn/spec/Spec.cpp:1675`.
+- **Прежняя свободная функция `GetParamValue` больше не существует** — на её месте
+  метод `SpecValueReader::Read`. Карточка сохранена по контракту; сигнатура
+  изменилась, вызывающих ровно семь, все из `SpecPlanning.cpp`. [по карте вызовов]
+- Контракт: читает обычное значение через `ParamHelpers::GetParamValueForElements`; материал выбирается по `pvalue.fromMaterial`, а не по аргументу `fromMaterial` (аргумент сохранён для совместимости). Для материалов и list-data отрицательный `n_layer` возвращает `false`. При отказе `pvalue.isValid == false`; остальные поля при отказе не являются результатом. [по коду]
 - Отсутствующий элемент/ключ и пустой состав — ошибка. Положительный индекс за концом непустого состава — успешная пустая строка с нулевыми числовыми полями, `boolValue=false`, `canCalculate=false`, `isValid=true`. Для отсутствующих list-data или невычисленной формулы сохранён такой же успешный пустой результат. [по коду]
 - Доступ к вложенным словарям — `GetPtr` с проверкой `nullptr`; результат формулы ищется после изменения локального словаря, указатель через его заполнение не удерживается. Входные словари не изменяются. [по коду]
-- С 2026-09-28 (#221) `pvalue.val.intValue` для материала слоя заполняется через `CommonFunction::DoubleToInt32 (Spec.cpp:1472)`: значение вне диапазона Int32 (включая NaN) заменяется границей диапазона с сообщением `msg_rep`, тип поля и строковое значение не меняются. [по коду Spec.cpp:1466-1479]
-- Вызывает: `hasLibData`, `ParamHelpers::ParseParamName`, `ListData::AddLibdataToParamValueDict`, `ParamHelpers::ReadFormula`, `ParamHelpers::GetParamValueForElements`, `UniStringToDouble`, `is_equal`, `DoubleToInt32`, диагностические `DBprnt`/`msg_rep`. Вызывается из `GetElementsForRule` и `TestFunc::TestSpecGetParamValue`. [по исходникам]
-- Проверка: целевой runtime-набор AC25 в `TestFunc.cpp`; полный набор тестов и другие AC-версии этой проверкой не покрываются.
+- С 2026-09-28 (#221) `pvalue.val.intValue` для материала слоя заполняется через `CommonFunction::DoubleToInt32`: значение вне диапазона Int32 (включая NaN) заменяется границей диапазона с сообщением `msg_rep`, тип поля и строковое значение не меняются. [по коду]
+- Вызывает: `hasLibData`, `ParamHelpers::ParseParamName`, `ListData::AddLibdataToParamValueDict`, `ParamHelpers::ReadFormula`, `ParamHelpers::GetParamValueForElements`, `UniStringToDouble`, `is_equal`, `DoubleToInt32`, диагностические `DBprnt`/`msg_rep`. [по карте вызовов]
+- Вызывается из: `BuildContribution` (SpecPlanning.cpp:36, :51, :84),
+  `ReadContributionOutputs` (:122), `ReconcileExistingRows` (:282, :329, :356,
+  :381); плюс четыре набора тестов. [по карте вызовов]
+- Проверка: `TestSpecValueReader`, `TestSpecValueEdges`, `TestSpecGetParamValue`,
+  `TestSpecReadBoundary` (AC25); полный набор тестов и другие AC-версии этой проверкой не покрываются.
 
 ### `Spec::SpecAll(const SyncSettings &syncSettings, const GS::Array<GS::UniString> *ruleNames = nullptr, const Point2D *placementPoint = nullptr, SpecRunResult *runResult = nullptr) -> GSErrCode`
-- Расположение: `Sources/AddOn/spec/Spec.cpp:140`
+- Расположение: `Sources/AddOn/spec/Spec.cpp:144`
 - Назначение: создаёт спецификацию из текущего выбора, всех видимых элементов или правил по умолчанию. [из комментария]
 - Контракт: если выделение пусто и `GetRuleFromDefaultElem` обнаружил включённые элементы (`has_elementspec`), передаёт заполненные `rules` в `SpecArray` даже при пустом `guidArray`; возвращает `NoError` только когда нет ни выделения, ни включённых элементов default-правила. Для non-interactive запуска `placementPoint` задаёт начальную точку без диалога и окна прогресса; при `ruleNames == nullptr` обрабатываются все валидные правила. `runResult->elementsToCreate` после размещения равен приросту `paramOut` (число реально созданных элементов, без уже запланированных изменений); остальные счётчики отражают сформированные списки. [по коду; AC25 Debug #207 и runtime #208/#209]
+- **Показ результата (#245):** при интерактивном запуске и `runResult == nullptr` создаётся локальный накопитель, иначе сообщениям некуда деваться и отказ остался бы невидимым; `ShowRunResult` вызывается только при `showUserInterface`, поэтому JSON-путь окон не открывает. [по коду]
 - Если требуемое значение свойства строительного материала не прочитано, строка не формируется: пустое наименование не подставляется вместо исходных данных. `ParamHelpers::GetAttributeValues` для отсутствующего у исходного элемента свойства с `fromPropertyDefinition` пробует получить значение у строительного материала. [по коду; AC25 runtime #209]
-- Побочные эффекты: **создаёт/обновляет/удаляет элементы спецификации** (PlaceElements-цепочка); читает выделение и свойства. [по коду]
-- Вызывает: `GetRuleFromDefaultElem` (:185), `SpecFilter` (:177/:196), `SpecArray` (:204), `GetSelectedElements` (Helpers.cpp:695). [по коду]
-- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:441) и `SomeStuffCommand.Spec` (`json_commands/SpecCommand.cpp`; JSON API AC25–29). Menu-path сохраняет `SpecDG` и `ClickAPoint`; JSON-команда требует `placementPoint {x, y}`, необязательно принимает `ruleNames` и `includeParameters` (default false, #227) и возвращает `status`, `resultCode`, `elementsToCreate`, `elementsToModify`, `elementsToDelete`, `elapsedSeconds`, `includeParameters`; при `includeParameters=true` дополнительно `created`, `modified`, `deleted`. AC25 runtime: после вызова с точкой число объектов выросло с 548 до 582, в последних 34 объектах свойство «Спецификации материалов/Наименование в объект» заполнено. [по коду и AC25 runtime #208/#209]
+- Побочные эффекты: **создаёт/обновляет/удаляет элементы спецификации** (PlaceElements-цепочка); читает выделение и свойства; открывает окно результата. [по коду]
+- Вызывает: `GetRuleFromDefaultElem` (:179), `SpecFilter` (:171, :190 — перегрузка :370), `SpecArray` (:206), `ShowRunResult` (:210), `GetSelectedElements` (Helpers.cpp:696), `msg_rep`. [по карте вызовов]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:445) и `SomeStuffCommand.Spec` (`json_commands/SpecCommand.cpp:257`; JSON API AC25–29). Menu-path сохраняет `SpecDG` и `ClickAPoint`; JSON-команда требует `placementPoint {x, y}`, необязательно принимает `ruleNames` и `includeParameters` (default false, #227) и возвращает `status`, `resultCode`, `elementsToCreate`, `elementsToModify`, `elementsToDelete`, `elapsedSeconds`, `includeParameters`; при `includeParameters=true` дополнительно `created`, `modified`, `deleted`, `rules`, `messages` (#245). Полный контракт имён — карточка `SpecCompat.md`. AC25 runtime: после вызова с точкой число объектов выросло с 548 до 582, в последних 34 объектах свойство «Спецификации материалов/Наименование в объект» заполнено. [по коду и AC25 runtime #208/#209]
 
-### `Spec::PlaceElements(GS::Array<ElementDict> &elementstocreate, ParamDictValue &paramToWrite, ParamDictElement &paramOut, Point2D &startpos, SpecRunResult *runResult = nullptr) -> GSErrCode` (#227)
-- Расположение: `Sources/AddOn/spec/Spec.cpp:2518`
-- Назначение: размещает сформированные элементы в модели и заполняет их параметры. [из комментария]
-- Контракт: **создание** и **запись/удаление** находятся в разных undo-вызовах; возврат `PlaceElements` на вызывающей стороне не проверяется (`Spec.cpp:1060`), а сама функция заканчивается `NoError`. Изменение этой политики ошибок — отдельный вопрос F2, не входит в #227. [по коду]
-- #227: при `runResult != nullptr && runResult->includeDetails` заполняет `runResult->created`. Дамп собирается ДО `ACAPI_Element_Create` (Spec.cpp:2631–2642), потому что GDL-параметры после записи в memo удаляются из `param` (`param.Delete (rawname)`, :2690) и в `paramOut` их уже нет. GUID проставляется в дамп только после успешного создания (:2709). `favorite_name`/`sourceElements` копируются только под флагом — выключенный дамп не платит за копирование. [по коду]
+### `Spec::PlaceElements(...) -> GSErrCode` — **вынесена в `spec/SpecExecutor.cpp:12`**
+
+Прежняя карточка здесь описывала `PlaceElements` как функцию `Spec.cpp` на :2518.
+После R8.3/R8.4 она переехала в отдельный модуль исполнения; полная карточка с
+границами undo, контрактом возврата и картой вызовов — **`SpecExecutor.md`**.
+Ниже — только то, что относится к #227 (дамп значений) и не дублирует ту карточку.
+
+- #227: при `runResult != nullptr && runResult->includeDetails` заполняет `runResult->created`. Дамп собирается **до** `ACAPI_Element_Create`, потому что GDL-параметры после записи в memo удаляются из `param`, и в `paramOut` их уже нет; GUID проставляется в дамп только после успешного создания. `favorite_name`/`sourceElements` копируются только под флагом — выключенный дамп не платит за копирование. [по коду]
+- #245: получает необязательный `createdByRuleIndex` и считает подтверждённые создания по индексу словаря; после транзакции плановое число заменяется подтверждённым. [по коду]
 - GDL-параметры в дампе берутся из фактического `API_AddParType` в момент записи в memo, а не из исходного `ParamValue`: приведение к типу параметра может изменить значение. [по коду]
-- Побочные эффекты: **создание элементов в проекте** (из избранного `favorite_name`), запись параметров/GUID (`subguid`); изменение сетки размещения (startpos). [по коду]
-- Вызывает: `GetElementForPlace` (:2461), `UnhideUnlockElementLayer` (CommonFunction.cpp:2472), `StringUnic` (CommonFunction.cpp:1473); создание элементов — `ACAPI_Element_Create` в `ACAPI_CallUndoableCommand` (:2449). [из callgraph.json]
-- Вызывается из: `SpecArray` (Spec.cpp:1060). [по коду]
+- Границы undo, контракт возврата (`APIERR_GENERAL` только при отказе создания) и
+  то, что возвращаемое значение вызывающий игнорирует, — в `SpecExecutor.md`.
 
 ### #227 — дамп значений элементов в JSON-ответе
 - Необязательный параметр `includeParameters` (bool, default false). При true ответ содержит `created` / `modified` / `deleted`; каждый элемент — `guid`, `favoriteName`, `sourceElement[]`, `property[]`, `gdlParameter[]`. Списки отсортированы по имени (`GS::Array` не имеет `Sort` ни в AC25, ни в AC29 -> `std::vector` + `std::sort`). [по коду `SpecCommand.cpp:60-133`]
@@ -1540,15 +1692,26 @@
 - **Ошибка вызова стенда:** `compare <tag>` не принимает имя базы вторым аргументом. Он всегда заново прогоняет Spec и сравнивает с `raw-<tag>.json`. Передача «имени другой базы» как второго аргумента молча игнорировалась, и результат выглядел как расхождение с не той базой. [замечено на R9.3]
 
 ### #228 R9.3 — контракт запуска Spec (`spec/SpecCompat.hpp/.cpp`)
-- Имена полей ответа и входа вынесены из `SpecCommand::Execute` в `SpecCompat`: `ResponseFieldNames` (14 полей верхнего уровня), `NestedFieldNames`, `ElementFieldNames`, `PropertyFieldNames`, `InputFieldNames`, `ErrorFieldNames`, `StageCounterNames[4]`. Порт берёт имена оттуда, поэтому переименование поля проходит через один модуль, а не редактируется в двух местах. [по коду]
+
+**Полная карточка модуля — `SpecCompat.md`** (создана 2026-10-02: таблица всех
+именованных объектов с проверенными строками, карта вызовов, инварианты формы).
+Здесь — только решение и результат шага.
+
+- Имена полей ответа и входа вынесены из `SpecCommand::Execute` в `SpecCompat`: `ResponseFieldNames` (16 полей верхнего уровня), `NestedFieldNames`, `RuleFieldNames`, `MessageFieldNames`, `ElementFieldNames`, `PropertyFieldNames`, `InputFieldNames`, `ErrorFieldNames`, `StageCounterNames[4]`. Порт берёт имена оттуда, поэтому переименование поля проходит через один модуль, а не редактируется в двух местах. [по коду]
 - `StatusText (GSErrCode)` — единственное место перевода кода в строку ответа. Раньше перевод был инлайном в порту; теперь появление нового кода не может молча дать `"completed"`. [по коду]
 - Порядок полей-счётчиков задан порядком `StageCounterNames`, а `SpecCommand` собирает их из массива `stages[4]` — расхождение порядка в `SpecRunResult` и в ответе теперь невозможно без падения сборки. [по коду]
 - **Модуль не под `#ifdef TESTING`** — контракт должен быть защищён в обычной сборке, иначе адаптер был бы недостижим из порта. Взят обычный продуктовый модуль рядом с `SpecExecutor`. [решение владельца не требовалось, следует из назначения]
 - **Проверка формы, а не значений.** `VerifyResponseFields` проверяет инварианты: имя непустое и без разделителей `:`/`/` (иначе сломался бы разбор дампа в `Tools/spec_baseline.py`), имена в группе попарно различны (`ObjectState::Add` отверг бы второе добавление и поле молча пропало бы), имя этапа не совпадает с полем верхнего уровня, обе ветви статуса различимы. Значения полей зависят от модели и проверяются прогонами на стенде. [по коду]
 - **Первая версия проверки была тавтологией** — она сравнивала каждое имя с литералом из того же модуля, то есть всегда была зелёной. Переписана на инварианты формы; это и есть смысл адаптера, а не список строк. [исправлено в том же шаге]
-- Набор `TestSpecResponseContract` 18/18: форма без нарушений, порядок четырёх счётчиков, непустота имён верхнего уровня, различие имён счётчиков, имена `placementPoint`/`ruleNames`, обе ветви статуса. Значения дампа он не проверяет (модели в наборе нет).
+- Набор `TestSpecResponseContract` 18/18 (после #245 — 26/26): форма без нарушений, порядок четырёх счётчиков, непустота имён верхнего уровня, различие имён счётчиков, имена `placementPoint`/`ruleNames`, обе ветви статуса. Значения дампа он не проверяет (модели в наборе нет).
 - Граница применимости: набор защищает ФОРМУ ответа и имена входа. Он не ловит перестановку стадий оркестратора, не проверяет `required: ["placementPoint"]` в JSON-схеме (она осталась литералом в порту) и не ловит расхождение с `Tools/spec_baseline.py`, если скрипт начнёт ждать поля, которых контракт не объявляет. [по коду]
-- Валидация: clang-format на 6 файлов, clangd 0 ошибок, AC25 `Build succeeded!`, sweep AC26–29 `success`, runtime `suites=69 passed=2810 failed=1` (провал `TestConvertPropertyToParamValue` предсуществующий, вне области; дельта по 68 прежним наборам = 0), A/B `r93-contract` `diff_rows=0` против шести баз, ключи ответа совпадают с прежними. [по отчёту и прогонам]
+- Валидация: clang-format на 6 файлов, clangd 0 ошибок, AC25 `Build succeeded!`, sweep AC26–29 `success`, runtime `suites=69 passed=2810 failed=1` (провал `TestConvertPropertyToParamValue` предсуществующий, вне области; дельта по 68 прежним наборам = 0), A/B `r93-contract` `diff_rows=0` против шести баз, ключи ответа совпадают с прежним. [по отчёту и прогонам]
+- **Дополнение 2026-10-02 (по карте вызовов):** `VerifyResponseFields` не имеет
+  ни одного вызывающего в обычной сборке — единственный вызов из теста. То есть
+  инварианты формы проверяются только прогоном набора, а не при каждом запуске
+  Spec; нарушение формы попадёт в обычную сборку и будет замечено лишь набором.
+  Это следует из назначения функции (проверка формы, а не значений), но стоит
+  учитывать при правках контракта. [по карте вызовов]
 
 ### #245 — единое окно результата запуска (R9.2)
 
