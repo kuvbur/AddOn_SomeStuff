@@ -39,13 +39,13 @@
 
 | Функция | .cpp строка | Назначение |
 |---------|-------------|------------|
-| `GetRuleFromDefaultElem` | 35 | Правила из свойств элемента по умолчанию [из комментария] |
-| `SpecAll` | 144 | Создание спецификации из выбора/видимых/правил по умолчанию [из комментария] — карточка |
-| `SpecFilter` | 228 | Исключение неподходящего типа элемента (одна перегрузка; внутренняя) [из комментария] |
-| `SpecFilter` | 370 | Исключение неподходящих типов/БД (перегрузка на массив) [из комментария] |
-| `SpecDG` | 470 | Диалог выбора правил [из комментария] |
-| `ShowRunResult` | 523 | Единое окно результата запуска (#245, R9.2) [по коду] |
-| `SpecArray` | 610 | Оркестрация запуска одного правила [из комментария] |
+| `GetRuleFromDefaultElem` | 38 | Правила из свойств элемента по умолчанию; отказ «все флаги выключены» пишет в накопитель результата (#245), всплывающего окна не открывает. Необязательный `SpecRunResult *runResult` обязателен для этого отказа: при `nullptr` сообщение теряется, и вызывающий должен пережить его сам [из комментария и по коду] |
+| `SpecAll` | 153 | Создание спецификации из выбора/видимых/правил по умолчанию [из комментария] — карточка |
+| `SpecFilter` | 249 | Исключение неподходящего типа элемента (одна перегрузка; внутренняя) [из комментария] |
+| `SpecFilter` | 391 | Исключение неподходящих типов/БД (перегрузка на массив) [из комментария] |
+| `SpecDG` | 491 | Диалог выбора правил [из комментария] |
+| `ShowRunResult` | 544 | Единое окно результата запуска (#245, R9.2) [по коду] |
+| `SpecArray` | 631 | Оркестрация запуска одного правила [из комментария] |
 | `GetRuleFromElement` | 1234 | Правила из выбранного элемента [из комментария] |
 | `NormalizeRuleDescription` | 1297 | Нормализация описания правила перед разбором (R4.1) [по коду] |
 | `AddRule` | 1345 | Разбор описания и добавление правила в словарь [из комментария] |
@@ -109,9 +109,9 @@
 ```
 SpecAll ──► GetRuleFromDefaultElem ──► AddRule ──► NormalizeRuleDescription
    │            │                        ├──► GetRuleFromDescription ──┬─► ApplyRulePolicy
-   │            └──► SpecFilter (:370)     │                              ├─► ParseGroups ──► ExpandGroup
+   │            └──► SpecFilter (:391)     │                              ├─► ParseGroups ──► ExpandGroup
    │                                          └─► ParseErrorText           └─► ParseOutputSchema
-   ├──► SpecFilter (:370)
+   ├──► SpecFilter (:391)
    ├──► SpecArray ──┬──► GetRuleFromElement ──► AddRule
    │                ├──► GetParamToReadFromRule ──► CollectRuleDependencies
    │                │                             └─► BuildReadParamDict
@@ -1660,13 +1660,14 @@ CheckRuleByPropertyGuid ──┬──► NormalizeRuleDescription
   `TestSpecReadBoundary` (AC25); полный набор тестов и другие AC-версии этой проверкой не покрываются.
 
 ### `Spec::SpecAll(const SyncSettings &syncSettings, const GS::Array<GS::UniString> *ruleNames = nullptr, const Point2D *placementPoint = nullptr, SpecRunResult *runResult = nullptr) -> GSErrCode`
-- Расположение: `Sources/AddOn/spec/Spec.cpp:144`
+- Расположение: `Sources/AddOn/spec/Spec.cpp:153`
 - Назначение: создаёт спецификацию из текущего выбора, всех видимых элементов или правил по умолчанию. [из комментария]
 - Контракт: если выделение пусто и `GetRuleFromDefaultElem` обнаружил включённые элементы (`has_elementspec`), передаёт заполненные `rules` в `SpecArray` даже при пустом `guidArray`; возвращает `NoError` только когда нет ни выделения, ни включённых элементов default-правила. Для non-interactive запуска `placementPoint` задаёт начальную точку без диалога и окна прогресса; при `ruleNames == nullptr` обрабатываются все валидные правила. `runResult->elementsToCreate` после размещения равен приросту `paramOut` (число реально созданных элементов, без уже запланированных изменений); остальные счётчики отражают сформированные списки. [по коду; AC25 Debug #207 и runtime #208/#209]
-- **Показ результата (#245):** при интерактивном запуске и `runResult == nullptr` создаётся локальный накопитель, иначе сообщениям некуда деваться и отказ остался бы невидимым; `ShowRunResult` вызывается только при `showUserInterface`, поэтому JSON-путь окон не открывает. [по коду]
+- **Показ результата (#245):** при интерактивном запуске и `runResult == nullptr` создаётся локальный накопитель, иначе сообщениям некуда деваться и отказ остался бы невидимым; `ShowRunResult` вызывается только при `showUserInterface`, поэтому JSON-путь окон не открывает. Накопитель создаётся **до** `GetRuleFromDefaultElem` (:164), потому что тот отказывает раньше прежнего места создания. Накопления результата на этом пути не происходит: `SpecArray` обнулил бы накопитель, а до него сообщение об отказе дойти не может. [по коду]
+- **Ранний выход с показом (#245):** ветка «выделение пусто, ни выделения, ни включённых элементов default-правила» (:205–211) — единственный выход из функции, минующий `SpecArray`. Из неё может прилететь отказ «все флаги выключены», поэтому перед возвратом там тоже вызывается `ShowRunResult`; иначе накопленное сообщение осталось бы невидимым. Возвращаемое значение прежнее — `NoError`. [по коду]
 - Если требуемое значение свойства строительного материала не прочитано, строка не формируется: пустое наименование не подставляется вместо исходных данных. `ParamHelpers::GetAttributeValues` для отсутствующего у исходного элемента свойства с `fromPropertyDefinition` пробует получить значение у строительного материала. [по коду; AC25 runtime #209]
 - Побочные эффекты: **создаёт/обновляет/удаляет элементы спецификации** (PlaceElements-цепочка); читает выделение и свойства; открывает окно результата. [по коду]
-- Вызывает: `GetRuleFromDefaultElem` (:179), `SpecFilter` (:171, :190 — перегрузка :370), `SpecArray` (:206), `ShowRunResult` (:210), `GetSelectedElements` (Helpers.cpp:696), `msg_rep`. [по карте вызовов]
+- Вызывает: `GetRuleFromDefaultElem` (:200), `SpecFilter` (:181, :200 — перегрузка :391), `SpecArray` (:224), `ShowRunResult` (:209, :227), `GetSelectedElements` (Helpers.cpp:696), `msg_rep`. [по карте вызовов]
 - Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:445) и `SomeStuffCommand.Spec` (`json_commands/SpecCommand.cpp:257`; JSON API AC25–29). Menu-path сохраняет `SpecDG` и `ClickAPoint`; JSON-команда требует `placementPoint {x, y}`, необязательно принимает `ruleNames` и `includeParameters` (default false, #227) и возвращает `status`, `resultCode`, `elementsToCreate`, `elementsToModify`, `elementsToDelete`, `elapsedSeconds`, `includeParameters`; при `includeParameters=true` дополнительно `created`, `modified`, `deleted`, `rules`, `messages` (#245). Полный контракт имён — карточка `SpecCompat.md`. AC25 runtime: после вызова с точкой число объектов выросло с 548 до 582, в последних 34 объектах свойство «Спецификации материалов/Наименование в объект» заполнено. [по коду и AC25 runtime #208/#209]
 
 ### `Spec::PlaceElements(...) -> GSErrCode` — **вынесена в `spec/SpecExecutor.cpp:12`**
