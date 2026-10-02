@@ -49,6 +49,22 @@
 // AGENT TODO: реальное значение должно приходить из ACBridge.GetSelectionInfo()
 // (будет заменено на window.ACAPI.GetSelectionInfo() после интеграции JS-моста)
 const MOCK_SELECTED_COUNT = 5;
+
+// Мок списка свойств-правил спецификации для вкладки «Спецификация».
+// Используется, только когда мост недоступен (предпросмотр HTML вне Archicad).
+// hasSpecRule — ТОЧНЫЙ признак наличия команды Spec_rule в описании, а не
+// агрегат hasRule (тот суммирует Sync/Spec/Renum/Sum). Это НЕ признак
+// включённого флага: включённость зависит от элемента и меняется после
+// записи, поэтому список свойств её знать не может — её показывает проверка
+// правила по GUID.
+const MOCK_SPEC_PROPERTIES = [
+  { id: "A1B2C3D4-0000-4000-8000-000000000001", name: "Sync_GUID+Спецификация стен", hasSpecRule: true },
+  { id: "A1B2C3D4-0000-4000-8000-000000000002", name: "Sync_GUID+Спецификация плит перекрытия", hasSpecRule: true },
+  { id: "A1B2C3D4-0000-4000-8000-000000000003", name: "Sync_GUID+Ведомость объёмов работ", hasSpecRule: true },
+  { id: "A1B2C3D4-0000-4000-8000-000000000004", name: "Sync_GUID+Спецификация технических помещений", hasSpecRule: true },
+  { id: "A1B2C3D4-0000-4000-8000-000000000005", name: "Sync_GUID+Спецификация колонн", hasSpecRule: false }
+];
+
 // Состояние сворачивания групп свойств
 
 
@@ -134,7 +150,12 @@ const STATE = {
                         criterionProperty: null, splitProperty: null },
     monitorGroupCollapse: {}, // Состояние сворачивания групп
     autoRefresh: true,          // Автообновление при изменении выделения
-    collapsed: false            // Сворачивание боковой панели навигации
+    collapsed: false,           // Сворачивание боковой панели навигации
+
+  // Вкладка «Спецификация»: проверка правила по GUID свойства-правила
+  spec: { query: "", properties: [], selectedId: null, selectedName: null,
+          limit: 20, onlyProblems: true, source: null, report: null, ruleProperties: [],
+          checkOpen: true, editOpen: false, pending: false }
 };
 
 function applyTheme(name) {
@@ -497,6 +518,222 @@ const ACBridge = (function () {
     });
   }
 
+/**
+   * AGENT TODO: список свойств-правил спецификации для проверки.
+   * Источник выбирается по наличию выделения: при непустом выделении берутся
+   * свойства выделенных элементов (уже приходят из window.ACAPI.GetPropertiesList
+   * вместе с propertyGuid и hasRule — новый мост не нужен), при пустом — все
+   * свойства проекта с правилами SomeStuff из PROPERTYCACHE.
+   * Реальный вызов: window.ACAPI.GetSpecRuleProperties() ->
+   *   JSON-строка {source:"selection"|"project", selectionCount:N,
+   *                properties:[{id, name, hasSpecRule}]}
+   * hasSpecRule — ТОЧНЫЙ признак наличия команды Spec_rule в описании
+   * свойства, а не агрегат hasRule (тот суммирует Sync/Spec/Renum/Sum).
+   * Это НЕ признак включённого флага: включённость зависит от элемента и
+   * меняется после записи, поэтому список свойств её знать не может — её
+   * показывает проверка правила по GUID.
+   * @returns {Promise<{source:string, selectionCount:number,
+   *                  properties:{id:string, name:string, hasSpecRule:boolean}[]}>}
+   */
+  function getSpecRuleProperties() {
+      return new Promise(function (resolve) {
+        var bridgePresent = typeof window.ACAPI !== 'undefined' && !!window.ACAPI.GetSpecRuleProperties;
+        try {
+          if (bridgePresent) {
+            var result = window.ACAPI.GetSpecRuleProperties();
+            var handleResult = function (data) {
+              var parsed = typeof data === 'string' ? JSON.parse(data) : data;
+              resolve({
+                source: parsed.source || "project",
+                selectionCount: parsed.selectionCount || 0,
+                properties: parsed.properties || []
+              });
+            };
+            if (result && typeof result.then === 'function') {
+              result.then(handleResult).catch(function () { resolve({ source: "none", selectionCount: 0, properties: [] }); });
+            } else {
+              handleResult(result);
+            }
+            return;
+          }
+        } catch (e) {
+          // Мост есть, но упал — мок не подставляем: подмена скрыла бы поломку
+          // моста под видом рабочего списка. Показываем пустой источник.
+          if (bridgePresent) {
+            resolve({ source: "none", selectionCount: 0, properties: [] });
+            return;
+          }
+        }
+        // Моста нет вовсе — HTML открыт вне Archicad: показываем мок.
+        resolve({ source: "project", selectionCount: 0, properties: MOCK_SPEC_PROPERTIES });
+      });
+    }
+
+  /**
+   * AGENT TODO: проверка правила спецификации по GUID свойства-правила, read-only.
+   * Вызывает window.ACAPI.CheckSpecRuleByPropertyGuid и возвращает Promise с
+   * отчётом. Реальный вызов (паттерн ParsePropertyForElement — два аргумента
+   * одним значением, ответ JSON-строкой):
+   *   window.ACAPI.CheckSpecRuleByPropertyGuid(
+   *     JSON.stringify([propertyGuid, limit]))
+   * Ответ: {ok, checked, totalSelected, truncated, common:{...}, elements:[...]},
+   * где common повторяет общую часть RuleCheckResult, а элемент — elementFlag,
+   * checkedElement и missingRead.
+   * @param {string} propertyGuid - GUID свойства-правила
+   * @param {number} limit - максимум проверяемых элементов
+   * @returns {Promise<object>}
+   */
+  function checkSpecRuleByPropertyGuid(propertyGuid, limit) {
+        // Реальный вызов: оба значения — строками одним аргументом.
+                // Число в массиве CEF раскрывает: в C++ приходит значение без кавычек,
+                // и разбор по '"' уходит в ранний выход. DynamicCast<JSArray> на
+                // аргументах роняет мост, поэтому массив сериализуется в строку.
+                if (typeof window.ACAPI !== 'undefined' && window.ACAPI.CheckSpecRuleByPropertyGuid) {
+                  var call = window.ACAPI.CheckSpecRuleByPropertyGuid(
+                    JSON.stringify([String(propertyGuid || ""), String(limit || 10)])
+                  );
+          var unwrap = function (data) {
+            var parsed = typeof data === 'string' ? JSON.parse(data) : data;
+            // Ответ моста при отказе несёт common:null. Подставлять вместо него
+            // мок нельзя: UI отличил бы отказ моста от успешной проверки и
+            // показал бы несуществующие элементы как настоящие.
+            return parsed || specRuleUnavailable();
+          };
+          if (call && typeof call.then === 'function') {
+            return call.then(unwrap).catch(function () { return specRuleUnavailable(); });
+          }
+          return Promise.resolve(unwrap(call));
+        }
+        // Мост недоступен — правка HTML вне Archicad: показываем мок.
+        return delay(220).then(function () {
+          return mockSpecRuleReport(propertyGuid);
+        });
+      }
+
+      // Ответ «мост недоступен»: те же поля, что и у CheckSpecRuleByPropertyGuid
+      // при отказе, чтобы UI отрисовал их одинаково.
+      function specRuleUnavailable() {
+        return {
+          ok: false,
+          checked: 0,
+          totalSelected: 0,
+          truncated: false,
+          common: null,
+          elements: []
+        };
+      }
+
+      // Мок ответа проверки — используется только без CEF-моста. Ответ зависит от
+      // выбранного свойства: в C++ флаг назначения — одно значение с пометкой origin
+      // (проверяется либо избранное, либо объект по умолчанию), поэтому мок обязан
+      // отдавать обе ветки.
+      function mockSpecRuleReport(propertyGuid) {
+        var total = 12;
+        var checked = Math.min(total, 10);
+        var all = [];
+        for (var i = 0; i < checked; i++) {
+          all.push(mockSpecElement(i));
+        }
+        var found = propertyLookup[propertyGuid];
+        return {
+          ok: true,
+          checked: checked,
+          totalSelected: total,
+          truncated: checked < total,
+          common: {
+            definitionFound: found ? true : false,
+            ruleParsed: found ? true : false,
+            parseError: found ? "None" : "NoGroupsAccepted",
+            parseErrorText: found ? "" : "ни одна разобранная группа не попала в правило",
+            propertyName: found ? found.name : "неизвестное свойство",
+            favoriteFound: found ? found.favoriteFound : false,
+            fromDefaultElem: found ? found.fromDefaultElem : false,
+            missingWrite: found && found.missingWrite ? found.missingWrite : [],
+            unresolvedInProject: [],
+            destinationFlag: found ? found.destinationFlag : {
+              checked: false,
+              value: false,
+              status: "Unknown",
+              origin: "NotChecked",
+              sourceName: ""
+            }
+          },
+          elements: all
+        };
+      }
+
+  // Мок назначения по свойству. Пять веток: избранное найдено, избранное не
+  // найдено с fallback на объект по умолчанию, флага у объекта по умолчанию
+  // нет, назначение не прочиталось вовсе, значение не вычислено.
+  const propertyLookup = {
+    "A1B2C3D4-0000-4000-8000-000000000001": {
+      name: "Sync_GUID+Спецификация стен",
+      favoriteFound: true,
+      fromDefaultElem: false,
+      missingWrite: [],
+      destinationFlag: {
+        checked: true, value: true, status: "HasValue",
+        origin: "FavoriteValue", sourceName: "Спец. элемент стены"
+      }
+    },
+    "A1B2C3D4-0000-4000-8000-000000000002": {
+      name: "Sync_GUID+Спецификация плит перекрытия",
+      favoriteFound: false,
+      fromDefaultElem: true,
+      missingWrite: ["Площадь", "Объём"],
+      destinationFlag: {
+        checked: true, value: false, status: "HasValue",
+        origin: "DefaultElemValue", sourceName: "Спец. элемент перекрытия"
+      }
+    },
+    "A1B2C3D4-0000-4000-8000-000000000003": {
+      name: "Sync_GUID+Ведомость объёмов работ",
+      favoriteFound: false,
+      fromDefaultElem: true,
+      missingWrite: [],
+      destinationFlag: {
+        checked: false, value: false, status: "NotPresent",
+        origin: "DefaultElemValue", sourceName: "Спец. элемент объёма"
+      }
+    },
+    "A1B2C3D4-0000-4000-8000-000000000004": {
+      name: "Sync_GUID+Спецификация технических помещений",
+      favoriteFound: false,
+      fromDefaultElem: true,
+      missingWrite: [],
+      destinationFlag: {
+        checked: false, value: false, status: "Unknown",
+        origin: "NotChecked", sourceName: "Спец. элемент помещения"
+      }
+    },
+    "A1B2C3D4-0000-4000-8000-000000000005": {
+      name: "Sync_GUID+Спецификация колонн",
+      favoriteFound: true,
+      fromDefaultElem: false,
+      missingWrite: [],
+      destinationFlag: {
+        checked: true, value: true, status: "NotEvaluated",
+        origin: "FavoriteValue", sourceName: "Спец. колонна"
+      }
+    }
+  };
+
+  // Мок одного элемента: три состояния подряд — флаг включён, флаг выключен,
+  // непрочитанное свойство, — чтобы в макете были видны все варианты строки.
+  function mockSpecElement(index) {
+    var variant = index % 3;
+    return {
+      guid: "3F2A9C1B-0000-4000-8000-" + String(1000 + index),
+      checkedElement: true,
+      elementFlag: variant === 0
+        ? { checked: true, value: true, status: "HasValue", origin: "ElementValue" }
+        : (variant === 1
+          ? { checked: true, value: false, status: "HasValue", origin: "ElementValue" }
+          : { checked: false, value: false, status: "NotAvailable", origin: "ElementValue" }),
+      missingRead: variant === 2 ? ["Объём"] : []
+    };
+  }
+
   return {
     getSelectionInfo: getSelectionInfo,
     getClassification: getClassification,
@@ -508,7 +745,9 @@ const ACBridge = (function () {
     resetPropertyToDefault: resetPropertyToDefault,
     getNumberingProperties: getNumberingProperties,
     getNumberingPreview: getNumberingPreview,
-    executeSyncScript: executeSyncScript
+    executeSyncScript: executeSyncScript,
+        getSpecRuleProperties: getSpecRuleProperties,
+        checkSpecRuleByPropertyGuid: checkSpecRuleByPropertyGuid
   };
 })();
 
@@ -776,7 +1015,7 @@ function renderActiveTab() {
     case "sync":      renderSyncTab(workspace); break;
     case "numbering": renderNumberingTab(workspace); break;
     case "summary":   renderPlaceholderTab(workspace); break;
-    case "spec":      renderPlaceholderTab(workspace); break;
+    case "spec":      renderSpecTab(workspace); break;
   }
 }
 
@@ -2025,8 +2264,13 @@ function blockShell(title, isOpen, summaryText, onToggle) {
     on: { click: onToggle }
   }, [
     h("span", { html: chevronSvg(isOpen), style: "color:var(--ac-text-tertiary);display:flex;flex:0 0 auto;" }),
-    h("span", { text: title, style: "font-size:0.76rem;font-weight:700;color:var(--ac-text-primary);flex:0 0 auto;" }),
-    h("span", { text: summaryText || "", style: "font-size:0.72rem;color:var(--ac-text-tertiary);flex:1 1 auto;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" })
+    // Заголовок сжимается и усекается: с flex:0 0 auto длинное имя («Редактирование
+    // правила», «2. Редактор флага (Renum_flag)») вытесняло сводку в нулевую
+    // ширину, и она не читалась — палитра уже 230px.
+    h("span", { text: title, style: "font-size:0.76rem;font-weight:700;color:var(--ac-text-primary);" +
+           "flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" }),
+    h("span", { text: summaryText || "", style: "font-size:0.72rem;color:var(--ac-text-tertiary);" +
+           "flex:1 1 4rem;min-width:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" })
   ]);
   wrap.appendChild(header);
   return wrap;
@@ -2177,6 +2421,631 @@ function refreshNumberingPreview(previewWrap) {
     });
     body.appendChild(table);
   });
+}
+
+/* =====================================================================================
+   8. ВКЛАДКА «СПЕЦИФИКАЦИЯ»
+   ---------------------------------------------------------------------------------
+   Проверка правила спецификации по GUID свойства-правила — read-only, модель не
+   меняется. Контракт повторяет Spec::RuleCheckResult (Spec.hpp) один в один, включая
+   пять состояний флага (RuleFlagStatus) и пять источников значения (RuleFlagOrigin):
+   сведение их к «включён/выключен» теряет причину отказа, ради которой проверка и
+   сделана.
+   ===================================================================================== */
+
+// Значение лимита по умолчанию, когда разбор select не удался.
+const SPEC_CHECK_LIMIT = 20;
+
+// Состояния значения свойства-флага (Spec.hpp, RuleFlagStatus) — как есть, без сведения.
+const SPEC_STATUS_LABEL = {
+  Unknown:      "неизвестно",
+  NotPresent:   "нет свойства",
+  NotAvailable: "недоступно",
+  NotEvaluated: "не вычислено",
+  HasValue:     "значение получено"
+};
+
+// Откуда взято значение (Spec.hpp, RuleFlagOrigin) — как есть.
+const SPEC_ORIGIN_LABEL = {
+  NotChecked:       "не проверялось",
+  ElementValue:     "",
+  FavoriteValue:    "значение у избранного",
+  DefaultElemValue: "значение у объекта по умолчанию",
+  DefaultDefinition: "значение из определения"
+};
+
+// Тон строки по ответу: «значение получено» — обычный, остальные случаи называют
+// причину, поэтому подсвечиваются. Возвращает ключ SPEC_TONE_COLOR.
+function specStatusTone(status, checked) {
+  if (checked === true) return "ok";
+  if (status === "NotAvailable" || status === "NotEvaluated") return "warn";
+  if (status === "NotPresent") return "bad";
+  return "muted";
+}
+
+const SPEC_TONE_COLOR = {
+  ok:    "var(--ac-accent)",
+  warn:  "var(--ac-warn)",
+  bad:   "var(--ac-danger)",
+  muted: "var(--ac-text-secondary)"
+};
+
+function specToneText(tone) {
+  return tone === "muted" ? "var(--ac-text-tertiary)" : SPEC_TONE_COLOR[tone];
+}
+
+// Расхождения и подсветки элемента — РАЗНЫЕ списки, и различие существенно:
+// расхождение попадает в счётчик «проблемных», подсветка — нет.
+// Правильным считается элемент, у которого флаг спецификации ВКЛЮЧЁН и при этом
+// у назначения (избранного либо объекта по умолчанию) он НЕ включён.
+// Отсутствие флага у назначения — норма, а не расхождение.
+//
+// errors: флаг не прочитан (это сбой проверки, а не свойство элемента),
+//         либо прочитано выключенным и при этом назначение его тоже не держит.
+//         Последнее — настоящее расхождение: правило к элементу не применится.
+// notices: флаг выключен, но назначение его тоже выключило — вероятно сбой
+//          элемента (сработало правило избранного), но это не ошибка.
+//
+// Флаг назначения (destinationFlag) лежит в общем блоке, а не в элементе,
+// поэтому он передаётся параметром: иначе отличить этот случай от настоящего
+// расхождения нельзя — у элемента своего доступа к назначению нет.
+function specElementFindings(el, destFlag) {
+  const errors = [];
+  const notices = [];
+  if (!el.checkedElement) {
+    errors.push("проверка на элементе не выполнялась");
+    return { errors: errors, notices: notices };
+  }
+  const flag = el.elementFlag || {};
+  // Назначение активно и само держит флаг включённым: тогда элемент правильный,
+  // что бы ни говорил его собственный флаг. Проверяем прочитанное значение,
+  // а не только признак origin — отсюда важно и destFlag.checked.
+  if (destFlag && destFlag.checked && destFlag.value) {
+    return { errors: errors, notices: notices };
+  }
+  if (!flag.checked) {
+    errors.push("значение флага не прочитано: " + (SPEC_STATUS_LABEL[flag.status] || flag.status || "неизвестно"));
+    return { errors: errors, notices: notices };
+  }
+  if (!flag.value) {
+    // Назначение держит флаг выключенным — элемент попадает в правильные.
+    if (destFlag && destFlag.checked && !destFlag.value) {
+      notices.push("флаг выключен — возможно, выключен случайно (назначение тоже его выключает)");
+    } else {
+      errors.push("флаг правила выключен и назначение его не включает — правило не применится к элементу");
+    }
+  }
+  (el.missingRead || []).forEach(function (name) {
+    errors.push("не прочитано свойство: " + name);
+  });
+  return { errors: errors, notices: notices };
+}
+
+// Общие по правилу проверки, одинаковые для всех элементов. Каждая строка —
+// отдельный ответ RuleCheckResult; молча не пропускается ни один.
+function specCommonRows(common) {
+  const rows = [];
+  rows.push({ label: "Свойство-правило", text: common.propertyName || "—", tone: common.definitionFound ? "ok" : "bad" });
+  if (!common.definitionFound) {
+    rows.push({ label: "Определение", text: "не найдено в проекте", tone: "bad" });
+    return rows;
+  }
+  rows.push(common.ruleParsed
+    ? { label: "Проверка правила", text: "без ошибок", tone: "ok" }
+    : { label: "Проверка правила", text: common.parseErrorText || "ошибка разбора", tone: "bad" });
+
+  // Флаг назначения в C++ — ОДНО значение с пометкой origin, а не две
+    // независимые проверки (Spec.cpp:2627-2641): проверяется только то назначение,
+    // которое реально используется — избранное, если оно найдено, иначе объект по
+    // умолчанию. Поэтому обе строки показываются всегда, а неактивная помечена
+    // «не проверялось»: выводить для неё значение значило бы выдумать проверку,
+    // которой не было.
+    const dest = common.destinationFlag || {};
+  const destText = dest.checked
+    ? (dest.value ? "включён" : "выключен")
+    : (SPEC_STATUS_LABEL[dest.status] || dest.status || "неизвестно");
+  // Тон назначения отличается от тона элемента: включённый флаг у НАЗНАЧЕНИЯ —
+  // расхождение, а не «прочитали значение». Именно оно перезапишет флаг элемента
+  // при записи спецификации, поэтому подсвечивается красным. У элемента же
+  // включённый флаг — норма, и там синий остаётся.
+  const destTone = !dest.checked
+    ? specStatusTone(dest.status, dest.checked)
+    : (dest.value ? "bad" : "ok");
+  // Имя избранного приходит в destinationFlag.sourceName, но в C++ туда
+  // кладётся ВСЕГДА rule.favorite_name — даже когда активным назначением был
+  // объект по умолчанию (Spec.cpp:2706-2722). Поэтому имя показывается только
+  // в своей строке «Избранное», а к строкам флага не дописывается: у строки
+  // «Флаг по умолчанию» имя избранного отношения не имеет.
+  const favoriteName = (common.favoriteFound && dest.sourceName) ? dest.sourceName : "";
+  const usedFavorite = dest.origin === "FavoriteValue";
+  const usedDefault = dest.origin === "DefaultElemValue";
+
+  // Активный источник определяется по origin, но с запасным путём: origin может
+  // прийти иным (например DefaultDefinition), и тогда обе строки сказали бы
+  // «не проверялось» при непустом значении. При наличии значения источник
+  // определяется тем, какое назначение использовано.
+  const activeIsFavorite = usedFavorite ||
+    (dest.checked && !usedDefault && common.favoriteFound);
+  const activeIsDefault = usedDefault ||
+    (dest.checked && !usedFavorite && !common.favoriteFound);
+
+  rows.push({
+    label: "Флаг в Избранном",
+    text: activeIsFavorite ? destText
+                          : (common.favoriteFound ? "не проверялось — флаг снят с избранного"
+                                                 : "не проверялось — избранное не найдено"),
+    tone: activeIsFavorite ? destTone : "muted"
+  });
+  // Строка назначения по умолчанию нужна только когда оно действительно
+  // использовалось: избранного нет либо чтение по нему не удалось и C++ отметил
+  // это fromDefaultElem (Spec.cpp:2687). При найденном избранном она не
+  // выводится вовсе — иначе показывала бы «не проверялось», что читается как
+  // недочёт правила, хотя всё в порядке.
+  if (!common.favoriteFound || common.fromDefaultElem) {
+    rows.push({
+      label: "Флаг по умолчанию",
+      text: activeIsDefault ? destText
+                            : (common.favoriteFound ? "не прочитано" : "нет флага"),
+      tone: activeIsDefault ? destTone : (common.favoriteFound ? "bad" : "muted")
+    });
+  }
+  // Назначение не прочиталось вовсе: обе строки выше молчат, причина нужна явно.
+  if (dest.status === "Unknown" && dest.origin === "NotChecked") {
+    rows.push({ label: "Назначение не прочитано", text: "", tone: "bad" });
+  }
+  // Имя избранного берётся из sourceName активного назначения — отдельного
+  // поля с именем в ответе моста нет.
+  rows.push({ label: "Избранное",
+               text: !common.favoriteFound ? "не найдено" : (favoriteName || "найдено по имени"),
+               tone: common.favoriteFound ? "ok" : "warn" });
+
+  // Назначение называется тем же правилом, что и в C++: избранное, если оно
+  // найдено, иначе объект по умолчанию. Отдельного поля с источником в ответе
+  // моста нет, но и не нужно: назначение читается одним вызовом, поэтому
+  // источник однозначен и определяется favoriteFound.
+  const destName = common.favoriteFound ? "Избранное" : "Элемент по умолчанию";
+  const missingWhere = common.favoriteFound ? "у избранного" : "у элемента по умолчанию";
+  (common.missingWrite || []).forEach(function (name) {
+    rows.push({ label: "Нет выходного свойства " + missingWhere, text: name, tone: "warn" });
+  });
+  // Два служебных носителя: без них спецификация не пишется, даже если все
+  // выходные свойства на месте. Ищет их ResolveFavoriteLinks — тот же, что и
+  // при запуске, — и при несовпадении пропускает молча, поэтому проверка
+  // вызывает его отдельно и сообщает здесь.
+  if (common.definitionFound && !common.destinationNamePropFound) {
+    rows.push({ label: "Нет свойства для имени правила " + missingWhere, text: "", tone: "bad" });
+  }
+  if (common.definitionFound && !common.destinationGuidPropFound) {
+    rows.push({ label: "Нет свойства для связи " + missingWhere, text: "", tone: "bad" });
+  }
+  (common.unresolvedInProject || []).forEach(function (name) {
+    rows.push({ label: "Не подтверждено в проекте", text: name, tone: "warn" });
+  });
+  return rows;
+}
+
+function specListRow(label, text, tone) {
+  // Подпись и результат — одна строка, перенос только если не помещаются.
+  //
+  // Разрыв задаётся margin на ПОДПИСИ, а не gap на контейнере. Причина в переносе:
+  // когда подпись и результат не помещаются в строку, результат уезжает на
+  // следующую строку, и при word-break:break-word его первый фрагмент встаёт
+  // вплотную к последнему слову подписи. Отступ подписи переживает и сжатие, и
+  // перенос; gap в этой ситуации оказался бы между строками, а не между подписью
+  // и результатом, то есть в нужном месте не сработал бы вовсе.
+  return h("div", { style: "display:flex;padding:0.15rem 0;font-size:0.72rem;align-items:baseline;flex-wrap:wrap;" }, [
+    h("span", { text: label, style: "flex:0 1 auto;min-width:0;margin-right:0.6rem;color:var(--ac-text-tertiary);word-break:break-word;" }),
+    // Результат — жирный: подпись отвечает «что это», результат — «что получилось»,
+    // и глаз должен идти по второму.
+    h("span", { text: text, style: "flex:0 1 auto;min-width:0;font-weight:600;color:" + specToneText(tone || "muted") + ";word-break:break-word;" })
+  ]);
+}
+
+function renderSpecCommonBlock(common) {
+  const wrap = h("div", {
+    style: "border:1px solid var(--ac-border);border-radius:0.35rem;background:var(--ac-bg-elevated);" +
+           "padding:0.45rem 0.6rem;margin-bottom:0.45rem;flex:0 0 auto;"
+  });
+  wrap.appendChild(h("div", {
+    text: "Правило",
+    style: "font-size:0.76rem;font-weight:700;color:var(--ac-text-primary);margin-bottom:0.3rem;"
+  }));
+  specCommonRows(common).forEach(function (row) {
+    wrap.appendChild(specListRow(row.label, row.text, row.tone));
+  });
+  return wrap;
+}
+
+function renderSpecElementBlock(el, index, onlyProblems) {
+  const destFlag = ((STATE.spec.report || {}).common || {}).destinationFlag || {};
+  const findings = specElementFindings(el, destFlag);
+  const problems = findings.errors;
+  const notices = findings.notices;
+  // В режиме «только расхождения» элемент с одной лишь подсветкой не показывается:
+  // подсветка не расхождение, и показывать её здесь незачем. Но сам он остаётся в
+  // счётчике — иначе подсветка была бы посчитана и тут же спрятана.
+  if (onlyProblems && !problems.length) return null;
+  const flag = el.elementFlag || {};
+  const tone = specStatusTone(flag.status, flag.checked);
+
+  const wrap = h("div", {
+    style: "border:1px solid var(--ac-border);border-radius:0.35rem;background:var(--ac-bg-elevated);" +
+           "padding:0.45rem 0.6rem;margin-bottom:0.4rem;flex:0 0 auto;"
+  });
+
+  const head = h("div", {
+    style: "display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;flex-wrap:wrap;row-gap:0.15rem;"
+  }, [
+    h("span", {
+      text: "#" + (index + 1),
+      style: "font-size:0.7rem;font-weight:700;color:var(--ac-text-tertiary);flex:0 0 auto;"
+    }),
+    h("span", {
+      text: el.guid || "—",
+      style: "font-family:monospace;font-size:0.68rem;color:var(--ac-text-tertiary);" +
+             "flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+    }),
+    h("button", {
+      text: problems.length ? (problems.length + " ✕") : (notices.length ? "⚠" : "✓"),
+      style: "flex:0 0 auto;font-size:0.68rem;padding:0.1rem 0.4rem;border-radius:0.25rem;cursor:pointer;" +
+             "border:1px solid var(--ac-border);background:var(--ac-bg-input);color:" + specToneText(problems.length ? "bad" : (notices.length ? "warn" : "ok")) + ";",
+      hoverStyle: "background:var(--ac-bg-hover);",
+      on: { click: function () { ACBridge.highlightElements([el.guid]); } }
+    })
+  ]);
+  wrap.appendChild(head);
+
+  wrap.appendChild(specListRow(
+    "Флаг правила",
+    (flag.checked ? (flag.value ? "включён" : "выключен") : (SPEC_STATUS_LABEL[flag.status] || flag.status || "неизвестно")) +
+      " · " + (SPEC_ORIGIN_LABEL[flag.origin] || flag.origin || "—"),
+    tone));
+
+  if (!problems.length) {
+    wrap.appendChild(specListRow("Ошибки", "нет", "ok"));
+  } else {
+    const list = h("div", { style: "display:flex;flex-direction:column;gap:0.05rem;" });
+    problems.forEach(function (text) {
+      list.appendChild(h("div", {
+        text: "— " + text,
+        style: "font-size:0.7rem;color:" + SPEC_TONE_COLOR.bad + ";word-break:break-word;"
+      }));
+    });
+    wrap.appendChild(list);
+  }
+  notices.forEach(function (text) {
+    wrap.appendChild(specListRow("Подсветка", text, "warn"));
+  });
+  return wrap;
+}
+
+function renderSpecTab(container) {
+  const cfg = STATE.spec;
+  const root = h("div", { style: "display:flex;flex-direction:column;height:100%;overflow:hidden;" });
+
+  // ---- Шапка: источник списка свойств и выбор свойства-правила ----
+  const header = h("div", {
+    style: "padding:0.5rem 0.75rem;border-bottom:1px solid var(--ac-divider);flex:0 0 auto;display:flex;" +
+           "flex-direction:column;gap:0.35rem;position:relative;z-index:6;"
+  });
+  const sourceLine = h("div", {
+    style: "font-size:0.7rem;color:var(--ac-text-tertiary);word-break:break-word;"
+  });
+
+  // Панель позиционируется absolute внутри блока без overflow — иначе
+  // прокрутка родителя обрезает её (ловушка #182).
+  const pickerWrap = h("div", { style: "position:relative;flex:0 0 auto;" });
+  const searchInput = h("input", {
+    attrs: {
+      type: "text",
+      placeholder: "Свойство-правило — поиск по имени…",
+      value: cfg.query
+    },
+    style: "width:100%;padding:0.35rem 0.5rem;font-size:0.78rem;background:var(--ac-bg-input);" +
+           "color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;",
+    on: {
+      input: function () {
+        cfg.query = searchInput.value;
+        renderSpecPropertyDropdown();
+      },
+      focus: function () { renderSpecPropertyDropdown(); }
+    }
+  });
+  const dropdown = h("div", {
+    style: "display:none;position:absolute;top:2.1rem;left:0;right:0;z-index:7;max-height:12rem;overflow:auto;" +
+           "background:var(--ac-bg-elevated);border:1px solid var(--ac-border);border-radius:0.3rem;" +
+           "box-shadow:0 4px 10px var(--ac-shadow-color);"
+  });
+  pickerWrap.appendChild(searchInput);
+  pickerWrap.appendChild(dropdown);
+
+  function matchesSpecQuery(name) {
+    const q = (cfg.query || "").trim ().toLowerCase ();
+    return !q || (name || "").toLowerCase ().indexOf (q) >= 0;
+  }
+
+  function selectSpecProperty(prop) {
+    cfg.selectedId = prop.id;
+    cfg.selectedName = prop.name;
+    cfg.query = prop.name;
+    searchInput.value = prop.name;
+    dropdown.style.display = "none";
+    cfg.report = null;
+    cfg.pending = false;
+    // Пересборка блоков: сводка в заголовке блока «Проверка» описывает
+    // именно текущий отчёт, поэтому смена свойства обязана её снять.
+    rebuildSpecBlocks();
+  }
+
+  function renderSpecPropertyDropdown() {
+    clear(dropdown);
+    // Набор уже отобран по точному признаку Spec_rule (cfg.ruleProperties);
+    // здесь остаётся только поиск по имени.
+    const list = (cfg.ruleProperties || []).filter(function (p) { return matchesSpecQuery(p.name); });
+    if (!list.length) {
+      dropdown.appendChild(h("div", {
+        text: "Ничего не найдено",
+        style: "padding:0.4rem 0.6rem;font-size:0.72rem;color:var(--ac-text-tertiary);"
+      }));
+      dropdown.style.display = "block";
+      return;
+    }
+    list.slice(0, 200).forEach(function (prop) {
+      dropdown.appendChild(h("div", {
+        text: prop.name,
+        attrs: { role: "button" },
+        focusable: true,
+        style: "padding:0.35rem 0.6rem;font-size:0.76rem;cursor:pointer;color:" +
+               (prop.id === cfg.selectedId ? "var(--ac-accent)" : "var(--ac-text-primary)") + ";" +
+               (prop.id === cfg.selectedId ? "font-weight:700;" : ""),
+        hoverStyle: "background:var(--ac-bg-hover);",
+        on: { click: function () { selectSpecProperty(prop); } }
+      }));
+    });
+    dropdown.style.display = "block";
+  }
+
+  // ---- Общая прокрутка: оба блока растут в потоке, своей прокрутки у
+  // списка результатов нет — вложенный скролл в узкой палитре неудобен.
+  const scroll = h("div", {
+    style: "flex:1 1 auto;min-height:0;overflow:auto;padding:0.5rem 0.75rem 0.9rem;"
+  });
+
+  header.appendChild(sourceLine);
+  header.appendChild(pickerWrap);
+  root.appendChild(header);
+  root.appendChild(scroll);
+  container.appendChild(root);
+
+  // ---- Сводка для заголовка блока «Проверка» ----
+  function checkSummary() {
+    if (cfg.pending) return "проверяется…";
+    if (!cfg.report) return cfg.selectedId ? "не проверялось" : "выберите свойство-правило";
+    const r = cfg.report;
+    const destFlag = (r.common || {}).destinationFlag || {};
+    const problems = (r.elements || [])
+      .filter(function (el) { return specElementFindings(el, destFlag).errors.length; })
+      .length;
+    const notices = (r.elements || [])
+      .filter(function (el) { return specElementFindings(el, destFlag).notices.length; })
+      .length;
+    return "проверено " + r.checked + " из " + r.totalSelected +
+           (problems ? " · ошибок: " + problems : " · ошибок нет") +
+           (notices ? " · флаг выключен: " + notices : "");
+  }
+
+  function editSummary() {
+    return cfg.selectedName || "свойство не выбрано";
+  }
+
+  function buildCheckBlock() {
+    const wrap = blockShell("Проверка", cfg.checkOpen, checkSummary (), function () {
+      cfg.checkOpen = !cfg.checkOpen;
+      rebuildSpecBlocks();
+    });
+    if (!cfg.checkOpen) return wrap;
+
+    const body = h("div", {
+      style: "padding:0.1rem 0.6rem 0.6rem;display:flex;flex-direction:column;gap:0.4rem;"
+    });
+
+    // ---- Лимит проверки ----
+    const limitRow = h("div", {
+      style: "display:flex;align-items:center;gap:0.35rem;flex:0 1 auto;min-width:0;flex-wrap:wrap;row-gap:0.2rem;"
+    });
+    limitRow.appendChild(h("span", {
+      text: "Проверять не более",
+      style: "font-size:0.7rem;color:var(--ac-text-secondary);"
+    }));
+    const limitSelect = h("select", {
+      style: "padding:0.2rem 0.35rem;font-size:0.72rem;background:var(--ac-bg-input);" +
+             "color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;",
+      on: { change: function () { cfg.limit = parseInt(limitSelect.value, 10) || SPEC_CHECK_LIMIT; } }
+    });
+    [10, 20, 50, 100].forEach(function (n) {
+      limitSelect.appendChild(h("option", { text: String(n), attrs: { value: String(n) } }));
+    });
+    limitSelect.value = String(cfg.limit);
+    limitRow.appendChild(limitSelect);
+    limitRow.appendChild(h("span", {
+      text: "элементов",
+      style: "font-size:0.7rem;color:var(--ac-text-secondary);"
+    }));
+
+    const statusLine = h("div", {
+      style: "font-size:0.72rem;color:var(--ac-text-secondary);min-height:0.9rem;word-break:break-word;"
+    });
+
+    const runBtn = h("button", {
+      text: "Проверить",
+      style: "padding:0.35rem 0.8rem;font-size:0.78rem;border:none;border-radius:0.25rem;cursor:pointer;" +
+             "background:var(--ac-accent);color:var(--ac-accent-contrast);font-weight:600;",
+      on: { click: function () { runSpecCheck(runBtn, statusLine); } }
+    });
+    if (cfg.pending) {
+      runBtn.disabled = true;
+      runBtn.textContent = "Проверяется…";
+    }
+
+    // Строка переносится: в узкой палитре (окно 230px) лимит и кнопка в
+    // одну строку не помещаются, и без переноса строка уезжала за край.
+    const actionsRow = h("div", {
+      style: "display:flex;align-items:center;gap:0.5rem;flex:0 0 auto;flex-wrap:wrap;row-gap:0.3rem;"
+    }, [limitRow, runBtn]);
+
+    const results = h("div", { style: "display:flex;flex-direction:column;min-width:0;" });
+    renderSpecResults(results);
+
+    body.appendChild(actionsRow);
+    body.appendChild(statusLine);
+    body.appendChild(results);
+    wrap.appendChild(body);
+
+    // Строка статуса восстанавливается из отчёта: блок пересобирается при
+    // сворачивании, и текст, записанный в прошлый элемент, был бы потерян.
+    if (cfg.report) {
+      statusLine.textContent = "Проверено " + cfg.report.checked + " из " + cfg.report.totalSelected +
+        " элементов.";
+      statusLine.style.color = cfg.report.ok ? "var(--ac-text-secondary)" : SPEC_TONE_COLOR.bad;
+    }
+    return wrap;
+  }
+
+  function buildEditBlock() {
+    const wrap = blockShell("Редактирование правила", cfg.editOpen, editSummary (), function () {
+      cfg.editOpen = !cfg.editOpen;
+      rebuildSpecBlocks();
+    });
+    if (!cfg.editOpen) return wrap;
+
+    // Редактор ещё не спроектирован: блок создан как место под него, чтобы
+    // не заводить вторую вкладку и не терять выбранное свойство при переключении.
+    const body = h("div", {
+      style: "padding:0.1rem 0.6rem 0.6rem;font-size:0.72rem;color:var(--ac-text-tertiary);"
+    });
+    body.appendChild(h("div", {
+      text: "Редактор описания правила — в работе.",
+      style: "font-size:0.72rem;color:var(--ac-text-tertiary);"
+    }));
+    wrap.appendChild(body);
+    return wrap;
+  }
+
+  let checkBlock = null;
+  let editBlock = null;
+
+  function rebuildSpecBlocks() {
+    if (checkBlock) checkBlock.replaceWith(buildCheckBlock());
+    else scroll.appendChild(buildCheckBlock());
+    checkBlock = scroll.children[0];
+    if (editBlock) editBlock.replaceWith(buildEditBlock());
+    else scroll.appendChild(buildEditBlock());
+    editBlock = scroll.children[1];
+  }
+
+  // ---- Отрисовка результата ----
+  function renderSpecResults(resultsNode) {
+    clear(resultsNode);
+    if (!cfg.report) {
+      resultsNode.appendChild(h("div", {
+        text: cfg.selectedId ? "Выберите действие «Проверить»." : "Выберите свойство-правило.",
+        style: "font-size:0.74rem;color:var(--ac-text-tertiary);"
+      }));
+      return;
+    }
+    const report = cfg.report;
+    resultsNode.appendChild(renderSpecCommonBlock(report.common || {}));
+
+    const elements = report.elements || [];
+    const destFlag = (report.common || {}).destinationFlag || {};
+    const shown = cfg.onlyProblems
+      ? elements.filter(function (el) { return specElementFindings(el, destFlag).errors.length; })
+      : elements;
+    if (!elements.length) {
+      resultsNode.appendChild(h("div", {
+        text: "Выделение пустое — проверено только правило",
+        style: "font-size:0.74rem;color:var(--ac-text-tertiary);"
+      }));
+    } else if (!shown.length) {
+      resultsNode.appendChild(h("div", {
+        text: "Ошибок нет",
+        style: "font-size:0.74rem;color:var(--ac-text-tertiary);"
+      }));
+    }
+    shown.forEach(function (el, index) {
+      const block = renderSpecElementBlock(el, index, cfg.onlyProblems);
+      if (block) resultsNode.appendChild(block);
+    });
+
+    if (report.truncated) {
+      resultsNode.appendChild(h("div", {
+        text: "Показаны первые " + report.checked + " из " + report.totalSelected +
+              " выделенных элементов (лимит).",
+        style: "font-size:0.7rem;color:var(--ac-warn);padding:0.2rem 0;"
+      }));
+    }
+  }
+
+  function runSpecCheck(btn, statusNode) {
+    if (!cfg.selectedId) {
+      statusNode.textContent = "Сначала выберите свойство-правило.";
+      statusNode.style.color = SPEC_TONE_COLOR.warn;
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "Проверяется…";
+    cfg.pending = true;
+    statusNode.textContent = "";
+    ACBridge.checkSpecRuleByPropertyGuid(cfg.selectedId, cfg.limit).then(function (report) {
+      cfg.pending = false;
+      cfg.report = report;
+      // Блок пересобирается целиком: и кнопка, и сводка в его заголовке
+      // должны отразить завершившуюся проверку.
+      rebuildSpecBlocks();
+    });
+  }
+
+  // ---- Загрузка списка свойств: выделение, иначе все свойства проекта ----
+  ACBridge.getSpecRuleProperties().then(function (data) {
+    cfg.properties = data.properties || [];
+    cfg.source = data.source;
+    // Подпись источника короткая намеренно: она только объясняет, откуда взят
+    // список, и не должна конкурировать с самим списком свойств.
+    const sourceText = data.source === "selection"
+      ? "Правила выделения"
+      : (data.source === "project" ? "Правила проекта" : "Правила");
+    // Набор правил — свойства с точным признаком Spec_rule; от него зависят и
+    // счётчик в строке источника, и сохранение выбранного свойства.
+    cfg.ruleProperties = (cfg.properties || []).filter(function (p) { return p.hasSpecRule === true; });
+    sourceLine.textContent = sourceText + ": " + cfg.ruleProperties.length +
+      (data.selectionCount > 0 ? " · выделено " + data.selectionCount : "");
+    // Сохраняем выбранное свойство, если оно ещё есть в списке.
+    if (cfg.selectedId) {
+      const still = cfg.ruleProperties.some(function (p) { return p.id === cfg.selectedId; });
+      if (!still) {
+        cfg.selectedId = null;
+        cfg.selectedName = null;
+        searchInput.value = "";
+        cfg.query = "";
+        cfg.report = null;
+      }
+    }
+    // Поле поиска пустое — подставляем первое правило, чтобы проверку можно было
+    // запустить сразу, без лишнего щелчка по списку. Если поле уже что-то содержит
+    // (пользователь искал или выбрал правило сам), ничего не трогаем: выбор
+    // пользователя главнее. Само подставленное правило занимает поле, поэтому
+    // повторно автовыбор не срабатывает.
+    // Порядок берётся из ответа моста, где свойства идут в порядке обхода
+    // элементов выделения (BrowserPalette.cpp), поэтому «первое» — это первое
+    // правило именно выбранных элементов, а не произвольное из проекта.
+    if (!cfg.query && cfg.ruleProperties.length) {
+      selectSpecProperty(cfg.ruleProperties[0]);
+      return;
+    }
+    rebuildSpecBlocks();
+  });
+
+  rebuildSpecBlocks();
 }
 
 /* =====================================================================================

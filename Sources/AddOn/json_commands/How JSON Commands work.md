@@ -186,9 +186,11 @@ RegisterJsonCommands ();
 
 ---
 
-## Вызов из Python (property_bridge.py)
+## Вызов из Python
 
-Правильный формат для ArchiCAD 25 JSON API:
+Формат вызова — тот же, что у используемых в `Tools/` скриптов
+(`spec_scenarios.py`, `spec_baseline.py`, `spec_benchmark.py`). Правильная
+структура payload для ArchiCAD 25 JSON API:
 
 ```python
 payload = {

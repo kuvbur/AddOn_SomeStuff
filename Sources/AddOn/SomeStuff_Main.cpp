@@ -28,7 +28,7 @@
     #include "MEPv1.hpp"
 #endif // AC_27
 #ifdef TESTING
-    #include "TestFunc.hpp"
+    #include "tests/TestFunc.hpp"
 #endif
 
 //-----------------------------------------------------------------------------
@@ -99,12 +99,11 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
 #if defined(TESTING)
         // C++-тесты — после открытия проекта: ACAPI-вызовы требуют
         // открытую базу данных (Initialize выполняется без проекта).
-        // Временно отключил для простоты чтения отладки
-        // static bool testRunDone = false;
-        // if (!testRunDone) {
-        //    testRunDone = true;
-        //    TestFunc::Test ();
-        //}
+        static bool testRunDone = false;
+        if (!testRunDone) {
+            testRunDone = true;
+            TestFunc::Test ();
+        }
 #endif
         break;
     }

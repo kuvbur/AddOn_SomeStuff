@@ -106,6 +106,24 @@
 Sync, Summ, Spec, ReNum, Dimensions, Roombook, MEPv1, Propertycache, pk/*, dialogs/* [по include]
 
 ## Инварианты и подводные камни
+- `ParamValueComposite::structype` несёт **тип слоя**, а не флаги SDK: только `0`,
+  `APICWallComp_Core` или `APICWallComp_Finish`. Сырые флаги (`API_CompositeQuantity.flags`,
+  `API_CWallComponent.flagBits`) нормализует `LayerStructype (short flags)` — вызывать при
+  каждом чтении флагов. Маска `~0x0F` неприменима: `APICWallComp_Core == APICWall_ForSlab
+  == 0x02`. Проверять `Core` раньше `Finish`, как в примерах SDK. Сентинел `-1`
+  (`Roombook.cpp`, «слой не ядро») с этим набором не пересекается [проверено, #248]
+- `ReadQuantities`: для `API_ProfileStructure` длинный путь — **основной**, не запасной.
+  Профиль задаёт порядок слоёв расстоянием от начала (`rfromstart`), а состав приходит в
+  порядке компонентов ArchiCAD, поэтому сопоставление по номеру слоя неприменимо;
+  признак — `longWayIsMain`, сообщение «Old method» для профиля не печатается [проверено, #248]
+- `ReadQuantities`: длинный путь, как и короткий, читает только композиты со всеми слоями
+  (`composite_pen <= 0`) и переносит `unit`/`kzap` из уже найденного `qtyPtr` перед
+  `SetUnitsAndQty2ParamValueComposite`. Без переноса `kzap` количество считалось с
+  `kzap = 1` — на кирпиче с запасом 2,5 это занижало объём в 2,5 раза
+  [проверено на модели, #248]
+- `ReadQuantities` длинный путь: `break` после первого непустого композита — проектное
+  решение, не дефект; при нескольких заполнениях с `composite_pen < 0` остальные молча
+  игнорируются [решение владельца 2026-10-02, не чинить]
 - `ConvertToProperty` — TODO «Переписать всё под запись ParamValue» [из комментария, hpp:419]
 - Мемо: все 7 объявлений `API_ElementMemo` в Helpers.cpp — `= {}` (проверено, DISCREPANCIES #7) [проверено]
 - Дубликат `CompareParamDictValue` (hpp:427 и 432 — два одинаковых объявления) [по коду — кандидат в ревью]

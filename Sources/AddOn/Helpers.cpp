@@ -9,7 +9,7 @@
     #include "MEPv1.hpp"
 #endif // AC_27
 #ifdef TESTING
-    #include "TestFunc.hpp"
+    #include "tests/TestFunc.hpp"
 #endif
 #include "HashSet.hpp"
 #include "Helpers.hpp"
@@ -6712,6 +6712,20 @@ bool ParamHelpers::ReadListData (const API_Elem_Head &elem_head,
 // -----------------------------------------------------------------------------
 // Получение информации о элементе
 // -----------------------------------------------------------------------------
+
+// Приводит флаги SDK (API_CWallComponent.flagBits / API_CompositeQuantity.flags) к типу слоя.
+// Флаги APICWall_For* (для стены, плиты, кровли, оболочки) не несут сведений о слое,
+// а биты APICWallComp_Core и APICWallComp_Finish в SDK пересекаются с ними по значению,
+// поэтому снятие битов маской исказило бы признак ядра. Отображение по признакам даёт
+// ровно три значения: APICWallComp_Core, APICWallComp_Finish или 0.
+short LayerStructype (short flags) {
+    if ((flags & APICWallComp_Core) != 0)
+        return APICWallComp_Core;
+    if ((flags & APICWallComp_Finish) != 0)
+        return APICWallComp_Finish;
+    return 0;
+}
+
 void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
                                    ParamDictValue &params,
                                    ParamDictComposite &paramcomposite) {
@@ -6805,7 +6819,7 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
             pc.num = num;
             pc.unit = pPtr->unit;
             pc.kzap = pPtr->kzap;
-            pc.structype = flags;
+            pc.structype = LayerStructype (flags);
             num += 1;
             add_composite.Push (std::move (pc));
         } else {
@@ -6859,7 +6873,7 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
             p.num = add_composite.GetSize () + 1;
             p.unit = units;
             p.kzap = kzap;
-            p.structype = flags;
+            p.structype = LayerStructype (flags);
             composites_quantity.Put (p.inx, p);
             num += 1;
             add_composite.Push (std::move (p));
@@ -6890,7 +6904,13 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
 
     int num_add = add_composite.GetSize ();
     bool isOk = true;
-    if (all_composite.GetSize () == add_composite.GetSize ()) {
+    // Сложный профиль задаёт порядок слоёв сам (расстоянием от начала профиля),
+    // а состав считывается в порядке компонентов ArchiCAD, поэтому сопоставление по
+    // номеру слоя для профиля неприменимо. Для него длинный путь - основной.
+    const bool longWayIsMain = (composite_type == API_ProfileStructure);
+    if (longWayIsMain)
+        isOk = false;
+    if (!longWayIsMain && all_composite.GetSize () == add_composite.GetSize ()) {
         for (const auto &pll : all_composite) {
             if (pll.num <= 0) {
                 isOk = false;
@@ -6982,8 +7002,10 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
         return;
     }
 #if defined(TESTING)
-    DBprnt ("ReadQuantities err", "long way");
-    msg_rep ("Warning : ReadQuantities", "Old method", APIERR_GENERAL, elemhead.guid);
+    if (!longWayIsMain) {
+        DBprnt ("ReadQuantities err", "long way");
+        msg_rep ("Warning : ReadQuantities", "Old method", APIERR_GENERAL, elemhead.guid);
+    }
 #endif
     // Если была необходимость добавления списка слоёв в общий словарь
     if (need_add_composite && !add_composite.IsEmpty ()) {
@@ -7060,6 +7082,8 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
 #else
         ParamComposite &param = *cIt->value;
 #endif
+        if (param.composite_pen > 0)
+            continue; // Считываем только композиты со всеми слоями (-1 и -2)
         for (auto &p : param.composite) {
             const ParamValueComposite *qtyPtr = composites_quantity.GetPtr (p.inx);
             if (qtyPtr == nullptr)
@@ -7118,7 +7142,8 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
             if (is_equal (proc, 0) && need_add_composite) {
                 proc = 1; // Если не удалось определить долю слоя, но слой добавлен из свойств - считаем, что он весь
             }
-            p.unit = composites_quantity.Get (p.inx).unit;
+            p.unit = qtyPtr->unit;
+            p.kzap = qtyPtr->kzap;
             p.volume = volume_total * proc;
             if (!is_equal (fillThick, 0) && is_equal (p.area, 0))
                 p.area = p.volume / fillThick;
@@ -8893,7 +8918,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid &elemguid,
         layer.inx = cLayer.buildingMaterial;
         layer.fillThick = cLayer.fillThick;
         layer.num = layerNum++;
-        layer.structype = cLayer.flagBits;
+        layer.structype = LayerStructype (cLayer.flagBits);
         layer.length = length;
         layer.width = width;
         param_composite.composite.Push (std::move (layer));

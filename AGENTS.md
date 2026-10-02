@@ -101,6 +101,12 @@ if behavior was actually executed and observed. C++ test/debug output
 (`DBprnt`/`DBtest`) is read from the Visual Studio «Отладка» output pane
 via VS MCP `output_read`, not from a results file.
 
+**Landmine — не чистить профили Archicad.** `%LOCALAPPDATA%\GRAPHISOFT\ARCHICAD__*`
+не удалять самостоятельно: среди временных каталогов могут лежать нужные
+проекты. Если Archicad не доходит до окна (пустой `MainWindowTitle`, порт 19723
+молчит) — сообщить и попросить пользователя почистить, а не чистить самостоятельно
+(решение пользователя, 2026-10-01).
+
 **Debug (Visual Studio MCP)** — for live investigation (breakpoints,
 locals, call stack), use skill `visualstudio-cpp-debugger`. For this
 repo's loading path, the debugger/runner conflict, and how to confirm a
@@ -153,8 +159,7 @@ broken/unverified state.
 
 Code changes only: every user wish and every bug (found or fixed) →
 GitHub issue in `kuvbur/AddOn_SomeStuff` FIRST (`gh` CLI; workflow —
-skill `addon-somestuff-issues`). Backlink in `IDEA.md` and
-`Reviews/*.tracker.csv` (column `issue`). Dedup check before creating —
+skill `addon-somestuff-issues`). Backlink in `IDEA.md`. Dedup check before creating —
 an existing issue may already cover it (comment there instead). Commit
 that closes it: `Refs: #N`.
 
@@ -313,7 +318,7 @@ and `_generated/`.
 
 Landmine — docs live in `master` only, there is no separate doc
 branch, and don't name one when looking for missing docs: if a
-`Docs/` change isn't in `master`, verify the *content*
+`Docs/` change isn't in `master`, verify the _content_
 (`git log --oneline -1 master -- Docs/`, or whether a card mentions
 recent work) instead of hunting for another branch.
 

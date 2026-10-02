@@ -69,9 +69,10 @@ sequenceDiagram
 
     UI->>Main: команда Spec (:441)
     Main->>SA: SpecAll
-    SA->>SA: GetSelectedElements / GetRuleFromDefaultElem (:152/:165)
-    SA->>F: SpecFilter (:157/176) — типы/БД
-    SA->>SAR: SpecArray (:185)
+    SA->>SA: GetSelectedElements (:190) / GetRuleFromDefaultElem (:202)
+    SA->>F: SpecFilter (:194/213) — типы/БД
+    SA->>SAR: SpecArray (:227)
+    Note over SA: отказ «все флаги выключены» идёт<br/>в накопитель результата, окно одно<br/>(ShowRunResult :224/:231), не всплывает
     SAR->>GER: GetElementsForRule (:1463) — группировка, параметры
     SAR->>PE: PlaceElements (:950)
     PE->>GEP: GetElementForPlace (:2461)

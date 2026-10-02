@@ -14,6 +14,7 @@
 #include "dialogs/CommandHelpers.hpp"
 #include "dialogs/SyncSettings.hpp"
 #include "Propertycache.hpp"
+#include "spec/Spec.hpp"
 #include "Sync.hpp"
 
 static const GS::Guid paletteGuid ("{FEE27B6B-3873-5844-88B6-F0083AA4CD49}");
@@ -88,6 +89,128 @@ static GS::UniString EscapeJsonString (const GS::UniString &s) {
         }
     }
     return r;
+}
+
+// -----------------------------------------------------------------------------
+
+// JSON-сериализация результата проверки правила спецификации (#244).
+//
+// Ответ — строка, а не DG::JSObject: вложенные объекты и массивы CEF теряет при
+// передаче в JS (BrowserPalette.cpp, комментарий к ParsePropertyDescription).
+// Перечисления отдаются строками, потому что в JS они читаются как подписи
+// состояний, а числовой код невозможно соотнести с надписью без второй таблицы.
+// -----------------------------------------------------------------------------
+static const char *RuleFlagStatusName (Spec::RuleFlagStatus status) {
+    switch (status) {
+    case Spec::RuleFlagStatus::Unknown:
+        return "Unknown";
+    case Spec::RuleFlagStatus::NotPresent:
+        return "NotPresent";
+    case Spec::RuleFlagStatus::NotAvailable:
+        return "NotAvailable";
+    case Spec::RuleFlagStatus::NotEvaluated:
+        return "NotEvaluated";
+    case Spec::RuleFlagStatus::HasValue:
+        return "HasValue";
+    }
+    return "Unknown";
+}
+
+static const char *RuleFlagOriginName (Spec::RuleFlagOrigin origin) {
+    switch (origin) {
+    case Spec::RuleFlagOrigin::NotChecked:
+        return "NotChecked";
+    case Spec::RuleFlagOrigin::ElementValue:
+        return "ElementValue";
+    case Spec::RuleFlagOrigin::FavoriteValue:
+        return "FavoriteValue";
+    case Spec::RuleFlagOrigin::DefaultElemValue:
+        return "DefaultElemValue";
+    case Spec::RuleFlagOrigin::DefaultDefinition:
+        return "DefaultDefinition";
+    }
+    return "NotChecked";
+}
+
+static const char *ParseErrorName (Spec::ParseError error) {
+    switch (error) {
+    case Spec::ParseError::None:
+        return "None";
+    case Spec::ParseError::NoGroupMarker:
+        return "NoGroupMarker";
+    case Spec::ParseError::GroupNotSplit:
+        return "GroupNotSplit";
+    case Spec::ParseError::OutputPartCount:
+        return "OutputPartCount";
+    case Spec::ParseError::NoSummary:
+        return "NoSummary";
+    case Spec::ParseError::NoGroupsAccepted:
+        return "NoGroupsAccepted";
+    case Spec::ParseError::EmptyOutputSchema:
+        return "EmptyOutputSchema";
+    case Spec::ParseError::EmptySumSchema:
+        return "EmptySumSchema";
+    }
+    return "None";
+}
+
+static GS::UniString RuleFlagCheckToJson (const Spec::RuleFlagCheck &flag) {
+    return GS::UniString ("{\"checked\":") + (flag.checked ? "true" : "false") + GS::UniString (",\"value\":") +
+           (flag.value ? "true" : "false") + GS::UniString (",\"status\":\"") + RuleFlagStatusName (flag.status) +
+           GS::UniString ("\",\"origin\":\"") + RuleFlagOriginName (flag.origin) +
+           GS::UniString ("\",\"sourceName\":\"") + EscapeJsonString (flag.sourceName).ToCStr ().Get () +
+           GS::UniString ("\"}");
+}
+
+static GS::UniString StringArrayToJson (const GS::Array<GS::UniString> &items) {
+    GS::UniString json = GS::UniString ("[");
+    for (UIndex i = 0; i < items.GetSize (); ++i) {
+        if (i > 0)
+            json += GS::UniString (",");
+        json += GS::UniString ("\"") + EscapeJsonString (items[i]).ToCStr ().Get () + GS::UniString ("\"");
+    }
+    json += GS::UniString ("]");
+    return json;
+}
+
+// Общая часть результата: описание правила, назначение и отсутствующие имена.
+// Не включает elementFlag — тот относится к конкретному элементу.
+static GS::UniString SpecRuleCommonToJson (const Spec::RuleCheckResult &result) {
+    if (!result.definitionFound) {
+        // Определение не найдено: разбор не выполнялся, поэтому и parseError
+        // здесь не имеет смысла — его значение по умолчанию скрыло бы факт отказа.
+        return GS::UniString ("{\"definitionFound\":false,\"ruleParsed\":false,\"parseError\":\"\",") +
+               GS::UniString ("\"parseErrorText\":\"определение свойства не найдено в проекте\",") +
+               GS::UniString ("\"propertyName\":\"\",\"favoriteFound\":false,\"fromDefaultElem\":false,") +
+               GS::UniString ("\"destinationNamePropFound\":false,\"destinationGuidPropFound\":false,") +
+               GS::UniString ("\"destinationFlag\":null,\"missingWrite\":[],\"unresolvedInProject\":[]}");
+    }
+    GS::UniString parseErrorText = EMPTYSTRING;
+    if (!result.ruleParsed) {
+        parseErrorText = Spec::ParseErrorText (result.parseError);
+        parseErrorText = parseErrorText.IsEmpty () ? GS::UniString ("ошибка разбора описания") : parseErrorText;
+    }
+    GS::UniString json =
+        GS::UniString ("{\"definitionFound\":true,\"ruleParsed\":") + (result.ruleParsed ? "true" : "false") +
+        GS::UniString (",\"parseError\":\"") + ParseErrorName (result.parseError) +
+        GS::UniString ("\",\"parseErrorText\":\"") + EscapeJsonString (parseErrorText).ToCStr ().Get () +
+        GS::UniString ("\",\"propertyName\":\"") + EscapeJsonString (result.propertyName).ToCStr ().Get () +
+        GS::UniString ("\",\"favoriteFound\":") + (result.favoriteFound ? "true" : "false") +
+        GS::UniString (",\"fromDefaultElem\":") + (result.fromDefaultElem ? "true" : "false") +
+        GS::UniString (",\"destinationNamePropFound\":") + (result.destinationNamePropFound ? "true" : "false") +
+        GS::UniString (",\"destinationGuidPropFound\":") + (result.destinationGuidPropFound ? "true" : "false") +
+        GS::UniString (",\"destinationFlag\":") + RuleFlagCheckToJson (result.destinationFlag) +
+        GS::UniString (",\"missingWrite\":") + StringArrayToJson (result.missingWrite) +
+        GS::UniString (",\"unresolvedInProject\":") + StringArrayToJson (result.unresolvedInProject) +
+        GS::UniString ("}");
+    return json;
+}
+
+static GS::UniString SpecRuleElementToJson (const API_Guid &elemGuid, const Spec::RuleCheckResult &result) {
+    return GS::UniString ("{\"guid\":\"") + APIGuidToString (elemGuid).ToCStr ().Get () +
+           GS::UniString ("\",\"checkedElement\":") + (result.checkedElement ? "true" : "false") +
+           GS::UniString (",\"elementFlag\":") + RuleFlagCheckToJson (result.elementFlag) +
+           GS::UniString (",\"missingRead\":") + StringArrayToJson (result.missingRead) + GS::UniString ("}");
 }
 
 // --- Class definition: BrowserPalette ----------------------------------------
@@ -1592,6 +1715,206 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             return GS::Ref<DG::JSBase> (new DG::JSValue (false));
         }));
 
+    // =====================================================================
+    // Вкладка «Спецификация»: список свойств-правил и их проверка (#244).
+    //
+    // Признак hasSpecRule — ТОЧНЫЙ: в описании свойства есть команда
+    // Spec_rule. Агрегат hasRule из GetPropertyRuleFlag для этого не годится:
+    // он суммирует Sync, Spec_rule, Renum(_flag) и Sum (Propertycache.cpp:23-30),
+    // то есть в список валидатора попадали бы свойства с чужими правилами.
+    // Признак НЕ означает включённый флаг — включённость зависит от элемента
+    // и меняется после записи, поэтому её показывает только проверка по GUID.
+    // =====================================================================
+
+    // Разбор описания один раз на определение: и признак, и имя берутся оттуда.
+    auto collectSpecRuleProperties = [] (const GS::Array<API_PropertyDefinition> &definitions, GS::UniString &jsonOut) {
+        bool firstProperty = true;
+        UInt32 withSpecRule = 0;
+        for (const API_PropertyDefinition &definition : definitions) {
+            // Признак — тот же, что и у запуска правила: подстрока "pec_rule" в
+            // описании в нижнем регистре. Разбор команды как "Spec_rule{" не годится:
+            // он требует, чтобы команда начиналась с префикса БУКВАЛЬНО с начала
+            // описания, а правило может быть записано после другого текста и в любом
+            // регистре — тогда признак молча оставался false для всех свойств.
+            // Постфикс перед "pec_rule" (km, kzh, v2, v3) частью имени не считается:
+            // все они начинаются с "pec_rule".
+            const bool hasSpecRule =
+                !definition.description.IsEmpty () && definition.description.ToLowerCase ().Contains ("pec_rule");
+            GS::UniString name = EMPTYSTRING;
+            GetPropertyFullName (definition, name);
+            if (name.IsEmpty ())
+                name = definition.name;
+            if (hasSpecRule)
+                ++withSpecRule;
+            if (!firstProperty)
+                jsonOut += GS::UniString (",");
+            firstProperty = false;
+            jsonOut += GS::UniString ("{\"id\":\"") + APIGuidToString (definition.guid).ToCStr ().Get () +
+                       GS::UniString ("\",\"name\":\"") + EscapeJsonString (name).ToCStr ().Get () +
+                       GS::UniString ("\",\"hasSpecRule\":") +
+                       (hasSpecRule ? GS::UniString ("true") : GS::UniString ("false")) + GS::UniString ("}");
+        }
+    };
+
+    jsACAPI->AddItem (new DG::JSFunction (
+        "GetSpecRuleProperties", [collectSpecRuleProperties] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
+            try {
+                GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
+                GS::UniString jsonStr =
+                    GS::UniString ("{\"source\":\"") +
+                    (selectedElements.IsEmpty () ? GS::UniString ("project") : GS::UniString ("selection")) +
+                    GS::UniString ("\",\"selectionCount\":") +
+                    GS::ValueToUniString ((Int32)selectedElements.GetSize ()) + GS::UniString (",\"properties\":[");
+
+                // Множество уже собранных свойств нужно обеим веткам: одно и то же
+                // свойство встречается у нескольких элементов и в нескольких группах.
+                GS::HashTable<API_Guid, bool> seen = {};
+
+                if (!selectedElements.IsEmpty ()) {
+                    // Свойства выделенных элементов. У каждого элемента свой набор,
+                    // поэтому свойство собирается один раз и повторно не добавляется.
+                    GS::Array<API_PropertyDefinition> merged = {};
+                    for (const API_Guid &elemGuid : selectedElements) {
+                        GS::Array<API_PropertyDefinition> definitions = {};
+                        if (ACAPI_Element_GetPropertyDefinitions (
+                                elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions) != NoError) {
+                            continue;
+                        }
+                        for (const API_PropertyDefinition &definition : definitions) {
+                            if (seen.GetPtr (definition.guid) != nullptr)
+                                continue;
+                            seen.Put (definition.guid, true);
+                            merged.Push (definition);
+                        }
+                    }
+                    collectSpecRuleProperties (merged, jsonStr);
+                } else {
+                    // Все свойства проекта: те же группы, что читает PROPERTYCACHE,
+                    // иначе список отличался бы от остального интерфейса.
+                    auto &cache = PROPERTYCACHE ();
+                    if (!cache.isGroupPropertyRead_full)
+                        cache.ReadGroupProperty ();
+                    GS::Array<API_PropertyDefinition> definitions = {};
+                    for (const auto &cIt : cache.propertygroups) {
+#ifdef ServerMainVers_2800
+                        const API_PropertyGroup &group = cIt.value;
+#else
+                    const API_PropertyGroup &group = *cIt.value;
+#endif
+                        GS::Array<API_PropertyDefinition> groupDefinitions = {};
+                        if (ACAPI_Property_GetPropertyDefinitions (group.guid, groupDefinitions) != NoError)
+                            continue;
+                        for (const API_PropertyDefinition &definition : groupDefinitions) {
+                            if (seen.GetPtr (definition.guid) != nullptr)
+                                continue;
+                            seen.Put (definition.guid, true);
+                            definitions.Push (definition);
+                        }
+                    }
+                    collectSpecRuleProperties (definitions, jsonStr);
+                }
+
+                jsonStr += GS::UniString ("]}");
+                return new DG::JSValue (jsonStr);
+            } catch (const std::exception &e) {
+                DBprnt (GS::UniString ("GetSpecRuleProperties: std::exception: ") + e.what ());
+                return new DG::JSValue (GS::UniString ("{\"source\":\"none\",\"selectionCount\":0,\"properties\":[]}"));
+            } catch (...) {
+                DBprnt ("GetSpecRuleProperties: unknown exception");
+                return new DG::JSValue (GS::UniString ("{\"source\":\"none\",\"selectionCount\":0,\"properties\":[]}"));
+            }
+        }));
+
+    // Проверка правила спецификации по GUID свойства-правила. Аргументы приходят
+    // одним значением — JSON-массивом [propertyGuid, limit] (паттерн
+    // ParsePropertyForElement): DynamicCast<JSArray> на аргументах роняет мост.
+    jsACAPI->AddItem (
+        new DG::JSFunction ("CheckSpecRuleByPropertyGuid", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+            // Закрывающая скобка — ТОЛЬКО в конце: ранние выходы дописывают
+            // common и elements, и скобка посреди строки ломала бы JSON
+            // (парсер JS отверг бы весь ответ, а не только ранний выход).
+            const GS::UniString emptyAnswer =
+                GS::UniString ("{\"ok\":false,\"checked\":0,\"totalSelected\":0,\"truncated\":false") +
+                GS::UniString (",\"common\":null,\"elements\":[]}");
+            try {
+                GS::Ref<DG::JSValue> value = GS::DynamicCast<DG::JSValue> (args);
+                if (value == nullptr) {
+                    return new DG::JSValue (emptyAnswer);
+                }
+                const GS::UniString payload = value->GetString ();
+                const USize q1 = payload.FindFirst ('"');
+                const USize q2 = (q1 == MaxUSize) ? MaxUSize : payload.FindFirst ('"', q1 + 1);
+                const USize q3 = (q2 == MaxUSize) ? MaxUSize : payload.FindFirst ('"', q2 + 1);
+                const USize q4 = (q3 == MaxUSize) ? MaxUSize : payload.FindFirst ('"', q3 + 1);
+                if (q1 == MaxUSize || q2 == MaxUSize || q3 == MaxUSize || q4 == MaxUSize) {
+                    return new DG::JSValue (emptyAnswer);
+                }
+                const GS::UniString propertyGuidStr = payload.GetSubstring (q1 + 1, q2 - q1 - 1);
+                const API_Guid propertyGuid = APIGuidFromString (propertyGuidStr.ToCStr (0, MaxUSize, GChCode));
+                if (propertyGuid == APINULLGuid) {
+                    return new DG::JSValue (emptyAnswer);
+                }
+
+                GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
+                const Int32 totalSelected = (Int32)selectedElements.GetSize ();
+                // Лимит ограничивает ЧИТАНИЕ, а не только вывод: на 200 выделенных
+                // элементах проверка читает свойства каждого.
+                const USize maxCheck = maxSelectionCount > 0 ? (USize)maxSelectionCount : 10;
+                USize checkedCount = selectedElements.GetSize ();
+                if (checkedCount > maxCheck)
+                    checkedCount = maxCheck;
+
+                if (checkedCount == 0) {
+                    // Без элемента проверяется только проект — теми же функциями,
+                    // что и при запуске, с APINULLGuid.
+                    Spec::RuleCheckResult result = {};
+                    const bool definitionFound = Spec::CheckRuleByPropertyGuid (propertyGuid, APINULLGuid, result);
+                    GS::UniString jsonStr = GS::UniString ("{\"ok\":") + (definitionFound ? "true" : "false") +
+                                            GS::UniString (",\"checked\":0,\"totalSelected\":0,\"truncated\":false") +
+                                            GS::UniString (",\"common\":") + SpecRuleCommonToJson (result) +
+                                            GS::UniString (",\"elements\":[]}");
+                    return new DG::JSValue (jsonStr);
+                }
+
+                // Общий блок считается ОДИН раз: разбор правила и проверка назначения
+                // не зависят от элемента, а на 100 элементах это 100 лишних
+                // разборов описания и 100 чтений избранного.
+                Spec::RuleCheckResult commonResult = {};
+                const bool definitionFound = Spec::CheckRuleByPropertyGuid (propertyGuid, APINULLGuid, commonResult);
+                // Правило уже разобрано — элементы проверяются по нему напрямую.
+                // Повторный CheckRuleByPropertyGuid на каждый элемент заново читал бы
+                // определение, разбирал описание и затирал бы общий результат.
+                GS::UniString elementsJson = GS::UniString (",\"elements\":[");
+                for (USize i = 0; i < checkedCount; ++i) {
+                    Spec::RuleCheckResult elementResult = commonResult;
+                    // Признак ставим здесь, а не наследуем из общего блока: там
+                    // он не выставляется (CheckRuleByPropertyGuid ставит его только
+                    // в своей ветке с элементом), и без этой строки JS считал бы
+                    // каждый элемент непроверенным.
+                    elementResult.checkedElement = true;
+                    Spec::CheckRuleElementByRule (commonResult.rule, propertyGuid, selectedElements[i], elementResult);
+                    if (i > 0)
+                        elementsJson += GS::UniString (",");
+                    elementsJson += SpecRuleElementToJson (selectedElements[i], elementResult);
+                }
+                elementsJson += GS::UniString ("]");
+
+                GS::UniString jsonStr = GS::UniString ("{\"ok\":") + (definitionFound ? "true" : "false") +
+                                        GS::UniString (",\"checked\":") + GS::ValueToUniString ((Int32)checkedCount) +
+                                        GS::UniString (",\"totalSelected\":") + GS::ValueToUniString (totalSelected) +
+                                        GS::UniString (",\"truncated\":") +
+                                        (checkedCount < selectedElements.GetSize () ? "true" : "false") +
+                                        GS::UniString (",\"common\":") + SpecRuleCommonToJson (commonResult) +
+                                        elementsJson + GS::UniString ("}");
+                return new DG::JSValue (jsonStr);
+            } catch (const std::exception &e) {
+                DBprnt (GS::UniString ("CheckSpecRuleByPropertyGuid: std::exception: ") + e.what ());
+                return new DG::JSValue (emptyAnswer);
+            } catch (...) {
+                DBprnt ("CheckSpecRuleByPropertyGuid: unknown exception");
+                return new DG::JSValue (emptyAnswer);
+            }
+        }));
 #if defined(ServerMainVers_2700) || !defined(ServerMainVers_2600)
     // AC26 удалил UnregisterJSObject из DGLib, AC27 вернул его (перегрузку по имени)
     // уже в JavascriptEngine — компилируем вызов только там, где метод есть.

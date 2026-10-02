@@ -1,0 +1,315 @@
+//------------ kuvbur 2026 ------------
+// TestKit — реализация: файловый отчёт, счётчики, отбор наборов.
+//
+// Каждая строка сбрасывается на диск сразу: если набор уронит ArchiCAD, всё
+// напечатанное до этого сохраняется, и в файле остаётся BEGIN без парного
+// END — по нему видно, где прогон оборвался.
+#ifdef TESTING
+
+    #include <cstdio>
+    #include <cstdlib>
+    #include <vector>
+
+    #include "tests/TestKit.hpp"
+
+// Прод-канал печати (DBprnt/DBPrintf/DBPrint) в харнесе НЕ используется:
+// он добавляет префикс "== ERROR ==" по вхождению "err"/"ERROR" в тексте,
+// поэтому измерение выглядит как сбой, и после запуска через раннер
+// (без IDE) его всё равно негде смотреть. Единственный канал — файл отчёта,
+// который переживает падение ArchiCAD и читается чем угодно.
+namespace TestKit {
+
+    // Текущий набор: подставляется в каждую строку Note, чтобы измерение
+    // читалось без контекста. Обновляется раннером перед вызовом набора.
+    static const char *g_suite = "<none>";
+
+    namespace {
+
+        struct Entry {
+            const char *name;
+            const char *group;
+            TestFn fn;
+        };
+
+        // Реестр живёт здесь, а не в статических инициализаторах наборов: при
+        // разбиении файла по модулям регистратор вместе со своей static-функцией
+        // может быть выкинут линковкой, и набор молча исчезнет из Run() без
+        // единого предупреждения. Наполняется явно из TestFunc::RegisterAll.
+        std::vector<Entry> &Registry () {
+            static std::vector<Entry> registry;
+            return registry;
+        }
+
+        struct Stats {
+            int passed = 0;
+            int failed = 0;
+            int suppressed = 0;
+            int suites = 0;
+            int failedSuites = 0;
+            int notes = 0;        // записанные измерения (в том числе заглушённые)
+            bool aborted = false; // набор упал через DBrequire
+            bool skipped = false; // набор пропущен через DBskip
+        };
+
+        Stats g_stats;
+        std::FILE *g_file = nullptr;
+
+        // Путь к файлу отчёта: явно заданный путь, иначе каталог TEMP.
+        std::string ReportPath () {
+            const std::string custom = GetConfig ().reportPath;
+            if (!custom.empty ())
+                return custom;
+            const char *tmp = std::getenv ("TMPDIR");
+            if (tmp == nullptr || *tmp == '\0')
+                tmp = std::getenv ("TEMP");
+            if (tmp == nullptr || *tmp == '\0')
+                tmp = "/tmp";
+            return std::string (tmp) + "/somestuff_test_report.txt";
+        }
+
+        void Open () {
+            if (g_file != nullptr)
+                return;
+            const std::string path = ReportPath ();
+            g_file = std::fopen (path.c_str (), "w");
+            // Файл недоступен — не молчим: сообщаем в отладочный вывод проды.
+            if (g_file == nullptr)
+                DBPrintf ("somestuff tests: cannot open report %s\n", path.c_str ());
+        }
+
+        void Emit (const std::string &line) {
+            if (g_file == nullptr)
+                return;
+            std::fputs (line.c_str (), g_file);
+            std::fputc ('\n', g_file);
+            // Сброс на каждую строку: файл обязан пережить падение ArchiCAD.
+            std::fflush (g_file);
+        }
+
+        // Точное совпадение, префикс "X*" или список через запятую.
+        bool Matches (std::string filter, const char *name) {
+            if (filter.empty ())
+                return true;
+            if (filter == name)
+                return true;
+            const std::string f = filter;
+            const std::string n (name);
+            // "Sync*" — префикс по группам и именам наборов.
+            if (!f.empty () && f[f.size () - 1] == '*') {
+                const std::string stem = f.substr (0, f.size () - 1);
+                return n.compare (0, stem.size (), stem) == 0;
+            }
+            // Список через запятую: "TestA,TestB".
+            size_t pos = 0;
+            while (pos <= f.size ()) {
+                const size_t comma = f.find (',', pos);
+                const std::string item = f.substr (pos, comma == std::string::npos ? std::string::npos : comma - pos);
+                if (!item.empty () && n == item)
+                    return true;
+                if (comma == std::string::npos)
+                    break;
+                pos = comma + 1;
+            }
+            return false;
+        }
+
+    } // namespace
+
+    Config &GetConfig () {
+        static Config config;
+        return config;
+    }
+
+    void SetNoteLevel (NoteLevel level) {
+        GetConfig ().noteLevel = static_cast<int> (level);
+        GetConfig ().noteLevelExplicit = true;
+    }
+
+    void Register (const char *name, const char *group, TestFn fn) { Registry ().push_back (Entry{name, group, fn}); }
+
+    void SkipTest (const GS::UniString &reason) {
+        g_stats.skipped = true;
+        Emit ("SKIP " + std::string (reason.ToCStr (0, MaxUSize, CC_UTF8).Get ()));
+        throw AbortTest ();
+    }
+
+    namespace detail {
+        // Имя уровня в отчёте: при уровне Normal метка не печатается, чтобы
+        // строка не обрастала лишним словом в обычном прогоне.
+        const char *LevelTag (int level) {
+            if (level >= static_cast<int> (NoteLevel::Verbose))
+                return " [Verbose]";
+            if (level <= static_cast<int> (NoteLevel::Quiet))
+                return " [Quiet]";
+            return "";
+        }
+    } // namespace detail
+
+    void Note (const char *subject, const Field *fields, USize count, const GS::UniString &text, NoteLevel minLevel) {
+        ++g_stats.notes;
+        const int level = GetConfig ().noteLevel;
+        // Quiet глушит всё: измерение — не результат, а на фиксированном наборе
+        // оно превращает отчёт в простыню. Запись с minLevel=Verbose не проходит,
+        // пока уровень прогона ниже Verbose (то есть без SMSTF_VERBOSE=2).
+        if (level < static_cast<int> (minLevel) || level <= static_cast<int> (NoteLevel::Quiet))
+            return;
+        Open ();
+        std::string line = "NOTE";
+        // Метка печатается только для нестандартного уровня: на обычном прогоне
+        // слово «Verbose» в строке было бы шумом.
+        if (minLevel > NoteLevel::Normal)
+            line += detail::LevelTag (static_cast<int> (minLevel));
+        line += " ";
+        line += g_suite;
+        if (subject != nullptr && *subject != '\0') {
+            line += " | ";
+            line += subject;
+        }
+        for (USize i = 0; i < count; ++i) {
+            line += " | ";
+            line += fields[i].key;
+            line += "=";
+            line += fields[i].value.ToCStr (0, MaxUSize, CC_UTF8).Get ();
+        }
+        if (!text.IsEmpty ()) {
+            line += " | ";
+            line += text.ToCStr (0, MaxUSize, CC_UTF8).Get ();
+        }
+        Emit (line);
+    }
+
+    void NoteFields (const char *subject, std::initializer_list<Field> fields, NoteLevel minLevel) {
+        Note (subject, fields.begin (), (USize)fields.size (), GS::UniString (), minLevel);
+    }
+
+    NoteLevel LevelFromEnv () {
+        const char *v = std::getenv ("SMSTF_VERBOSE");
+        if (v == nullptr || *v == '\0')
+            return NoteLevel::Normal;
+        switch (*v) {
+        case '0':
+            return NoteLevel::Quiet;
+        case '2':
+        case '3':
+            return NoteLevel::Verbose;
+        default:
+            return NoteLevel::Normal;
+        }
+    }
+
+    namespace detail {
+
+        std::string FmtBool (bool v) { return v ? "true" : "false"; }
+
+        std::string FmtInt (long long v) {
+            char buf[32];
+            std::snprintf (buf, sizeof (buf), "%lld", v);
+            return std::string (buf);
+        }
+
+        std::string FmtDbl (double v) {
+            char buf[64];
+            std::snprintf (buf, sizeof (buf), "%g", v);
+            return std::string (buf);
+        }
+
+        std::string FmtStr (const GS::UniString &v) { return v.ToCStr (0, MaxUSize, CC_UTF8).Get (); }
+
+        bool Report (
+            const Loc &l, bool ok, const std::string &expected, const std::string &actual, const GS::UniString &msg) {
+            Open ();
+            const std::string text = msg.ToCStr (0, MaxUSize, CC_UTF8).Get ();
+            if (ok) {
+                ++g_stats.passed;
+                // Успех по умолчанию молчит: на фиксированном наборе иначе
+                // каждая правка продукта засоряет отчёт тысячами строк.
+                if (GetConfig ().printPass)
+                    Emit ("PASS " + text + " = " + actual);
+                return true;
+            }
+
+            ++g_stats.failed;
+            if (g_stats.failed <= GetConfig ().maxFailuresPerTest) {
+                // Имя набора впереди: строка FAIL читается сама по себе, вне
+                // контекста, и без него непонятно, к какому набору относится
+                // падение — метки проверок в разных наборах повторяются.
+                Emit ("FAIL [" + std::string (g_suite) + "] " + text + " | expected " + expected + " got " + actual +
+                      " | " + l.file + ":" + detail::FmtInt (l.line));
+            } else if (g_stats.failed == GetConfig ().maxFailuresPerTest + 1) {
+                Emit ("FAIL ... further failures suppressed (maxFailuresPerTest=" +
+                      detail::FmtInt (GetConfig ().maxFailuresPerTest) + ")");
+            } else {
+                ++g_stats.suppressed;
+            }
+
+            // DBrequire останавливает набор: следующая строка обычно разыменует
+            // результат, и без остановки ArchiCAD упал бы целиком.
+            if (l.required) {
+                Emit ("ABORT [" + std::string (g_suite) + "] " + text + " (DBrequire)");
+                g_stats.aborted = true;
+                throw AbortTest ();
+            }
+            return false;
+        }
+
+    } // namespace detail
+
+    int Run (const char *filter) {
+        const std::string sel = filter ? filter : "";
+        // Уровень измерений задаётся окружением один раз на прогон; поле в
+        // Config остаётся для вызывающего, который хочет задать уровень сам.
+        if (!GetConfig ().noteLevelExplicit)
+            GetConfig ().noteLevel = static_cast<int> (LevelFromEnv ());
+        Open ();
+        g_stats = Stats ();
+        Emit ("=== somestuff tests begin ===");
+
+        std::vector<std::string> failedNames;
+        for (const Entry &entry : Registry ()) {
+            if (!Matches (sel, entry.name) && !Matches (sel, entry.group))
+                continue;
+            const int before = g_stats.failed;
+            const int passedBefore = g_stats.passed;
+            ++g_stats.suites;
+            g_stats.skipped = false;
+            Emit ("BEGIN " + std::string (entry.name));
+            g_suite = entry.name;
+            try {
+                entry.fn ();
+            } catch (const AbortTest &) {
+                // набор прерван DBrequire или DBskip — уже отмечено в Emit
+            } catch (...) {
+                ++g_stats.failed;
+                Emit ("FAIL unhandled exception in suite " + std::string (entry.name));
+            }
+            // passed= и failed= по набору: без них нельзя сверить число
+            // выполненных проверок с числом вызовов DBtest в коде и поймать
+            // набор, который молча перестал выполняться.
+            Emit ("END " + std::string (entry.name) + " passed=" + detail::FmtInt (g_stats.passed - passedBefore) +
+                  " failed=" + detail::FmtInt (g_stats.failed - before));
+            if (g_stats.failed > before) {
+                ++g_stats.failedSuites;
+                failedNames.push_back (entry.name);
+            } else if (g_stats.skipped) {
+                Emit ("SKIPPED " + std::string (entry.name));
+            }
+        }
+
+        // Хвостовые записи вызывающего не должны наследовать имя последнего
+        // набора: после прогона текущим считается уже «никто».
+        g_suite = "<run>";
+
+        Emit ("SUMMARY suites=" + detail::FmtInt (g_stats.suites) + " passed=" + detail::FmtInt (g_stats.passed) +
+              " failed=" + detail::FmtInt (g_stats.failed) + " suppressed=" + detail::FmtInt (g_stats.suppressed) +
+              " notes=" + detail::FmtInt (g_stats.notes));
+        for (const std::string &name : failedNames)
+            Emit ("FAILED_SUITE " + name);
+        // exit-код для скрипта: ненулевой при любом провале.
+        Emit (std::string ("EXIT ") + detail::FmtInt (g_stats.failed > 0 ? 1 : 0));
+        Emit ("=== somestuff tests end ===");
+        return g_stats.failed;
+    }
+
+} // namespace TestKit
+
+#endif // TESTING
