@@ -83,6 +83,10 @@ NOTE [Verbose] TestPropertyRuleFlagOnProjectElements | RuleFlagProj.desc | name=
 
 ### Преобразования в ParamValue [из комментариев]
 `TestConvertToParamValue` (37) — значения; `TestConvertAttributeToParamValue` (40) — атрибуты; `TestConvertPropertyToParamValue` (43) — свойства; `TestConvertPropertyDefinitionToParamValue` (46) — определения; `TestSetParamValueSourseByName` (49) — источник по raw-name; `TestSetrawNameFromProperty` (52) — raw-name из описания свойства.
+Отрицательный вещественный кейс `TestConvertPropertyToParamValue` использует
+`-123456.7`: проверка `doubleValue` допускает округление по настройке проекта;
+`rawDoubleValue` предназначен для чтения исходной точности. [по коду
+`tests/TestParam.cpp:256-263`, `CommonFunction.hpp:97-98`, `Helpers.cpp:8255-8283`]
 
 ### Правила, парсинг, TDD [из комментариев]
 `TestCheckIgnoreVal` (55) — правила игнорирования; `TestReadProperty` (58) — чтение свойств; `TestAddProperty` (61) — добавление свойств в словарь; `TestPropertyHelpersToString` (64) — структуры → строка; `TestName2Rawname` (67) — имя → rawname, включая имена с одной недостающей скобкой и GREEN-кейсы без скобок/с полными скобками (AC25); `TestName2RawnameWithBrackets` (70) — с уже обёрнутыми скобками; `TestSyncString` (73) — парсинг правила; `TestSyncStringRealRules` (76) — реальные правила из BuildingInformation.xml; `TestParsePrefixes` (79) — константы префиксов; `TestParsePropertyDescription` (82) — команды Sync/Renum/Sum/Spec; `TestParseSyncStringIndependent` (85) — Этап 2 TDD; `TestParsePropertyDescriptionToRules` (88) — в структурированные правила.

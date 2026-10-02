@@ -60,8 +60,9 @@ AC22–24 и macOS — `not verified`.
   накопитель, а до него сообщение об отказе дойти не может. Возвращаемое
   значение прежнее — `NoError`. В `spec/` `ACAPI_WriteReport` не осталось
   вовсе (проверено grep). Приёмка: AC25–29 `success`, runtime
-  `suites=70 passed=2860 failed=1` — единственный `TestConvertPropertyToParamValue`
-  это открытый баг #232 (`Helpers.cpp`, округление вещественных), к spec/
+  `suites=70 passed=2860 failed=1` — единственный провал
+  `TestConvertPropertyToParamValue` был ошибочным ожиданием теста (#232),
+  отдельно исправленным после этой приёмки; к spec/
   отношения не имеет; `TestSpecRunReport` 29/29, `TestSpecResponseContract`
   26/26, `TestSpecRunCounters` 25/25. Код `0657dfd`, приёмка `db5ecfa`.
   Не проверено вживую: вёрстка окна и сценарий «пустое выделение + все флаги
@@ -267,6 +268,45 @@ AC29 местами отличаются от AC25 — схему читать �
 - **Снято автором (не фиксить)**: `Dimensions.cpp:158` `pen_original`;
   пересоздание элементов отделки в Roombook; `Sync.cpp:419-428`
   накопительный `epm`.
+
+## Parallel Task — #232 проверка вещественного свойства
+
+### Scope
+
+Только `Sources/AddOn/tests/TestParam.cpp` (отрицательный вещественный кейс
+`TestConvertPropertyToParamValue`), документация тестов и `IDEA.md`.
+`Helpers.cpp` и другие файлы прод-кода не менять. Проверка: AC25 Windows Debug.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/232
+
+### Status
+
+WAITING_FOR_CHECKPOINT. По решению владельца `rawDoubleValue` сохраняет исходную
+точность; `doubleValue` вправе округляться настройкой проекта. Вход и ожидание
+теста теперь `-123456.7`. Проверено на AC25: clang-format, clangd 0 диагностик,
+новый отчёт `TestConvertPropertyToParamValue passed=23 failed=0`,
+`SUMMARY suites=70 passed=2861 failed=0`. В другом сеансе runner собрал и
+запустил AC25 (`build=True`), но завершился 70 в 16:57:29 по старому отчёту;
+новый отчёт появился после него в 16:57:49. Наш отдельный билд до того получил
+LNK1168 при открытом Archicad. Повторный раннер не запускался, чтобы не мешать
+параллельной задаче на модели.
+
+### Plan
+
+- [x] Заменить вход и ожидание в тесте, отформатировать и проверить LSP.
+- [x] Собрать AC25 и выполнить финальный `restart_archicad_for_test.ps1`;
+  проверить отчёт этого прогона с учётом асинхронной записи (runner 70,
+  окончательный отчёт 0 провалов).
+- [/] Проверить diff, сделать checkpoint и закрыть #232 с объяснением;
+  сверить удалённый статус issue.
+
+### Last Checkpoint
+
+Нет для #232.
+
+### Next Step
+
+Проверить diff, закоммитить только свои правки и закрыть #232; архивировать
+этот блок, не затрагивая параллельный R9.5.
 
 ## Parallel Task — #217 счётчики кэшей EvalExpression
 

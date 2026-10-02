@@ -256,10 +256,10 @@ namespace TestFunc {
         pvalue = ParamValue ();
         pvalue.rawName = "{@property:testreal_neg}";
         pvalue.name = "TestRealNeg";
-        property.value.singleVariant.variant.doubleValue = -123456.789;
+        property.value.singleVariant.variant.doubleValue = -123456.7;
         ParamHelpers::ConvertToParamValue (pvalue, property);
         DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (отрицательное != 0)");
-        DBtest (is_equal (pvalue.val.doubleValue, -123456.789),
+        DBtest (is_equal (pvalue.val.doubleValue, -123456.7),
                 "ConvertToParamValue(Property) : doubleValue (отрицательное)");
 
         pvalue = ParamValue ();
