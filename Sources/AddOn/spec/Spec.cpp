@@ -23,6 +23,9 @@ namespace Spec {
     //   rules - [OUT] словарь правил (заполняется)
     //   homedatabaseInfo - информация о текущей базе данных (для фильтрации элементов)
     //   has_elementspec - [OUT] true, если найден хотя бы один элемент с включённым флагом
+    //   showUserInterface - открывать ли пользовательские окна
+    //   runResult - [OUT] накопитель результата запуска; отказ «все флаги
+    //               выключены» пишет в него сообщение вместо всплывающего окна
     // Алгоритм:
     //   1. Получает определения пользовательских свойств элемента по умолчанию (API_ObjectID)
     //   2. Ищет свойства, в описании которых есть "Spec_rule{...}"
@@ -35,7 +38,8 @@ namespace Spec {
     bool GetRuleFromDefaultElem (SpecRuleDict &rules,
                                  API_DatabaseInfo &homedatabaseInfo,
                                  bool &has_elementspec,
-                                 bool showUserInterface) {
+                                 bool showUserInterface,
+                                 SpecRunResult *runResult) {
 #ifndef ServerMainVers_2300
         return false;
 #else
@@ -120,9 +124,13 @@ namespace Spec {
         }
         if (has_element && !has_elementspec) {
             msg_rep ("Spec", "All elements is off", APIERR_GENERAL, APINULLGuid);
+            // Всплывающего окна здесь нет: сообщение копится в накопителе и
+            // показывается в общем окне результата в конце запуска. Без
+            // накопителя показать нечего, и вызывающий обязан пережить
+            // отказ сам - молчащий отказ хуже лишнего окна.
             if (showUserInterface) {
                 const Int32 iseng = ID_ADDON_STRINGS + isEng ();
-                GS::UniString SpecRuleNotFoundString = RSGetIndString (iseng, SpecFlagOff, ACAPI_GetOwnResModule ());
+                GS::UniString flagOffText = RSGetIndString (iseng, SpecFlagOff, ACAPI_GetOwnResModule ());
                 if (!error_name.IsEmpty ()) {
                     for (auto &cIt : error_name) {
     #ifdef ServerMainVers_2800
@@ -130,11 +138,12 @@ namespace Spec {
     #else
                         GS::UniString s = *cIt.key;
     #endif
-                        SpecRuleNotFoundString.Append (LINEBRAKE);
-                        SpecRuleNotFoundString.Append (s);
+                        flagOffText.Append (LINEBRAKE);
+                        flagOffText.Append (s);
                     }
                 }
-                ACAPI_WriteReport (SpecRuleNotFoundString, true);
+                if (runResult != nullptr)
+                    runResult->AddGeneralMessage (flagOffText);
             }
         }
         return has_element;
@@ -152,6 +161,20 @@ namespace Spec {
             runResult->includeDetails = includeDetails;
         }
         const bool showUserInterface = placementPoint == nullptr;
+        // Накопитель результата нужен всегда, в том числе при запуске из меню:
+        // именно в него точки отказа пишут сообщения, которые показывает
+        // окно результата. Без него сообщениям некуда деваться, и отказ
+        // остался бы невидимым.
+        //
+        // Создаётся ДО GetRuleFromDefaultElem: тот отказывает раньше, чем
+        // накопитель появился бы у прежнего места создания, и его сообщение
+        // просто некуда было бы записать. Для этого пути накопления результата
+        // не делается: сообщение о выключенных флагах возвращает функцию
+        // раньше SpecArray, а тот обнулял бы накопитель вместе с includeDetails.
+        SpecRunResult localResult = {};
+        SpecRunResult *result = runResult;
+        if (result == nullptr && showUserInterface)
+            result = &localResult;
         GSErrCode err = NoError;
         API_DatabaseInfo homedatabaseInfo = {};
 #ifdef ServerMainVers_2700
@@ -176,7 +199,7 @@ namespace Spec {
         }
         bool has_elementspec = false;
         if (guidArray.IsEmpty ())
-            hasrule = GetRuleFromDefaultElem (rules, homedatabaseInfo, has_elementspec, showUserInterface);
+            hasrule = GetRuleFromDefaultElem (rules, homedatabaseInfo, has_elementspec, showUserInterface, result);
         if (hasrule)
             msg_rep ("Spec", "Create spec from default element", NoError, APINULLGuid);
         if (guidArray.IsEmpty () && !hasrule) {
@@ -193,16 +216,14 @@ namespace Spec {
         }
         // Если default element уже нашёл включённые элементы, они сохранены в rule.runState.elements
         // и должны быть обработаны SpecArray даже при пустом guidArray.
-        if (guidArray.IsEmpty () && !has_elementspec)
+        if (guidArray.IsEmpty () && !has_elementspec) {
+            // Отказ «все флаги выключены» долетел сюда из GetRuleFromDefaultElem:
+            // до SpecArray дело не дошло, но сообщение уже в накопителе, и
+            // молчать о нём нельзя - иначе отказ останется невидимым.
+            if (showUserInterface)
+                ShowRunResult (rules, result);
             return NoError;
-        // Накопитель результата нужен всегда, в том числе при запуске из меню:
-        // именно в него точки отказа пишут сообщения, которые показывает
-        // окно результата. Без него сообщениям некуда деваться, и отказ
-        // остался бы невидимым.
-        SpecRunResult localResult = {};
-        SpecRunResult *result = runResult;
-        if (result == nullptr && showUserInterface)
-            result = &localResult;
+        }
         err = SpecArray (syncSettings, guidArray, rules, selected_elements, ruleNames, placementPoint, result);
         // Окно результата показывается после завершения запуска, а не в
         // точках отказа: одно окно вместо всплывающих на каждом этапе.

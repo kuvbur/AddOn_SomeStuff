@@ -494,10 +494,16 @@ namespace Spec {
     };
 
     // Ищет правила спецификации в свойствах элемента по умолчанию и собирает связанные с ними элементы.
+    //
+    // runResult — накопитель результата запуска. Создаётся ДО этого вызова,
+    // поэтому отказ «все флаги выключены» пишет в него сообщение, а не
+    // открывает всплывающее окно. При nullptr сообщению некуда деваться, и
+    // вызывающий обязан сам показать результат.
     bool GetRuleFromDefaultElem (SpecRuleDict &rules,
                                  API_DatabaseInfo &homedatabaseInfo,
                                  bool &has_elementspec,
-                                 bool showUserInterface = true);
+                                 bool showUserInterface = true,
+                                 SpecRunResult *runResult = nullptr);
 
     // Создаёт спецификацию из текущего выбора, всех видимых элементов или правил по умолчанию.
     // При переданной точке выполняет non-interactive запуск: `ruleNames == nullptr` означает все валидные правила.
