@@ -2766,7 +2766,7 @@ GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
                                            GS::Array<API_Guid> &elements) {
     const GS::UniString lowerValue = value.ToLowerCase ();
     GSErrCode error = NoError;
-    elements = {};
+    elements.Clear ();
 #ifndef ServerMainVers_2300
     return NoError;
 #else
