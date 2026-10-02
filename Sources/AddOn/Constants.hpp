@@ -157,6 +157,7 @@ static const Int32 OtherDbCloseId = 83;                 // Закрыть диа
 static const Int32 OtherDbShowId = 84;                  // Показать элементы в другой базе данных
 static const Int32 OtherDbDatabaseId = 85;              // Заголовок столбца базы данных
 static const Int32 OtherDbElementsId = 86;              // Заголовок столбца количества элементов
+static const Int32 OtherDbShow3DId = 87;                // Показать элементы другой базы в 3D-окне
 
 // --- Внутренние пути свойств материалов ---
 static const GS::UniString MAT_SOME_STUFF_TH =               // Путь к свойству толщины стройматериала

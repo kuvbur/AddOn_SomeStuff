@@ -144,6 +144,7 @@
 /* [  84] */	"Показать"
 /* [  85] */	"Имя БД"
 /* [  86] */	"Элементов"
+/* [  87] */	"Показать в 3Д"
 /* [  90] */	"Создано"
 /* [  91] */	"Изменено"
 /* [  92] */	"Удалено"
@@ -285,6 +286,7 @@
 /* [  84] */	"Show"
 /* [  85] */	"Database"
 /* [  86] */	"Elements"
+/* [  87] */	"Show in 3D"
 /* [  90] */	"Created"
 /* [  91] */	"Modified"
 /* [  92] */	"Deleted"
@@ -307,6 +309,7 @@
 'GDLG'  ID_ADDON_OTHER_DB_DLG  Modal | grow         0    0  460  240  "Found elements in other views" {
 /* [  1] */ Button				   20  205  90   25	LargePlain  "Close"
 /* [  2] */ Button				  350  205  90   25	LargeBold   "Show"
+/* [  4] */ Button				  175  205 110   25	LargePlain  "Show in 3D"
 /* [  3] */ SingleSelList		   20   20  420  170	LargePlain  PartialItems VScroll 25 HasHeader 30
 }
 
@@ -314,6 +317,7 @@
 1	""							Button_0
 2	""							Button_1
 3	""							SingleSelList_0
+4	""							Button_2
 }
 
 /* --- SomeStuff schedules ----------------------------------------------------*/

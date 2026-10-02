@@ -64,6 +64,72 @@ namespace SyncDialogs {
             return name;
         }
 
+        // Подсвечивает элементы цветом, не меняя выделение. Версионные обёртки
+        // те же, что в Spec.cpp / BrowserPalette.cpp: с AC26 появились функции
+        // без возвращаемого кода, с AC27 — под ACAPI_UserInput_*.
+        void HighlightElements (const GS::Array<API_Guid> &guids) {
+            GS::HashTable<API_Guid, API_RGBAColor> hlElems;
+            const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
+            for (const API_Guid &guid : guids)
+                hlElems.Put (guid, hlColor);
+#ifdef ServerMainVers_2700
+            ACAPI_UserInput_ClearElementHighlight ();
+            ACAPI_UserInput_SetElementHighlight (hlElems);
+#else
+    #ifdef ServerMainVers_2600
+            ACAPI_Interface_ClearElementHighlight ();
+            ACAPI_Interface_SetElementHighlight (hlElems);
+    #else
+            // Вызов без par1 снимает предыдущую подсветку
+            ACAPI_Interface (APIIo_HighlightElementsID);
+            ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+    #endif
+#endif
+        }
+
+        // Переключает активное окно на 3D-окно модели. Собственное окно 3D есть
+        // почти всегда; если его нет, ArchiCAD создаст его само.
+        GSErrCode SwitchTo3DWindow () {
+            API_WindowInfo windowInfo = {};
+            windowInfo.typeID = APIWind_3DModelID;
+#ifdef ServerMainVers_2700
+            GSErrCode err = ACAPI_Window_ChangeWindow (&windowInfo);
+#else
+            GSErrCode err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
+#endif
+            if (err != NoError)
+                msg_rep ("SyncShowSubelement", "APIDo_ChangeWindowID", err, APINULLGuid);
+            return err;
+        }
+
+        // Переход к элементам в 3D-окне. Базу и этаж не меняем: 3D-окно не
+        // привязано к конкретной базе и показывает модель целиком, поэтому
+        // элементы базы/этажа в нём уже есть.
+        GSErrCode ShowOtherDbTargetIn3D (const OtherDbTarget &target) {
+            GSErrCode err = SwitchTo3DWindow ();
+            if (err != NoError)
+                return err;
+
+            GS::Array<API_Guid> guids;
+            for (const auto &guid : target.guids)
+                guids.PushNew (guid);
+
+            HighlightElements (guids);
+
+#ifdef ServerMainVers_2700
+            err = ACAPI_View_ZoomToElements (&guids);
+            if (err == NoError)
+                ACAPI_View_Redraw ();
+#else
+            err = ACAPI_Automate (APIDo_ZoomToElementsID, &guids);
+            if (err == NoError)
+                ACAPI_Automate (APIDo_RedrawID);
+#endif
+            if (err != NoError)
+                msg_rep ("SyncShowSubelement", "APIDo_ZoomToElementsID", err, APINULLGuid);
+            return err;
+        }
+
         GSErrCode SelectOtherDbTarget (const OtherDbTarget &target) {
             API_DatabaseInfo dbInfo = target.dbInfo;
 #ifdef ServerMainVers_2700
@@ -114,12 +180,15 @@ namespace SyncDialogs {
                                     public DG::ButtonItemObserver,
                                     public DG::ListBoxObserver {
           public:
-            enum DialogResourceID { CloseButtonId = 1, ShowButtonId = 2, ListBoxId = 3 };
+            enum DialogResourceID { CloseButtonId = 1, ShowButtonId = 2, ListBoxId = 3, Show3DButtonId = 4 };
+
+            enum ResultID { ShowInDatabaseResult = 1, ShowIn3DResult = 2 };
 
             explicit OtherDbDialog (const GS::Array<OtherDbTarget> &targets)
                 : DG::ModalDialog (ACAPI_GetOwnResModule (), ID_ADDON_OTHER_DB_DLG, ACAPI_GetOwnResModule ()),
                   closeButton (GetReference (), CloseButtonId), showButton (GetReference (), ShowButtonId),
-                  listBox (GetReference (), ListBoxId), targets (targets) {
+                  show3DButton (GetReference (), Show3DButtonId), listBox (GetReference (), ListBoxId),
+                  targets (targets) {
                 const Int32 iseng = ID_ADDON_STRINGS + isEng ();
                 DGSetDialogTitle (ID_ADDON_OTHER_DB_DLG,
                                   RSGetIndString (iseng, SubElementHalfId, ACAPI_GetOwnResModule ()));
@@ -129,10 +198,14 @@ namespace SyncDialogs {
                 DGSetItemText (ID_ADDON_OTHER_DB_DLG,
                                ShowButtonId,
                                RSGetIndString (iseng, OtherDbShowId, ACAPI_GetOwnResModule ()));
+                DGSetItemText (ID_ADDON_OTHER_DB_DLG,
+                               Show3DButtonId,
+                               RSGetIndString (iseng, OtherDbShow3DId, ACAPI_GetOwnResModule ()));
 
                 closeButton.Attach (*this);
                 showButton.Attach (*this);
                 listBox.Attach (*this);
+                show3DButton.Attach (*this);
                 Attach (*this);
                 InitListBox ();
             }
@@ -141,24 +214,30 @@ namespace SyncDialogs {
                 closeButton.Detach (*this);
                 showButton.Detach (*this);
                 listBox.Detach (*this);
+                show3DButton.Detach (*this);
                 Detach (*this);
             }
 
             short GetSelectedTargetIndex () const { return selectedTargetIndex; }
 
+            ResultID GetResult () const { return result; }
+
             void ButtonClicked (const DG::ButtonClickEvent &ev) override {
                 if (ev.GetSource () == &closeButton) {
                     PostCloseRequest (Cancel);
                 } else if (ev.GetSource () == &showButton) {
-                    selectedTargetIndex = listBox.GetSelectedItem () - 1;
-                    if (selectedTargetIndex >= 0 && selectedTargetIndex < static_cast<short> (targets.GetSize ()))
+                    if (AcceptSelection ())
                         PostCloseRequest (Accept);
+                } else if (ev.GetSource () == &show3DButton) {
+                    if (AcceptSelection ()) {
+                        result = ShowIn3DResult;
+                        PostCloseRequest (Accept);
+                    }
                 }
             }
 
             void ListBoxDoubleClicked (const DG::ListBoxDoubleClickEvent &) override {
-                selectedTargetIndex = listBox.GetSelectedItem () - 1;
-                if (selectedTargetIndex >= 0 && selectedTargetIndex < static_cast<short> (targets.GetSize ()))
+                if (AcceptSelection ())
                     PostCloseRequest (Accept);
             }
 
@@ -168,6 +247,7 @@ namespace SyncDialogs {
                 if (dh == 0 && dv == 0)
                     return;
                 showButton.Move (dh, dv);
+                show3DButton.Move (dh, dv);
                 closeButton.Move (0, dv);
                 listBox.Resize (dh, dv);
                 SetListBoxColumns ();
@@ -176,11 +256,19 @@ namespace SyncDialogs {
           private:
             DG::Button closeButton;
             DG::Button showButton;
+            DG::Button show3DButton;
             DG::SingleSelListBox listBox;
             const GS::Array<OtherDbTarget> &targets;
             short selectedTargetIndex = -1;
+            ResultID result = ShowInDatabaseResult;
             const short NameTab = 1;
             const short CountTab = 2;
+
+            // Читает выбранную строку списка; false, если строка не выбрана.
+            bool AcceptSelection () {
+                selectedTargetIndex = listBox.GetSelectedItem () - 1;
+                return selectedTargetIndex >= 0 && selectedTargetIndex < static_cast<short> (targets.GetSize ());
+            }
 
             void SetListBoxColumns () {
                 const short countWidth = 95;
@@ -249,7 +337,10 @@ namespace SyncDialogs {
         if (selectedIndex < 0 || selectedIndex >= static_cast<short> (targets.GetSize ()))
             return;
 
-        SelectOtherDbTarget (targets[selectedIndex]);
+        if (dialog.GetResult () == OtherDbDialog::ShowIn3DResult)
+            ShowOtherDbTargetIn3D (targets[selectedIndex]);
+        else
+            SelectOtherDbTarget (targets[selectedIndex]);
     }
 
 } // namespace SyncDialogs

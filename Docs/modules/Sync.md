@@ -74,9 +74,10 @@
 
 ### `OtherDbDialog` — переход к элементам в другой базе данных
 - Расположение: `Sources/AddOn/dialogs/OtherDbDialog.cpp/.hpp` (#210); `Sync.cpp` формирует цели и вызывает модуль. [по коду]
-- Контракт: `OtherDbTarget` группирует GUID по базе и этажу. Заголовок получает `SubElementHalfId`, а подписи кнопок и столбцов — `OtherDbCloseId`…`OtherDbElementsId` из `ID_ADDON_STRINGS`/`ID_ADDON_STRINGS_ENG` через `RSGetIndString`. Встроенных RU/EN строк интерфейса в классе нет. [по коду и ресурсам]
-- Побочные эффекты: после принятия модального окна `SelectOtherDbTarget` переключает текущую БД/этаж, выделяет связанные GUID и выполняет zoom; отмена и невалидный индекс ничего не меняют. [по коду]
-- Проверка окна на реальном Archicad — не выполнена; runner подтвердил сборку и загрузочный путь AC25, но не интерактивный сценарий.
+- Контракт: `OtherDbTarget` группирует GUID по базе и этажу. Заголовок получает `SubElementHalfId`, а подписи кнопок и столбцов — `OtherDbCloseId`…`OtherDbShow3DId` (`OtherDbShow3DId` = 87, добавлен в #246) из `ID_ADDON_STRINGS`/`ID_ADDON_STRINGS_ENG` через `RSGetIndString`. Встроенных RU/EN строк интерфейса в классе нет. Кнопок три: `CloseButtonId`=1, `ShowButtonId`=2, `ListBoxId`=3, `Show3DButtonId`=4 (#246). [по коду и ресурсам]
+- Побочные эффекты: после принятия модального окна результат (`ResultID`) выбирает ветку — `SelectOtherDbTarget` переключает текущую БД/этаж, выделяет связанные GUID и выполняет zoom; `ShowOtherDbTargetIn3D` (#246) переключает активное окно на `APIWind_3DModelID` (`ACAPI_Window_ChangeWindow` / `ACAPI_Automate (APIDo_ChangeWindowID)`), подсвечивает GUID оранжевым (`APIIo_HighlightElementsID` на AC22–25, `ACAPI_Interface_*ElementHighlight` на AC26, `ACAPI_UserInput_*ElementHighlight` на AC27+) и приближает камеру (`ACAPI_View_ZoomToElements` / `APIDo_ZoomToElementsID`) с последующим redraw. БД и этаж в 3D-ветке НЕ меняются — 3D-окно не привязано к базе. Отмена и невалидный индекс ничего не меняют. [по коду]
+- Ресурсы кнопки заданы в `Tools/AddOn.grc.in` (строка 87 RU/EN, элемент `[4]` блока `'GDLG' ID_ADDON_OTHER_DB_DLG` и `Button_2` в `'DLGH'`); `Sources/AddOnResources/RINT/AddOn.grc` — генерируемый CMake-файл, в git не лежит (`.gitignore:371`). [по коду и CMakeCommon.cmake:447]
+- Проверка окна на реальном Archicad — не выполнена; runner подтвердил сборку и загрузочный путь AC25, но не интерактивный сценарий. Сценарий «Показать в 3Д» вживую не проверялся.
 
 ## Зависимости
 - `Helpers.hpp`, `Propertycache.hpp`, `CommonFunction.hpp`, `DG.h`, `dialogs/SyncSettings.hpp`, `dialogs/OtherDbDialog.hpp` (#210) [по include]

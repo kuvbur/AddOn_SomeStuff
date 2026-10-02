@@ -1,8 +1,41 @@
 ﻿# Current Task
 
-Активной задачи нет: всё реализованное вынесено в `IDEA_ARCHIVE.md`. Открыты
-только пункты плана #228, перечисленные ниже (R8.6, R9.5) и параллельная
-задача #217.
+## Task — #246 кнопка «Показать в 3Д» в `SyncShowSubelement`
+
+Issue: #246 (kuvbur/AddOn_SomeStuff) — третья кнопка в окне `OtherDbDialog`.
+
+### Scope
+
+`Sources/AddOn/dialogs/OtherDbDialog.cpp`, `Sources/AddOn/Constants.hpp`
+(`OtherDbShow3DId` = 87), `Tools/AddOn.grc.in` (строка 87 RU/EN, элемент `[4]`
+`'GDLG' ID_ADDON_OTHER_DB_DLG`, `Button_2` в `'DLGH'`), `Docs/modules/Sync.md`.
+
+### Status
+
+IMPLEMENTED — код собран AC26–29; AC25 скомпилирован, но не слинкован (ArchiCAD
+(PID 39020) держит `.apx`). AC22 падает на компиляции ресурса и на HEAD — не
+регрессия. AC24 — DevKit отсутствует. macOS — `not verified`.
+
+### Last Completed
+
+2026-10-02. Три функции в анонимном namespace `OtherDbDialog.cpp`:
+`HighlightElements` (оранжевая подсветка, версии AC22–25 / AC26 / AC27+),
+`SwitchTo3DWindow` (`APIWind_3DModelID`), `ShowOtherDbTargetIn3D` (окно →
+подсветка → `ZoomToElements` → redraw). В классе диалога — `Show3DButtonId` = 4,
+`ResultID` (`ShowInDatabaseResult` / `ShowIn3DResult`), `AcceptSelection ()`,
+вынесенный из двух дублей; кнопка участвует в `Attach`/`Detach`,
+`DGSetItemText`, `PanelResized`. `ShowOtherDbDialog` выбирает ветку по `GetResult ()`.
+
+### Next Step
+
+Runtime: закрыть ArchiCAD, собрать AC25 (`Tools/BuildAddOn.py -c config.json -v 25`),
+запустить `SyncShowSubelement`, нажать «Показать в 3Д» и убедиться, что окно 3D
+открылось, элементы подсвечены оранжевым и камера их вмещает. До этого —
+`not verified`.
+
+### Last Checkpoint
+
+Код #246 не закоммичен (см. Backlog: issue открыт, ждём runtime-приёмки).
 
 ## Task — рефакторинг Spec (#228)
 
@@ -234,8 +267,9 @@ AC29 местами отличаются от AC25 — схему читать �
   BuildingMaterial/CompositeType}` — запись состава, профиля, стройматериала
   и типа конструкции; `Composite` только стены/крыши/оболочки/перекрытия,
   `Profile` — стены/колонны/балки; пустой вход пропускается; открытые вопросы
-  по сегментам и по стенам), #246 (кнопка «Показать в 3Д» в
-  `SyncShowSubelement`; зарезервирован ID ресурса 87).
+  по сегментам и по стенам), #246 (**код готов**, кнопка «Показать в 3Д» в
+  `SyncShowSubelement`; ID ресурса 87 `OtherDbShow3DId`; ждёт runtime-приёмки
+  на AC25 — подробности в разделе «Current Task»).
 - Спецификация: #236 (**диагностика исправлена**, политика разрушительных
   действий — НЕ решена, нужен выбор владельца) — причина удаления в плане
   неверна при отказе расчёта: введена отдельная причина `RowRejectedByCalc`,
