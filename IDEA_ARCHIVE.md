@@ -2,6 +2,52 @@
 Завершённые задачи и отменённые направления из `IDEA.md`. Новая запись — сверху (сразу под этим абзацем),
 старые — ниже.
 ---
+## #246 — кнопка «Показать в 3Д» в окне `SyncShowSubelement` (закрытие 2026-10-02, issue #246 CLOSED)
+### Задача
+В модальном окне `OtherDbDialog` (после `SyncShowSubelement`) добавить третью кнопку —
+«Показать в 3Д»: открыть/переключиться в 3D-окно, выделить и подсветить элементы
+выбранной в списке базы/этажа, приблизить камеру.
+### Scope
+`Sources/AddOn/dialogs/OtherDbDialog.cpp`, `Sources/AddOn/Constants.hpp`
+(`OtherDbShow3DId` = 87), `Tools/AddOn.grc.in` (строка 87 RU/EN, элемент `[4]` блока
+`'GDLG' ID_ADDON_OTHER_DB_DLG`, `Button_2` в `'DLGH'`), `Docs/modules/Sync.md`.
+Прод-код вне этих файлов не менялся.
+### Решение
+Кнопка показывает элементы сразу из ВСЕХ баз/этажей списка — выбор строки на неё
+не влияет (уточнено владельцем в процессе приёмки).
+Ключевой факт, установленный вживую: **порядок вызовов** в 3D-ветке —
+`ShowAllIn3D` → выделение → подсветка → `ZoomToElements` → redraw. Первая версия
+(перенос окна на `APIWind_3DModelID` → подсветка → `ZoomToElements`) не работала:
+после переноса окна текущей базой становится 3D-окно, и элементы чужой базы для
+него недоступны — не подсвечивались и не зумились. Выделение ДО перехода не
+срабатывает принципиально (документирован `APIERR_BADDATABASE`), выделение ПОСЛЕ
+перехода работает — это проверено на живом ArchiCAD, а не выведено из документации,
+поэтому оно и было вынесено в эксперимент владельцем. Отказ выделения или зума не
+прерывает остальные шаги. `ShowAllIn3D`, а не `ShowSelectionIn3D`: показывать надо
+элементы сразу из нескольких баз, а `ShowSelectionIn3D` ограничен текущим выделением.
+Версии: `ACAPI_View_ShowAllIn3D` на AC27+, `APIDo_ShowAllIn3DID` на AC22–26;
+`ACAPI_Selection_Select` на AC27+, `ACAPI_Element_Select` на AC22–26.
+### Checkpoint
+`ba50eb9` (кнопка и функции), `22ca70f` (порядок контролов в `'GDLG'`), `d5ba498`
+(переход через выделение), `6b79898` (все базы сразу) — все `Refs: #246`.
+### Validation
+- Verified: контракты `ACAPI_View_ZoomToElements` («works both in the 2D and 3D
+  window»), `ACAPI_UserInput_SetElementHighlight` («in the 2D … and 3D window»),
+  `ACAPI_Selection_Select` (перечисляет `APIERR_BADDATABASE`),
+  `ACAPI_View_ShowAllIn3D` — по заголовкам DevKit AC25/AC27/AC29; наличие/отсутствие
+  `APIDo_ShowAllIn3DID` и `ACAPI_View_ShowAllIn3D` сверено по всем семи DevKit.
+- Compiled: да — AC25–29 `success` (AC25 через `restart_archicad_for_test.ps1`,
+  exit 0; AC26/AC27/AC29 обе версионные ветки). AC22 падает на компиляции ресурса
+  и на чистом HEAD — не регрессия; AC24 — DevKit отсутствует; macOS — `not verified`.
+- Tested: автотесты AC25 `suites=67 passed=2475 failed=0` (mtime сверен с `.apx`);
+  runtime вживую на AC25 — подтверждено владельцем: список заполнен, подписи на
+  месте, 3D-окно открывается, элементы со всех баз подсвечены и выделены, камера
+  наводится. Сценарий интерактивный, автотестами не покрыт.
+### Грабли (перенесены в `IDEA.md`)
+ID контрола в `'GDLG'` = позиция строки, число в комментарии `/* [ n] */` не
+читается; `AddOn.grc` регенерируется из `Tools/AddOn.grc.in` на конфигурации CMake,
+поэтому отставание `.apx` от правки шаблона выглядит как «ничего не изменилось».
+
 ## #225 — фильтр IsElementEditable перед AttachObserver в ReservationChangeHandler (закрытие 2026-09-28, issue #225 CLOSED)
 ### Задача
 В `ReservationChangeHandler` (`Sources/AddOn/SomeStuff_Main.cpp`) для каждого зарезервированного
