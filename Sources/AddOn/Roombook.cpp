@@ -82,7 +82,6 @@ namespace Roombook
         UnicElementByType elementToRead;
         ParamDictElement paramToRead;
         ParamValue param_composite;
-        ParamDictValue paramDict;
         ParamDictValue paramDict_favorite;
         UnicGUIDByType guidselementToRead;
         GS::HashTable<API_Guid, GS::Array<OtdOpening>> openinginwall;
@@ -183,23 +182,24 @@ namespace Roombook
     static ReadParamsForRoomBook PrepareReadParams () { return {}; }
 
     static void ReadElementParameters (RoomProcessingContext &context, ReadParamsForRoomBook &readParams) {
+        ParamDictValue paramDict;
         for (const API_ElemTypeID &typeelem : typeinzone) {
             if (!context.guidselementToRead.ContainsKey (typeelem))
                 continue;
-            context.paramDict.Clear ();
+            paramDict.Clear ();
             if (typeelem == API_ZoneID) {
-                Param_ToParamDict (context.paramDict, readParams.roomParams);
+                Param_ToParamDict (paramDict, readParams.roomParams);
             }
             if (typeelem == API_WindowID) {
-                Param_ToParamDict (context.paramDict, readParams.windowParams);
+                Param_ToParamDict (paramDict, readParams.windowParams);
             }
             if (typeelem == API_WallID || typeelem == API_ColumnID || typeelem == API_SlabID) {
-                Param_GetForBase (context.paramDict, context.param_composite);
-                context.paramDict_favorite = context.paramDict;
+                Param_GetForBase (paramDict, context.param_composite);
+                context.paramDict_favorite = paramDict;
             }
-            if (!context.paramDict.IsEmpty ()) {
+            if (!paramDict.IsEmpty ()) {
                 for (const API_Guid &guid : context.guidselementToRead[typeelem]) {
-                    ParamHelpers::AddParamDictValue2ParamDictElement (guid, context.paramDict, context.paramToRead);
+                    ParamHelpers::AddParamDictValue2ParamDictElement (guid, paramDict, context.paramToRead);
                 }
             }
         }

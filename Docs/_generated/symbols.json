@@ -4032,88 +4032,81 @@
     "line": 84
   },
   {
-    "name": "Roombook::RoomProcessingContext.paramDict",
+    "name": "Roombook::RoomProcessingContext.paramDict_favorite",
     "kind": "Field",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
     "line": 85
   },
   {
-    "name": "Roombook::RoomProcessingContext.paramDict_favorite",
+    "name": "Roombook::RoomProcessingContext.guidselementToRead",
     "kind": "Field",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
     "line": 86
   },
   {
-    "name": "Roombook::RoomProcessingContext.guidselementToRead",
+    "name": "Roombook::RoomProcessingContext.openinginwall",
     "kind": "Field",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
     "line": 87
   },
   {
-    "name": "Roombook::RoomProcessingContext.openinginwall",
+    "name": "Roombook::RoomProcessingContext.slabsinzone",
     "kind": "Field",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
     "line": 88
   },
   {
-    "name": "Roombook::RoomProcessingContext.slabsinzone",
-    "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 89
-  },
-  {
     "name": "Roombook::PrepareRoomProcessingContext",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 92
+    "line": 91
   },
   {
     "name": "Roombook::BuildElementReadIndex",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 98
+    "line": 97
   },
   {
     "name": "Roombook::ProcessElementsForRoomData",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 122
+    "line": 121
   },
   {
     "name": "Roombook::ReadParamsForRoomBook.windowParams",
     "kind": "Field",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 179
+    "line": 178
   },
   {
     "name": "Roombook::ReadParamsForRoomBook.roomParams",
     "kind": "Field",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 180
+    "line": 179
   },
   {
     "name": "Roombook::PrepareReadParams",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 183
+    "line": 182
   },
   {
     "name": "Roombook::ReadElementParameters",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 185
+    "line": 184
   },
   {
     "name": "Roombook::ProcessSlabFinishes",
