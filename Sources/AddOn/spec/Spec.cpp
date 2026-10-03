@@ -187,7 +187,7 @@ namespace Spec {
         }
         SpecRuleDict rules = {};
         bool hasrule = false;
-        GS::Array<API_Guid> guidArray = GetSelectedElements (false, false, syncSettings, false, false, false);
+        GS::Array<API_Guid> guidArray = GetSelectedElements (false, false, syncSettings, false, false, false, false);
         UnicGuid selected_elements = {};
         if (!guidArray.IsEmpty ()) {
             msg_rep ("Spec", "Create spec from selection", NoError, APINULLGuid);

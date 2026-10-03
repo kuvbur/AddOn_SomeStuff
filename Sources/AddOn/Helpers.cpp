@@ -650,11 +650,14 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
                                          bool addSubelement) {
     bool addZone = false;
     bool addConnect = false;
+    bool addCWallPanel = false;
     if (addSubelement) {
         addZone = true;
         addConnect = true;
+        addCWallPanel = true;
     }
-    return GetSelectedElements (assertIfNoSel, onlyEditable, syncSettings, addSubelement, addZone, addConnect);
+    return GetSelectedElements (
+        assertIfNoSel, onlyEditable, syncSettings, addSubelement, addZone, addConnect, addCWallPanel);
 }
 
 GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
@@ -664,21 +667,26 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
     LoadSyncSettingsFromPreferences (syncSettings, true);
     bool addZone = false;
     bool addConnect = false;
+    bool addCWallPanel = false;
     if (addSubelement) {
         addZone = true;
         addConnect = true;
+        addCWallPanel = true;
     }
-    return GetSelectedElements (assertIfNoSel, onlyEditable, syncSettings, addSubelement, addZone, addConnect);
+    return GetSelectedElements (
+        assertIfNoSel, onlyEditable, syncSettings, addSubelement, addZone, addConnect, addCWallPanel);
 }
 
 GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
                                          bool onlyEditable /*= true*/,
                                          bool addSubelement /*= true*/,
                                          bool addZone,
-                                         bool addConnect) {
+                                         bool addConnect,
+                                         bool addCWallPanel) {
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings, true);
-    return GetSelectedElements (assertIfNoSel, onlyEditable, syncSettings, addSubelement, addZone, addConnect);
+    return GetSelectedElements (
+        assertIfNoSel, onlyEditable, syncSettings, addSubelement, addZone, addConnect, addCWallPanel);
 }
 
 // -----------------------------------------------------------------------------
@@ -698,7 +706,8 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
                                          const SyncSettings &syncSettings,
                                          bool addSubelement,
                                          bool addZone,
-                                         bool addConnect) {
+                                         bool addConnect,
+                                         bool addCWallPanel) {
     GSErrCode err;
     API_SelectionInfo selectionInfo = {};
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
@@ -733,7 +742,7 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
     for (const API_Neig &neig : selNeigs) {
         API_Guid elemguid = neig.guid;
         guidArray.Push (elemguid);
-        if (addSubelement) {
+        if (addSubelement || addCWallPanel) {
             API_ElemTypeID elementType;
             API_NeigID neigID = neig.neigID;
             GSErrCode err = NoError;
@@ -747,18 +756,20 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
             elementType = elemType26.typeID;
     #else
             err = ACAPI_Goodies (APIAny_NeigIDToElemTypeID, &neigID, &elementType);
-    #endif // AC_26
+    #endif
     #ifdef ServerMainVers_2700
             if (err != NoError && neig.guid != APINULLGuid) { // На МЕР элементах функция ACAPI_Element_NeigIDToElemType
                                                               // не работает(
                 err = GetTypeByGUID (neig.guid, elementType);
             }
-    #endif // AC_27
-            if (err == NoError)
-                GetRelationsElement (elemguid, elementType, syncSettings, guidArray, addZone, addConnect);
+    #endif
+            if (err == NoError) {
+                if ((addCWallPanel && elementType == API_CurtainWallID) || addSubelement)
+                    GetRelationsElement (elemguid, elementType, syncSettings, guidArray, addZone, addConnect);
+            }
         }
     }
-#endif     // AC_22
+#endif // AC_22
     GetUnicGuid (guidArray);
     return guidArray;
 }

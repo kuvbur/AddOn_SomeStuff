@@ -455,7 +455,7 @@ bool SyncElement (const API_Guid &elemGuid,
 // -----------------------------------------------------------------------------
 void SyncSelected (const SyncSettings &syncSettings) {
     GS::UniString fmane = "Sync Selected";
-    GS::Array<API_Guid> guidArray = GetSelectedElements (false, true, syncSettings, false, false, false);
+    GS::Array<API_Guid> guidArray = GetSelectedElements (false, true, syncSettings, true, false, false, true);
     if (guidArray.IsEmpty ())
         return;
     GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, guidArray);
@@ -2254,6 +2254,7 @@ void SyncSetSubelement (SyncSettings &syncSettings) {
                              syncSettings,
                              false,
                              false,
+                             false,
                              false); // Дочерние элементы, в которые будет записана информация об основном элементе
     if (subguidArray_.IsEmpty ())
         return;
@@ -2419,7 +2420,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
     // Шаг 1. Собираем выделение: выбрасываем выноски (API_LabelID); у элементов,
     // попавших в разрез (API_SectElemID), берём исходный элемент модели, т.к.
     // у копий в разрезе своих свойств Sync_GUID нет.
-    GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false, false, false);
+    GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false, false, false, false);
     GS::Array<API_Guid> guidArray = {};
     guidArray.SetCapacity (guidArray_all.GetSize ());
     for (const auto &guid : guidArray_all) {

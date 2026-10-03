@@ -161,8 +161,12 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
                                          bool onlyEditable /*= true*/,
                                          bool addSubelement);
 
-GS::Array<API_Guid> GetSelectedElements (
-    bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, bool addSubelement, bool addZone, bool addConnect);
+GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
+                                         bool onlyEditable /*= true*/,
+                                         bool addSubelement,
+                                         bool addZone,
+                                         bool addConnect,
+                                         bool addCWallPanel);
 
 // -----------------------------------------------------------------------------
 // Получить массив Guid выбранных элементов в соответсвии с настройками
@@ -179,7 +183,8 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
                                          const SyncSettings &syncSettings,
                                          bool addSubelement,
                                          bool addZone,
-                                         bool addConnect);
+                                         bool addConnect,
+                                         bool addCWallPanel);
 
 // -----------------------------------------------------------------------------
 // Возвращает GUID родительского элемента для API_SectElemType
