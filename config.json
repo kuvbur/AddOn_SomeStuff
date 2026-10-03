@@ -8,6 +8,7 @@
   },
   "devKitLinks": {
     "WIN": {
+      "30": "https://dl.graphisoft.com/release-candidate/30/API.Development.Kit.WIN.30.2000.zip",
       "29": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/29.3100/API.Development.Kit.WIN.29.3100.zip",
       "28": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/28.4001/API.Development.Kit.WIN.28.4001.zip",
       "27": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/27.6003/API.Development.Kit.WIN.27.6003.zip",
@@ -18,6 +19,7 @@
       "22": "https://disk.yandex.ru/d/4fH7cmV9ENuxPA"
     },
     "MAC": {
+      "30": "https://dl.graphisoft.com/release-candidate/30/API.Development.Kit.MAC.30.2000.zip",
       "29": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/29.3100/API.Development.Kit.MAC.29.3100.zip",
       "28": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/28.4001/API.Development.Kit.MAC.28.4001.zip",
       "27": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/27.6003/API.Development.Kit.MAC.27.6003.zip",
