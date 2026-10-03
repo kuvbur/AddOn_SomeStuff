@@ -37,9 +37,11 @@
 **Scope:** `ReNum.cpp/.hpp`, `Constants.hpp`, `DG4rule.cpp/.hpp`, `AddOn.grc.in`,
 `Docs/modules/ReNum.md`. AC25.
 
-**Status:** DONE (собрано и протестировано, 2026-10-03)
+**Status:** DONE — подтверждено пользователем в живом Archicad (2026-10-03):
+заголовки колонок и сообщения отображаются верно.
 
-**Refs:** issue #256, коммит с `Refs: #256`
+**Refs:** #256 закрыт; коммиты `a65318e`, `de72d3d`, `ae0932d`.
+Побочно заведено **#258** (тот же сдвиг ID в Spec) — открыто.
 
 **Что сделано:**
 - `RenumRunResult` — накопитель запуска; одно окно `RuleSelectDialog`
