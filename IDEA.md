@@ -1,5 +1,37 @@
 ﻿# Current Task
 
+## Закрыто — AC28/AC29: сборка падала на обращении к паре итератора (#257)
+
+**Scope:** `Sources/AddOn/ReNum.cpp` (блок обхода `missing_props` в
+`GetRenumElements`). Версии AC28, AC29 — по явному запросу владельца.
+
+**Status:** DONE (обе версии собраны, 2026-10-03)
+
+**Refs:** issue #257
+
+**Причина:** в ветке `#ifdef ServerMainVers_2800` стояло `cIt.key` / `cIt.value`.
+Смена в AC28 затронула **тип полей** `CurrentPair` (указатели → ссылки), а не
+способ обращения к паре: `cIt->key` верен в AC22–AC29, `cIt.key` не компилируется
+ни в одной версии. Соседние обходы в проекте (`Dimensions.cpp:68`,
+`Helpers.cpp:5987`, `Roombook.cpp:1088`) используют `->` — расхождение было
+только в новом коде #256.
+
+**Проверено:** `BuildAddOn.py -v 28` → `AI_BUILD_RESULT status=success`;
+`-v 29` → `status=success`; clangd по `ReNum.cpp` — 0 диагностик; развёрнутый
+аудит всех `#ifdef ServerMainVers_2800` в `Sources/AddOn/` на `cIt.key`/
+`cIt.value` — других вхождений нет. `.apx` собраны в `Build/SomeStuff/{28,29}/Debug/`.
+
+**Замечания по граблям:**
+- `Build/DevKit/APIDevKit-28/Support/Modules/GSRoot/HashTable.hpp:117` — источник
+  истины по `CurrentPair`; `ForwardContainerIterator.hpp:65-66,110-111` — по
+  `operator*` / `operator->`;
+- при `#ifdef ServerMainVers_2800` в многострочном `for` нельзя судить о форме
+  обращения по одной строке заголовка — заголовок `for` часто разбит переносом;
+- `gh --body-file` не принимает MSYS-путь (`/c/...`) — нужен нативный
+  `C:/Users/...`.
+
+## Прочее открытое
+
 ## Закрыто — ReNum: окно результата по каждому правилу (#256)
 
 **Scope:** `ReNum.cpp/.hpp`, `Constants.hpp`, `DG4rule.cpp/.hpp`, `AddOn.grc.in`,

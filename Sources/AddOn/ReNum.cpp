@@ -379,15 +379,17 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
     // чего одно негодное правило обнуляло нумерацию по всем остальным.
     if (!missing_props.IsEmpty ()) {
         GS::UniString out = EMPTYSTRING;
-        // До AC28 пара итератора - указатели (->key / ->value), в AC28+ значения
-        // скопированы в саму пару (.key / .value). Форма ответа берётся по
-        // ServerMainVers, как во всех обходах словарей проекта.
+        // До AC28 CurrentPair хранила указатели (const Key* key; Value* value),
+        // поэтому пару приходилось разыменовывать. С AC28 пара хранит ссылки
+        // (const Key& key; Value& value) и лишняя разыменовка не нужна. Само
+        // обращение к паре в обеих версиях - через operator->, как во всех
+        // обходах словарей проекта.
         for (RenumMissingProps::PairIterator cIt = missing_props.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
-            const GS::UniString rname = cIt.key;
-            const GS::Array<GS::UniString> &rawnames = cIt.value;
+            const GS::UniString &rname = cIt->key;
+            const GS::Array<GS::UniString> &rawnames = cIt->value;
     #else
-            const GS::UniString rname = *cIt->key;
+            const GS::UniString &rname = *cIt->key;
             const GS::Array<GS::UniString> &rawnames = *cIt->value;
     #endif
             // Пустое имя правила возможно только при отсутствии описания у
