@@ -147,19 +147,20 @@ jobs:
         run: |
           set -euo pipefail
           TAG=test-latest
-          NOTES="Автоматическая тестовая сборка: ArchiCAD 25-29, Windows/macOS. Это НЕ релиз. [Описание текущей работы](https://github.com/kuvbur/AddOn_SomeStuff/wiki/CurrentWork_ru)"
+          NOTES="Автоматическая тестовая сборка: ArchiCAD 25-29, Windows/macOS. Это НЕ релиз: возможны ошибки, берите копию проекта. Описание текущей работы и ссылки: https://kuvbur.org/ru/addons/somestuff/test/"
+          export GH_REPO="${GITHUB_REPOSITORY:?}"
+          echo "репозиторий: $GH_REPO, тег: $TAG"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            # Тестовый релиз ровно один: обновляем файлы и заголовок в нём.
             gh release upload "$TAG" builds/*.zip --clobber
-            gh release edit "$TAG" --title "DEBUG VERSION SomeStuff 2.01 $TIME" --notes "$NOTES"
+            gh release edit "$TAG" --title "DEBUG VERSION SomeStuff $TIME" --notes "$NOTES"
           else
+            echo "релиза $TAG пока нет — создаю"
             gh release create "$TAG" builds/*.zip \
               --prerelease \
-              --title "DEBUG VERSION SomeStuff 2.01 $TIME" \
+              --target "$GITHUB_SHA" \
+              --title "DEBUG VERSION SomeStuff $TIME" \
               --notes "$NOTES"
           fi
-          # Файлы прошлой сборки (другая метка времени) убираем ПОСЛЕ загрузки новых,
-          # чтобы ссылки не пропадали ни на секунду.
           gh release view "$TAG" --json assets --jq '.assets[].name' > /tmp/assets.txt
           while read -r name; do
             [ -n "$name" ] || continue
