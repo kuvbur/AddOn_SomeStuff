@@ -110,7 +110,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: "SomeStuff AC*"
-          merge-multiple: true
           path: builds
 
       - name: Get Time
@@ -119,18 +118,41 @@ jobs:
         with:
           format: 'YYYY-MM-DD-HHmm'
 
+      - name: Pack release zips
+        env:
+          TIME: "${{ steps.time.outputs.time }}"
+        run: |
+          set -euo pipefail
+          command -v zip >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq zip; }
+          ls -la builds
+          count=0
+          for dir in builds/*/; do
+            [ -d "$dir" ] || continue
+            name=$(basename "$dir")
+            ac=$(sed -E 's/^SomeStuff (AC[0-9]+) (Win|Mac) .*/\1/' <<< "$name")
+            os=$(sed -E 's/^SomeStuff (AC[0-9]+) (Win|Mac) .*/\2/' <<< "$name")
+            zip="$(pwd)/builds/SomeStuff.${ac}.${os}.${TIME}.zip"
+            (cd "$dir" && zip -qr "$zip" .)
+            echo "packed: $zip"
+            unzip -l "$zip" | sed -n '1,12p'
+            count=$((count+1))
+          done
+          [ "$count" -gt 0 ] || { echo "нет артефактов в builds/"; exit 1; }
+          ls -la builds/*.zip
+
       - name: Publish prerelease test-${{ steps.time.outputs.time }}
         env:
           GH_TOKEN: ${{ github.token }}
           TIME: ${{ steps.time.outputs.time }}
         run: |
-          ls -la builds
-          if ! gh release create "test-$TIME" builds/*.zip \
-              --target "$GITHUB_SHA" \
+          set -euo pipefail
+          if gh release view "test-$TIME" >/dev/null 2>&1; then
+            gh release upload "test-$TIME" builds/*.zip --clobber
+          else
+            gh release create "test-$TIME" builds/*.zip \
               --prerelease \
               --title "Тестовая сборка $TIME" \
-              --notes "Автоматическая тестовая сборка: ArchiCAD 25-29, Windows/macOS. Это НЕ релиз: возможны ошибки, берите копию проекта. Описание текущей работы и ссылки: https://kuvbur.org/ru/addons/somestuff/test/"; then
-            gh release upload "test-$TIME" builds/*.zip --clobber
+              --notes "Автоматическая тестовая сборка: ArchiCAD 25-29, Windows/macOS. Это НЕ релиз: возможны ошибки, берите копию проекта. Описание текущей работы и ссылки: https://kuvbur.org/ru/addons/somestuff/test/"
           fi
 
       - name: Keep only 5 latest test releases
