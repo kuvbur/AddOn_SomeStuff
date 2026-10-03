@@ -43,6 +43,15 @@
 - `FilterElementsByType` получает тип элемента через `GetElemTypeID(head)` (CommonFunction), а не через `head.typeID`: в AC26 поле переименовано в `API_Elem_Head::type` (`API_ElemType`). [по коду DevKit + сборка AC26]
 - AC27 (`#170`): JS-мост переехал из DGLib в модуль `JavascriptEngine` — `DG::JSBase/JSFunction/JSObject/JSArray/JSValue` стали `JS::Base/Function/Object/Array/Value`; в `BrowserPalette.hpp` под `#ifdef AC_27` объявлены псевдонимы в `namespace DG`, поэтому тела функций моста не менялись. [по коду DevKit + сборка AC27]
 - AC27: `DGModule.hpp` больше не включает `DGBrowser.hpp` — браузерный контрол подключается явно (`BrowserPalette.hpp`). [по коду DevKit + сборка AC27]
+
+## Открытие сайта (AC22–29)
+- Функция моста `OpenWebsite` (строка) — аргумент одиночный `DynamicCast<DG::JSValue>`, ответ `DG::JSValue(bool)`; nullptr не возвращается (роняет CEF-мост). [по коду]
+- В SDK функции «открыть URL» нет: в `APIdefs_Interface.h` AC22–29 только файловые диалоги (`APIIo_OpenLibPartFileDialogID`/`OpenPictureDialogID`/`OpenOtherObjectDialogID`); в документации AC25 (898 функций) про URL только `APIDb_Get/SetElementURLRefID` — ссылка на элемент, не браузер. Проверено LightRAG (`hybrid`, `naive` ×3) + перебор заголовков AC25 и AC29. [по коду DevKit + LightRAG]
+- Отдельного `<a href>` в HTML быть не может: палитра грузится `LoadHTML` из ресурса, базового URL нет, а переход увёл бы панель на сайт; `Show(bool)` перезагружает HTML через `ReloadIgnoreCache` и теряет состояние вкладки/фильтра. [по коду .cpp:273, .cpp:336]
+- Windows: `ShellExecuteW(nullptr, L"open", …, SW_SHOWNORMAL)`, успех — результат `> 32` (при ошибке возвращается код, а не HINSTANCE). Адрес приводится через `address.ToUStr()` — тип результата **нельзя назвать**: `UStr` вложен в приватную секцию `UniString`, поэтому только `auto`. [по заголовку Windows SDK 10.0.26100 shellapi.h:96 + диагностика clangd]
+- macOS: `GS::Process::Create("open", {address})`; процесс не ждём — синхронного признака успеха у `GS::Process` нет, `IsValid()` отражает только запуск. **`not verified` вживую — mac-машины нет.** [по заголовку Process.hpp AC22–29]
+- Линковка не требует правок: `shell32.lib` уже в `CMAKE_CXX_STANDARD_LIBRARIES`, `Cocoa` подключается в `CMakeCommon.cmake:235-246`. [по кэшу CMake + CMakeCommon.cmake]
+
 ## Версии (AC28)
 - AC28: `__ACENV_CALL` удалён из SDK (`APICalls.h` в 27, в 28 макроса нет) — объявления/определения `PaletteControlCallBack` и `SelectionChangeHandler` обёрнуты `#ifdef ServerMainVers_2800` (без макроса) / `#else`. [по коду DevKit-28 + сборка]
 - AC28: `GS::HashTable::CurrentPair::value` стал ссылкой `Value&` (в ≤27 — `Value*`) — в блоке разбора классификаций это `classPair.value.item`, `&sysPair.value` под `#ifdef ServerMainVers_2800`. [по коду DevKit-28 + сборка]

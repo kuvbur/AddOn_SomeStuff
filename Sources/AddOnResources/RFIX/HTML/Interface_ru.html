@@ -50,6 +50,22 @@
 // (будет заменено на window.ACAPI.GetSelectionInfo() после интеграции JS-моста)
 const MOCK_SELECTED_COUNT = 5;
 
+// Сайт автора: кнопка в колонке вкладок открывает его в браузере по умолчанию.
+// В HTML обычная ссылка не годится — палитра грузится из ресурса без базового
+// URL, и переход увёл бы саму панель на сайт (см. openWebsite ниже).
+const WEBSITE_URL = "https://kuvbur.org/go/archicad";
+
+// Открывает сайт в браузере по умолчанию через мост ACAPI.OpenWebsite.
+// Моста нет (предпросмотр HTML вне Archicad) — молча ничего не делаем: подменять
+// window.open было бы ложью, в панели такой подмены нет.
+function openWebsite(address) {
+  try {
+    if (typeof window.ACAPI === "undefined" || !window.ACAPI.OpenWebsite) return;
+    window.ACAPI.OpenWebsite(address);
+  } catch (e) {
+  }
+}
+
 // Мок списка свойств-правил спецификации для вкладки «Спецификация».
 // Используется, только когда мост недоступен (предпросмотр HTML вне Archicad).
 // hasSpecRule — ТОЧНЫЙ признак наличия команды Spec_rule в описании, а не
@@ -815,6 +831,12 @@ function escapeHtml(s) {
   });
 }
 
+// SVG-иконка "глобус" для кнопки сайта автора. currentColor наследует цвет кнопки,
+// поэтому иконка следует за темой без отдельных стилей.
+function globeIconSvg() {
+  return '<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7.2"/><path d="M2.8 10h14.4M10 2.8c1.9 2 2.9 4.5 2.9 7.2s-1 5.2-2.9 7.2c-1.9-2-2.9-4.5-2.9-7.2s1-5.2 2.9-7.2z"/></svg>';
+}
+
 // Простая SVG-иконка "цепочка" (замкнутая/разомкнутая) для кнопки сброса свойства.
 function chainIconSvg(broken) {
   return broken
@@ -919,8 +941,24 @@ function buildShell() {
   });
 
   if (!STATE.collapsed) {
-    const themeBtn = h("button", {
-      attrs: { id: "theme-toggle", title: "Переключить тему", "aria-label": "Переключить тему" },
+      // Кнопка «сайт автора» — над переключателем темы. Ссылку в HTML дать нельзя:
+      // палитра грузится через LoadHTML из ресурса, базового URL нет, а переход
+      // увёл бы саму палитру на сайт. Поэтому адрес уходит мостом в C++
+      // (window.ACAPI.OpenWebsite), а тот открывает его в браузере по умолчанию.
+      const siteBtn = h("button", {
+        attrs: { id: "open-website", title: "Сайт kuvbur.org", "aria-label": "Открыть сайт kuvbur.org" },
+        style: "appearance:none;border:none;border-top:1px solid var(--ac-border);background:transparent;" +
+               "cursor:pointer;flex:0 0 2.2rem;display:flex;align-items:center;justify-content:center;" +
+               "color:var(--ac-text-secondary);font-size:1rem;transition:background var(--ac-transition);",
+        hoverStyle: "background:var(--ac-bg-hover);",
+        on: {
+          click: function () { openWebsite(WEBSITE_URL); }
+        }
+      }, [ h("span", { html: globeIconSvg () }) ]);
+      nav.appendChild(siteBtn);
+
+      const themeBtn = h("button", {
+            attrs: { id: "theme-toggle", title: "Переключить тему", "aria-label": "Переключить тему" },
       style: "appearance:none;border:none;border-top:1px solid var(--ac-border);background:transparent;" +
              "cursor:pointer;flex:0 0 2.2rem;display:flex;align-items:center;justify-content:center;" +
              "color:var(--ac-text-secondary);font-size:1rem;transition:background var(--ac-transition);",

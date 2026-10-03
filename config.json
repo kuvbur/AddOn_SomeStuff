@@ -1,10 +1,10 @@
 {
   "addOnName": "SomeStuff",
-  "version": "1.78",
-  "description": "Синхронизация свойств и параметров GDL элементов",
+  "version": "2.01",
+  "description": "Writing values of parameters of GDL objects to properties",
   "copyright": {
     "name": "kuvbur",
-    "year": "1984-%Y"
+    "year": "2021-%Y"
   },
   "devKitLinks": {
     "WIN": {

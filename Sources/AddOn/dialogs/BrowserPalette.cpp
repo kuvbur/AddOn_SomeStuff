@@ -8,6 +8,14 @@
 
 #include "ACAPinc.h"
 
+#if defined(WINDOWS)
+    // ACAPinc.h уже подключает windows.h через Win32Interface.hpp, а тот тянет
+    // shellapi.h; включаем явно, чтобы ShellExecuteW не зависел от транзитивности.
+    #include <shellapi.h>
+#elif defined(macintosh)
+    #include "Process.hpp"
+#endif
+
 #include "dialogs/BrowserPalette.hpp"
 
 #include "CommonFunction.hpp"
@@ -89,6 +97,44 @@ static GS::UniString EscapeJsonString (const GS::UniString &s) {
         }
     }
     return r;
+}
+
+// -----------------------------------------------------------------------------
+// Открывает сайт в браузере по умолчанию. Отдельного ACAPI_* «открыть URL» в SDK
+// нет (в APIdefs_Interface.h AC22–29 только файловые диалоги), поэтому платформа
+// решается здесь: ShellExecuteW на Windows, `open` через GS::Process на macOS.
+// Windows-путь проверен по заголовку Windows SDK 10.0.26100 (shellapi.h:96),
+// macOS-путь не проверен вживую (нет mac-машины) — см. карточку BrowserPalette.md.
+// -----------------------------------------------------------------------------
+static bool OpenWebsiteInDefaultBrowser (const GS::UniString &address) {
+    if (address.IsEmpty ())
+        return false;
+
+#if defined(WINDOWS)
+    // UniString хранит UTF-16, а ShellExecuteW ждёт LPCWSTR. Тип результата
+    // ToUStr — вложенный класс внутри приватной секции UniString, поэтому
+    // называть его здесь нельзя: тип выводится через auto, а указатель берётся
+    // у Get (). Сам UStr освобождает буфер в деструкторе.
+    const auto wideAddress = address.ToUStr ();
+    const HINSTANCE result = ShellExecuteW (nullptr, L"open", wideAddress.Get (), nullptr, nullptr, SW_SHOWNORMAL);
+    // ShellExecuteW возвращает HINSTANCE только при успехе; при ошибке — код
+    // (ERROR_FILE_NOT_FOUND и т.п.), поэтому > 32, а не «не nullptr».
+    return (result != nullptr) && (reinterpret_cast<INT_PTR> (result) > 32);
+#elif defined(macintosh)
+    // GS::Process::Create в mac-сборке DevKit запускает утилиту `open`, которая
+    // и передаёт URL системе (LaunchServices). Процесс не ждём: он живёт дольше
+    // вызова, а ждать нечего — синхронного признака успеха у GS::Process нет.
+    try {
+        GS::Array<GS::UniString> argv;
+        argv.Push (address);
+        const GS::Process browser = GS::Process::Create (GS::UniString ("open"), argv);
+        return browser.IsValid ();
+    } catch (...) {
+        return false;
+    }
+#else
+    return false;
+#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -954,6 +1000,27 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             DBprnt (GS::UniString ("RefreshSelectionInfoUI: std::exception: ") + e.what ());
         } catch (...) {
             DBprnt ("RefreshSelectionInfoUI: unknown exception");
+        }
+        return GS::Ref<DG::JSBase> (new DG::JSValue (false));
+    }));
+
+    // Открытие сайта автора в браузере по умолчанию (вызывается из HTML).
+    // Аргумент приходит одиночным JSValue: DynamicCast<JSArray> роняет CEF-мост.
+    // Возвращаем DG::JSValue (не nullptr) — nullptr из JSFunction роняет мост.
+    jsACAPI->AddItem (new DG::JSFunction ("OpenWebsite", [] (GS::Ref<DG::JSBase> args) {
+        try {
+            GS::Ref<DG::JSValue> addressValue = GS::DynamicCast<DG::JSValue> (args);
+            if (addressValue == nullptr)
+                return GS::Ref<DG::JSBase> (new DG::JSValue (false));
+
+            const GS::UniString address = addressValue->GetString ();
+            const bool opened = OpenWebsiteInDefaultBrowser (address);
+            DBprnt (GS::UniString ("OpenWebsite: ") + address + (opened ? " — opened" : " — FAILED"));
+            return GS::Ref<DG::JSBase> (new DG::JSValue (opened));
+        } catch (const std::exception &e) {
+            DBprnt (GS::UniString ("OpenWebsite: std::exception: ") + e.what ());
+        } catch (...) {
+            DBprnt ("OpenWebsite: unknown exception");
         }
         return GS::Ref<DG::JSBase> (new DG::JSValue (false));
     }));
