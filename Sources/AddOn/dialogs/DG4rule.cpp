@@ -76,7 +76,8 @@ void RuleSelectDialog::SetSize () {
     // и у колонок columnTitles тоже своя (ValueTab_w): брать одну и ту же
     // нельзя, заголовок и поле разошлись бы по ширине, и это было бы видно
     // ещё и в обычном диалоге выбора правил.
-    const short valueWidth = useQtyColumn ? QtyTab_w : ValueTab_w;
+    const short defaultValueWidth = useQtyColumn ? QtyTab_w : ValueTab_w;
+    const short valueWidth = rulelist.valueColumnWidth > 0 ? rulelist.valueColumnWidth : defaultValueWidth;
     const short fixedWidth = leadWidth + static_cast<short> (valueCount * valueWidth);
     short NameTab_w = width - fixedWidth;
     if (rulelist.is_warn || !rulelist.footerText.IsEmpty ())
@@ -128,7 +129,8 @@ void RuleSelectDialog::InitListBox () {
     ListBox.SetHeaderItemSize (ChekboxTab, rulelist.isReadOnly ? 0 : ChekboxTab_w);
     ListBox.SetHeaderItemSizeableFlag (ChekboxTab, false);
 
-    const short valueWidth = useQtyColumn ? QtyTab_w : ValueTab_w;
+    const short valueWidth =
+        rulelist.valueColumnWidth > 0 ? rulelist.valueColumnWidth : (useQtyColumn ? QtyTab_w : ValueTab_w);
     for (short i = 0; i < valueCount; ++i) {
         const short tab = useQtyColumn ? QtyTab : static_cast<short> (NameTab + 1 + i);
         ListBox.SetHeaderItemSize (tab, valueWidth);

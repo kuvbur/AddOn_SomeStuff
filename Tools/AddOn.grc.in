@@ -5,12 +5,12 @@
 }
 
 'DATA' ID_ADDON_HTML_ENG "Browser Control Html" {
-	"Interface_ru.html"
+	"Interface_en.html"
 }
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Синхронизация свойств и параметров GDL элементов @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://github.com/kuvbur/AddOn_SomeStuff\nkuvbur@gmail.com"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://kuvbur.org"
 }
 
 'STR#' ID_ADDON_MENU "Strings for the Menu" {
@@ -131,7 +131,7 @@
 /* [  71] */ 	"Не найдены свойства, заданные в правилах нумерации.\nПроверьте имена и видимость свойств"
 /* [  72] */ 	"Часть элементов не была пронумерована из-за ошибок в свойствах\nПроверьте отчёт"
 /* [  73] */ 	"Изменение нумерации не требуется"
-/* [  74] */ 	"Элементов с изменённой нумерацией - "
+/* [ 74] */ 	"Правила отработали, изменений не потребовалось"
 /* [  75] */ 	"Ошибка в правиле нумерации\nПроверьте отчёт"
 /* [  76] */ 	"Продолжить"
 /* [  77] */ 	"Отмена"
@@ -145,14 +145,23 @@
 /* [  85] */	"Имя БД"
 /* [  86] */	"Элементов"
 /* [  87] */	"Показать в 3Д"
-/* [  90] */	"Создано"
-/* [  91] */	"Изменено"
-/* [  92] */	"Удалено"
+/* [ 90] */	"Создано"
+/* [ 91] */	"Изменено"
+/* [ 92] */	"Удалено"
+/* [ 93] */	"Элементов"
+/* [ 94] */	"Изменено"
+/* [ 99] */	"Игнорировано"
+/* [100] */	"Пропущено"
+/* [101] */	"Ошибки"
+/* [ 95] */	"Элементов с изменённой нумерацией: "
+/* [ 96] */	"Правила нумерации не найдены\nПроверьте, что описание пользовательского свойства содержит Renum_flag"
+/* [ 97] */	"Не удалось записать нумерацию.\nПроверьте, не заблокированы ли элементы"
+/* [ 98] */	"Пропущено из-за ошибок в свойствах: "
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Sync of GDL properties and parameters @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://github.com/kuvbur/AddOn_SomeStuff\nkuvbur@gmail.com"
+/* [  2] */		"Sync of GDL properties and parameters @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://kuvbur.org"
 }
 
 'STR#' ID_ADDON_MENU_ENG "Strings for the Menu" {
@@ -273,7 +282,7 @@
 /* [  71] */ 	"The properties specified in the numbering rules were not found.\nCheck the names and visibility of the properties"
 /* [  72] */ 	"Some elements were not numbered due to errors in properties\nCheck the report"
 /* [  73] */ 	"No need to change the numbering"
-/* [  74] */ 	"Elements with changed numbering - "
+/* [ 74] */ 	"Rules ran, no changes required"
 /* [  75] */ 	"Error in the numbering rule\nCheck the report"
 /* [  76] */ 	"Continue"
 /* [  77] */ 	"Cancel"
@@ -287,16 +296,25 @@
 /* [  85] */	"Database"
 /* [  86] */	"Elements"
 /* [  87] */	"Show in 3D"
-/* [  90] */	"Created"
-/* [  91] */	"Modified"
-/* [  92] */	"Deleted"
+/* [ 90] */	"Created"
+/* [ 91] */	"Modified"
+/* [ 92] */	"Deleted"
+/* [ 93] */	"Elements"
+/* [ 94] */	"Changed"
+/* [ 99] */	"Ignored"
+/* [100] */	"Skipped"
+/* [101] */	"Errors"
+/* [ 95] */	"Elements with changed numbering: "
+/* [ 96] */	"Numbering rules not found\nCheck that the user property description contains Renum_flag"
+/* [ 97] */	"Could not write the numbering.\nCheck whether the elements are locked"
+/* [ 98] */	"Skipped due to property errors: "
 }
 
-'GDLG'  32590  Modal | grow         0    0  500  300  "RuleSelect Dialog" {
+'GDLG'  32590  Modal | grow         0    0  680  300  "RuleSelect Dialog" {
 /* [  1] */ Button				  20  265  80   25	   LargePlain  "Chanel"
-/* [  2] */ Button				    400    265  80   25	   LargeBold  "Ok"
-/* [  3] */ MultiSelList		   20   60  470  180	LargePlain  PartialItems VScroll 25 HasHeader 30
-/* [  4] */ CenterText                 20  5  470   45    LargeBold vCenter StaticEdge "Text"
+/* [  2] */ Button				    580    265  80   25	   LargeBold  "Ok"
+/* [  3] */ MultiSelList		   20   60  650  180	LargePlain  PartialItems VScroll 25 HasHeader 30
+/* [  4] */ CenterText                 20  5  650   45    LargeBold vCenter StaticEdge "Text"
 }
 
 'DLGH'  32590  DLG_32590_RuleSelect_Dialog {

@@ -148,9 +148,31 @@ static const Int32 SpecFlagOff = 66;              // Флаг специфика
 // 87: 87 зарезервирован под кнопку «Показать в 3Д» окна SyncShowSubelement,
 // поэтому spec занял 90-92. Пропуск идентификаторов обязателен — иначе
 // перевод строки едет на чужую кнопку.
-static const Int32 SpecCreatedId = 90;                  // Создано элементов
-static const Int32 SpecModifiedId = 91;                 // Изменено элементов
-static const Int32 SpecDeletedId = 92;                  // Удалено элементов
+static const Int32 SpecCreatedId = 90;  // Создано элементов
+static const Int32 SpecModifiedId = 91; // Изменено элементов
+static const Int32 SpecDeletedId = 92;  // Удалено элементов
+// Строки окна результата запуска перенумерации. Продолжают нумерацию spec
+// (90-92), потому что окно у обоих запусков одно и то же (RuleSelectDialog),
+// и подписи колонок обязаны читаться одинаково.
+static const Int32 RenumElementsId = 93; // Заголовок колонки «Элементов»
+static const Int32 RenumWrittenId = 94;  // Заголовок колонки «Изменено»
+// Заголовки колонок отбора и отказов. Числа показывают, куда делись элементы
+// правила: из них «Элементов» изменили позицию, остальные ушли в игнор, пропуск
+// по решению правила или в ошибку. Короткие формулировки - по ширине колонки,
+// длинные обрезаются (см. DG4rule.hpp: ValueTab_w).
+static const Int32 RenumIgnoredId = 99;      // Заголовок колонки «Игнорировано»
+static const Int32 RenumSkippedId = 100;     // Заголовок колонки «Пропущено»
+static const Int32 RenumErrorsId = 101;      // Заголовок колонки «Ошибки»
+static const Int32 RenumWrittenTotalId = 95; // Итог «Элементов с изменённой нумерацией - »
+static const Int32 RenumNoRuleId = 96;       // Правила нумерации не найдены
+static const Int32 RenumUndoFailedId = 97;   // Не удалось записать нумерацию
+static const Int32 RenumPartialErrorId = 98; // Пропущено из-за ошибок - «... - »
+// Строки 71, 73 и 75 уже описывают ровно эти отказы («свойства не найдены»,
+// «изменение не требуется», «ошибка в правиле нумерации»), поэтому окно
+// результата переиспользует их, а не заводит дубли.
+static const Int32 RenumMissingPropId = 71;             // Не найдены свойства, заданные в правилах
+static const Int32 RenumNoChangeId = 73;                // Изменение нумерации не требуется
+static const Int32 RenumRuleErrorId = 75;               // Ошибка в правиле нумерации
 static const Int32 SomeStuffSchedulesNameID = 81;       // Имя раздела ведомостей SomeStuff в Navigator
 static const Int32 SomeStuffScheduleDefaultNameID = 82; // Имя нового каталога SomeStuff в Navigator
 static const Int32 OtherDbCloseId = 83;                 // Закрыть диалог перехода в другую базу данных

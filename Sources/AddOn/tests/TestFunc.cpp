@@ -111,6 +111,7 @@ namespace TestFunc {
 
         TestKit::Register ("TestRenumPosLogic", Groups::Renum, TestRenumPosLogic);
         TestKit::Register ("TestRenumFormulaParse", Groups::Renum, TestRenumFormulaParse);
+        TestKit::Register ("TestRenumRunReport", Groups::Renum, TestRenumRunReport);
 
         const char *filter = std::getenv ("SMSTF_TEST");
         const int failed = TestKit::Run (filter);

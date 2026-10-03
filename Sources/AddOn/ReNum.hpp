@@ -180,6 +180,11 @@ struct RenumRule {
     int n_skip = 0;
     // Количество записанных изменений.
     int n_write = 0;
+    // Количество элементов, отброшенных из-за ошибки в свойстве. Отдельно от
+    // n_skip: элемент с флагом «пропустить» отброшен по решению правила, а
+    // элемент с невалидным значением - по ошибке, и пользователю это различие
+    // нужно видеть в отчёте.
+    int n_error = 0;
 };
 
 typedef std::map<std::string, RenumElem, doj::alphanum_less<std::string>> Values; // Словарь элементов по критериям
@@ -195,17 +200,127 @@ typedef std::map<std::string, std::string, doj::alphanum_less<std::string>> Renu
 typedef std::map<std::string, RenumPosDict, doj::alphanum_less<std::string>> DRenumPosDict;
 
 typedef GS::HashTable<API_Guid, RenumRule> Rules; // Таблица правил
+
+// -----------------------------------------------------------------------------------------------------------------------
+// Накопитель результата запуска перенумерации.
+//
+// Устроен по образцу Spec::SpecRunResult: сообщения копятся и показываются
+// ОДНИМ окном в конце запуска (ShowRenumResult). Раньше каждая точка отказа
+// писала ACAPI_WriteReport (…, true), то есть открывала своё окно, и при
+// нескольких проблемах пользователь получал их по одному.
+// -----------------------------------------------------------------------------------------------------------------------
+
+// Сообщение окна результата. ruleName — правило, к которому относится
+// сообщение. Пустое имя означает сообщение БЕЗ правила: оно идёт внизу окна и
+// не подсвечивает ни одну строку списка.
+struct RenumMessage {
+    GS::UniString ruleName = EMPTYSTRING;
+    GS::UniString text = EMPTYSTRING;
+};
+
+// Итог по ОДНОМУ правилу за запуск. Рядом с суммарными счётчиками запуска,
+// потому что суммарные не позволяют сказать, какое правило что перенумеровало,
+// а именно это и показывает окно.
+struct RenumRuleStats {
+    UInt32 elements = 0; // элементов под правилом
+    UInt32 written = 0;  // элементов с изменённой позицией
+    // Отобранные и отказанные элементы. Показываются отдельными колонками,
+    // иначе из «Элементов» не видно, куда делась разница: пользователю
+    // кажется, что позицию изменили не у всех.
+    UInt32 ignored = 0; // флаг «не менять» (RENUM_IGNORE)
+    UInt32 skipped = 0; // флаг «пропустить» (RENUM_SKIP)
+    UInt32 errors = 0;  // отброшены из-за невалидного значения
+};
+
+struct RenumRunResult {
+    // Сколько позиций записано по ВСЕМ правилам. Принадлежит запуску, а не
+    // отдельному правилу, поэтому в окне идёт общей строкой внизу.
+    UInt32 elementsToWrite = 0;
+
+    // Статистика по правилам в порядке регистрации. Параллельные массивы, а не
+    // словарь: порядок нужен окну результата, а хеш-таблица его не даёт.
+    GS::Array<GS::UniString> ruleNames = {};
+    GS::Array<RenumRuleStats> ruleStats = {};
+
+    // Сообщения за запуск, привязанные к правилу и без правила вперемешку, в
+    // порядке появления. Окно разбирает их само: строки правил по ruleName,
+    // остальные вниз без привязки.
+    GS::Array<RenumMessage> messages = {};
+
+    // Регистрирует правило, участвующее в запуске, и возвращает индекс его
+    // статистики. Повторная регистрация того же имени НЕ создаёт второй строки:
+    // список строк окна строится по этим индексам, а дубль означал бы две
+    // строки об одном правиле. Одно правило может быть описано несколькими
+    // свойствами, поэтому регистрация повторяется штатно.
+    UIndex EnsureRuleStats (const GS::UniString &ruleName) {
+        for (UIndex i = 0; i < ruleNames.GetSize (); ++i)
+            if (ruleNames[i] == ruleName)
+                return i;
+        ruleNames.Push (ruleName);
+        ruleStats.Push (RenumRuleStats ());
+        return ruleNames.GetSize () - 1;
+    }
+
+    // Сообщение без правила: идёт внизу окна и не подсвечивает строку.
+    void AddGeneralMessage (const GS::UniString &text) {
+        RenumMessage message = {};
+        message.text = text;
+        messages.Push (message);
+    }
+
+    // Сообщение, привязанное к правилу. Правило регистрируется при первом
+    // обращении, поэтому вызывающему не нужно отдельно объявлять его участие:
+    // строка появится в окне вместе с сообщением.
+    void AddRuleMessage (const GS::UniString &ruleName, const GS::UniString &text) {
+        EnsureRuleStats (ruleName);
+        RenumMessage message = {};
+        message.ruleName = ruleName;
+        message.text = text;
+        messages.Push (message);
+    }
+
+    // Есть ли у правила хотя бы одно сообщение. Строка правила с ошибкой
+    // подсвечивается по этому признаку, а не по счётчикам: нули в колонках при
+    // отказе подготовки — законное состояние, и по ним ошибку не увидеть.
+    bool HasRuleError (UIndex index) const {
+        if (index >= ruleNames.GetSize ())
+            return false;
+        for (const RenumMessage &message : messages)
+            if (message.ruleName == ruleNames[index])
+                return true;
+        return false;
+    }
+};
+
+// Свойства, которые не нашлись у элемента, по правилам-владельцам:
+// имя правила -> имена отсутствующих свойств. Привязка к правилу обязательна:
+// свойство отсутствует у конкретного правила, и общий список имён не показал
+// бы, какое из правил негодно.
+typedef GS::HashTable<GS::UniString, GS::Array<GS::UniString>> RenumMissingProps;
 // Запускает перенумерацию выбранных элементов по правилам, заданным в свойствах.
 GSErrCode ReNumSelected (SyncSettings &syncSettings);
+
+// Окно результата запуска перенумерации.
+//
+// Показывается ОДИН раз, в конце работы ReNumSelected, накопителем сообщений:
+// прежде каждая точка отказа открывала своё всплывающее окно, поэтому при
+// нескольких проблемах пользователь получал их по одной. Окно только
+// показывает: строка правила с ошибкой красная, текст ошибки идёт внизу под
+// своим именем.
+void ShowRenumResult (RenumRunResult *runResult);
 
 // Формирует список правил, доступных для диалогового выбора, и проверяет наличие правила для одного элемента.
 bool RenumDG (Rules &renum_rules, bool &rule_from_one);
 
 // Собирает элементы, которые должны участвовать в перенумерации, и подготавливает параметры для записи.
+// runResult — накопитель результата запуска: сообщения пишутся в него, а не
+// открывают окна. При nullptr отказ остаётся невидимым, и тогда обязан
+// пережить его вызывающий.
 bool GetRenumElements (GS::Array<API_Guid> &guidArray,
                        ParamDictElement &paramToWriteelem,
                        GS::HashTable<API_Guid, API_PropertyDefinition> &rule_definitions,
-                       bool &rule_from_one);
+                       bool &rule_from_one,
+                       RenumRunResult *runResult);
 
 // Проверяет, есть ли у правил переключатель флага перенумерации.
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
@@ -214,11 +329,37 @@ bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
 RenumMode ReNumGetFlag (const ParamValue &paramflag, const ParamValue &paramposition);
 
 // Обрабатывает один элемент и применяет к нему правила перенумерации.
+// missingProps — свойства, не найденные у элемента, по правилам-владельцам.
+// Привязка к правилу обязательна: без неё список имён не показал бы, какое
+// правило негодно.
 bool ReNum_GetElement (const API_Guid &elemGuid,
                        ParamDictElement &paramToRead,
                        Rules &rules,
-                       GS::HashTable<GS::UniString, bool> &error_propertyname,
+                       RenumMissingProps &missingProps,
                        const GS::Array<API_PropertyDefinition> &definitions);
+
+// Имя свойства в читаемом виде для сообщения пользователю:
+// из «{@property:этаж}» делает «этаж», из «{@gdl:тип}» - «тип».
+//
+// Известная приставка отбрасывается целиком, вместе с двоеточием. Двоеточие
+// внутри имени не трогается: у формул оно встречается в самом имени
+// («{@formula:renum_criteria;%A%}»).
+GS::UniString RenumReadableName (const GS::UniString &rawname);
+
+// Регистрирует отсутствующее свойство в словаре по правилам-владельцам.
+// Формульная часть (непустая formula) и уже существующее свойство молча
+// пропускаются: отсутствующего свойства у них нет. Повторное добавление того
+// же имени под тем же правилом игнорируется.
+void AddMissingProp (RenumMissingProps &missing_props,
+                     const GS::UniString &rule_name,
+                     const GS::UniString &rawname,
+                     const GS::UniString &formula,
+                     const ParamDictValue &propertyParams);
+
+// Имя правила для показа в окне результата: текст между фигурными скобками
+// описания свойства-флага. Вычисляется ДО разбора правила на годность, потому
+// что сообщение о негодном правиле привязывается к строке окна.
+GS::UniString RenumRuleDisplayName (const GS::UniString &description);
 
 // Роль части правила в имени параметра-формулы. Критерий и разбивка получают
 // разные имена, иначе формулы с одинаковым шаблоном получили бы один ключ.

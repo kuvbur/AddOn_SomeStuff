@@ -53,6 +53,8 @@
 // 5. Читаем значения свойств
 // 6. Распределяем позиции согласно правилам
 // 7. Записываем новые позиции
+// Все сообщения копятся в runResult и показываются ОДНИМ окном в конце
+// (ShowRenumResult) - прежде каждая точка отказа открыла своё всплывающее окно.
 GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     GS::UniString funcname ("Numbering");
     GS::Int32 nPhase = 1;
@@ -72,20 +74,28 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     bool rule_from_one = (guidArray.GetSize () == 1);
     // Таблица определений свойств-правил (заполняется в GetRuleFromSelected)
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions = {};
+    // Накопитель результата запуска. Живёт до конца функции: окно
+    // показывается после записи, чтобы в него попали и ошибки подготовки, и
+    // итог по правилам.
+    RenumRunResult runResult = {};
     // Ищем свойства с флагом Renum_flag среди выбранных элементов
     if (!GetRuleFromSelected (guidArray, rule_definitions, RENUMFLAG, false)) {
         msg_rep ("ReNumSelected",
                  "No Num rule found.\nCheck that the description of the user property contains Renum_flag",
                  NoError,
-                 APINULLGuid,
-                 true);
+                 APINULLGuid);
+        // Всплывающего окна здесь нет: сообщение копится и показывается в
+        // общем окне результата вместе со всем остальным запуском.
+        runResult.AddGeneralMessage (RSGetIndString (iseng, RenumNoRuleId, ACAPI_GetOwnResModule ()));
+        ShowRenumResult (&runResult);
         return NoError;
     }
     // Словарь для записи новых значений (guid элемента -> имя свойства -> новое значение)
     ParamDictElement paramToWriteelem = {};
     // Основная обработка: сбор данных, диалог, чтение, распределение позиций
-    if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions, rule_from_one)) {
+    if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions, rule_from_one, &runResult)) {
         msg_rep ("ReNumSelected", "No data to write", NoError, APINULLGuid);
+        ShowRenumResult (&runResult);
         return NoError;
     }
     UInt32 qtywrite = paramToWriteelem.GetSize ();
@@ -112,6 +122,8 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
             msg_rep ("ReNumSelected", "Undo is disabled", err, APINULLGuid);
         } else {
             msg_rep ("ReNumSelected", "ACAPI_CallUndoableCommand", err, APINULLGuid);
+            runResult.AddGeneralMessage (RSGetIndString (iseng, RenumUndoFailedId, ACAPI_GetOwnResModule ()));
+            ShowRenumResult (&runResult);
             return err;
         }
     }
@@ -121,8 +133,110 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     SyncArray (syncSettings, guidArray);
     finish = clock ();
     duration = (double)(finish - start) / CLOCKS_PER_SEC;
-    msg_rep ("ReNumSelected", GS::UniString::Printf ("Time spent %.3f s", duration), NoError, APINULLGuid);
+    // Итог по всему запуску кладётся в накопитель ДО показа окна: число
+    // записанных позиций принадлежит всем правилам сразу, и вне окна ему
+    // показываться негде.
+    runResult.elementsToWrite = qtywrite;
+    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
+    msg_rep ("ReNumSelected", GS::UniString::Printf ("Time spent%s", time), NoError, APINULLGuid);
+    // Окно результата - единственное место, где пользователь видит итог по
+    // правилам. Показывается и на успешном запуске: список счётчиков и есть
+    // результат, а не только ошибка.
+    ShowRenumResult (&runResult);
     return NoError;
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
+// Окно результата запуска перенумерации
+//
+// Показывается ОДИН раз, в конце запуска. Раньше каждая точка отказа
+// открывала своё всплывающее окно (ACAPI_WriteReport (…, true)), поэтому при
+// нескольких проблемах пользователь получал их по одной и терял предыдущие из
+// виду. Теперь сообщения копятся в RenumRunResult, а окно показывает их все
+// разом: строка правила, две колонки чисел (элементов / изменено позиций) и
+// текст ошибки под своим правилом.
+//
+// Окно только показывает: флажков нет, клик по строке ничего не переключает.
+// -----------------------------------------------------------------------------------------------------------------------
+void ShowRenumResult (RenumRunResult *runResult) {
+    // Без накопителя показывать нечего: все точки отказа пишут сообщения
+    // именно в него.
+    if (runResult == nullptr)
+        return;
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    // Окно показывается, если есть что показать: либо строки правил, либо
+    // сообщения. Пустой отчёт не должен занимать экран диалогом.
+    if (runResult->ruleNames.IsEmpty () && runResult->messages.IsEmpty ())
+        return;
+
+    RuleSelectData data = {};
+    data.isReadOnly = true;
+    data.titleResID = UndoReNumId;
+    // Пять колонок по умолчанию (60 px) не оставляют подписям места: окно
+    // 500 px, на имя правила уходит остаток, и «Игнорировано» обрезается.
+    data.valueColumnWidth = 70;
+    // Тире в строке «[ИМЯ] — текст»: символ U+2014. Задан константой, а не
+    // литералом в вызове, потому что иначе он неотличим от машинописного
+    // дефиса при просмотре кода.
+    const GS::UniString DASHES ("\xE2\x80\x94");
+    // Подписи колонок берутся из ресурса, а не пишутся литералами: они
+    // показываются пользователю и должны переводиться.
+    data.columnTitles.Push (RSGetIndString (iseng, RenumElementsId, ACAPI_GetOwnResModule ()));
+    data.columnTitles.Push (RSGetIndString (iseng, RenumWrittenId, ACAPI_GetOwnResModule ()));
+    data.columnTitles.Push (RSGetIndString (iseng, RenumIgnoredId, ACAPI_GetOwnResModule ()));
+    data.columnTitles.Push (RSGetIndString (iseng, RenumSkippedId, ACAPI_GetOwnResModule ()));
+    data.columnTitles.Push (RSGetIndString (iseng, RenumErrorsId, ACAPI_GetOwnResModule ()));
+
+    GS::UniString footer;
+    for (UIndex i = 0; i < runResult->ruleNames.GetSize (); ++i) {
+        const GS::UniString &name = runResult->ruleNames[i];
+        data.rules.Add (name, true);
+        GS::Array<GS::UniString> values = {};
+        const RenumRuleStats &stats = runResult->ruleStats[i];
+        values.Push (GS::UniString::Printf ("%d", (int)stats.elements));
+        values.Push (GS::UniString::Printf ("%d", (int)stats.written));
+        values.Push (GS::UniString::Printf ("%d", (int)stats.ignored));
+        values.Push (GS::UniString::Printf ("%d", (int)stats.skipped));
+        values.Push (GS::UniString::Printf ("%d", (int)stats.errors));
+        data.valuesPerRule.Add (name, values);
+        // Ошибка правила показывается под строкой в виде «[ИМЯ] — текст».
+        if (runResult->HasRuleError (i)) {
+            data.color.Add (name, Gfx::Color::Red);
+            for (const RenumMessage &message : runResult->messages) {
+                if (message.ruleName != name)
+                    continue;
+                if (!footer.IsEmpty ())
+                    footer.Append (LINEBRAKE);
+                // Строки склеиваются конкатенацией, а не Printf с ToCStr:
+                // CStr - некопируемый класс, и передача его в функцию с
+                // переменным числом аргументов не компилируется (C2280/C4839 в
+                // UniString.hpp). Шаблон же принимает GS::UniString по значению.
+                footer.Append ("[" + name + "] " + DASHES + " " + message.text);
+            }
+        }
+    }
+    // Ошибки без правила идут вниз без привязки: правила, к которому их можно
+    // было бы отнести, у них нет.
+    for (const RenumMessage &message : runResult->messages) {
+        if (!message.ruleName.IsEmpty ())
+            continue;
+        if (!footer.IsEmpty ())
+            footer.Append (LINEBRAKE);
+        footer.Append (message.text);
+    }
+    // Итог по запуску идёт под списком сообщений: он принадлежит всем
+    // правилам сразу, поэтому привязать его к строке нельзя.
+    if (runResult->elementsToWrite > 0) {
+        if (!footer.IsEmpty ())
+            footer.Append (LINEBRAKE);
+        footer.Append (RSGetIndString (iseng, RenumWrittenTotalId, ACAPI_GetOwnResModule ()) +
+                       GS::UniString::Printf ("%d", (int)runResult->elementsToWrite));
+    }
+    data.footerText = footer;
+    data.is_warn = !runResult->messages.IsEmpty ();
+    data.footerIsWarn = !runResult->messages.IsEmpty ();
+    RuleSelectDialog dialog (data);
+    dialog.Invoke ();
 }
 
 // Диалог выбора правил нумерации пользователем
@@ -181,12 +295,15 @@ bool RenumDG (Rules &renum_rules, bool &rule_from_one) {
 // 3. Показываем диалог выбора правил (RenumDG)
 // 4. Читаем значения свойств через ElementsRead
 // 5. Для каждого правила вызываем ReNumOneRule для распределения позиций
-// 6. Формируем paramToWriteelem с новыми позициями
-// Возвращает true, если есть данные для записи
+// 6. Формируем paramToWriteelem с новыми позициями и наполняем runResult
+// Возвращает: true, если есть данные для записи
+// Все сообщения пишутся в runResult, а не открывают окна: одно окно в конце
+// запуска показывает их все вместе с итогом по правилам.
 bool GetRenumElements (GS::Array<API_Guid> &guidArray,
                        ParamDictElement &paramToWriteelem,
                        GS::HashTable<API_Guid, API_PropertyDefinition> &rule_definitions,
-                       bool &rule_from_one) {
+                       bool &rule_from_one,
+                       RenumRunResult *runResult) {
     #if defined(TESTING)
     DBprnt ("GetRenumElements start");
     #endif
@@ -196,8 +313,15 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
     bool hasRule = !rule_definitions.IsEmpty ();
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());
-    ParamDict error_propertyname = {};
+    // Отсутствующие свойства копятся по правилам-владельцам: свойство
+    // отсутствует у конкретного правила, и общий список имён не показал бы,
+    // какое из правил негодно.
+    RenumMissingProps missing_props = {};
+    #ifndef ServerMainVers_2700
+    // Счётчик фазы для APIIo_SetNextProcessPhaseID. Начиная с AC27 фаза
+    // задаётся парой (maxval, showPercent), и номер больше не нужен.
     int n_elem = 0;
+    #endif
     #if defined(TESTING)
     DBprnt ("find rule");
     #endif
@@ -246,27 +370,47 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
     #endif
         if (!hasDef)
             continue;
-        ReNum_GetElement (guid, paramToReadelem, rules, error_propertyname, definitions);
+        ReNum_GetElement (guid, paramToReadelem, rules, missing_props, definitions);
     }
 
-    if (!error_propertyname.IsEmpty ()) {
-        GS::UniString out = ":\n";
-        for (auto &cIt : error_propertyname) {
+    // Отсутствующие свойства отмечают конкретные правила, а не элементы:
+    // сообщение привязывается к строке правила, и остальные правила при этом
+    // дорабатывают. Прежний код на этом месте останавливал весь запуск, из-за
+    // чего одно негодное правило обнуляло нумерацию по всем остальным.
+    if (!missing_props.IsEmpty ()) {
+        GS::UniString out = EMPTYSTRING;
+        // До AC28 пара итератора - указатели (->key / ->value), в AC28+ значения
+        // скопированы в саму пару (.key / .value). Форма ответа берётся по
+        // ServerMainVers, как во всех обходах словарей проекта.
+        for (RenumMissingProps::PairIterator cIt = missing_props.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
-            GS::UniString s = cIt.key;
+            const GS::UniString rname = cIt.key;
+            const GS::Array<GS::UniString> &rawnames = cIt.value;
     #else
-            GS::UniString s = *cIt.key;
+            const GS::UniString rname = *cIt->key;
+            const GS::Array<GS::UniString> &rawnames = *cIt->value;
     #endif
-            s.ReplaceAll (PVALPREFIX, EMPTYSTRING);
-            s.ReplaceAll (BRACEEND, EMPTYSTRING);
-            s.ReplaceAll (":", " : ");
-            out.Append (s);
-            out.Append (LINEBRAKE);
+            // Пустое имя правила возможно только при отсутствии описания у
+            // свойства: показать его нечем, и строка уходит вниз без привязки.
+            GS::UniString list = EMPTYSTRING;
+            for (const GS::UniString &rawname : rawnames) {
+                if (!list.IsEmpty ())
+                    list.Append (LINEBRAKE);
+                list.Append (RenumReadableName (rawname));
+            }
+            if (rname.IsEmpty ()) {
+                if (!out.IsEmpty ())
+                    out.Append (LINEBRAKE);
+                out.Append (list);
+            } else {
+                if (runResult != nullptr)
+                    runResult->AddRuleMessage (rname, list);
+            }
         }
         msg_rep ("ReNumSelected", "Can't find property, check name: " + out, APIERR_GENERAL, APINULLGuid);
-        GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 71, ACAPI_GetOwnResModule ());
-        ACAPI_WriteReport (SpecEmptyListdString + out, true);
-        return false;
+        if (runResult != nullptr)
+            runResult->AddGeneralMessage (RSGetIndString (iseng, RenumMissingPropId, ACAPI_GetOwnResModule ()) +
+                                          (out.IsEmpty () ? EMPTYSTRING : LINEBRAKE + out));
     }
     if (!paramToReadelem.IsEmpty ())
         msg_rep ("ReNumSelected",
@@ -275,13 +419,29 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
                  APINULLGuid);
     if (!rules.IsEmpty ())
         msg_rep ("ReNumSelected", GS::UniString::Printf ("Find rules - %d ", rules.GetSize ()), NoError, APINULLGuid);
+    // Отвергнутые правила регистрируются ДАВ проверки на пустой результат: они
+    // найдены и негодны, и пользователь должен видеть их в окне результата
+    // вместе с причиной. Без этого «правило отработало вхолостую» выглядело бы
+    // как «правила не было».
+    for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
+    #ifdef ServerMainVers_2800
+        const RenumRule &rule = cIt->value;
+    #else
+        const RenumRule &rule = *cIt->value;
+    #endif
+        if (rule.state)
+            continue;
+        const UIndex index = (runResult != nullptr) ? runResult->EnsureRuleStats (rule.rule_name) : 0;
+        if (runResult != nullptr)
+            runResult->ruleStats[index].elements += rule.elemts.GetSize ();
+    }
     if (paramToReadelem.IsEmpty () || rules.IsEmpty ()) {
         if (paramToReadelem.IsEmpty ())
             msg_rep ("ReNumSelected", "Parameters for read not found", NoError, APINULLGuid);
         if (rules.IsEmpty ())
             msg_rep ("ReNumSelected", "Rules not found", NoError, APINULLGuid);
-        GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 75, ACAPI_GetOwnResModule ());
-        ACAPI_WriteReport (SpecEmptyListdString, true);
+        if (runResult != nullptr)
+            runResult->AddGeneralMessage (RSGetIndString (iseng, RenumRuleErrorId, ACAPI_GetOwnResModule ()));
         return false;
     }
     if (!RenumDG (rules, rule_from_one)) {
@@ -289,62 +449,46 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
         return false;
     }
     ParamHelpers::ElementsRead (paramToReadelem); // Читаем значения
-    bool has_error_ones = false;
-    GS::UniString error_rule_name;
-    GS::UniString ok_rule_name;
     // Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
+    // по правилам. Каждое правило даёт строку результата: сколько элементов под
+    // ним и сколько позиций в них изменилось.
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
         RenumRule &rule = cIt->value;
     #else
         RenumRule &rule = *cIt->value;
     #endif
+        if (!rule.state)
+            continue;
+        // Повторная регистрация того же имени (два свойства с одинаковым
+        // описанием правила) возвращает прежний индекс, поэтому числа
+        // накапливаются: строка показывает объединённый итог по правилу.
+        const UIndex index = (runResult != nullptr) ? runResult->EnsureRuleStats (rule.rule_name) : 0;
+        if (runResult != nullptr)
+            runResult->ruleStats[index].elements += rule.elemts.GetSize ();
         bool has_error = false;
         if (!rule.elemts.IsEmpty ())
             ReNumOneRule (rule, paramToReadelem, paramToWriteelem, has_error);
-        if (has_error) {
-            has_error_ones = true;
-            error_rule_name.Append (rule.position);
-            error_rule_name.Append (";\n");
-        } else {
-            ok_rule_name.Append (rule.position);
-            ok_rule_name.Append (";\n");
+        if (runResult != nullptr) {
+            runResult->ruleStats[index].written += rule.n_write;
+            runResult->ruleStats[index].ignored += rule.n_ignore;
+            runResult->ruleStats[index].skipped += rule.n_skip;
+            runResult->ruleStats[index].errors += rule.n_error;
         }
-    }
-    if (!error_rule_name.IsEmpty ()) {
-        error_rule_name.ReplaceAll (PVALPREFIX, EMPTYSTRING);
-        error_rule_name.ReplaceAll (BRACEEND, EMPTYSTRING);
-        error_rule_name.ReplaceAll (":", EMPTYSTRING);
-        error_rule_name.ReplaceAll (PROPERTYSTRING, EMPTYSTRING);
-        error_rule_name.Trim ();
-        error_rule_name = LINEBRAKE + error_rule_name;
-    }
-    if (!ok_rule_name.IsEmpty ()) {
-        ok_rule_name.ReplaceAll (PVALPREFIX, EMPTYSTRING);
-        ok_rule_name.ReplaceAll (BRACEEND, EMPTYSTRING);
-        ok_rule_name.ReplaceAll (":", EMPTYSTRING);
-        ok_rule_name.ReplaceAll (PROPERTYSTRING, EMPTYSTRING);
-        ok_rule_name.Trim ();
-        ok_rule_name = LINEBRAKE + ok_rule_name;
-    }
-    if (has_error_ones) {
-        GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 72, ACAPI_GetOwnResModule ()) + error_rule_name;
-        ACAPI_WriteReport (SpecEmptyListdString, true);
+        if (has_error && runResult != nullptr) {
+            // Счётчик ошибок, а не пропусков: элементы, помеченные флагом
+            // «пропустить», - законное решение правила, ошибкой оно не является.
+            GS::UniString text = RSGetIndString (iseng, RenumPartialErrorId, ACAPI_GetOwnResModule ()) +
+                                 GS::UniString::Printf ("%d", rule.n_error);
+            runResult->AddRuleMessage (rule.rule_name, text);
+        }
     }
     if (paramToWriteelem.IsEmpty ()) {
         msg_rep ("ReNumSelected", "No position changes required", NoError, APINULLGuid);
-        GS::UniString SpecEmptyListdString =
-            RSGetIndString (iseng, 73, ACAPI_GetOwnResModule ()) + error_rule_name + ok_rule_name;
-        ACAPI_WriteReport (SpecEmptyListdString, true);
+        if (runResult != nullptr)
+            runResult->AddGeneralMessage (RSGetIndString (iseng, RenumNoChangeId, ACAPI_GetOwnResModule ()));
         return false;
     }
-    GS::UniString msg = GS::UniString::Printf ("%d", paramToWriteelem.GetSize ()) + ok_rule_name;
-    GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 74, ACAPI_GetOwnResModule ());
-    ACAPI_WriteReport (SpecEmptyListdString + msg, true);
-    msg_rep ("ReNumSelected",
-             GS::UniString::Printf ("Elements with new position  - %d ", paramToWriteelem.GetSize ()),
-             NoError,
-             APINULLGuid);
     #if defined(TESTING)
     DBprnt ("GetRenumElements end");
     #endif
@@ -426,6 +570,89 @@ void AddFormulaToRead (const API_Guid &elemGuid,
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
+// Имя свойства в читаемом виде для сообщения пользователю.
+// Из «{@property:этаж}» делает «этаж», из «{@gdl:тип}» - «тип».
+//
+// Служебные префиксы пользователю ничего не говорят. Отбрасывается вся
+// известная приставка целиком, вместе с двоеточием: замена по одному слову
+// «property» оставляла бы «:этаж», а замена всех двоеточий портила бы имена
+// формул, у которых двоеточие внутри («{@formula:renum_criteria;…}»). Поэтому
+// сначала отрезается префикс, а двоеточие убирается только там, где осталось
+// ровно одно - оставшееся имя.
+// -----------------------------------------------------------------------------------------------------------------------
+GS::UniString RenumReadableName (const GS::UniString &rawname) {
+    GS::UniString out = rawname;
+    // Порядок важен: префиксы проверяются от длинного к короткему, иначе
+    // «{@property:…}» не совпал бы ни с одной приставкой целиком.
+    const GS::Array<GS::UniString> knownPrefixes = {
+        PROPERTYNAMEPREFIX, MATERIALNAMEPREFIX, FORMULANAMEPREFIX, GDLNAMEPREFIX};
+    for (const GS::UniString &prefix : knownPrefixes) {
+        if (!out.BeginsWith (prefix))
+            continue;
+        UIndex bodyStart = prefix.GetLength ();
+        UIndex bodyEnd = out.GetLength ();
+        if (bodyEnd > bodyStart && out[bodyEnd - 1] == CHARBRACEEND)
+            bodyEnd -= 1;
+        return out.GetSubstring (bodyStart, bodyEnd - bodyStart);
+    }
+    // Префикс неизвестен: оставляем как есть, только снимаем обрамляющие скобки.
+    if (out.BeginsWith (PVALPREFIX))
+        out = out.GetSubstring (PVALPREFIX.GetLength (), out.GetLength () - PVALPREFIX.GetLength ());
+    if (out.GetLength () > 0 && out[out.GetLength () - 1] == CHARBRACEEND)
+        out = out.GetSubstring (0, out.GetLength () - 1);
+    return out;
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
+// Регистрирует отсутствующее свойство в словаре по правилам-владельцам.
+// Повторное добавление того же имени под тем же правилом игнорируется: одно
+// свойство может отсутствовать у многих элементов, а список пользователю нужен
+// один раз.
+// -----------------------------------------------------------------------------------------------------------------------
+void AddMissingProp (RenumMissingProps &missing_props,
+                     const GS::UniString &rule_name,
+                     const GS::UniString &rawname,
+                     const GS::UniString &formula,
+                     const ParamDictValue &propertyParams) {
+    // Формульная часть не является свойством: имени у неё нет, и пустое имя
+    // отчиталось бы как отсутствующее свойство (#249).
+    if (!formula.IsEmpty () || rawname.IsEmpty ())
+        return;
+    if (propertyParams.ContainsKey (rawname))
+        return;
+    GS::Array<GS::UniString> *list = missing_props.GetPtr (rule_name);
+    if (list == nullptr) {
+        missing_props.Add (rule_name, GS::Array<GS::UniString> ());
+        list = missing_props.GetPtr (rule_name);
+    }
+    for (const GS::UniString &item : *list)
+        if (item == rawname)
+            return;
+    list->Push (rawname);
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
+// Имя правила для показа в окне результата: текст между фигурными скобками
+// описания свойства-флага, без "Renum_flag{" и без хвостовых "}".
+//
+// Имя нужно ДО разбора правила на годность: сообщение о негодном правиле
+// привязывается к строке окна, а строка без вычисленного имени осталась бы
+// пустой и потеряла бы связь с исходным описанием.
+// -----------------------------------------------------------------------------------------------------------------------
+GS::UniString RenumRuleDisplayName (const GS::UniString &description) {
+    GS::Array<GS::UniString> partstring;
+    GS::UniString name = description;
+    if (StringSplt (name, BRACEEND, partstring, "enum_flag") > 0)
+        name = partstring[0] + BRACEEND;
+    name = name.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+    name.ReplaceAll ("Property:", SPACESTRING);
+    name = CHARBSEMICOLON + name + CHARBSEMICOLON;
+    name = name.GetSubstring (CHARBSEMICOLON, CHARBSEMICOLON, 0);
+    name.Trim ();
+    return name;
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // Для каждого свойства элемента с флагом Renum_flag{...}:
 // 1. Парсит описание флага, извлекает имя свойства-позиции и настройки нулей
@@ -439,7 +666,7 @@ void AddFormulaToRead (const API_Guid &elemGuid,
 bool ReNum_GetElement (const API_Guid &elemGuid,
                        ParamDictElement &paramToRead,
                        Rules &rules,
-                       ParamDict &error_propertyname,
+                       RenumMissingProps &missing_props,
                        const GS::Array<API_PropertyDefinition> &definitions) {
     bool hasRenum = false;
     if (!ParamHelpers::isPropertyDefinitionRead ())
@@ -472,6 +699,11 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
         RenumRule *rulecritetiaPtr = rules.GetPtr (definition.guid);
         if (rulecritetiaPtr == nullptr) {
             RenumRule rulecritetia = {};
+            // Имя правила считается сразу, до разбора на годность: по нему
+            // привязываются сообщения об отсутствующих свойствах, в том числе
+            // когда правило признано негодным и до строки присваивания не
+            // дошло дело.
+            const GS::UniString rule_name = RenumRuleDisplayName (definition.description);
             // Разбираем - что записано в свойстве с флагом
             // В нём должно быть имя свойства и, возможно, флаг добавления нулей
             GS::UniString paramName = definition.description.ToLowerCase ();
@@ -586,28 +818,13 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         rulecritetia.criteria_formula = criteria_formula;
                         rulecritetia.delimetr_formula = delimetr_formula;
                         rulecritetia.guid = definition.guid;
-                        rulecritetia.rule_name = definition.description;
-                        partstring.Clear ();
-                        if (StringSplt (rulecritetia.rule_name, BRACEEND, partstring, "enum_flag") > 0) {
-                            rulecritetia.rule_name = partstring[0] + BRACEEND;
-                        }
-                        rulecritetia.rule_name = rulecritetia.rule_name.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
-                        rulecritetia.rule_name.ReplaceAll ("Property:", SPACESTRING);
-                        rulecritetia.rule_name = CHARBSEMICOLON + rulecritetia.rule_name + CHARBSEMICOLON;
-                        rulecritetia.rule_name =
-                            rulecritetia.rule_name.GetSubstring (CHARBSEMICOLON, CHARBSEMICOLON, 0);
-                        rulecritetia.rule_name.Trim ();
+                        rulecritetia.rule_name = rule_name;
                     } else {
-                        // Формульные части в error_propertyname не попадают: имени
+                        // Формульные части в missing_props не попадают: имени
                         // свойства у них нет, а пустое имя отчиталось бы как
                         // отсутствующее свойство.
-                        if (criteria_formula.IsEmpty () && !propertyParams.ContainsKey (rawNamecriteria) &&
-                            !error_propertyname.ContainsKey (rawNamecriteria))
-                            error_propertyname.Add (rawNamecriteria, false);
-                        if (delimetr_formula.IsEmpty () && !rawNamedelimetr.IsEmpty () &&
-                            !propertyParams.ContainsKey (rawNamedelimetr) &&
-                            !error_propertyname.ContainsKey (rawNamedelimetr))
-                            error_propertyname.Add (rawNamedelimetr, false);
+                        AddMissingProp (missing_props, rule_name, rawNamecriteria, criteria_formula, propertyParams);
+                        AddMissingProp (missing_props, rule_name, rawNamedelimetr, delimetr_formula, propertyParams);
                     }
                 } else {
                     if (ruleparamName.Contains (RENUM)) {
@@ -633,8 +850,9 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                     }
                 }
             } else {
-                if (!error_propertyname.ContainsKey (rawNameposition))
-                    error_propertyname.Add (rawNameposition, false);
+                // Свойство-позиция не найдено: правило негодно целиком, и его
+                // имя уже разобрано (rule_name) - сообщение привязывается к нему.
+                AddMissingProp (missing_props, rule_name, rawNameposition, EMPTYSTRING, propertyParams);
             }
             rules.Add (definition.guid, std::move (rulecritetia));
             rulecritetiaPtr = rules.GetPtr (definition.guid);
@@ -965,6 +1183,7 @@ bool ElementsSeparation (RenumRule &rule,
                 msg_rep (
                     "ReNumSelected", "Skip element with not valid value in flag: " + rule.flag, APIERR_GENERAL, guid);
                 has_error = true;
+                rule.n_error += 1;
                 state = RENUM_SKIP;
             } else {
                 state = ReNumGetFlag (flag, position);
@@ -976,6 +1195,7 @@ bool ElementsSeparation (RenumRule &rule,
                              APIERR_GENERAL,
                              guid);
                     has_error = true;
+                    rule.n_error += 1;
                     state = RENUM_SKIP;
                 } else {
                     if (state != RENUM_SKIP)
@@ -993,11 +1213,13 @@ bool ElementsSeparation (RenumRule &rule,
                 delimetr = paramdelimetr->val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
             } else {
                 has_error = has_error || (state != RENUM_SKIP);
-                if (has_error)
+                if (has_error) {
                     msg_rep ("ReNumSelected",
                              "Skip element with not valid value in delimetr: " + rule.delimetr,
                              APIERR_GENERAL,
                              guid);
+                    rule.n_error += 1;
+                }
                 state = RENUM_SKIP;
             }
         }
@@ -1009,11 +1231,13 @@ bool ElementsSeparation (RenumRule &rule,
             if (paramcriteria->isValid) {
                 if (paramcriteria->val.uniStringValue.IsEmpty ()) {
                     has_error = has_error || (state != RENUM_SKIP);
-                    if (has_error)
+                    if (has_error) {
                         msg_rep ("ReNumSelected",
                                  "Skip element with empty value in criteria: " + rule.criteria,
                                  APIERR_GENERAL,
                                  guid);
+                        rule.n_error += 1;
+                    }
                     state = RENUM_SKIP;
                 } else {
                     GSCharCode chcode = GetCharCode (paramcriteria->val.uniStringValue);
@@ -1026,6 +1250,7 @@ bool ElementsSeparation (RenumRule &rule,
                          guid);
                 state = RENUM_SKIP;
                 has_error = true;
+                rule.n_error += 1;
             }
         }
         if (state != RENUM_SKIP) {
