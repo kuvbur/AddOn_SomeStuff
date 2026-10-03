@@ -155,6 +155,24 @@ Refs: IDEA.md step <n>
 Checkpoint only after the step is completed and validated — never a
 broken/unverified state.
 
+### 11.0 Attribution — never add it on your own initiative
+
+Do not write `Co-Authored-By`, `Generated with`, or any other tool/model
+attribution into commit messages, issue bodies, or PR descriptions unless
+the owner asks for it. The owner has never requested it; a few commits
+carried a false `Co-Authored-By: Claude Opus 4.8` line (2026-10-03) that the
+owner did not want and did not cause.
+
+If attribution ever seems warranted, ask. Do not treat it as good manners.
+
+Corollary — do not invent an explanation for your own action. When the
+owner asks why something happened, check what actually produced it (the
+tool call in the session log, git metadata, config, hooks) before answering.
+A plausible-sounding story is worse than "I don't know yet": claiming "the
+tool added it automatically" without checking is the same defect as adding
+it in the first place. Searching for a fact that confirms the guess you
+already made is confirmation bias, not verification.
+
 ### 11.1 Issues (GitHub)
 
 Code changes only: every user wish and every bug (found or fixed) →
