@@ -1,7 +1,46 @@
 ﻿# Current Task
 
-Активной задачи нет: #235 закрыта 2026-10-03 (см. `## Archive` в
-`IDEA_ARCHIVE.md`). Открытые вопросы — в секциях ниже.
+## Прочее открытое
+
+## Открыто — Roombook: грани 3D-тела зоны (#252)
+
+**Scope:** отдельное функциональное направление, не чистый рефакторинг: геометрия отделки из граней зоны, состав из сопоставленных стен/колонн. https://github.com/kuvbur/AddOn_SomeStuff/issues/252.
+
+**Состояние:** требование зарегистрировано; `GetZone3DPolygons_StrictAPI` найдена в `13ba469^:Sources/AddOn/Roombook.cpp`. Дополнение внесено в `.hermes/plans/2026-10-03_103032-roombook-safe-refactor.md`; реализация не начата.
+
+**Next Step:** проверить фактические грани зоны для сложного профиля и многосегментной колонны, SDK-контракты AC25, затем согласовать сопоставление и представление геометрии. Runtime — not verified.
+
+**Last Checkpoint:** отсутствует; код не менялся, commit/push не выполнялись.
+
+## Закрыто — #253 (кнопка «сайт автора» в палитре BrowserPalette)
+
+https://github.com/kuvbur/AddOn_SomeStuff/issues/253
+
+**Scope:** `Sources/AddOn/dialogs/BrowserPalette.cpp` (мост `OpenWebsite` +
+хелпер `OpenWebsiteInDefaultBrowser`), `Sources/AddOnResources/RFIX/HTML/Interface_ru.html`
+(`WEBSITE_URL`, `openWebsite`, `globeIconSvg`, кнопка в `buildShell()`),
+`Sources/AddOnResources/RFIX/HTML/ТЗ интерфейс.md` (§4.1),
+`Docs/modules/dialogs/BrowserPalette.md`, `config.json` (версия аддона 2.01).
+
+**Состояние:** ЗАКРЫТО 2026-10-03, issue #253 CLOSED, коммит 9eb5e7e. Проверено
+владельцем в живом Archicad AC25: кнопка открывает kuvbur.org, палитра не уходит
+со страницы. Кнопка стоит в развёрнутом виде колонки вкладок — непосредственно над
+переключателем темы.
+
+**Проверено:** `Tools/test_html.ps1` — ALL HTML CHECKS PASSED (HTMLHint + verify.js);
+LSP по `BrowserPalette.cpp` — единственная диагностика `withSpecRule`
+предсуществующая (есть в HEAD:1732), моих регионов 0; сборка AC25 Debug —
+`AI_BUILD_RESULT status=success`; `restart_archicad_for_test.ps1` — build + запуск
+AC25, тесты `suites=68 passed=2512 failed=0`, `EXIT 0`, отчёт свежее `.apx`
+(mtime отчёта 11:51:59 при `.apx` 11:48:19); HTML вшит в `.apx` — все четыре
+маркера (`open-website`, `kuvbur.org`, `globeIconSvg`, `WEBSITE_URL`) найдены в бинарнике.
+
+**`not verified`:** macOS-путь `GS::Process::Create("open", …)` — mac-машины нет.
+
+**Next Step:** нет — задача закрыта.
+
+**Last Checkpoint:** `9eb5e7e` — 5 файлов: `BrowserPalette.cpp`, `Interface_ru.html`,
+`ТЗ интерфейс.md`, `Docs/modules/dialogs/BrowserPalette.md`, `config.json`.
 
 ## Закрыто — #249 (формула в критерии/разбивке ReNum)
 
