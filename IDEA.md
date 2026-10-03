@@ -112,7 +112,17 @@ thisArg. Каждая закрыта тестом.
 `Tools/restart_archicad_for_test.ps1` (build + загрузка + тесты). Требует
 согласия владельца на запуск Archicad. Шаг 22 — документация и чекпоинт.
 
-**Last Checkpoint:** для #254 отсутствует; commit/push не выполнялись.
+**Last Checkpoint:** `b9f8e34` — 15 файлов: `Interface_ru.html` (каталог + миграция
+159 строк), новые `Interface_en.html`, `i18n/{en.json,glossary.md,inventory.md,README.md}`,
+`Tools/localize_html.js`, `Tools/tests/{localize_html,interface_localization}.test.js`,
+`Tools/verify.js`, `Tools/test_html.ps1`, `Tools/restart_archicad_for_test.ps1`,
+`package.json`, `Docs/modules/dialogs/BrowserPalette.md`, `IDEA.md`.
+
+**Отложено воркtree (не мои правки, параллельная сессия):**
+`Tools/AddOn.plist.in` (ссылка на kuvbur.org), `Tools/AddOn.grc.in` (там же
+ссылка + почта; МОЯ строка `Interface_en.html` в блоке `ID_ADDON_HTML_ENG`
+тоже там — коммит намеренно её не захватил, чтобы не присвоить чужую работу;
+при следующем коммите проверить diff `grc.in` вручную).
 
 ## Закрыто — #249 (формула в критерии/разбивке ReNum)
 
