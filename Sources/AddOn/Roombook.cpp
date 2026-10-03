@@ -3407,6 +3407,9 @@ namespace Roombook
     #else
         err = ACAPI_Database (APIDb_RoomReductionsID, &zoneelement.header.guid, (void *)(GS::IntPtr)RoomRedProc);
     #endif
+        // Указатель действует только между присваиванием и возвратом из SDK-вызова:
+        // rdges — локальный объект, оставлять его адрес в состоянии модуля нельзя.
+        reducededges = nullptr;
         if (err != NoError) {
     #if defined(TESTING)
             DBprnt ("Edges_GetFromRoom err", "APIDb_RoomReductionsID");
