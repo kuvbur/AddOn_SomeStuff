@@ -23,11 +23,11 @@ P1 частично: четыре независимых прогона исхо
 
 ## Next Step
 
-P3d [x]: чекпоинт P3d (`Roombook.cpp`, `Docs/modules/Roombook.md`, `Docs/_generated/symbols.json`, `Docs/_progress.md`, `IDEA.md`). Далее P3e — сокращение числа `auto &` в helpers, где поле контекста используется один раз (кандидаты: `MaterialSummary`, `ReadParamsForRoomBook`), с тем же протоколом: сборка AC25, TestKit, A/B по худшему значению. Z0 (#252) выполнить до фиксации новых геометрических интерфейсов. Полные контуры/материалы остаются not verified.
+P3d [x]: чекпоинт P3d создан (`1acdf57`). Далее P3e — сокращение числа `auto &` в helpers, где поле контекста используется один раз (кандидаты: `MaterialSummary`, `ReadParamsForRoomBook`), с тем же протоколом: сборка AC25, TestKit, A/B по худшему значению. Z0 (#252) выполнить до фиксации новых геометрических интерфейсов. Полные контуры/материалы остаются not verified.
 
 ## Last Checkpoint
 
-`bb271c9` — [P2a] характеризационный тест, документация и состояние #260 (`Refs: IDEA.md step P2a`, `Refs: #260`); push не выполнялся.
+`1acdf57` — [P3d] `Roombook.cpp`, `Docs/modules/Roombook.md`, `Docs/_generated/symbols.json`, `Docs/_progress.md`, `IDEA.md` (`Refs: IDEA.md step P3d`, `Refs: #260`); push не выполнялся.
 
 ## Plan
 
