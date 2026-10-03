@@ -624,12 +624,7 @@ namespace Roombook
         PrepareRoomProcessingContext (context, zones);
         auto &finclass = context.finclass;
         auto &finclassguids = context.finclassguids;
-        auto &storyLevels = context.storyLevels;
-        auto &deletelist = context.deletelist;
-        auto &exsistot_byzone = context.exsistot_byzone;
-        auto &roomsinfo = context.roomsinfo;
         auto &paramToRead = context.paramToRead;
-        auto &paramDict_favorite = context.paramDict_favorite;
         // После сбора связей временные GUID зон очищаются перед обработкой базовых элементов.
         if (!BuildElementReadIndex (zones, context, funcname))
             return;
@@ -651,13 +646,13 @@ namespace Roombook
         // Это нужно, чтобы не создавать дубли и правильно обновлять существующие элементы.
         bool has_base_element = false;
         UnicGuid reserv_elements; // Словарь незарезервированных или скрытых элементов
-        exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, has_base_element, reserv_elements);
+        context.exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, has_base_element, reserv_elements);
         if (!ProcessRoomFinishes (context, readParams, paramCompositeToRead, favdict, has_base_element, funcname))
             return;
         // Получаем список уже существующих отделочных элементов для обработанных зон.
         // Он понадобится для последующего удаления устаревших объектов.
         zones.Clear ();
-        paramDict_favorite.Clear ();
+        context.paramDict_favorite.Clear ();
         favdict.Clear ();
         MaterialSummary summary;
         if (!BuildMaterialSummaryForRooms (context, zones, summary, funcname))
@@ -680,7 +675,7 @@ namespace Roombook
         UnicElementByType subelementByparent; // Словарь с созданными родительскими
                                               // и дочерними элементами
         // Отросовка элементов отделки
-        Draw_Elements (storyLevels, roomsinfo, subelementByparent, finclass, deletelist);
+        Draw_Elements (context.storyLevels, context.roomsinfo, subelementByparent, finclass, context.deletelist);
         // Привязка отделочных элементов к базовым
         SetSyncOtdWall (subelementByparent, paramToWrite);
         finish = clock ();
