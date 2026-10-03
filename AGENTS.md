@@ -279,6 +279,36 @@ change altered a contract/side effect/signature already documented in
 (§17); if out of scope for this task, said so explicitly rather than
 leaving it silently stale.
 
+## 15.1 Номера строк ресурса (`AddOn.grc.in`)
+
+**Номер строки ресурса — это её ПОРЯДКОВАЯ ПОЗИЦИЯ в блоке `'STR#'`, а не число
+в комментарии `/* [ N ] */`.** Комментарий вырезается препроцессором (`cl /E`)
+и на ID не влияет.
+
+**Landmine — в блоке `32501` отсутствуют строки 88 и 89**, поэтому всё, что
+объявлено после них, сдвинуто на два: комментарий `[ 93]` — это ID **91**.
+Этот сдвиг существовал давно и затрагивает константы `SpecCreatedId/ModifiedId/
+DeletedId` = 90/91/92 (ID 90 — «Удалено», а не «Создано»).
+
+**Как проверять соответствие ID → текст** (после любой правки `.grc`):
+
+```bash
+# 1. собрать (или взять прошлую сборку), затем
+python - <<'EOF'
+import re
+s = open(r'Build/SomeStuff/25/ResourceObjects/AddOn.grc.i', encoding='utf-8').read()
+i = s.find(' 32501 '); j = s.find('{', i); k = s.find('\n}', j)
+rows = re.findall(r'"((?:[^"\\]|\\.)*)"', s[j:k])
+for cid in (91, 92, 93): print(cid, repr(rows[cid-1][:40]))   # 1-based!
+EOF
+```
+
+Строка в `.grc.i` с индексом N-1 — это ресурс с ID N. `32000/32500/32501`
+— RU-блоки, `33000/33500/33501` — ENG.
+
+**Landmine — текст сохраняется в `.apx` в UTF-8**, а не UTF-16: проверка
+`"строка".encode('utf-16-le') in apx` даёт ложный отрицательный результат.
+
 ## 16. Known — do not fix without explicit request
 
 Author already decided these are out of scope:
