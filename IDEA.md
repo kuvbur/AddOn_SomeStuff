@@ -156,10 +156,15 @@ obsolete=0 unreviewed=0 empty=0 placeholderMismatch=0).
 моста. EN-палитра покажет русский текст ошибок разбора — это ограничение
 поднятого в #254, расширение моста — отдельное согласование.
 
-**Найдено по ходу (не чинил, вне scope #254):** `npm run validate:js` был красным
-**до** этой задачи — `.eslintrc.js` не подключает установленный `eslint-plugin-html`,
-ESLint падает на первом `<`. Фикс проверен пробой (0 errors, 8 warnings), но
-`.eslintrc.js` возвращён в исходное состояние. Заведён **#255**.
+**#255 закрыт** (`1ebcc4e`): `npm run validate:js` был красным **до** этой задачи —
+`.eslintrc.js` не подключал установленный `eslint-plugin-html`, ESLint падал на
+первом `<`. Фикс: `plugins: ['html']` + `env.node` (CommonJS-инструменты давали
+49 ошибок на `require`/`process`/`module` — предсуществующее состояние, скрытое
+падением `validate:js`) + `no-new-func: off` только для `Tools/**` (там `new Function`
+— единственный способ исполнить JS из HTML в песочнице; в палитре правило действует,
+проверено пробой). `npm run validate` — exit 0 впервые; RU/EN по 0 errors.
+8 warnings `no-unused-vars` — настоящий мёртвый код (`err`, `chainIconSvg`,
+`renderValueBlock`, `destName`), проверено вручную; отдельная задача.
 `Tools/AddOn.plist.in` и правки ссылок в `Tools/AddOn.grc.in` — работа
 параллельной сессии, не мои, не откатывались.
 
