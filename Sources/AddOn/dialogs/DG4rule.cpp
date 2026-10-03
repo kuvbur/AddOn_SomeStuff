@@ -108,7 +108,14 @@ void RuleSelectDialog::InitListBox () {
     // не занимает места, но индексы табов от него не сдвигаются — иначе
     // пришлось бы пересчитывать NameTab в двух местах.
     const short valueCount = useQtyColumn ? 1 : static_cast<short> (rulelist.columnTitles.GetSize ());
-    const short totalCount = static_cast<short> (itemCount - 1 + valueCount);
+    // Табов нужно на один больше, чем используется: последний таб колонки
+    // значений имеет индекс NameTab + valueCount, а прежняя формула
+    // (itemCount - 1 + valueCount) давала ровно NameTab + valueCount. Лишний
+    // таб пустой и находится за краем списка, поэтому не виден, зато у
+    // последней колонки не пропадает заголовок: колонки рисуются по индексам
+    // табов, и без запаса заголовок уходил за SetHeaderItemCount, хотя данные
+    // в ячейке оставались.
+    const short totalCount = static_cast<short> (NameTab + valueCount + 1);
     ListBox.SetTabFieldCount (totalCount);
     ListBox.SetHeaderItemCount (totalCount);
     ListBox.SetHeaderSynchronState (true);
