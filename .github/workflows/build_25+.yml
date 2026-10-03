@@ -140,26 +140,33 @@ jobs:
           [ "$count" -gt 0 ] || { echo "нет артефактов в builds/"; exit 1; }
           ls -la builds/*.zip
 
-      - name: Publish prerelease test-${{ steps.time.outputs.time }}
+      - name: Publish test release (test-latest)
         env:
           GH_TOKEN: ${{ github.token }}
           TIME: ${{ steps.time.outputs.time }}
         run: |
           set -euo pipefail
-          if gh release view "test-$TIME" >/dev/null 2>&1; then
-            gh release upload "test-$TIME" builds/*.zip --clobber
+          TAG=test-latest
+          NOTES="Автоматическая тестовая сборка: ArchiCAD 25-29, Windows/macOS. Это НЕ релиз. [Описание текущей работы](https://github.com/kuvbur/AddOn_SomeStuff/wiki/CurrentWork_ru)"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # Тестовый релиз ровно один: обновляем файлы и заголовок в нём.
+            gh release upload "$TAG" builds/*.zip --clobber
+            gh release edit "$TAG" --title "DEBUG VERSION SomeStuff 2.01 $TIME" --notes "$NOTES"
           else
-            gh release create "test-$TIME" builds/*.zip \
+            gh release create "$TAG" builds/*.zip \
               --prerelease \
-              --title "Тестовая сборка $TIME" \
-              --notes "Автоматическая тестовая сборка: ArchiCAD 25-29, Windows/macOS. Это НЕ релиз: возможны ошибки, берите копию проекта. Описание текущей работы и ссылки: https://kuvbur.org/ru/addons/somestuff/test/"
+              --title "DEBUG VERSION SomeStuff 2.01 $TIME" \
+              --notes "$NOTES"
           fi
-
-      - name: Keep only 5 latest test releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release list --limit 100 --json tagName,isPrerelease \
-            --jq '.[] | select(.isPrerelease) | select(.tagName|startswith("test-")) | .tagName' \
-            | tail -n +6 \
-            | xargs -r -I{} gh release delete {} --yes --cleanup-tag
+          # Файлы прошлой сборки (другая метка времени) убираем ПОСЛЕ загрузки новых,
+          # чтобы ссылки не пропадали ни на секунду.
+          gh release view "$TAG" --json assets --jq '.assets[].name' > /tmp/assets.txt
+          while read -r name; do
+            [ -n "$name" ] || continue
+            case "$name" in
+              *".$TIME.zip") ;;
+              *) echo "удаляю устаревший $name"; gh release delete-asset "$TAG" "$name" --yes ;;
+            esac
+          done < /tmp/assets.txt
+          echo "Файлы релиза $TAG:"
+          gh release view "$TAG" --json assets --jq '.assets[] | "\(.name) — \(.size) байт"'
