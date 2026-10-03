@@ -12,7 +12,7 @@
 			CFBundleGetInfoString
 		</key>
 		<string>
-			SomeStuff Add-On https://github.com/kuvbur/AddOn_SomeStuff
+			SomeStuff Add-On https://kuvbur.org
 		</string>
 		<key>
 			CFBundleIconFile

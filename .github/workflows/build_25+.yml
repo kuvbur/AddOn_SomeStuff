@@ -6,6 +6,7 @@ on:
         - 'Tools/**'
         - 'CMakeLists.txt'
         - 'config.json'
+  workflow_dispatch:
 
 
 defaults:
@@ -99,3 +100,44 @@ jobs:
           name: SomeStuff AC${{ matrix.ac-version }} Mac ${{ env.TIME }}
           path: Build/Package/SomeStuff/${{ matrix.ac-version }}
 
+  publish_test:
+    needs: [build_win, build_mac]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "SomeStuff AC*"
+          merge-multiple: true
+          path: builds
+
+      - name: Get Time
+        id: time
+        uses: nanzm/get-time-action@master
+        with:
+          format: 'YYYY-MM-DD-HHmm'
+
+      - name: Publish prerelease test-${{ steps.time.outputs.time }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TIME: ${{ steps.time.outputs.time }}
+        run: |
+          ls -la builds
+          if ! gh release create "test-$TIME" builds/*.zip \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "Тестовая сборка $TIME" \
+              --notes "Автоматическая тестовая сборка: ArchiCAD 25-29, Windows/macOS. Это НЕ релиз: возможны ошибки, берите копию проекта. Описание текущей работы и ссылки: https://kuvbur.org/ru/addons/somestuff/test/"; then
+            gh release upload "test-$TIME" builds/*.zip --clobber
+          fi
+
+      - name: Keep only 5 latest test releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --limit 100 --json tagName,isPrerelease \
+            --jq '.[] | select(.isPrerelease) | select(.tagName|startswith("test-")) | .tagName' \
+            | tail -n +6 \
+            | xargs -r -I{} gh release delete {} --yes --cleanup-tag
