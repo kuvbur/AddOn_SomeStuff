@@ -5,7 +5,7 @@
 **Scope:** `Sources/AddOn/ReNum.cpp` (блок обхода `missing_props` в
 `GetRenumElements`). Версии AC28, AC29 — по явному запросу владельца.
 
-**Status:** DONE (обе версии собраны, 2026-10-03)
+**Status:** DONE (обе версии собраны, issue #257 CLOSED 2026-10-03)
 
 **Refs:** issue #257
 
