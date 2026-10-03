@@ -112,6 +112,46 @@ namespace TestFunc {
         result = Roombook::BuildOtdByParent (otdElements, unknownParentDict, hasBaseElement);
         DBtest (!hasBaseElement, "BuildOtdByParent: unknown child keeps has_base_element false");
         DBtest (result.IsEmpty (), "BuildOtdByParent: unknown child is ignored");
+
+        const API_Guid secondBaseGuid = APIGuidFromString ("{55555555-5555-5555-5555-555555555555}");
+        const API_Guid secondWallGuid = APIGuidFromString ("{66666666-6666-6666-6666-666666666666}");
+        const API_Guid thirdWallGuid = APIGuidFromString ("{77777777-7777-7777-7777-777777777777}");
+        otdElements.Add (secondWallGuid, Roombook::Wall_Main);
+        otdElements.Add (thirdWallGuid, Roombook::Wall_Main);
+
+        childElements.Add (secondWallGuid, true);
+        childElements.Add (unknownGuid, true);
+        UnicGuid otherChildren;
+        otherChildren.Add (thirdWallGuid, true);
+        UnicGuidByGuid multipleParents;
+        multipleParents.Add (baseGuid, childElements);
+        multipleParents.Add (secondBaseGuid, otherChildren);
+        hasBaseElement = false;
+        result = Roombook::BuildOtdByParent (otdElements, multipleParents, hasBaseElement);
+        const Roombook::UnicGuidByTypeOtd *firstParent = result.GetPtr (baseGuid);
+        const Roombook::UnicGuidByTypeOtd *secondParent = result.GetPtr (secondBaseGuid);
+        const UnicGuid *firstWalls = firstParent != nullptr ? firstParent->GetPtr (Roombook::Wall_Main) : nullptr;
+        const UnicGuid *secondWalls = secondParent != nullptr ? secondParent->GetPtr (Roombook::Wall_Main) : nullptr;
+        DBtest (hasBaseElement, "BuildOtdByParent: known children among unknown set flag");
+        DBtest (result.GetSize (), (USize)2, "BuildOtdByParent: two parent entries");
+        DBtest (firstWalls != nullptr && firstWalls->GetSize () == 2 && firstWalls->ContainsKey (wallGuid) &&
+                    firstWalls->ContainsKey (secondWallGuid) && !firstWalls->ContainsKey (unknownGuid),
+                "BuildOtdByParent: two walls of one type, unknown excluded");
+        DBtest (secondWalls != nullptr && secondWalls->GetSize () == 1 && secondWalls->ContainsKey (thirdWallGuid) &&
+                    !secondWalls->ContainsKey (wallGuid),
+                "BuildOtdByParent: second parent stays separate");
+
+        UnicGuidByGuid emptyParents;
+        hasBaseElement = false;
+        result = Roombook::BuildOtdByParent (otdElements, emptyParents, hasBaseElement);
+        DBtest (result.IsEmpty () && !hasBaseElement, "BuildOtdByParent: empty parent input");
+
+        GS::HashTable<API_Guid, Roombook::TypeOtd> emptyTypes;
+        result = Roombook::BuildOtdByParent (emptyTypes, multipleParents, hasBaseElement);
+        DBtest (result.IsEmpty () && !hasBaseElement, "BuildOtdByParent: empty type input");
+        hasBaseElement = true;
+        result = Roombook::BuildOtdByParent (emptyTypes, multipleParents, hasBaseElement);
+        DBtest (result.IsEmpty () && hasBaseElement, "BuildOtdByParent: input flag is not reset");
     }
 
 } // namespace TestFunc
