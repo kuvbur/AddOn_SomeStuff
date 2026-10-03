@@ -4,14 +4,24 @@
 const fs = require("fs");
 const path = require("path");
 
-const file = process.argv[2];
-if (!file) { console.error("Usage: node verify.js <file>"); process.exit(1); }
+const files = process.argv.slice(2).filter(Boolean);
+if (!files.length) { console.error("Usage: node verify.js <file> [file...]"); process.exit(1); }
 
-if (!fs.existsSync(file)) {
-    console.error(`File not found: ${file}`);
-    process.exit(1);
+for (const f of files) {
+    if (!fs.existsSync(f)) { console.error(`File not found: ${f}`); process.exit(1); }
 }
 
+let failedFiles = 0;
+for (const file of files) { verifyFile(file); }
+
+if (failedFiles) {
+    console.error(`❌  Верификация провалена: провалено файлов — ${failedFiles}.`);
+    process.exit(1);
+}
+process.exit(0);
+
+// Проверка одного файла; возвращает true, если ошибок нет.
+function verifyFile(file) {
 const src = fs.readFileSync(file, "utf8");
 const errors = [];
 const warn = [];
@@ -150,8 +160,9 @@ console.log("");
 
 if (errors.length) {
   console.error("❌  Верификация провалена: " + errors.length + " ошибок.");
-  process.exit(1);
-} else {
-  console.log("✅  Верификация прошла" + (warn.length ? " с предупреждениями." : " без замечаний."));
-  process.exit(0);
+  failedFiles++;
+  return false;
+}
+console.log("✅  Верификация прошла" + (warn.length ? " с предупреждениями." : " без замечаний."));
+return true;
 }

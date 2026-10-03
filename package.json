@@ -4,10 +4,16 @@
   "description": "HTML/JS validation for SomeStuff AddOn BrowserPalette",
   "private": true,
   "scripts": {
-    "validate:html": "htmlhint Sources/AddOnResources/RFIX/HTML/Interface_ru.html",
+    "validate:html": "htmlhint Sources/AddOnResources/RFIX/HTML/Interface_ru.html Sources/AddOnResources/RFIX/HTML/Interface_en.html",
     "validate:js": "eslint --stdin --stdin-filename=Interface_ru.html < Sources/AddOnResources/RFIX/HTML/Interface_ru.html",
     "validate:custom": "node Tools/verify.js Sources/AddOnResources/RFIX/HTML/Interface_ru.html",
-    "validate": "npm run validate:html && npm run validate:js && npm run validate:custom"
+    "validate:custom:en": "node Tools/verify.js Sources/AddOnResources/RFIX/HTML/Interface_en.html",
+    "validate": "npm run validate:html && npm run validate:js && npm run validate:custom && npm run validate:custom:en",
+    "i18n:status": "node Tools/localize_html.js status",
+    "i18n:generate": "node Tools/localize_html.js generate",
+    "i18n:check": "node Tools/localize_html.js check",
+    "i18n:export-pending": "node Tools/localize_html.js export-pending",
+    "test:i18n": "node --test Tools/tests/localize_html.test.js Tools/tests/interface_localization.test.js"
   },
   "devDependencies": {
     "eslint": "^8.56.0",

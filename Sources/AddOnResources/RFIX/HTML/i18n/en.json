@@ -1,0 +1,1119 @@
+{
+  "schemaVersion": 1,
+  "locale": "en",
+  "messages": [
+    {
+      "key": "app.title",
+      "source": "Archicad — Редактор описаний свойств",
+      "context": "",
+      "translation": "ArchiCAD — Property Description Editor",
+      "reviewed": true
+    },
+    {
+      "key": "common.empty.found",
+      "source": "Ничего не найдено",
+      "context": "Пустой список выбора",
+      "translation": "Nothing found",
+      "reviewed": true
+    },
+    {
+      "key": "common.nav.collapse",
+      "source": "Свернуть окно палитры",
+      "context": "Кнопка свёртывания, title и aria-label",
+      "translation": "Collapse palette window",
+      "reviewed": true
+    },
+    {
+      "key": "common.nav.expand",
+      "source": "Развернуть окно палитры",
+      "context": "Кнопка свёртывания, title и aria-label",
+      "translation": "Expand palette window",
+      "reviewed": true
+    },
+    {
+      "key": "common.site.open",
+      "source": "Открыть сайт kuvbur.org",
+      "context": "Кнопка сайта автора, aria-label",
+      "translation": "Open kuvbur.org website",
+      "reviewed": true
+    },
+    {
+      "key": "common.site.title",
+      "source": "Сайт kuvbur.org",
+      "context": "Кнопка сайта автора, title",
+      "translation": "kuvbur.org website",
+      "reviewed": true
+    },
+    {
+      "key": "common.tab.wip",
+      "source": "[ В РАБОТЕ ]",
+      "context": "Заглушка нереализованной вкладки",
+      "translation": "[ WORK IN PROGRESS ]",
+      "reviewed": true
+    },
+    {
+      "key": "common.theme.toggle",
+      "source": "Переключить тему",
+      "context": "Переключатель темы, title и aria-label",
+      "translation": "Toggle theme",
+      "reviewed": true
+    },
+    {
+      "key": "nav.monitor",
+      "source": "Монитор",
+      "context": "Надпись вертикальной вкладки",
+      "translation": "Monitor",
+      "reviewed": true
+    },
+    {
+      "key": "nav.sync",
+      "source": "Синхронизация",
+      "context": "Надпись вертикальной вкладки",
+      "translation": "Sync",
+      "reviewed": true
+    },
+    {
+      "key": "nav.numbering",
+      "source": "Нумерация",
+      "context": "Надпись вертикальной вкладки",
+      "translation": "Renum",
+      "reviewed": true
+    },
+    {
+      "key": "nav.summary",
+      "source": "Суммирование",
+      "context": "Надпись вертикальной вкладки",
+      "translation": "Sum",
+      "reviewed": true
+    },
+    {
+      "key": "nav.spec",
+      "source": "Спецификация",
+      "context": "Надпись вертикальной вкладки",
+      "translation": "Specification",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.selectionCount",
+      "source": "Выделено элементов: ",
+      "context": "Счётчик выделения; хвостовой пробел значим",
+      "translation": "Selected elements: ",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.loadingSelection",
+      "source": "Загрузка выделения…",
+      "context": "Состояние загрузки выделения",
+      "translation": "Loading selection…",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.maxCount",
+      "source": "Максимальное количество отображаемых элементов",
+      "context": "Заголовок списка выделения",
+      "translation": "Maximum number of elements shown",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.autoRefresh",
+      "source": "Автообновление при изменении выделения",
+      "context": "Кнопка автообновления, title",
+      "translation": "Auto-refresh on selection change",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.refreshCount",
+      "source": "Обновить количество выделенных элементов",
+      "context": "Кнопка ручного обновления, title",
+      "translation": "Refresh selected element count",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.bridgeNotReady",
+      "source": "Выделено элементов: ERROR: bridge not ready",
+      "context": "Мост недоступен при предпросмотре HTML вне Archicad",
+      "translation": "Selected elements: ERROR: bridge not ready",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.classification",
+      "source": "Классификация",
+      "context": "Заголовок блока классификации",
+      "translation": "Classification",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.classification.search",
+      "source": "Поиск классификации…",
+      "context": "Поле поиска классификации",
+      "translation": "Search classification…",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.classification.placeholder",
+      "source": "— выберите классификацию —",
+      "context": "Пустая опция выбора",
+      "translation": "— select a classification —",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.classification.loading",
+      "source": "Загрузка классификации…",
+      "context": "Состояние загрузки классификации",
+      "translation": "Loading classification…",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.classification.applyAll",
+      "source": "Применить ко всем",
+      "context": "Кнопка применения ко всем",
+      "translation": "Apply to All",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.classification.applying",
+      "source": "Применение…",
+      "context": "Состояние применения",
+      "translation": "Applying…",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.classification.pickFromList",
+      "source": "Выберите классификацию из списка",
+      "context": "Пустое состояние блока",
+      "translation": "Select a classification from the list",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.classification.none",
+      "source": "Нет доступных классификаций",
+      "context": "Пустое состояние блока",
+      "translation": "No classifications available",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.branch.expand",
+      "source": "Раскрыть ветвь",
+      "context": "Ветка классификации раскрыта, title",
+      "translation": "Expand branch",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.branch.collapse",
+      "source": "Свернуть ветвь",
+      "context": "Ветка классификации свёрнута, title",
+      "translation": "Collapse branch",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.presets.byName",
+      "source": "Преднастроенные фильтры по имени",
+      "context": "Заголовок списка пресетов",
+      "translation": "Preset filters by name",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.presets.byValue",
+      "source": "Преднастроенные фильтры по значению",
+      "context": "Заголовок списка пресетов",
+      "translation": "Preset filters by value",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.filter.names",
+      "source": "Фильтр по именам… (или /regex/)",
+      "context": "Поле фильтра, placeholder",
+      "translation": "Filter by names… (or /regex/)",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.filter.values",
+      "source": "Фильтр по значениям… (или /regex/)",
+      "context": "Поле фильтра, placeholder",
+      "translation": "Filter by values… (or /regex/)",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.filter.rulesOnly",
+      "source": "Только с правилами Sync/Spec",
+      "context": "Переключатель «только с правилами»",
+      "translation": "Only with Sync/Spec rules",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.filter.regexHint",
+      "source": "Поддерживаются шаблоны regexp в формате /шаблон/",
+      "context": "Подсказка о regexp",
+      "translation": "Regex patterns in /pattern/ form are supported",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.properties.loading",
+      "source": "Загрузка свойств…",
+      "context": "Состояние загрузки свойств",
+      "translation": "Loading properties…",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.filter.emptyResult",
+      "source": "Ничего не найдено по фильтру.",
+      "context": "Пустой результат фильтра",
+      "translation": "Nothing matches the filter.",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.group.none",
+      "source": "Без группы",
+      "context": "Подпись группы без классификации",
+      "translation": "No group",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.group.pin",
+      "source": "Закрепить группу наверху списка",
+      "context": "Кнопка закрепления группы, title",
+      "translation": "Pin group to top of list",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.group.unpin",
+      "source": "Открепить группу",
+      "context": "Кнопка открепления группы, title",
+      "translation": "Unpin group",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.property.pin",
+      "source": "Закрепить свойство наверху списка",
+      "context": "Кнопка закрепления свойства, title",
+      "translation": "Pin property to top of list",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.property.unpin",
+      "source": "Открепить свойство",
+      "context": "Кнопка открепления свойства, title",
+      "translation": "Unpin property",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.value.caption",
+      "source": "Значение свойства",
+      "context": "Подпись блока значения",
+      "translation": "Property value",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.value.highlight",
+      "source": "Подсветить и приблизить элементы с этим значением",
+      "context": "Кнопка подсветки, title",
+      "translation": "Highlight and zoom to elements with this value",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.value.pickProperty",
+      "source": "Выберите свойство в списке выше, чтобы увидеть значение.",
+      "context": "Подсказка вместо значения",
+      "translation": "Select a property in the list above to see its value.",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.value.loading",
+      "source": "Загрузка значения…",
+      "context": "Состояние загрузки значения",
+      "translation": "Loading value…",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.value.notSet",
+      "source": "— не задано —",
+      "context": "Значение не задано",
+      "translation": "— not set —",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.value.differing",
+      "source": "РАЗНАЯ",
+      "context": "Значения различаются; см. следующий ключ",
+      "translation": "DIFFERENT",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.value.variantsSuffix",
+      "source": " вариантов)",
+      "context": "Суффикс счёта вариантов",
+      "translation": " variants)",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.value.elementsOf",
+      "source": " элем. из ",
+      "context": "Хвост подписи; ведущий пробел значим",
+      "translation": " of ",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.value.mixed",
+      "source": "РАЗНОЕ",
+      "context": "Значение разное",
+      "translation": "MIXED",
+      "reviewed": true
+    },
+    {
+      "key": "sync.legend.commands",
+      "source": "Команды",
+      "context": "Легенда подсветки синтаксиса",
+      "translation": "Commands",
+      "reviewed": true
+    },
+    {
+      "key": "sync.legend.namespaces",
+      "source": "Пространства имён",
+      "context": "Легенда подсветки синтаксиса",
+      "translation": "Namespaces",
+      "reviewed": true
+    },
+    {
+      "key": "sync.legend.keywords",
+      "source": "Ключевые слова",
+      "context": "Легенда подсветки синтаксиса",
+      "translation": "Keywords",
+      "reviewed": true
+    },
+    {
+      "key": "sync.legend.strings",
+      "source": "Строки",
+      "context": "Легенда подсветки синтаксиса",
+      "translation": "Strings",
+      "reviewed": true
+    },
+    {
+      "key": "sync.legend.expressions",
+      "source": "Выражения",
+      "context": "Легенда подсветки синтаксиса",
+      "translation": "Expressions",
+      "reviewed": true
+    },
+    {
+      "key": "sync.legend.brackets",
+      "source": "Скобки / диапазоны",
+      "context": "Легенда подсветки синтаксиса",
+      "translation": "Brackets / ranges",
+      "reviewed": true
+    },
+    {
+      "key": "sync.run",
+      "source": "Выполнить",
+      "context": "Кнопка запуска скрипта",
+      "translation": "Run",
+      "reviewed": true
+    },
+    {
+      "key": "sync.running",
+      "source": "Выполняется…",
+      "context": "Состояние выполнения",
+      "translation": "Running…",
+      "reviewed": true
+    },
+    {
+      "key": "sync.appliedTo",
+      "source": "Скрипт применён к ",
+      "context": "Демо-режим; хвостовой пробел значим",
+      "translation": "Script applied to ",
+      "reviewed": true
+    },
+    {
+      "key": "sync.appliedSuffix",
+      "source": " элементам (демо-режим).",
+      "context": "Демо-режим; ведущий пробел значим",
+      "translation": " elements (demo mode).",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.block1",
+      "source": "1. Флаг",
+      "context": "Заголовок блока 1",
+      "translation": "1. Flag",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.block2",
+      "source": "2. Редактор флага (Renum_flag)",
+      "context": "Заголовок блока 2",
+      "translation": "2. Flag Editor (Renum_flag)",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.block3",
+      "source": "3. Редактор правила (Renum)",
+      "context": "Заголовок блока 3",
+      "translation": "3. Rule Editor (Renum)",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.block4",
+      "source": "4. Предпросмотр",
+      "context": "Заголовок блока 4",
+      "translation": "4. Preview",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.flagPropertyForElements",
+      "source": "Свойство-флаг для элементов",
+      "context": "Подпись поля выбора",
+      "translation": "Flag property for elements",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.selectProperty",
+      "source": "— выбрать свойство —",
+      "context": "Пустая опция выбора свойства",
+      "translation": "— select a property —",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.flagSource",
+      "source": "Renum_flag по: ",
+      "context": "Подпись источника Renum_flag",
+      "translation": "Renum_flag by: ",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.ruleSource",
+      "source": "Renum по: ",
+      "context": "Подпись источника Renum",
+      "translation": "Renum by: ",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.ruleProperty",
+      "source": "Свойство-правило",
+      "context": "Подпись поля выбора",
+      "translation": "Rule property",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.numberFormat",
+      "source": "Формат номера",
+      "context": "Подпись поля выбора",
+      "translation": "Number format",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.criterionProperty",
+      "source": "Свойство-критерий (обязательно)",
+      "context": "Подпись поля выбора",
+      "translation": "Criterion property (required)",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.splitProperty",
+      "source": "Свойство для разбивки (опционально)",
+      "context": "Подпись поля выбора",
+      "translation": "Split property (optional)",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.noSplit",
+      "source": "— без разбивки —",
+      "context": "Пустая опция разбивки",
+      "translation": "— no split —",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.recalculating",
+      "source": "Пересчёт…",
+      "context": "Состояние пересчёта",
+      "translation": "Recalculating…",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.preview.empty",
+      "source": "Задайте свойство-критерий, чтобы увидеть предпросмотр.",
+      "context": "Пустое состояние предпросмотра",
+      "translation": "Set a criterion property to see the preview.",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.preview.number",
+      "source": "Номер",
+      "context": "Заголовок столбца",
+      "translation": "Number",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.preview.criterionValue",
+      "source": "Значение свойства-критерия",
+      "context": "Заголовок столбца",
+      "translation": "Criterion property value",
+      "reviewed": true
+    },
+    {
+      "key": "spec.status.unknown",
+      "source": "неизвестно",
+      "context": "Статус чтения значения",
+      "translation": "unknown",
+      "reviewed": true
+    },
+    {
+      "key": "spec.status.noProperty",
+      "source": "нет свойства",
+      "context": "Статус чтения значения",
+      "translation": "no property",
+      "reviewed": true
+    },
+    {
+      "key": "spec.status.unavailable",
+      "source": "недоступно",
+      "context": "Статус чтения значения",
+      "translation": "unavailable",
+      "reviewed": true
+    },
+    {
+      "key": "spec.status.notEvaluated",
+      "source": "не вычислено",
+      "context": "Статус чтения значения",
+      "translation": "not evaluated",
+      "reviewed": true
+    },
+    {
+      "key": "spec.status.hasValue",
+      "source": "значение получено",
+      "context": "Значение прочитано",
+      "translation": "value read",
+      "reviewed": true
+    },
+    {
+      "key": "spec.status.notChecked",
+      "source": "не проверялось",
+      "context": "Значение не проверялось",
+      "translation": "not checked",
+      "reviewed": true
+    },
+    {
+      "key": "spec.origin.favorite",
+      "source": "значение у избранного",
+      "context": "Источник значения",
+      "translation": "value from the Favorite",
+      "reviewed": true
+    },
+    {
+      "key": "spec.origin.defaultElem",
+      "source": "значение у объекта по умолчанию",
+      "context": "Источник значения",
+      "translation": "value from the Default Element",
+      "reviewed": true
+    },
+    {
+      "key": "spec.origin.definition",
+      "source": "значение из определения",
+      "context": "Источник значения",
+      "translation": "value from the definition",
+      "reviewed": true
+    },
+    {
+      "key": "spec.element.notChecked",
+      "source": "проверка на элементе не выполнялась",
+      "context": "Ошибка: проверка на элементе не выполнялась",
+      "translation": "the element was not checked",
+      "reviewed": true
+    },
+    {
+      "key": "spec.element.flagNotRead",
+      "source": "значение флага не прочитано: ",
+      "context": "Ошибка; хвостовой пробел значим",
+      "translation": "flag value not read: ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.element.flagOffNotice",
+      "source": "флаг выключен — возможно, выключен случайно (назначение тоже его выключает)",
+      "context": "Подсветка, не ошибка",
+      "translation": "flag is off — possibly turned off by accident (the destination also turns it off)",
+      "reviewed": true
+    },
+    {
+      "key": "spec.element.ruleOffError",
+      "source": "флаг правила выключен и назначение его не включает — правило не применится к элементу",
+      "context": "Ошибка: правило не применится",
+      "translation": "the rule flag is off and the destination does not enable it — the rule will not apply to the element",
+      "reviewed": true
+    },
+    {
+      "key": "spec.element.propertyNotRead",
+      "source": "не прочитано свойство: ",
+      "context": "Ошибка; хвостовой пробел значим",
+      "translation": "property not read: ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.definition",
+      "source": "Определение",
+      "context": "Подпись строки",
+      "translation": "Definition",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.notInProject",
+      "source": "не найдено в проекте",
+      "context": "Определение не найдено",
+      "translation": "not found in the project",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.ruleCheck",
+      "source": "Проверка правила",
+      "context": "Подпись строки",
+      "translation": "Rule check",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.noErrors",
+      "source": "без ошибок",
+      "context": "Правило разобрано",
+      "translation": "no errors",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.parseError",
+      "source": "ошибка разбора",
+      "context": "Правило не разобрано; ниже текст ошибки",
+      "translation": "parse error",
+      "reviewed": true
+    },
+    {
+      "key": "spec.flag.on",
+      "source": "включён",
+      "context": "Флаг включён",
+      "translation": "on",
+      "reviewed": true
+    },
+    {
+      "key": "spec.flag.off",
+      "source": "выключен",
+      "context": "Флаг выключен",
+      "translation": "off",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.flagInFavorite",
+      "source": "Флаг в Избранном",
+      "context": "Подпись строки",
+      "translation": "Flag in the Favorite",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.favoriteFlagRemoved",
+      "source": "не проверялось — флаг снят с избранного",
+      "context": "Активное назначение — не избранное",
+      "translation": "not checked — the flag is not read from the Favorite",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.favoriteNotFound",
+      "source": "не проверялось — избранное не найдено",
+      "context": "Избранное не найдено",
+      "translation": "not checked — the Favorite was not found",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.flagDefault",
+      "source": "Флаг по умолчанию",
+      "context": "Подпись строки",
+      "translation": "Default Element flag",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.notRead",
+      "source": "не прочитано",
+      "context": "Значение не прочитано",
+      "translation": "not read",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.noFlag",
+      "source": "нет флага",
+      "context": "Флага нет",
+      "translation": "no flag",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.destNotRead",
+      "source": "Назначение не прочитано",
+      "context": "Назначение не прочиталось",
+      "translation": "Destination not read",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.favorite",
+      "source": "Избранное",
+      "context": "Подпись строки и имя назначения",
+      "translation": "Favorite",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.notFound",
+      "source": "не найдено",
+      "context": "Не найдено",
+      "translation": "not found",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.foundByName",
+      "source": "найдено по имени",
+      "context": "Имя не отдано мостом, найдено само",
+      "translation": "found by name",
+      "reviewed": true
+    },
+    {
+      "key": "spec.common.defaultElem",
+      "source": "Элемент по умолчанию",
+      "context": "Подпись строки и имя назначения",
+      "translation": "Default Element",
+      "reviewed": true
+    },
+    {
+      "key": "spec.missing.atFavorite",
+      "source": "у избранного",
+      "context": "Хвост подписи; ведущий пробел значим",
+      "translation": " on the Favorite",
+      "reviewed": true
+    },
+    {
+      "key": "spec.missing.atDefaultElem",
+      "source": "у элемента по умолчанию",
+      "context": "Хвост подписи; ведущий пробел значим",
+      "translation": " on the Default Element",
+      "reviewed": true
+    },
+    {
+      "key": "spec.missing.outputProperty",
+      "source": "Нет выходного свойства ",
+      "context": "Хвостовой пробел значим",
+      "translation": "Missing output property ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.missing.nameProperty",
+      "source": "Нет свойства для имени правила ",
+      "context": "Хвостовой пробел значим",
+      "translation": "Missing property for the rule name ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.missing.guidProperty",
+      "source": "Нет свойства для связи ",
+      "context": "Хвостовой пробел значим",
+      "translation": "Missing property for the link ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.unresolved.inProject",
+      "source": "Не подтверждено в проекте",
+      "context": "Подпись строки",
+      "translation": "Not confirmed in the project",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.rule",
+      "source": "Правило",
+      "context": "Подпись блока",
+      "translation": "Rule",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.ruleFlag",
+      "source": "Флаг правила",
+      "context": "Подпись блока",
+      "translation": "Rule flag",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.errors",
+      "source": "Ошибки",
+      "context": "Подпись блока",
+      "translation": "Errors",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.noErrorsValue",
+      "source": "нет",
+      "context": "Значение счётчика ошибок: их нет",
+      "translation": "none",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.notices",
+      "source": "Подсветка",
+      "context": "Подпись блока",
+      "translation": "Highlights",
+      "reviewed": true
+    },
+    {
+      "key": "spec.search.placeholder",
+      "source": "Свойство-правило — поиск по имени…",
+      "context": "Поле поиска правила",
+      "translation": "Rule property — search by name…",
+      "reviewed": true
+    },
+    {
+      "key": "spec.rules.selection",
+      "source": "Правила выделения",
+      "context": "Заголовок группы правил",
+      "translation": "Selection rules",
+      "reviewed": true
+    },
+    {
+      "key": "spec.rules.project",
+      "source": "Правила проекта",
+      "context": "Заголовок группы правил",
+      "translation": "Project rules",
+      "reviewed": true
+    },
+    {
+      "key": "spec.rules.unknownSource",
+      "source": "Правила",
+      "context": "Заголовок группы правил; источник не распознан",
+      "translation": "Rules",
+      "reviewed": true
+    },
+    {
+      "key": "spec.rules.selectedSuffix",
+      "source": " · выделено ",
+      "context": "Суффикс счётчика; ведущий пробел значим",
+      "translation": " · selected ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.block.check",
+      "source": "Проверка",
+      "context": "Заголовок блока",
+      "translation": "Check",
+      "reviewed": true
+    },
+    {
+      "key": "spec.limit.label",
+      "source": "Проверять не более",
+      "context": "Подпись лимита",
+      "translation": "Check at most",
+      "reviewed": true
+    },
+    {
+      "key": "spec.limit.elementsSuffix",
+      "source": "элементов",
+      "context": "Подпись единицы счёта у лимита",
+      "translation": "elements",
+      "reviewed": true
+    },
+    {
+      "key": "spec.action.check",
+      "source": "Проверить",
+      "context": "Кнопка проверки",
+      "translation": "Check",
+      "reviewed": true
+    },
+    {
+      "key": "spec.action.checking",
+      "source": "Проверяется…",
+      "context": "Кнопка во время проверки",
+      "translation": "Checking…",
+      "reviewed": true
+    },
+    {
+      "key": "spec.check.running",
+      "source": "проверяется…",
+      "context": "Состояние проверки",
+      "translation": "checking…",
+      "reviewed": true
+    },
+    {
+      "key": "spec.summary.checkedPrefix",
+      "source": "проверено ",
+      "context": "Сводка проверки; хвостовой пробел значим",
+      "translation": "checked ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.summary.of",
+      "source": " из ",
+      "context": "Сводка проверки; пробелы по бокам значимы",
+      "translation": " of ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.summary.errorsCount",
+      "source": " · ошибок: ",
+      "context": "Сводка проверки; пробелы по бокам значимы",
+      "translation": " · errors: ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.summary.noErrors",
+      "source": " · ошибок нет",
+      "context": "Сводка проверки; ведущий пробел значим",
+      "translation": " · no errors",
+      "reviewed": true
+    },
+    {
+      "key": "spec.summary.flagsOff",
+      "source": " · флаг выключен: ",
+      "context": "Сводка проверки; пробелы по бокам значимы",
+      "translation": " · flag off: ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.checkedPrefix",
+      "source": "Проверено ",
+      "context": "Итог проверки; хвостовой пробел значим",
+      "translation": "Checked ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.elementsSuffix",
+      "source": " элементов.",
+      "context": "Итог проверки; ведущий пробел значим",
+      "translation": " elements.",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.noErrors",
+      "source": "Ошибок нет",
+      "context": "Итог проверки",
+      "translation": "No errors",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.emptySelection",
+      "source": "Выделение пустое — проверено только правило",
+      "context": "Выделение пустое, проверено только правило",
+      "translation": "Selection is empty — only the rule was checked",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.truncatedPrefix",
+      "source": "Показаны первые ",
+      "context": "Итог проверки; хвостовой пробел значим",
+      "translation": "Showing the first ",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.truncatedSuffix",
+      "source": " выделенных элементов (лимит).",
+      "context": "Итог проверки; ведущий пробел значим",
+      "translation": " selected elements (limit).",
+      "reviewed": true
+    },
+    {
+      "key": "spec.result.pickPropertyFirst",
+      "source": "Сначала выберите свойство-правило.",
+      "context": "Подсказка",
+      "translation": "Select a rule property first.",
+      "reviewed": true
+    },
+    {
+      "key": "spec.check.pickProperty",
+      "source": "выберите свойство-правило",
+      "context": "Подсказка вместо сводки",
+      "translation": "select a rule property",
+      "reviewed": true
+    },
+    {
+      "key": "spec.block.edit",
+      "source": "Редактирование правила",
+      "context": "Заголовок блока",
+      "translation": "Rule editing",
+      "reviewed": true
+    },
+    {
+      "key": "spec.edit.inProgress",
+      "source": "Редактор описания правила — в работе.",
+      "context": "Заглушка редактора",
+      "translation": "Rule description editor — work in progress.",
+      "reviewed": true
+    },
+    {
+      "key": "spec.edit.noPropertySelected",
+      "source": "свойство не выбрано",
+      "context": "Сводка редактора",
+      "translation": "no property selected",
+      "reviewed": true
+    },
+    {
+      "key": "spec.chooseAction",
+      "source": "Выберите действие «Проверить».",
+      "context": "Подсказка",
+      "translation": "Choose the \"Check\" action.",
+      "reviewed": true
+    },
+    {
+      "key": "spec.chooseProperty",
+      "source": "Выберите свойство-правило.",
+      "context": "Подсказка",
+      "translation": "Select a rule property.",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.presets.all",
+      "source": "Все свойства",
+      "context": "Метка запасного пресета; реальные метки приходят из C++",
+      "translation": "All properties",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.presets.onlyIfc",
+      "source": "Только IFC",
+      "context": "Метка запасного пресета; реальные метки приходят из C++",
+      "translation": "IFC only",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.presets.onlyGeo",
+      "source": "Только геометрия",
+      "context": "Метка запасного пресета; реальные метки приходят из C++",
+      "translation": "Geometry only",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.presets.unfilled",
+      "source": "Незаполненные",
+      "context": "Метка запасного пресета; реальные метки приходят из C++",
+      "translation": "Unfilled",
+      "reviewed": true
+    },
+    {
+      "key": "monitor.group.pinned",
+      "source": "Закреплённые",
+      "context": "Имя синтетической группы закреплённых свойств; сравнивается как признак",
+      "translation": "Pinned",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.notSet",
+      "source": "не задано",
+      "context": "Сводка блока, когда свойство не выбрано",
+      "translation": "not set",
+      "reviewed": true
+    },
+    {
+      "key": "numbering.formatNoSuffix",
+      "source": "без суффикса",
+      "context": "Опция формата номера; значение уходит в Renum_flag",
+      "translation": "no suffix",
+      "reviewed": true
+    },
+    {
+      "key": "spec.mock.noGroupsAccepted",
+      "source": "ни одна разобранная группа не попала в правило",
+      "context": "Текст ошибки разбора в мок-данных",
+      "translation": "none of the parsed groups matched the rule",
+      "reviewed": true
+    },
+    {
+      "key": "spec.mock.unknownProperty",
+      "source": "неизвестное свойство",
+      "context": "Имя свойства в мок-данных, когда не найдено",
+      "translation": "unknown property",
+      "reviewed": true
+    }
+  ]
+}

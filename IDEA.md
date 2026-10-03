@@ -42,6 +42,78 @@ AC25, тесты `suites=68 passed=2512 failed=0`, `EXIT 0`, отчёт свеж
 **Last Checkpoint:** `9eb5e7e` — 5 файлов: `BrowserPalette.cpp`, `Interface_ru.html`,
 `ТЗ интерфейс.md`, `Docs/modules/dialogs/BrowserPalette.md`, `config.json`.
 
+## IN_PROGRESS — #254 (английский интерфейс палитры)
+
+https://github.com/kuvbur/AddOn_SomeStuff/issues/254
+
+**Scope:** `Sources/AddOnResources/RFIX/HTML/Interface_ru.html` (единый
+редактируемый исходник + встроенный RU-каталог), новые
+`Sources/AddOnResources/RFIX/HTML/i18n/{inventory.md,glossary.md,en.json,README.md}`,
+генерируемый `Interface_ru`-партнёр `Interface_en.html` (не редактируется вручную),
+`Tools/localize_html.js` + `Tools/tests/*.test.js`,
+`Tools/test_html_locales.ps1`, `package.json` (i18n-скрипты),
+`Tools/AddOn.grc.in` (только имя файла в `ID_ADDON_HTML_ENG`),
+`Tools/restart_archicad_for_test.ps1` (только функция `Test-HtmlValidation`),
+`ТЗ интерфейс.md`, `Docs/modules/dialogs/BrowserPalette.md`, этот файл.
+Production C++ **не меняется** — читается для классификации сообщений.
+
+**Версия:** AC25 Windows — целевая приёмка. AC22–24, AC26–29, macOS — вне объёма,
+по отдельному запросу владельца.
+
+**Статус:** IN_PROGRESS. Baseline зафиксирован: `8dc6643`; `test_html.ps1` —
+ALL HTML CHECKS PASSED (HTMLHint + verify.js).
+
+**Решение:** автономный EN-файл генерируется из RU-исходника, две ручные копии
+логики не заводятся. Перевод инкрементальный: изменение русского `source` или
+`context` помечает запись устаревшей и требует явного пересмотра, автоматического
+«одобрения» перевода нет. Имена свойств/групп/классификаций/избранного, значения
+DSL и пользовательские скрипты не переводятся.
+
+**План:** `.hermes/plans/2026-10-03_115258-interface-english-localization.md`
+(шаги 01–22, контрольные точки A–E).
+
+**Last Completed:** шаги 01–20. Issue #254. Миграция выполнена: **159 ключей**,
+все видимые строки переведены; `Interface_en.html` сгенерирован (172 КБ).
+
+**Решения владельца:** термины вкладок SomeStuff оставлены как `Specification` /
+`Renum` / `Sum` / `Sync` / `Monitor` — совпадают с командами DSL, чтобы слово в
+интерфейсе и в скрипте было одним. Итоговый файл — `Interface_en.html`.
+
+**Проверено:**
+`Tools/test_html.ps1` — ALL HTML CHECKS PASSED (HTMLHint по обоим файлам,
+`verify.js` по обоим, `localize_html.js check`: keys=159 missing=0 stale=0
+obsolete=0 unreviewed=0 empty=0 placeholderMismatch=0).
+`node --test Tools/tests/*.test.js` — **46/46 зелёные**.
+Сравнение RU/EN вне каталога: **различаются ровно 4 строки** — `lang="ru"/"en"` и
+`<title>`. Логика, разметка и стили идентичны, значит расхождений поведения нет.
+Кириллица вне каталога EN — 44 литерала, все проверены: мок-данные, значения DSL
+(`"без суффикса"`, `"Sync_GUID+…"`, `"STR-001 …"`) и маркеры regexp
+(`/пусто|empty/`, `/шаблон/`). Это данные проекта и пользовательские значения —
+переводу не подлежат по решению владельца.
+
+**Строки C++ не переводились:** `parseErrorText` и `sourceName` приходят из
+моста. EN-палитра покажет русский текст ошибок разбора — это ограничение
+поднятого в #254, расширение моста — отдельное согласование.
+
+**Найдено по ходу (не чинил, вне scope #254):** `npm run validate:js` был красным
+**до** этой задачи — `.eslintrc.js` не подключает установленный `eslint-plugin-html`,
+ESLint падает на первом `<`. Фикс проверен пробой (0 errors, 8 warnings), но
+`.eslintrc.js` возвращён в исходное состояние. Заведён **#255**.
+`Tools/AddOn.plist.in` и правки ссылок в `Tools/AddOn.grc.in` — работа
+параллельной сессии, не мои, не откатывались.
+
+**Форма каталога (зафиксирована):** массив записей `{ "key", "text" }` в обоих
+языках — код инициализации `I18N_CATALOG.forEach` обязан работать в EN без правок.
+Три ошибки найдены и исправлены по ходу: генератор рендерил объект вместо массива
+(EN упал бы при загрузке), склейка записей без запятых, `.map(fn, [])` — лишний
+thisArg. Каждая закрыта тестом.
+
+**Next Step:** шаг 21 — приёмка AC25: `BuildAddOn.py -v 25`, затем
+`Tools/restart_archicad_for_test.ps1` (build + загрузка + тесты). Требует
+согласия владельца на запуск Archicad. Шаг 22 — документация и чекпоинт.
+
+**Last Checkpoint:** для #254 отсутствует; commit/push не выполнялись.
+
 ## Закрыто — #249 (формула в критерии/разбивке ReNum)
 
 **Scope:** только `Sources/AddOn/ReNum.cpp/.hpp`, `tests/TestRenum.cpp`,

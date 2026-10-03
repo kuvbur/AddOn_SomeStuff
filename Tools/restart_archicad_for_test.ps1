@@ -462,6 +462,7 @@ function Test-HtmlValidation {
 
     $htmlPath = Join-Path $ProjectRoot "Sources\AddOnResources\RFIX\HTML\Interface_ru.html"
     $verifyScript = Join-Path $ProjectRoot "Tools\verify.js"
+    $htmlPathEn = Join-Path $ProjectRoot "Sources\AddOnResources\RFIX\HTML\Interface_en.html"
     $packageJson = Join-Path $ProjectRoot "package.json"
 
     Write-Log "=== HTML VALIDATION START ===" Cyan
@@ -474,6 +475,11 @@ function Test-HtmlValidation {
 
     if (-not (Test-Path -LiteralPath $verifyScript)) {
         Write-Log "verify.js not found: $verifyScript" Red
+        return $false
+    }
+
+    if (-not (Test-Path -LiteralPath $htmlPathEn)) {
+        Write-Log "EN HTML file not found: $htmlPathEn" Red
         return $false
     }
 
@@ -506,7 +512,7 @@ function Test-HtmlValidation {
     Write-Log "Running HTMLHint..." Cyan
     try {
         Set-Location -LiteralPath $ProjectRoot
-        $htmlHintOutput = @(& npx htmlhint $htmlPath 2>&1)
+        $htmlHintOutput = @(& npx htmlhint $htmlPath $htmlPathEn 2>&1)
         $htmlHintExitCode = $LASTEXITCODE
         foreach ($line in $htmlHintOutput) { Write-Host $line }
         if ($htmlHintExitCode -ne 0) {
@@ -524,7 +530,7 @@ function Test-HtmlValidation {
     Write-Log "Running custom verify.js (ТЗ checks)..." Cyan
     try {
         Set-Location -LiteralPath $ProjectRoot
-        $verifyOutput = @(& node $verifyScript $htmlPath 2>&1)
+        $verifyOutput = @(& node $verifyScript $htmlPath $htmlPathEn 2>&1)
         $verifyExitCode = $LASTEXITCODE
         foreach ($line in $verifyOutput) { Write-Host $line }
         if ($verifyExitCode -ne 0) {
@@ -535,6 +541,26 @@ function Test-HtmlValidation {
     }
     catch {
         Write-Log "verify.js failed to run: $($_.Exception.Message)" Red
+        return $false
+    }
+
+
+    # 3. EN-каталог актуален относительно RU-исходника
+    Write-Log "Running i18n check..." Cyan
+    try {
+        Set-Location -LiteralPath $ProjectRoot
+        $i18nScript = Join-Path $ProjectRoot "Tools\localize_html.js"
+        $i18nOutput = @(& node $i18nScript check 2>&1)
+        $i18nExitCode = $LASTEXITCODE
+        foreach ($line in $i18nOutput) { Write-Host $line }
+        if ($i18nExitCode -ne 0) {
+            Write-Log "i18n check FAILED (EN-каталог устарел)" Red
+            return $false
+        }
+        Write-Log "i18n check: PASSED" Green
+    }
+    catch {
+        Write-Log "i18n check failed to run: $($_.Exception.Message)" Red
         return $false
     }
 
