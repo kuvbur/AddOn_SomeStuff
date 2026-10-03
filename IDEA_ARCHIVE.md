@@ -2,6 +2,56 @@
 Завершённые задачи и отменённые направления из `IDEA.md`. Новая запись — сверху (сразу под этим абзацем),
 старые — ниже.
 ---
+## #235 — Sync_to{Attribute:Composite/BuildingMaterial/CompositeType} (закрытие 2026-10-03, issue #235 CLOSED)
+### Задача
+Дать правилам синхронизации возможность назначать элементу состав (многослойная
+конструкция), стройматериал (однородная конструкция) и тип конструкции, а также
+читать эти значения обратно.
+### Scope
+`Sources/AddOn/Helpers.cpp` (`WriteAttribute`, `ReadAttributeValues`, новая internal
+`ResolveConstructionAttribute`), `Helpers.hpp` (сигнатура `ReadAttributeValues`),
+`Propertycache.cpp` (`GetAllAttributeToParamDict`), `tests/TestSync.cpp`,
+`Docs/modules/{Helpers,Propertycache,Sync,TestFunc}.md`, `Docs/_generated/symbols.json`.
+Слой не изменён. Профиль, балки и колонны исключены решением владельца.
+### Решение
+Объём «только Basic ↔ Composite» зафиксирован комментарием в issue и остаётся
+актуальным: Profile, колонны и балки не обрабатываются.
+
+Кэш атрибутов расширен с Layer на Layer + CompWall + BuildingMaterial; ключи
+`{@attrib:<тип>_name_<нижний регистр>}` и `{@attrib:<тип>_inx_<индекс>}`.
+Значение атрибута разрешается по тексту или по индексу; пригодность состава для
+типа элемента проверяется через `ACAPI_Attribute_Get` и флаг `APICWall_For*`
+**до** изменения — несовместимый состав молча отбрасывается, а не ломает элемент.
+
+Приоритет при одновременном задании: `Composite` → `BuildingMaterial` →
+`CompositeType`. При этом если `Composite` задан, но не разрешился (пусто,
+невалидно, нет в кэше), ветка переходит к `BuildingMaterial` — это следствие
+цепочки `else if`, а не отдельного правила; при записи меняется только одно из
+полей (`composite` либо `buildingMaterial`), так как `modelElemStructureType`
+принимает одно значение.
+
+Изменение сигнатуры `ReadAttributeValues` потребовало правки в `Read`: ветка,
+не читающая полный `API_Element`, теперь переносит полученный `elem_head` в
+`element.header`, иначе терялись GUID и слой.
+### Checkpoint
+`2da2264` (реализация), `25fb2af` (хеш в `IDEA.md`) — оба `Refs: #235`.
+### Validation
+- Verified: контракты `ACAPI_Element_Change`, `ACAPI_Attribute_Get`,
+  `API_ModelElemStructureType`, `APICWall_For*`, поля `composite` /
+  `buildingMaterial` / `modelElemStructureType` для Wall/Slab/Roof/Shell —
+  по LightRAG и установленным заголовкам DevKit AC25; вложенность
+  `shellBase` у крыш и оболочек проверена по исходникам.
+- Compiled: да — AC25 Debug `success`, аддон загружен. AC26–29 также собирались
+  успешно, но **до** уточнения владельца; сейчас правило — собирается только
+  AC25, остальные версии по явному запросу. AC22 падает на компиляции ресурса
+  Browser и на чистом HEAD; AC23–24 — на ошибках в участках вне затронутых
+  файлов; macOS — `not verified` (CI).
+- Tested: автотесты AC25 после финальной сборки `suites=67 passed=2490
+  failed=0`, в том числе новые кейсы `TestName2Rawname` (35/0) и
+  `TestSyncString` (53/0) на именах `Attribute:Composite/BuildingMaterial/
+  CompositeType`. Ручная проверка переключения Basic ↔ Composite на модели
+  выполнена владельцем, issue закрыт по его подтверждению.
+
 ## #246 — кнопка «Показать в 3Д» в окне `SyncShowSubelement` (закрытие 2026-10-02, issue #246 CLOSED)
 ### Задача
 В модальном окне `OtherDbDialog` (после `SyncShowSubelement`) добавить третью кнопку —
