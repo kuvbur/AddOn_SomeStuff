@@ -1,6 +1,6 @@
 # Roombook — Спецификация отделки
 
-> Основа: 1e67983 (2026-09-22); дополнение #195 — после 0cfe635; P3a #260 — после d8fb525; P3b #260 — рабочее дерево после 9e041dc (2026-10-03, AC25). Номера строк остальных подсистем ниже относятся к основе и требуют обновления по живому коду. Назначения — по именам функций (при разборе модуля уточнять).
+> Основа: 1e67983 (2026-09-22); дополнение #195 — после 0cfe635; P3a #260 — d8fb525; P3b #260 — 9e041dc; P3c #260 — рабочее дерево после 29a6606 (2026-10-03, AC25). Номера строк остальных подсистем ниже относятся к основе и требуют обновления по живому коду. Назначения — по именам функций (при разборе модуля уточнять).
 
 ## Назначение
 Спецификация отделки: генерация ведомостей отделочных материалов и работ из модели. [по коду]
@@ -9,7 +9,8 @@
 - `RoomBook` (Roombook.cpp:674; AC22–23 — заглушка :23) ← `MenuCommandHandler` (SomeStuff_Main.cpp; граф содержит старые номера строк) и `SomeStuffCommand.RoomBook` (JSON API AC25–29; вызывающий выбирает экземпляр Archicad по HTTP-порту). JSON-команда возвращает время до выхода из `RoomBook`; успех расчёта отдельно не подтверждается. [по коду / DevKit-25 API_AddOnCommand]
 - `GetTargetZones` (Roombook.cpp:34) — выбор выделенных редактируемых зон или fallback на все доступные; возвращает false при ошибке/пустом списке [по коду]
 - `PrepareRoomProcessingContext` (:92) — заполняет контекст: `Class_FindFinClass` → `GetStories` → `Floor_FindAll`; контейнеры живут до выхода из `RoomBook`. [по коду]
-- `BuildElementReadIndex` (:98), `ProcessElementsForRoomData` (:122) — индекс, прогресс/отмена, `ClearZoneGUID`, классификация и dispatch. [по коду]
+- `AdvanceProcessPhase` (:101) — единственная точка обновления прогресса: увеличивает `nPhase`, сообщает фазу и возвращает признак отмены; на AC27+ `ACAPI_ProcessWindow_SetNextProcessPhase`/`IsProcessCanceled`, иначе `ACAPI_Interface` с `APIIo_SetNextProcessPhaseID`/`APIIo_IsProcessCanceledID`. Раньше эти блоки были скопированы в девяти местах. `nPhase = 1` сбрасывается в `RoomBook` перед `ProcessWindowGuard`. [по коду]
+- `BuildElementReadIndex` (:112), `ProcessElementsForRoomData` (:126) — индекс, прогресс/отмена, `ClearZoneGUID`, классификация и dispatch. [по коду]
 - `PrepareReadParams` (:183), `ReadElementParameters` (:185) — подготовка и чтение параметров; `ReadParamsForRoomBook` хранит параметры окон и комнат. Временный `paramDict` создаётся в `ReadElementParameters`, очищается между типами и не хранится в `RoomProcessingContext`; `paramDict_favorite` остаётся в контексте. Порядок чтения не менялся. [по коду]
 - `ProcessRoomFinishes` (:516) обходит комнаты; `ProcessSlabFinishes` (:209), `ProcessWallFinishes` (:289), `ApplyFavoriteAndMaterialData` (:272) сохраняют порядок создания/настройки отделки. [по коду]
 - `BuildMaterialSummaryForRooms` (:380), `WriteRoomMaterialData` (:485) используют общий `MaterialSummary`; `paramToWrite` затем передаётся `SetSyncOtdWall`. [по коду]

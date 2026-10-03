@@ -94,20 +94,27 @@ namespace Roombook
         Floor_FindAll (context.slabsinzone, context.finclassguids, zones);
     }
 
+    // -----------------------------------------------------------------------------
+    // Переход к следующей фазе расчёта: увеличивает счётчик, сообщает прогресс и
+    // проверяет отмену. Единственная точка обновления прогресса в модуле.
+    // -----------------------------------------------------------------------------
+    static bool AdvanceProcessPhase (GS::UniString &funcname) {
+        nPhase += 1;
+    #ifdef ServerMainVers_2700
+        ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
+        return ACAPI_ProcessWindow_IsProcessCanceled ();
+    #else
+        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
+        return ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr) != NoError;
+    #endif
+    }
+
     static bool BuildElementReadIndex (const GS::Array<API_Guid> &zones,
                                        RoomProcessingContext &context,
                                        GS::UniString &funcname) {
         for (const API_Guid &zoneGuid : zones) {
-            nPhase += 1;
-    #ifdef ServerMainVers_2700
-            ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-            if (ACAPI_ProcessWindow_IsProcessCanceled ())
+            if (AdvanceProcessPhase (funcname))
                 return false;
-    #else
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                return false;
-    #endif
             OtdRoom roominfo;
             if (CollectRoomInfo (context.storyLevels, zoneGuid, roominfo, context.elementToRead, context.slabsinzone)) {
                 context.roomsinfo.Add (zoneGuid, std::move (roominfo));
@@ -122,16 +129,8 @@ namespace Roombook
         for (const API_ElemTypeID &typeelem : typeinzone) {
             if (auto *elems = context.elementToRead.GetPtr (typeelem)) {
                 for (UnicElement::PairIterator cIt = (*elems).EnumeratePairs (); cIt != NULL; ++cIt) {
-                    nPhase += 1;
-    #ifdef ServerMainVers_2700
-                    ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-                    if (ACAPI_ProcessWindow_IsProcessCanceled ())
+                    if (AdvanceProcessPhase (funcname))
                         return false;
-    #else
-                    ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-                    if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                        return false;
-    #endif
     #ifdef ServerMainVers_2800
                     API_Guid guid = cIt->key;
                     const GS::Array<API_Guid> &zoneGuids = cIt->value;
@@ -393,16 +392,8 @@ namespace Roombook
     #else
             OtdRoom &otd = *cIt->value;
     #endif
-            nPhase += 1;
-    #ifdef ServerMainVers_2700
-            ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-            if (ACAPI_ProcessWindow_IsProcessCanceled ())
+            if (AdvanceProcessPhase (funcname))
                 return false;
-    #else
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                return false;
-    #endif
             if (otd.isValid && (otd.create_all_elements || otd.create_ceil_elements || otd.create_floor_elements ||
                                 otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements)) {
                 zones.Push (otd.zone_guid);
@@ -530,16 +521,8 @@ namespace Roombook
             OtdRoom &otd = *cIt->value;
             API_Guid zoneGuid = *cIt->key;
     #endif
-            nPhase += 1;
-    #ifdef ServerMainVers_2700
-            ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-            if (ACAPI_ProcessWindow_IsProcessCanceled ())
+            if (AdvanceProcessPhase (funcname))
                 return false;
-    #else
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                return false;
-    #endif
             if (!paramToRead.ContainsKey (zoneGuid))
                 continue; // Если у зоны нет прочитанных параметров - дальше делать
                           // нечего
@@ -656,16 +639,8 @@ namespace Roombook
         ReadParamsForRoomBook readParams = PrepareReadParams ();
         ReadElementParameters (context, readParams);
         funcname = GS::UniString::Printf ("Read data from %d elements(s)", paramToRead.GetSize ());
-        nPhase += 1;
-    #ifdef ServerMainVers_2700
-        ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-        if (ACAPI_ProcessWindow_IsProcessCanceled ())
+        if (AdvanceProcessPhase (funcname))
             return;
-    #else
-        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-            return;
-    #endif
         // Читаем свойства всех элементов
         ParamDictCompositeElement paramCompositeToRead;
         ListData::LibElements paramListDataToRead;
@@ -4090,15 +4065,8 @@ namespace Roombook
     #else
             OtdRoom& otd = *cIt->value;
     #endif
-                nPhase += 1;
-    #ifdef ServerMainVers_2700
-                ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-                if (ACAPI_ProcessWindow_IsProcessCanceled ())
+                if (AdvanceProcessPhase (funcname))
                     return NoError;
-    #else
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return NoError;
-    #endif
                 if (!otd.isValid)
                     continue;
                 if (!otd.create_all_elements)
@@ -5196,16 +5164,8 @@ namespace Roombook
                 const GS::Array<API_Guid> &subguids = *cIt->value;
     #endif
 
-                nPhase += 1;
-    #ifdef ServerMainVers_2700
-                ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-                if (ACAPI_ProcessWindow_IsProcessCanceled ())
+                if (AdvanceProcessPhase (funcname))
                     return;
-    #else
-                ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-                if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                    return;
-    #endif
 
                 parentelementhead.guid = guid;
                 if (typeelem == API_ZoneID) {
@@ -5233,18 +5193,9 @@ namespace Roombook
         if (!paramToWrite.IsEmpty ()) {
             funcname = GS::UniString::Printf ("Write GUID base and GUID zone to %d finishing element(s)",
                                               paramToWrite.GetSize ());
-            nPhase += 1;
-    #ifdef ServerMainVers_2700
-            ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-            if (ACAPI_ProcessWindow_IsProcessCanceled ()) {
+            if (AdvanceProcessPhase (funcname)) {
                 return;
             }
-    #else
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) {
-                return;
-            }
-    #endif
             ACAPI_CallUndoableCommand ("Write property to finishing element", [&] () -> GSErrCode {
                 ParamHelpers::ElementsWrite (paramToWrite);
                 return NoError;
@@ -5253,18 +5204,9 @@ namespace Roombook
         if (syncguids.IsEmpty ())
             return;
         funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
-        nPhase += 1;
-    #ifdef ServerMainVers_2700
-        ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-        if (ACAPI_ProcessWindow_IsProcessCanceled ()) {
+        if (AdvanceProcessPhase (funcname)) {
             return;
         }
-    #else
-        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) {
-            return;
-        }
-    #endif
         SyncSettings syncSettings;
         LoadSyncSettingsFromPreferences (syncSettings);
         GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids);
