@@ -103,7 +103,7 @@ AC25, тесты `suites=68 passed=2512 failed=0`, `EXIT 0`, отчёт свеж
 **Last Checkpoint:** `9eb5e7e` — 5 файлов: `BrowserPalette.cpp`, `Interface_ru.html`,
 `ТЗ интерфейс.md`, `Docs/modules/dialogs/BrowserPalette.md`, `config.json`.
 
-## IN_PROGRESS — #254 (английский интерфейс палитры)
+## Закрыто — #254 (английский интерфейс палитры)
 
 https://github.com/kuvbur/AddOn_SomeStuff/issues/254
 
@@ -121,8 +121,7 @@ Production C++ **не меняется** — читается для класс�
 **Версия:** AC25 Windows — целевая приёмка. AC22–24, AC26–29, macOS — вне объёма,
 по отдельному запросу владельца.
 
-**Статус:** IN_PROGRESS. Baseline зафиксирован: `8dc6643`; `test_html.ps1` —
-ALL HTML CHECKS PASSED (HTMLHint + verify.js).
+**Статус:** ЗАКРЫТО 2026-10-03, issue #254 CLOSED. Сборка AC25 выполнена.
 
 **Решение:** автономный EN-файл генерируется из RU-исходника, две ручные копии
 логики не заводятся. Перевод инкрементальный: изменение русского `source` или
@@ -174,9 +173,15 @@ obsolete=0 unreviewed=0 empty=0 placeholderMismatch=0).
 (EN упал бы при загрузке), склейка записей без запятых, `.map(fn, [])` — лишний
 thisArg. Каждая закрыта тестом.
 
-**Next Step:** шаг 21 — приёмка AC25: `BuildAddOn.py -v 25`, затем
-`Tools/restart_archicad_for_test.ps1` (build + загрузка + тесты). Требует
-согласия владельца на запуск Archicad. Шаг 22 — документация и чекпоинт.
+**Сборка AC25:** `BuildAddOn.py -v 25` — `AI_BUILD_RESULT status=success`,
+`SomeStuff.apx` 16.4 МБ. Оба HTML вшиты и изолированы: RU смещение 15794448
+(185 928 Б, `lang=ru`), EN 15980376 (170 819 Б, `lang=en`). Дельта по 2302 Б
+у обоих — CRLF→LF при компиляции ресурса. Маркеры EN-специфичных строк
+(`Property Description Editor`, `no suffix`) найдены в бинарнике.
+
+**Next Step:** нет — задача закрыта. Опционально, по отдельному запросу:
+запуск Archicad для проверки переключения языка (не выполнялся — проверено
+только, что ресурсы собраны и разнесены).
 
 **Last Checkpoint:** `b9f8e34` — 15 файлов: `Interface_ru.html` (каталог + миграция
 159 строк), новые `Interface_en.html`, `i18n/{en.json,glossary.md,inventory.md,README.md}`,
