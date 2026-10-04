@@ -134,6 +134,12 @@ namespace TestFunc {
     // --- core: разное (2) ---
     void TestStringSplt ();
     void TestBuildOtdByParent ();
+    void TestOpeningAddOne ();
+    void TestOtdWallDelimOne ();
+    void TestOtdWallDelimAll ();
+    void TestOtdWallAddOne ();
+    void TestSetMaterialByType ();
+    void TestOpeningRevealsCreateOne ();
 } // namespace TestFunc
 
     #endif

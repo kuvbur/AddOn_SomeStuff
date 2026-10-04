@@ -9,9 +9,126 @@
     "body_scan_note": "для 6 нерезолвящихся clangd функций: вызовы извлечены скриптом из тел функций (Docs/tools/_body_scan.py, brace-matching), источник — [по коду, grep тела]; ResetPropertyElement2Defult у ResetProperty подтверждён чтением (ResetProperty.cpp:34)",
     "spec_collection": "2026-10-02: compile_commands.json пересобран (--lsp, AC25) — ранее 2 из 6 spec/*.cpp в нём отсутствовали. Рёбра spec собраны prepareCallHierarchy по позициям определений из symbols.json и сверены с исходником: все 272 ребра прошли проверку «имя присутствует на указанной строке» (0 расхождений). Удалено 9 рёбер с устаревшими координатами — каждое заменено исправленным ребром (SpecAll/SpecArray/PlaceElements переехали или сдвинулись; PlaceElements теперь в SpecExecutor.cpp:11).",
     "test_edges": "74 ребра имеют вызывающим тест (tests/); они оставлены в графе, т.к. показывают реальные точки вызова. Фильтр «рёбра только внутри Sources/AddOn/» их не исключает — tests/ тоже внутри AddOn/.",
-    "known_stale_non_spec": "ОСТОРОЖНО: из 418 рёбер 140 (все не-spec) указывают на строки, где имени функции нет — это унаследованная протухшая часть от 2026-09-22, НЕ результат сбора 2026-10-02. Пример: LoadSyncSettingsFromPreferences помечена :517, реальное определение :444. Все 272 spec-ребра проверены и корректны. Освежение не-spec части — отдельная задача."
+    "known_stale_non_spec": "ОСТОРОЖНО: из 418 рёбер 140 (все не-spec) указывают на строки, где имени функции нет — это унаследованная протухшая часть от 2026-09-22, НЕ результат сбора 2026-10-02. Пример: LoadSyncSettingsFromPreferences помечена :517, реальное определение :444. Все 272 spec-ребра проверены и корректны. Освежение не-spec части — отдельная задача.",
+    "roombook_local_refresh": "2026-10-04 P4g: all seven local helper boundaries recollected through fresh isolated clangd MCP and joined to current source (including all call sites). All other inherited edges remain untouched, not from this collection."
   },
   "edges": [
+    {
+      "caller": {
+        "name": "Opening_Add_One",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 1710
+      },
+      "callee": {
+        "name": "CalculateOpeningForWall",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 1678
+      },
+      "call_sites": [
+        {
+          "line": 1718,
+          "column": 12
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "OtdWall_Delim_One",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3847
+      },
+      "callee": {
+        "name": "TrimOpeningsToWallHeight",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3797
+      },
+      "call_sites": [
+        {
+          "line": 3868,
+          "column": 8
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "OtdWall_Delim_All",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3692
+      },
+      "callee": {
+        "name": "GetWallFinishBandType",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3644
+      },
+      "call_sites": [
+        {
+          "line": 3715,
+          "column": 19
+        },
+        {
+          "line": 3733,
+          "column": 19
+        },
+        {
+          "line": 3755,
+          "column": 19
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "OtdWall_Delim_All",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3692
+      },
+      "callee": {
+        "name": "GetFallbackWallFinishType",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3680
+      },
+      "call_sites": [
+        {
+          "line": 3775,
+          "column": 19
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "OtdWall_Delim_One",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3847
+      },
+      "callee": {
+        "name": "CalculateWallHeightIntersection",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3824
+      },
+      "call_sites": [
+        {
+          "line": 3862,
+          "column": 13
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SetMaterialByType",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3987
+      },
+      "callee": {
+        "name": "SelectWallFinishMaterial",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3879
+      },
+      "call_sites": [
+        {
+          "line": 3997,
+          "column": 8
+        }
+      ]
+    },
     {
       "caller": {
         "name": "DoSect",
@@ -7424,6 +7541,32 @@
           "line": 6366
         }
       ]
+    },
+    {
+      "caller": {
+        "name": "OpeningReveals_Create_One",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3513
+      },
+      "callee": {
+        "name": "InitializeOpeningRevealWall",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3489
+      },
+      "call_sites": [
+        {
+          "line": 3563,
+          "column": 12
+        },
+        {
+          "line": 3591,
+          "column": 12
+        },
+        {
+          "line": 3613,
+          "column": 12
+        }
+      ]
     }
   ],
   "sdk_edges_summary": {
@@ -7463,7 +7606,7 @@
     }
   ],
   "stats": {
-    "project_edges": 418,
+    "project_edges": 425,
     "functions_queried": 101,
     "functions_resolved": 95,
     "spec_functions_collected": 70,

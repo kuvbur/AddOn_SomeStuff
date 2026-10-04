@@ -78,6 +78,12 @@ namespace TestFunc {
 
         TestKit::Register ("TestStringSplt", Groups::Core, TestStringSplt);
         TestKit::Register ("TestBuildOtdByParent", Groups::Core, TestBuildOtdByParent);
+        TestKit::Register ("TestOpeningAddOne", Groups::Core, TestOpeningAddOne);
+        TestKit::Register ("TestOtdWallDelimOne", Groups::Core, TestOtdWallDelimOne);
+        TestKit::Register ("TestOtdWallDelimAll", Groups::Core, TestOtdWallDelimAll);
+        TestKit::Register ("TestOtdWallAddOne", Groups::Core, TestOtdWallAddOne);
+        TestKit::Register ("TestSetMaterialByType", Groups::Core, TestSetMaterialByType);
+        TestKit::Register ("TestOpeningRevealsCreateOne", Groups::Core, TestOpeningRevealsCreateOne);
 
         TestKit::Register ("TestCalc", Groups::Format, TestCalc);
         TestKit::Register ("TestFormula", Groups::Format, TestFormula);

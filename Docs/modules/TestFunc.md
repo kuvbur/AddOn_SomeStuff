@@ -62,6 +62,25 @@ NOTE [Verbose] TestPropertyRuleFlagOnProjectElements | RuleFlagProj.desc | name=
 
 **Отбор наборов.** Реестр наполняется явно в `TestFunc::Test` (49 наборов, 6 групп: spec/sync/param/format/renum/core), а не статическими инициализаторами: при разбиении файла по TU регистратор вместе со своей `static`-функцией выкидывается линковкой и набор молча исчезает из прогона. Отбор — переменная окружения `SMSTF_TEST`: пусто (всё), группа, префикс с `*` или список через запятую. Мёртвый агрегатор `TestSpecRegression`, дублировавший реестр, удалён. [по коду `TestFunc.cpp`, `TestKit.cpp`]
 
+## Roombook — характеризации #260 (AC25, 2026-10-04)
+
+- `TestOpeningAddOne` (`TestCore.cpp:157`) 114/0; `TestOtdWallDelimOne` (:227) 246/0; `TestOtdWallDelimAll` (:424) 197/0; `TestOtdWallAddOne` (:606) 60/0. Последний добавлен в Core через явный Register и объявление в TestFunc.hpp; TestCore содержит 6 наборов. [по коду и штатным отчётам]
+- AddOne: 11 сценариев ребра/высоты, отказ без мутации, сохранение неинициализируемых полей. DelimOne: 8 новых wall-intersection сценариев при width=0/1, без изменения существующих opening/многопроёмных assertions (#261). Production read-only до зелёного baseline; после P4e те же числа. [по коду и исполнению]
+- Реестр 73 registered/defined/declared; TestKit 73/3184/0, EXIT 0 до/после P4e. BuildAddOn AC25 success; fresh MCP TestCore 0 errors/3 прежних warnings. TestKit-сводки в VS pane не найдены; источник чисел — свежие отчёты 08:09:51/08:13:04 после соответствующих APX, запуски через VS MCP. [по инструментам]
+- Числа 49 наборов/103 строки и прежние file-counts в исходной части карточки ниже исторические; весь модуль в этом шаге не пересчитывался. [граница обновления]
+
+## Выбор материала #260 — P2b2f/P4f (AC25, 2026-10-04)
+
+- `TestSetMaterialByType` (`TestCore.cpp:675`) зарегистрирован в Core, объявлен в TestFunc.hpp. 11 типов × 6 конфигураций × 2 вида последнего слоя; 1848/0 до/после, TestKit 74/5032/0, EXIT 0 (11:00:47/11:04:22), registry 74/74/74. TestCore теперь 7 наборов; остальные старые числовые таблицы карточки исторические. [по fresh MCP/registry и отчётам]
+- Ожидания отдельно задают выбранные поля материала и итоговый TypeOtd: нормализация rawname не пере выбирает материал, last-layer override меняет только имя/индекс. Проверяются сохранность всех настроек, геометрия, первоначальный слой и добавленный finish. Production read-only до зелёного baseline. [по коду и исполнению]
+- AC25 BuildAddOn success до/после; fresh TestCore 0 errors/3 прежних warnings, registry 0 errors/2 warnings. Свежесть обоих отчётов относительно соответствующего APX проверена; suite-маркер в VS pane отсутствует, verdict взят из штатного отчёта. [по инструментам]
+
+## Откосы #260 — P2b2g/P4g (AC25, 2026-10-04)
+
+- `TestOpeningRevealsCreateOne` (`TestCore.cpp:795`) зарегистрирован в Core и объявлен в TestFunc.hpp. 13 сценариев × два начальных has_reveal; 662/0 на исходном и извлечённом initializer, весь TestKit75/5694/0, EXIT0. Registry75 registered/defined/declared, TestCore8 наборов. [по fresh MCP, реестру и штатным отчётам]
+- Проверяет две боковые стенки/верхнюю балку: порядок, координаты, высоты и length после подрезки, точный верх/касание/вырожденные размеры/ориентацию, материал и состав, GUID/этаж/типы и сохранение входов. Нулевые размеры характеризуют существующий код, не вводят новые требования к валидации. Production read-only до baseline. [по коду и исполнению]
+- BuildAddOn AC25 Windows Debug success до/после; fresh TestCore0 errors/3 прежних warnings, registry0 errors/2 warnings. Оба отчёта свежее своих APX; запуск через VS MCP. В VS pane suite-маркер отсутствует; числа взяты из свежего штатного отчёта, не из отсутствия ERROR IN TEST. [по инструментам]
+
 ## Файлы
 - `Sources/AddOn/tests/` — все файлы тестов, только под `#ifdef TESTING`:
   - `TestFunc.cpp` (103 строки) — заголовок, `Groups`, реестр 49 наборов, `Test()`;

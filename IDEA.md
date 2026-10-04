@@ -10,44 +10,65 @@ AC25 Windows; сначала состояние дерева, SDK и реаль�
 
 ## Status
 
-IN_PROGRESS — P3d (AC25), чекпоинт создаётся. P3d снял пять `auto &`-алиасов на поля контекста
-в теле `RoomBook`; порядок вызовов прежний, худшее 64.0615044 с против 65.7253702 с исходного
-(−2,53%, допуск 5%), 1778 новых элементов, исходные GUID сохранены, TestKit 69/2567/0, сборка
-AC25 success. P3a/P3b/P3c приняты ранее по тому же критерию (детали в плане и `Docs/_progress.md`).
+IN_PROGRESS — P2b2g/P4g завершены: InitializeOpeningRevealWall (:3490) объединяет прежние 13 присваиваний двух боковых откосов и верхней балки; caller OpeningReveals_Create_One (:3514), sites :3564/:3592/:3614. Координаты/разворот/арифметика/guards/has_reveal/Delim_All остались в caller, дополнительных material/composite копий нет. Весь production совпадает с pre-step снимком после обратной подстановки трёх вызовов. TestOpeningRevealsCreateOne 662/0 до/после; TestKit 75/5694/0, EXIT 0, реестр 75/75/75. AC25 BuildAddOn success до/после; fresh LSP без новых диагностик (Roombook прежние 8+5, TestCore 0 errors/3 warnings, registry 0 errors/2 warnings). VS p4g_vs_candidate1:1778 новых элементов, missing/extra=0 по box/доступным свойствам, исходные GUID сохранены. Scoped symbols134/134 и все семь helper-границ пересобраны fresh MCP и сверены. VS pane 1195 ERROR IN TEST/paramTo.isValid, suite marker отсутствует; verdict из свежих штатных отчётов. Мой VS-сеанс остановлен; проверенное состояние включено в текущий checkpoint [P4g] по запросу владельца. Push не выполнялся. Полные контуры/материалы not verified.
+P3a–P3e приняты ранее; детали в плане и `Docs/_progress.md`.
 Полные контуры/материалы и причины `paramTo.isValid` остаются not verified. Вне scope
 `.github/workflows/build_25+.yml` — не трогать.
 
 ## Last Completed
 
+P4g: InitializeOpeningRevealWall (:3490), один caller/три site/0 outgoing по fresh MCP. P2b2g: 13 сценариев × два начальных has_reveal, 662/0 до/после. AC25/TestKit/LSP/VS read-back и generated проверены; старые координаты шести helper-границ освежены из MCP, не арифметическим сдвигом.
+
 P1 частично: четыре независимых прогона исходного AC25 Debug на чистой копии `test_25.pln` — `elapsedSeconds` 64.1296099 / 64.2839503 / 62.4861408 / 62.379905; все 63 зоны и +1301 Wall/+126 Object/+351 Window в трёх полностью снятых pre/post. Прогоны 3 и 4: ограничивающие 3D-параллелепипеды и 25 свойств для всех 1778 новых элементов, мультимножества `{тип, boundingBox3D, доступные свойства}` совпали (0 разниц). Артефакты в `Reviews/roombook_baseline/`. P2a: характеризационный `TestBuildOtdByParent` расширен (два родителя, два ребёнка-стены, неизвестный ребёнок, пустые входы, флаг на входе); исходная фикстура ошибочно ожидала мутации значения после `HashTable::Add`, исправлена. Форматирование, реестр 69/69/69, clangd 0 диагностик, AC25 `BuildAddOn.py` success, свежий TestKit: `TestBuildOtdByParent passed=12 failed=0`, всего `suites=69 passed=2567 failed=0`. Производственный код не менялся. Полная эквивалентность геометрии/материалов — not verified.
 
 ## Next Step
 
-P3d [x]: чекпоинт P3d создан (`1acdf57`). Далее P3e — сокращение числа `auto &` в helpers, где поле контекста используется один раз (кандидаты: `MaterialSummary`, `ReadParamsForRoomBook`), с тем же протоколом: сборка AC25, TestKit, A/B по худшему значению. Z0 (#252) выполнить до фиксации новых геометрических интерфейсов. Полные контуры/материалы остаются not verified.
+Далее P2b2: взаимодействие откосов с заданными полосами отделки и отказом OtdWall_Delim_All — сначала характеризация на неизменённом production, затем выбор следующего минимального извлечения. Не фиксировать новые геометрические интерфейсы без Z0, не менять толщины/классификацию #141/#148/#252 и не дробить тривиальные функции.
 
 ## Last Checkpoint
 
-`1acdf57` — [P3d] `Roombook.cpp`, `Docs/modules/Roombook.md`, `Docs/_generated/symbols.json`, `Docs/_progress.md`, `IDEA.md` (`Refs: IDEA.md step P3d`, `Refs: #260`); push не выполнялся.
+Текущий коммит `[P4g] Зафиксировать проверенное состояние Roombook`: накопленные шаги P3e–P3i, P2b1/P2b2a–P2b2g и P4a–P4g, принятый bugfix #261, тесты и документация (`Refs: IDEA.md step P4g`, `Refs: #260`, `Refs: #261`). Хеш: `git log -1 --format=%h -- IDEA.md`. Предыдущий checkpoint Roombook — `1acdf57` [P3d]. Push не выполнялся; #260/#261 в этом ходе не закрываются.
 
 ## Plan
 
 - [x] P0. Зафиксировать старт, SDK и достоверность источников (конкретная геометрия SDK — отдельный Z0, not verified).
 - [x] P1 (частичный, по решению владельца только в этом ходе). Сохранены native PLN и JSON-снимки/времена; контуры/материалы не проверены.
 - [x] P2a. Расширить и исполнить характеризационный `TestBuildOtdByParent` на AC25 (12/0, полный TestKit 69/2567/0).
-- [ ] P2b. Остальные характеризационные тесты после закрытия P1.
+- [x] P2b1. TestOpeningAddOne: 18 сценариев, 114/0 на исходном production, TestKit 70/2681/0 (00:22:54), реестр 70/70/70.
+- [x] P4a. CalculateOpeningForWall извлечён из Opening_Add_One; прежние OtdOpening/арифметика/условия. Тест 114/0 до/после, TestKit 70/2681/0, AC25 build success, VS read-back 1778 missing/extra=0, GUID сохранены; LSP без новых диагностик.
+- [x] P2b2a. TestOtdWallDelimOne: 15 сценариев, 136/0 на прежнем production; TestKit 71/2817/0 (00:41:52), реестр 71/71/71.
+- [x] P4b. TrimOpeningsToWallHeight: цикл и промежуточные zDup/zDown сохранены, публичный const-вход восстановлен после ошибочного fuzzy-патча; AC25 build success, tests 136/0 до/после, TestKit 71/2817/0, VS 1778 missing/extra=0, LSP без новых диагностик.
+- [x] P2b2b / #261. Два порядка: RED 149/1 → GREEN 158/0, TestKit 71/2839/0. Отдельный разрешённый bugfix субагента принят после проверки; прежние tests сохранены.
+- [x] P2b2c. OtdWall_Delim_All: 8 комбинаций типов + fallback, 149/0; TestKit 72/2988/0 (01:16:29), AC25 build success, реестр 72/72/72.
+- [x] P4c. GetWallFinishBandType: порядок проверок сохранён; tests 149/0 до/после, TestKit 72/2988/0, AC25 build success, VS 1778 missing/extra=0, fresh LSP без новых диагностик.
+- [x] P2b2d. Fallback после отказа полос, частичное пересечение и два проёма через несколько полос в обоих порядках: TestOtdWallDelimAll 197/0, TestKit 72/3036/0, EXIT 0; AC25 BuildAddOn success, свежий TestCore MCP 0 errors/3 прежних unused-includes. Production не менялся в тестовой подзадаче.
+- [x] P4d. GetFallbackWallFinishType: переданный текущий type и четыре if сохранены; весь production эквивалентен pre-step снимку после обратной подстановки. Tests 197/0 до/после, TestKit 72/3036/0; AC25 BuildAddOn success, fresh LSP без новых диагностик, VS 1778 missing/extra=0.
+- [x] P2b2e. OtdWall_Add_One 60/0; вертикальное пересечение стены OtdWall_Delim_One 246/0; TestKit 73/3184/0, EXIT 0, AC25 BuildAddOn success, fresh TestCore MCP 0 errors/3 прежних warnings. Production read-only в тестовой подзадаче.
+- [x] P4e. CalculateWallHeightIntersection (:3832): guards/арифметика сохранены, весь production совпадает с pre-step снимком после inlining и восстановления локальных объявлений. TestKit 73/3184/0 до/после, AC25 build success, fresh LSP без новых диагностик, VS read-back 1778 missing/extra=0. OtdWall_Add_One не дробился.
+- [x] P2b2f. SetMaterialByType: 11 типов × 6 вариантов настроек × structural/finish слой; 1848/0, TestKit 74/5032/0, EXIT 0, AC25 build success. Production не менялся до baseline; fresh TestCore/registry проверены.
+- [x] P4f. SelectWallFinishMaterial (:3887): только type/material/settings, без дополнительных копий; полный pre-step inlining совпадает. TestSetMaterialByType 1848/0 до/после, TestKit 74/5032/0; AC25 build success, fresh LSP без новых диагностик, VS read-back 1778 missing/extra=0, scoped symbols132/132 и6edges сверены.
+- [x] P2b2g. TestOpeningRevealsCreateOne: 13 сценариев × два начальных has_reveal; 662/0, TestKit 75/5694/0, EXIT 0 на неизменённом production; AC25 BuildAddOn success, fresh TestCore 0 errors/3 прежних warnings, реестр 75. Проверены координаты, порядок, подрезка, материалы и входные поля.
+- [x] P4g. InitializeOpeningRevealWall: прежние 13 присваиваний/три site, полный pre-step inlining совпадает; AC25 success, tests662/0 и TestKit75/5694/0 до/после, LSP без новых диагностик, VS1778 missing/extra0, symbols134/134/7 helper edges сверены. Включено в текущий checkpoint [P4g]; push не выполнялся.
+- [ ] P2b2. Остальные характеризационные сценарии; полноценный P1 остаётся непокрыт.
 - [x] P3a. Локализовать `paramDict` в `ReadElementParameters` без изменения порядка/числа вызовов; AC25, TestKit и частичный read-back проверены, худшее время 65.5245175 с против 65.7253702 с исходного (−0.31%), критерий владельца выполнен.
 - [x] P3b. `reducededges`: обнуление после синхронного SDK-вызова; контракт подтверждён, худшее 65.7452587 с против 65.7253702 с (+0,03%).
 - [x] P3c. Один владелец прогресса/отмены вместо девяти копипаст-блоков; худшее 64.5880836 с против 65.7253702 с (−1,73%).
 - [x] P3d. Снять пять `auto &`-алиасов на поля контекста в теле `RoomBook`; порядок операций прежний, худшее 64.0615044 с против 65.7253702 с исходного (−2,53%), критерий владельца выполнен.
-- [/] P3e. Сократить `auto &` в helpers, где поле контекста читается один раз; отдельная сборка, TestKit и A/B.
-- [ ] P3f–P7. Дальнейшие малые структурные изменения с отдельными проверками.
+- [x] P3e. Убрать десять алиасов в ApplyFavoriteAndMaterialData, WriteRoomMaterialData и RemoveUnusedFinishingElements; AC25 собран, TestKit 69/2567/0, частичный read-back 1778 элементов без различий. Продолжение серии A/B отменено владельцем: мелкие изменения не требуют замеров производительности.
+- [x] P3f. ApplyFavoriteAndMaterialData принимает ParamDictValue/ParamValue вместо RoomProcessingContext; AC25 BuildAddOn success, VS read-back 1778 без различий, GUID сохранены. Clangd stale/timeout, LSP not verified.
+- [x] P3g. WriteRoomMaterialData принимает OtdRooms/ParamDictElement вместо RoomProcessingContext; MaterialSummary, порядок и ссылки сохранены. AC25 BuildAddOn success; VS read-back 1778, missing/extra=0, исходные GUID сохранены; свежий TestKit 69/2567/0. LSP/generated not verified (stale clangd).
+- [x] P3h. RemoveUnusedFinishingElements принимает конкретные ссылки вместо контекста, прежние итераторы/порядок. AC25 BuildAddOn success, VS read-back 1778 missing/extra=0, исходные GUID сохранены, свежий TestKit 69/2567/0. LSP/generated пропущены с разрешения владельца только в этом ходе.
+- [x] P3i. ProcessSlabFinishes/ProcessWallFinishes: конкретные зависимости вместо RoomProcessingContext, прежние копии на проём и порядок. Fresh MCP: диагностик сверх baseline нет, symbols Roombook 112/112. AC25 build success, VS read-back 1778 missing/extra=0, GUID сохранены, TestKit 69/2567/0.
+- [ ] P4–P7. Геометрические извлечения только после соответствующих тестов и подтверждения границ Z0; завершение по воротам исходного плана.
 - [ ] Z0 (#252). До новых геометрических интерфейсов проверить тело зоны/сегменты на модели; функциональную реализацию вести отдельно.
 
 ## Decisions
 
+- #261: https://github.com/kuvbur/AddOn_SomeStuff/issues/261 — предсуществующий перенос zDup между проёмами. Предсуществование сверено по HEAD, runtime-дефект подтверждён на текущем неизменённом production. Bugfix разрешён владельцем и выполнен субагентом, принят родителем по артефактам; issue остаётся открытой.
 - #195 охватывает только извлечение GetTargetZones и уже реализовано; umbrella рефакторинга — #260, изменение геометрии — #252, производительность — #198, сверка на PLN — #164.
 - Оригинал `Test_file/test_25.pln` не менять. После RoomBook результат существует в открытой модели, но не сохранён на диск автоматически: снимать данные до перезапуска, потом явно открывать исходное состояние для следующего прогона. Успех JSON-команды `returned` не доказывает конечный результат.
-- Критерий приёмки скорости для этого рефакторинга (решение владельца 2026-10-03): колебания до 5% допустимы, эталон — худшее значение серии. Он фиксирует приемлемость, а не равенство скоростей; при отладке не замерять под breakpoint.
+- Решение владельца 2026-10-03: A/B производительности выполнять только для крупных изменений; не прогонять серию после каждой мелочи. Для мелких правок сохраняются сборка, LSP и тесты корректности. Запуски runtime — через Visual Studio MCP.
+- Критерий приёмки скорости для крупных изменений (решение владельца 2026-10-03): колебания до 5% допустимы, эталон — худшее значение серии. Он фиксирует приемлемость, а не равенство скоростей; при отладке не замерять под breakpoint.
 
 ---
 

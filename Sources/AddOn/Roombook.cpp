@@ -206,14 +206,14 @@ namespace Roombook
 
     static void ProcessSlabFinishes (OtdRoom &otd,
                                      const API_Guid &zoneGuid,
-                                     RoomProcessingContext &context,
+                                     ParamDictElement &paramToRead,
+                                     ParamValue &param_composite,
+                                     ParamDictValue &paramDict_favorite,
+                                     GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,
                                      ParamDictCompositeElement &paramCompositeToRead,
                                      MatarialToFavoriteDict &favdict,
                                      bool has_base_element) {
-        auto &paramToRead = context.paramToRead;
-        auto &param_composite = context.param_composite;
-        auto &paramDict_favorite = context.paramDict_favorite;
-        auto &exsistot_byzone = context.exsistot_byzone;
+
         for (OtdSlab &otdslab : otd.otdslab) {
             bool base_flipped = false;
             GS::UniString fav_name;
@@ -268,10 +268,9 @@ namespace Roombook
     }
 
     static void ApplyFavoriteAndMaterialData (GS::Array<OtdWall> &opw,
-                                              RoomProcessingContext &context,
+                                              ParamDictValue &paramDict_favorite,
+                                              ParamValue &param_composite,
                                               MatarialToFavoriteDict &favdict) {
-        auto &paramDict_favorite = context.paramDict_favorite;
-        auto &param_composite = context.param_composite;
         for (OtdWall &otdw : opw) {
             if (!otdw.isValid)
                 continue;
@@ -285,13 +284,13 @@ namespace Roombook
     }
 
     static void ProcessWallFinishes (OtdRoom &otd,
-                                     RoomProcessingContext &context,
-                                     ReadParamsForRoomBook &readParams,
+                                     ParamDictElement &paramToRead,
+                                     ParamValue &param_composite,
+                                     ParamDictValue &paramDict_favorite,
+                                     ReadParams &windowParams,
                                      ParamDictCompositeElement &paramCompositeToRead,
                                      MatarialToFavoriteDict &favdict) {
-        auto &paramToRead = context.paramToRead;
-        auto &param_composite = context.param_composite;
-        auto &windowParams = readParams.windowParams;
+
         GS::Array<OtdWall> opw; // Массив созданных стен
         for (OtdWall &otdw : otd.otdwall) {
             // Заполняем данные для отделочных стен (состав)
@@ -364,7 +363,7 @@ namespace Roombook
                                otd.om_ceil,
                                otd.om_zone);
         } // Разбивка стен
-        ApplyFavoriteAndMaterialData (opw, context, favdict);
+        ApplyFavoriteAndMaterialData (opw, paramDict_favorite, param_composite, favdict);
         otd.otdwall = opw; // Заменяем на разбитые стены
     }
 
@@ -469,19 +468,13 @@ namespace Roombook
         return true;
     }
 
-    static void WriteRoomMaterialData (RoomProcessingContext &context, MaterialSummary &summary) {
-        auto &roomsinfo = context.roomsinfo;
-        auto &paramToRead = context.paramToRead;
-        auto &paramToWrite = summary.paramToWrite;
-        auto &columnFormat = summary.columnFormat;
-        auto &dct_bytype = summary.dct_bytype;
-        auto &zones_bytype = summary.zones_bytype;
+    static void WriteRoomMaterialData (OtdRooms &roomsinfo, ParamDictElement &paramToRead, MaterialSummary &summary) {
         // Запись отделки с разбивкой
-        for (const API_Guid &subguid : zones_bytype) {
+        for (const API_Guid &subguid : summary.zones_bytype) {
             OtdRoom &otd = roomsinfo.Get (subguid);
-            if (!dct_bytype.ContainsKey (otd.tip_otd))
+            if (!summary.dct_bytype.ContainsKey (otd.tip_otd))
                 continue;
-            OtdMaterialAreaDictByType &dct = dct_bytype.Get (otd.tip_otd);
+            OtdMaterialAreaDictByType &dct = summary.dct_bytype.Get (otd.tip_otd);
             GS::HashTable<TypeOtd, GS::UniString> paramnamebytype;
             paramnamebytype.Add (Wall_Up,
                                  otd.om_up.rawname_bytype); // Отделка стен выше потолка
@@ -496,7 +489,8 @@ namespace Roombook
             paramnamebytype.Add (Floor, otd.om_floor.rawname_bytype); // Отделка пола
             paramnamebytype.Add (Ceil,
                                  otd.om_ceil.rawname_bytype); // Отделка потолка
-            OtdData_WriteToRoom (columnFormat, otd.zone_guid, paramToWrite, paramToRead, dct, paramnamebytype);
+            OtdData_WriteToRoom (
+                summary.columnFormat, otd.zone_guid, summary.paramToWrite, paramToRead, dct, paramnamebytype);
         }
     }
 
@@ -538,18 +532,31 @@ namespace Roombook
             Floor_Create_All (storyLevels, otd);
             if (otd.otdwall.IsEmpty () && otd.otdslab.IsEmpty ())
                 continue;
-            ProcessSlabFinishes (otd, zoneGuid, context, paramCompositeToRead, favdict, has_base_element);
+            ProcessSlabFinishes (otd,
+                                 zoneGuid,
+                                 context.paramToRead,
+                                 context.param_composite,
+                                 context.paramDict_favorite,
+                                 context.exsistot_byzone,
+                                 paramCompositeToRead,
+                                 favdict,
+                                 has_base_element);
             if (otd.otdwall.IsEmpty ())
                 continue;
-            ProcessWallFinishes (otd, context, readParams, paramCompositeToRead, favdict);
+            ProcessWallFinishes (otd,
+                                 context.paramToRead,
+                                 context.param_composite,
+                                 context.paramDict_favorite,
+                                 readParams.windowParams,
+                                 paramCompositeToRead,
+                                 favdict);
         } // Обработка зон
         return true;
     }
 
     // -----------------------------------------------------------------------------
-    static void RemoveUnusedFinishingElements (RoomProcessingContext &context) {
-        auto &exsistot_byzone = context.exsistot_byzone;
-        auto &deletelist = context.deletelist;
+    static void RemoveUnusedFinishingElements (GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,
+                                               GS::Array<API_Guid> &deletelist) {
         // Неиспользованные существующие элементы удаляем
         for (GS::HashTable<API_Guid, UnicGuidByBase>::PairIterator cIt_1 = exsistot_byzone.EnumeratePairs ();
              cIt_1 != NULL;
@@ -657,7 +664,7 @@ namespace Roombook
         MaterialSummary summary;
         if (!BuildMaterialSummaryForRooms (context, zones, summary, funcname))
             return;
-        WriteRoomMaterialData (context, summary);
+        WriteRoomMaterialData (context.roomsinfo, context.paramToRead, summary);
         auto &paramToWrite = summary.paramToWrite;
         paramToRead.Clear ();
         // Проверка существования классов и свойств
@@ -665,7 +672,7 @@ namespace Roombook
             if (!Check (finclass, finclassguids))
                 return;
         }
-        RemoveUnusedFinishingElements (context);
+        RemoveUnusedFinishingElements (context.exsistot_byzone, context.deletelist);
         // Причина неудачи пока не различается вызывающим: и конфликт Teamwork,
         // и отказ разблокировки приводят к одному и тому же - работа не идёт.
         PrepareElementsResult prepareResult = PrepareElementsResult::NothingToDo;
@@ -1669,13 +1676,13 @@ namespace Roombook
         }
     }
 
-    void Opening_Add_One (const OtdOpening &op,
-                          bool is_fliped,
-                          double zBottom,
-                          double tBeg,
-                          double tEnd,
-                          double wallLength,
-                          OtdWall &wallotd) {
+    static bool CalculateOpeningForWall (const OtdOpening &op,
+                                         bool is_fliped,
+                                         double zBottom,
+                                         double tBeg,
+                                         double tEnd,
+                                         double wallLength,
+                                         OtdOpening &opinwall) {
         // Проверяем - находится ли этот проём на заданном участке стены
         double opLeft = op.objLoc - op.width / 2.0;
         double opRight = op.objLoc + op.width / 2.0;
@@ -1685,7 +1692,6 @@ namespace Roombook
         double newRight = std::min (opRight, tEnd);
 
         if (newLeft < newRight) {
-            OtdOpening opinwall;
             opinwall.base_guid = op.base_guid;
             opinwall.width = newRight - newLeft;
             opinwall.height = op.height;
@@ -1697,8 +1703,21 @@ namespace Roombook
             } else {
                 opinwall.objLoc = (wallLength - newCenter) - (wallLength - tEnd);
             }
-            wallotd.openings.Push (std::move (opinwall));
+            return true;
         }
+        return false;
+    }
+
+    void Opening_Add_One (const OtdOpening &op,
+                          bool is_fliped,
+                          double zBottom,
+                          double tBeg,
+                          double tEnd,
+                          double wallLength,
+                          OtdWall &wallotd) {
+        OtdOpening opinwall;
+        if (CalculateOpeningForWall (op, is_fliped, zBottom, tBeg, tEnd, wallLength, opinwall))
+            wallotd.openings.Push (std::move (opinwall));
     }
 
     bool OtdWall_Add_One (const API_Guid &wallguid,
@@ -2930,55 +2949,50 @@ namespace Roombook
                 roominfo.create_all_elements = val.boolValue;
             }
         }
-        param_name = "create_column_elements";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.create_column_elements = val.boolValue;
+        // Если найдено свойство create_all_elements, то читать смысла нет
+        if (!find_create_all_elements) {
+            param_name = "create_column_elements";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    roominfo.create_column_elements = val.boolValue;
+                }
+            }
+            param_name = "create_wall_elements";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    roominfo.create_wall_elements = val.boolValue;
+                }
+            }
+            param_name = "create_floor_elements";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    roominfo.create_floor_elements = val.boolValue;
+                }
+            }
+            param_name = "create_ceil_elements";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    roominfo.create_ceil_elements = val.boolValue;
+                }
+            }
+            param_name = "create_reveal_elements";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    roominfo.create_reveal_elements = val.boolValue;
+                }
             }
         }
-        param_name = "create_wall_elements";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.create_wall_elements = val.boolValue;
-            }
-        }
-        param_name = "create_floor_elements";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.create_floor_elements = val.boolValue;
-            }
-        }
-        param_name = "create_ceil_elements";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.create_ceil_elements = val.boolValue;
-            }
-        }
-        param_name = "create_reveal_elements";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.create_reveal_elements = val.boolValue;
-            }
-        }
-        if (roominfo.create_all_elements) {
-            roominfo.create_ceil_elements = true;   // Создавать элементы отделки потолка
-            roominfo.create_wall_elements = true;   // Создавать элементы отделки стен
-            roominfo.create_column_elements = true; // Создавать элементы отделки колонн
-            roominfo.create_reveal_elements = true; // Создавать элементы отделки откосов
-            roominfo.create_floor_elements = true;  // Создавать элементы отделки откосов
-        } else {
-            if (find_create_all_elements) {
-                roominfo.create_ceil_elements = false;   // Создавать элементы отделки потолка
-                roominfo.create_wall_elements = false;   // Создавать элементы отделки стен
-                roominfo.create_column_elements = false; // Создавать элементы отделки колонн
-                roominfo.create_reveal_elements = false; // Создавать элементы отделки откосов
-                roominfo.create_floor_elements = false;  // Создавать элементы отделки откосов
-            }
+        if (find_create_all_elements) {
+            roominfo.create_ceil_elements = roominfo.create_all_elements;   // Создавать элементы отделки потолка
+            roominfo.create_wall_elements = roominfo.create_all_elements;   // Создавать элементы отделки стен
+            roominfo.create_column_elements = roominfo.create_all_elements; // Создавать элементы отделки колонн
+            roominfo.create_reveal_elements = roominfo.create_all_elements; // Создавать элементы отделки откосов
+            roominfo.create_floor_elements = roominfo.create_all_elements;  // Создавать элементы отделки откосов
         }
         // Заполнение непрочитанных
         // Высоты
@@ -3473,6 +3487,30 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Создание стенок для откосов одного проёма
     // -----------------------------------------------------------------------------
+    static void InitializeOpeningRevealWall (const OtdWall &otdw,
+                                             OtdWall &wallotd,
+                                             double height,
+                                             double zBottom,
+                                             double width,
+                                             double length,
+                                             const Point2D &begC,
+                                             const Point2D &endC,
+                                             API_ElemTypeID draw_type) {
+        wallotd.base_guid = otdw.base_guid;
+        wallotd.height = height;
+        wallotd.zBottom = zBottom;
+        wallotd.width = width;
+        wallotd.length = length;
+        wallotd.floorInd = otdw.floorInd;
+        wallotd.begC = {begC.x, begC.y};
+        wallotd.endC = {endC.x, endC.y};
+        wallotd.material = otdw.material;
+        wallotd.base_composite = otdw.base_composite;
+        wallotd.base_type = API_WindowID;
+        wallotd.draw_type = draw_type;
+        wallotd.type = Reveal_Main;
+    }
+
     void OpeningReveals_Create_One (GS::Array<OtdSlab> &otdslabs,
                                     const OtdWall &otdw,
                                     OtdOpening &op,
@@ -3523,19 +3561,8 @@ namespace Roombook
         walledge = {begedge, endedge};
         if (!walledge.IsZeroLength ()) {
             OtdWall wallotd;
-            wallotd.base_guid = otdw.base_guid;
-            wallotd.height = height;
-            wallotd.zBottom = zDown;
-            wallotd.width = op.base_reveal_width;
-            wallotd.length = height;
-            wallotd.floorInd = otdw.floorInd;
-            wallotd.begC = {walledge.c1.x, walledge.c1.y};
-            wallotd.endC = {walledge.c2.x, walledge.c2.y};
-            wallotd.material = otdw.material;
-            wallotd.base_composite = otdw.base_composite;
-            wallotd.base_type = API_WindowID;
-            wallotd.draw_type = API_WallID;
-            wallotd.type = Reveal_Main;
+            InitializeOpeningRevealWall (
+                otdw, wallotd, height, zDown, op.base_reveal_width, height, walledge.c1, walledge.c2, API_WallID);
             op.has_reveal = true;
             OtdWall_Delim_All (opw,
                                wallotd,
@@ -3562,19 +3589,8 @@ namespace Roombook
         walledge = {begedge, endedge};
         if (!walledge.IsZeroLength ()) {
             OtdWall wallotd;
-            wallotd.base_guid = otdw.base_guid;
-            wallotd.height = height;
-            wallotd.zBottom = zDown;
-            wallotd.width = op.base_reveal_width;
-            wallotd.length = height;
-            wallotd.floorInd = otdw.floorInd;
-            wallotd.begC = {walledge.c2.x, walledge.c2.y};
-            wallotd.endC = {walledge.c1.x, walledge.c1.y};
-            wallotd.material = otdw.material;
-            wallotd.base_composite = otdw.base_composite;
-            wallotd.base_type = API_WindowID;
-            wallotd.draw_type = API_WallID;
-            wallotd.type = Reveal_Main;
+            InitializeOpeningRevealWall (
+                otdw, wallotd, height, zDown, op.base_reveal_width, height, walledge.c2, walledge.c1, API_WallID);
             op.has_reveal = true;
             OtdWall_Delim_All (opw,
                                wallotd,
@@ -3595,19 +3611,15 @@ namespace Roombook
         walledge = {begedge_up, endedge_up};
         if (!walledge.IsZeroLength () && !is_upper_wall) {
             OtdWall wallotd;
-            wallotd.base_guid = otdw.base_guid;
-            wallotd.height = otd_thickness;
-            wallotd.zBottom = zDown + height;
-            wallotd.width = op.base_reveal_width;
-            wallotd.length = walledge.GetLength ();
-            wallotd.floorInd = otdw.floorInd;
-            wallotd.begC = {walledge.c2.x, walledge.c2.y};
-            wallotd.endC = {walledge.c1.x, walledge.c1.y};
-            wallotd.material = otdw.material;
-            wallotd.base_composite = otdw.base_composite;
-            wallotd.base_type = API_WindowID;
-            wallotd.draw_type = API_BeamID;
-            wallotd.type = Reveal_Main;
+            InitializeOpeningRevealWall (otdw,
+                                         wallotd,
+                                         otd_thickness,
+                                         zDown + height,
+                                         op.base_reveal_width,
+                                         walledge.GetLength (),
+                                         walledge.c2,
+                                         walledge.c1,
+                                         API_BeamID);
             op.has_reveal = true;
             OtdWall_Delim_All (opw,
                                wallotd,
@@ -3630,6 +3642,54 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Разбивка созданных стен по высотам на основании информации из зоны
     // -----------------------------------------------------------------------------
+    static TypeOtd GetWallFinishBandType (const OtdWall &otdw, TypeOtd type) {
+        switch (type) {
+        case Wall_Down:
+            if (otdw.base_type == API_SlabID)
+                type = Floor;
+            if (otdw.base_type == API_WindowID)
+                type = Reveal_Down;
+            if (otdw.type == Ceil)
+                type = Ceil;
+            if (otdw.type == Floor)
+                type = Floor;
+            break;
+        case Wall_Main:
+            if (otdw.base_type == API_ColumnID)
+                type = Column;
+            if (otdw.base_type == API_WindowID)
+                type = Reveal_Main;
+            if (otdw.type == Ceil)
+                type = Ceil;
+            if (otdw.type == Floor)
+                type = Floor;
+            break;
+        case Wall_Up:
+            if (otdw.type == Ceil)
+                type = Ceil;
+            if (otdw.type == Floor)
+                type = Floor;
+            if (otdw.base_type == API_WindowID)
+                type = Reveal_Up;
+            break;
+        default:
+            break;
+        }
+        return type;
+    }
+
+    static TypeOtd GetFallbackWallFinishType (const OtdWall &otdw, TypeOtd type) {
+        if (otdw.base_type == API_ColumnID)
+            type = Column;
+        if (otdw.base_type == API_WindowID)
+            type = Reveal_Main;
+        if (otdw.type == Ceil)
+            type = Ceil;
+        if (otdw.type == Floor)
+            type = Floor;
+        return type;
+    }
+
     void OtdWall_Delim_All (GS::Array<OtdWall> &opw,
                             OtdWall &otdw,
                             double otd_zBottom,
@@ -3653,15 +3713,7 @@ namespace Roombook
         if (otd_height_down > 0) {
             height = otd_height_down;
             zBottom = otd_zBottom;
-            type = Wall_Down;
-            if (otdw.base_type == API_SlabID)
-                type = Floor;
-            if (otdw.base_type == API_WindowID)
-                type = Reveal_Down;
-            if (otdw.type == Ceil)
-                type = Ceil;
-            if (otdw.type == Floor)
-                type = Floor;
+            type = GetWallFinishBandType (otdw, Wall_Down);
             if (OtdWall_Delim_One (otdw,
                                    opw,
                                    height,
@@ -3679,15 +3731,7 @@ namespace Roombook
         }
         // Основная часть
         if (otd_height_main > 0) {
-            type = Wall_Main;
-            if (otdw.base_type == API_ColumnID)
-                type = Column;
-            if (otdw.base_type == API_WindowID)
-                type = Reveal_Main;
-            if (otdw.type == Ceil)
-                type = Ceil;
-            if (otdw.type == Floor)
-                type = Floor;
+            type = GetWallFinishBandType (otdw, Wall_Main);
             height = otd_height_main;
             zBottom = otd_zBottom + otd_height_down;
             if (OtdWall_Delim_One (otdw,
@@ -3709,13 +3753,7 @@ namespace Roombook
         if (otd_height_up > 0) {
             height = otd_height_up;
             zBottom = otd_zBottom + otd_height_down + otd_height_main;
-            type = Wall_Up;
-            if (otdw.type == Ceil)
-                type = Ceil;
-            if (otdw.type == Floor)
-                type = Floor;
-            if (otdw.base_type == API_WindowID)
-                type = Reveal_Up;
+            type = GetWallFinishBandType (otdw, Wall_Up);
             if (OtdWall_Delim_One (otdw,
                                    opw,
                                    height,
@@ -3735,14 +3773,7 @@ namespace Roombook
         if (!has_delim) {
             height = otd_height;
             zBottom = otd_zBottom;
-            if (otdw.base_type == API_ColumnID)
-                type = Column;
-            if (otdw.base_type == API_WindowID)
-                type = Reveal_Main;
-            if (otdw.type == Ceil)
-                type = Ceil;
-            if (otdw.type == Floor)
-                type = Floor;
+            type = GetFallbackWallFinishType (otdw, type);
             OtdWall_Delim_One (otdw,
                                opw,
                                height,
@@ -3764,46 +3795,14 @@ namespace Roombook
     // Удаляет отверстия, не попадающие в диапазон
     // Подгоняет размер отверсий
     // -----------------------------------------------------------------------------
-    bool OtdWall_Delim_One (const OtdWall &otdn,
-                            GS::Array<OtdWall> &opw,
-                            double height,
-                            double zBottom,
-                            TypeOtd &type,
-                            OtdMaterial &om_main,
-                            OtdMaterial &om_up,
-                            OtdMaterial &om_down,
-                            OtdMaterial &om_reveals,
-                            OtdMaterial &om_column,
-                            OtdMaterial &om_floor,
-                            OtdMaterial &om_ceil,
-                            OtdMaterial &om_zone) {
-        if (height < min_dim || is_equal (height, 0)) {
-            return false;
-        }
-        // Проверяем - находится ли изначальная конструкция в этом диапазоне?
-        if (otdn.zBottom >= zBottom + height) {
-            return false; // Конструкция начинается выше необходимого
-        }
-        if (otdn.zBottom + otdn.height <= zBottom) {
-            return false; // Конструкция заканчивается ниже необходимого
-        }
-        double zDup = fmin (zBottom + height,
-                            otdn.zBottom + otdn.height); // Новая отметка верха стены
-        double zDown = fmax (zBottom, otdn.zBottom);     // Новая отметка низа стены
-        height = fmin (otdn.height, zDup - zDown);       // Новая высота стены
-        if (height < min_dim || is_equal (height, 0)) {
-            return false;
-        }
-        zBottom = zDown;                        // Переназначаем для расчётов окон
-        zDup = zBottom + height;                // Переназначаем для расчётов окон
-        double dlower = otdn.zBottom - zBottom; // Разница отметок стены до и после подрезки
-        // Удаляем лишние окна, подстраиваем высоту
-        OtdWall localCopy = otdn;
+    static void TrimOpeningsToWallHeight (
+        OtdWall &localCopy, double zBottom, double height, double zDup, double zDown) {
         if (!localCopy.openings.IsEmpty ()) {
+            const double wallTop = zDup;
             GS::Array<OtdOpening> newopenings;
             for (OtdOpening &op : localCopy.openings) {
                 // Проём начинается выше стенки
-                if (op.zBottom > zDup || is_equal (op.zBottom, zDup)) {
+                if (op.zBottom > wallTop || is_equal (op.zBottom, wallTop)) {
                     continue;
                 }
                 double zOpup = op.zBottom + op.height; // Отметка верха проёма
@@ -3821,6 +3820,53 @@ namespace Roombook
             }
             localCopy.openings = newopenings;
         }
+    }
+
+    static bool CalculateWallHeightIntersection (
+        const OtdWall &otdn, double &height, double &zBottom, double &zDup, double &zDown) {
+        if (height < min_dim || is_equal (height, 0)) {
+            return false;
+        }
+        // Проверяем - находится ли изначальная конструкция в этом диапазоне?
+        if (otdn.zBottom >= zBottom + height) {
+            return false; // Конструкция начинается выше необходимого
+        }
+        if (otdn.zBottom + otdn.height <= zBottom) {
+            return false; // Конструкция заканчивается ниже необходимого
+        }
+        zDup = fmin (zBottom + height, otdn.zBottom + otdn.height); // Новая отметка верха стены
+        zDown = fmax (zBottom, otdn.zBottom);                       // Новая отметка низа стены
+        height = fmin (otdn.height, zDup - zDown);                  // Новая высота стены
+        if (height < min_dim || is_equal (height, 0)) {
+            return false;
+        }
+        zBottom = zDown;         // Переназначаем для расчётов окон
+        zDup = zBottom + height; // Переназначаем для расчётов окон
+        return true;
+    }
+
+    bool OtdWall_Delim_One (const OtdWall &otdn,
+                            GS::Array<OtdWall> &opw,
+                            double height,
+                            double zBottom,
+                            TypeOtd &type,
+                            OtdMaterial &om_main,
+                            OtdMaterial &om_up,
+                            OtdMaterial &om_down,
+                            OtdMaterial &om_reveals,
+                            OtdMaterial &om_column,
+                            OtdMaterial &om_floor,
+                            OtdMaterial &om_ceil,
+                            OtdMaterial &om_zone) {
+        double zDup = 0;
+        double zDown = 0;
+        if (!CalculateWallHeightIntersection (otdn, height, zBottom, zDup, zDown)) {
+            return false;
+        }
+        double dlower = otdn.zBottom - zBottom; // Разница отметок стены до и после подрезки
+        // Удаляем лишние окна, подстраиваем высоту
+        OtdWall localCopy = otdn;
+        TrimOpeningsToWallHeight (localCopy, zBottom, height, zDup, zDown);
         localCopy.zBottom = zBottom;
         localCopy.height = height;
         if (!is_equal (localCopy.width, 0))
@@ -3831,19 +3877,19 @@ namespace Roombook
         return true;
     }
 
-    void SetMaterialByType (OtdWall &otdw,
-                            OtdMaterial &om_main,
-                            OtdMaterial &om_up,
-                            OtdMaterial &om_down,
-                            OtdMaterial &om_reveals,
-                            OtdMaterial &om_column,
-                            OtdMaterial &om_floor,
-                            OtdMaterial &om_ceil,
-                            OtdMaterial &om_zone) {
-        OtdMaterial material;
+    static void SelectWallFinishMaterial (TypeOtd &type,
+                                          OtdMaterial &material,
+                                          const OtdMaterial &om_main,
+                                          const OtdMaterial &om_up,
+                                          const OtdMaterial &om_down,
+                                          const OtdMaterial &om_reveals,
+                                          const OtdMaterial &om_column,
+                                          const OtdMaterial &om_floor,
+                                          const OtdMaterial &om_ceil,
+                                          const OtdMaterial &om_zone) {
         // Проверим существование свойств для записи, при необходимости - поменяем
         // тип отделки
-        switch (otdw.type) {
+        switch (type) {
         case NoSet:
             material.material = 0;
             material.smaterial = EMPTYSTRING;
@@ -3863,7 +3909,7 @@ namespace Roombook
                 material = om_main;
             }
             if (om_up.rawname.IsEqual (om_main.rawname))
-                otdw.type = Wall_Main;
+                type = Wall_Main;
             break;
         case Wall_Down:
             if (!om_down.smaterial.IsEmpty ()) {
@@ -3872,7 +3918,7 @@ namespace Roombook
                 material = om_main;
             }
             if (om_down.rawname.IsEqual (om_main.rawname))
-                otdw.type = Wall_Main;
+                type = Wall_Main;
             break;
         case Reveal_Main:
             if (!om_reveals.smaterial.IsEmpty ()) {
@@ -3882,9 +3928,9 @@ namespace Roombook
             }
             if (material.smaterial.IsEmpty ())
                 material = om_main;
-            otdw.type = Reveal_Main;
+            type = Reveal_Main;
             if (om_reveals.rawname.IsEqual (om_main.rawname))
-                otdw.type = Wall_Main;
+                type = Wall_Main;
             break;
         case Reveal_Up:
             if (!om_reveals.smaterial.IsEmpty ()) {
@@ -3894,9 +3940,9 @@ namespace Roombook
             }
             if (material.smaterial.IsEmpty ())
                 material = om_main;
-            otdw.type = Reveal_Main;
+            type = Reveal_Main;
             if (om_reveals.rawname.IsEqual (om_main.rawname))
-                otdw.type = Wall_Main;
+                type = Wall_Main;
             break;
         case Reveal_Down:
             if (!om_reveals.smaterial.IsEmpty ()) {
@@ -3906,9 +3952,9 @@ namespace Roombook
             }
             if (material.smaterial.IsEmpty ())
                 material = om_main;
-            otdw.type = Reveal_Main;
+            type = Reveal_Main;
             if (om_reveals.rawname.IsEqual (om_main.rawname))
-                otdw.type = Wall_Main;
+                type = Wall_Main;
             break;
         case Column:
             if (!om_column.smaterial.IsEmpty ()) {
@@ -3917,7 +3963,7 @@ namespace Roombook
                 material = om_main;
             }
             if (om_column.rawname.IsEqual (om_main.rawname))
-                otdw.type = Wall_Main;
+                type = Wall_Main;
             break;
         case Floor:
             material = om_floor;
@@ -3937,6 +3983,20 @@ namespace Roombook
         }
         if (material.smaterial.IsEmpty ())
             material = om_zone;
+    }
+
+    void SetMaterialByType (OtdWall &otdw,
+                            OtdMaterial &om_main,
+                            OtdMaterial &om_up,
+                            OtdMaterial &om_down,
+                            OtdMaterial &om_reveals,
+                            OtdMaterial &om_column,
+                            OtdMaterial &om_floor,
+                            OtdMaterial &om_ceil,
+                            OtdMaterial &om_zone) {
+        OtdMaterial material;
+        SelectWallFinishMaterial (
+            otdw.type, material, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
         SetMaterialFinish (material, otdw.base_composite);
         otdw.material = material;
     }
