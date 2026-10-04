@@ -1455,7 +1455,7 @@ bool EvalExpression (GS::UniString &unistring_expression) {
                     result.ok = result.ok && !std::isnan (result.value);
 #if defined(TESTING)
                     if (!result.ok) {
-                        DBprnt ("ExprTk Compile Error in formula:", expression_string.c_str ());
+                        DBprnt ("ExprTk Compile Error in formula");
                     }
 #endif
                     exprResultCache.Put (cacheKey, result);
@@ -1599,42 +1599,14 @@ GSCharCode GetCharCode (const GS::UniString &instring) {
 }
 
 GSCharCode GetCharCode (const GS::UniString &instring, bool &findecode) {
-    if (ProbeCharCode (instring, CC_Cyrillic))
-        return CC_Cyrillic;
-    if (ProbeCharCode (instring, CC_Korean))
-        return CC_Korean;
-    if (ProbeCharCode (instring, CC_Application))
-        return CC_Application;
-    if (ProbeCharCode (instring, CC_UTF8))
-        return CC_UTF8;
-    if (ProbeCharCode (instring, CC_UniCode))
-        return CC_UniCode;
-    if (ProbeCharCode (instring, CC_UTF16))
-        return CC_UTF16;
-    if (ProbeCharCode (instring, CC_WestEuropean))
-        return CC_WestEuropean;
-    if (ProbeCharCode (instring, CC_EastEuropean))
-        return CC_EastEuropean;
-    if (ProbeCharCode (instring, CC_Greek))
-        return CC_Greek;
-    if (ProbeCharCode (instring, CC_Turkish))
-        return CC_Turkish;
-    if (ProbeCharCode (instring, CC_Hebrew))
-        return CC_Hebrew;
-    if (ProbeCharCode (instring, CC_Arabic))
-        return CC_Arabic;
-    if (ProbeCharCode (instring, CC_Thai))
-        return CC_Thai;
-    if (ProbeCharCode (instring, CC_Japanese))
-        return CC_Japanese;
-    if (ProbeCharCode (instring, CC_TradChinese))
-        return CC_TradChinese;
-    if (ProbeCharCode (instring, CC_SimpChinese))
-        return CC_SimpChinese;
-    if (ProbeCharCode (instring, CC_Symbol))
-        return CC_Symbol;
-    findecode = false;
-    return CC_Cyrillic;
+    // Вход уже декодирован в UTF-16, поэтому искать «однобайтовую кодировку,
+    // в которой строка случайно выглядит правильной» бессмысленно: жёсткий
+    // порядок проб отдавал не-ASCII строки в CC_Korean (второй по списку) —
+    // кириллица в CP949 представима. Такая строка — уже Unicode, и кодировать
+    // её надо в UTF-8. CC_System неприменим: проект создаётся на машинах с
+    // разными кодовыми страницами, ради чего механизм проверки и появился.
+    findecode = true;
+    return CC_UTF8;
 }
 
 bool ProbeCharCode (const std::string &instring, GSCharCode chcode) {

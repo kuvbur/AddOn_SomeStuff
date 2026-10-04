@@ -121,8 +121,9 @@ namespace TestFunc {
     void TestGetPropertyRuleFlag ();
     void TestPropertyRuleFlagOnProjectElements ();
 
-    // --- format: вычисления и форматирование (3) ---
+    // --- format: вычисления и форматирование (4) ---
     void TestCalc ();
+    void TestCharCodeOfUniString ();
     void TestFormula ();
     void TestFormatString ();
 

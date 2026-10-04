@@ -86,6 +86,7 @@ namespace TestFunc {
         TestKit::Register ("TestOpeningRevealsCreateOne", Groups::Core, TestOpeningRevealsCreateOne);
 
         TestKit::Register ("TestCalc", Groups::Format, TestCalc);
+        TestKit::Register ("TestCharCodeOfUniString", Groups::Format, TestCharCodeOfUniString);
         TestKit::Register ("TestFormula", Groups::Format, TestFormula);
         TestKit::Register ("TestFormatString", Groups::Format, TestFormatString);
 
