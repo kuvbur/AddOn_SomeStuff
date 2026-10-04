@@ -6035,20 +6035,15 @@ bool ParamHelpers::ReadProperty (const API_Guid &elemGuid,
 #endif
     if (propertyDefinitions.IsEmpty ())
         return false;
-    GS::Array<API_Property> properties = {};
-    // Получаем актуальные значения свойств по списку определений.
-    // Это основная точка входа для чтения пользовательских свойств.
-    GSErrCode error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
+    GS::Array<API_Property> properties;
+    properties.SetCapacity (propertyDefinitions.GetSize ());
+    GSErrCode error = NoError;
+    error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
     if (error != NoError) {
         msg_rep ("ParamDictGetPropertyValues", "ACAPI_Element_GetPropertyValues", error, elemGuid);
         return false;
     }
     return (ParamHelpers::AddProperty (params, properties, elemGuid));
-
-#if defined(TESTING)
-    DBprnt ("ReadProperty err", "no property");
-#endif
-    return false;
 }
 
 // -----------------------------------------------------------------------------
