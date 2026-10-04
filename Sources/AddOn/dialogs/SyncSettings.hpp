@@ -4,10 +4,7 @@
 
 // --------------------------------------------------------------------
 // Хранение и сериализация настроек аддона.
-// Настройки лежат в ЛОКАЛЬНОМ файле пользователя (папка Graphisoft prefs,
-// файл SomeStuffAddonConfig.json, без подпапки) — НЕ в preferences проекта:
-// ACAPI_SetPreferences пишет блоб аддона в файл проекта и в Teamwork это
-// вызывает постоянные локальные изменения. См. dialogs/SyncSettings.cpp.
+// Настройки лежат в ЛОКАЛЬНОМ файле пользователя (папка Graphisoft prefs)
 // --------------------------------------------------------------------
 #include "MemoryIChannel.hpp"
 #include "MemoryOChannel.hpp"
@@ -35,12 +32,6 @@ class SyncSettings : public GS::Object {
 
     // Возвращает стандартный набор настроек и включает `syncAll`.
     static SyncSettings CreateWithSyncAll ();
-
-    // Считывает настройки из канала памяти или предпочтений Archicad.
-    virtual GSErrCode Read (GS::IChannel &ic) override;
-
-    // Сериализует настройки в канал памяти или предпочтений Archicad.
-    virtual GSErrCode Write (GS::OChannel &oc) const override;
 
     // Доступ к сохранённым флагам синхронизации.
     // Флаг, определяющий выполнение полной синхронизации всех доступных элементов.

@@ -129,74 +129,13 @@ void SyncSettings::EnsureFilterPresets () {
         filterPresets = CreateDefaultFilterPresets ();
 }
 
-// --------------------------------------------------------------------
-// Сериализация / десериализация в бинарный канал — ТОЛЬКО для одноразовой
-// миграции из старого хранилища (.dat / preferences проекта).
-// --------------------------------------------------------------------
-GSErrCode SyncSettings::Read (GS::IChannel &ic) {
-    GS::InputFrame frame (ic, classInfo);
-    ic.Read (syncAll);
-    ic.Read (syncMon);
-    ic.Read (wallS);
-    ic.Read (widoS);
-    ic.Read (objS);
-    ic.Read (cwallS);
-    ic.Read (logMon);
-    ic.Read (showpalette);
-    ic.Read (catchSelectionChanges);
-    ic.Read (maxSelectionCount);
-    USize filterPresetCount = 0;
-    ic.Read (filterPresetCount);
-    filterPresets.Clear ();
-    for (UIndex i = 0; i < filterPresetCount; ++i) {
-        FilterPreset preset;
-        ic.Read (preset.label);
-        ic.Read (preset.query);
-        filterPresets.Push (preset);
-    }
-    if (ic.GetInputStatus () == NoError)
-        EnsureFilterPresets ();
-    return ic.GetInputStatus ();
-}
-
-GSErrCode SyncSettings::Write (GS::OChannel &oc) const {
-    GS::OutputFrame frame (oc, classInfo);
-    oc.Write (syncAll);
-    oc.Write (syncMon);
-    oc.Write (wallS);
-    oc.Write (widoS);
-    oc.Write (objS);
-    oc.Write (cwallS);
-    oc.Write (logMon);
-    oc.Write (showpalette);
-    oc.Write (catchSelectionChanges);
-    oc.Write (maxSelectionCount);
-    oc.Write (filterPresets.GetSize ());
-    for (const FilterPreset &preset : filterPresets) {
-        oc.Write (preset.label);
-        oc.Write (preset.query);
-    }
-    return oc.GetOutputStatus ();
-}
-
-// --------------------------------------------------------------------
-// Локальное (не проектное) хранилище настроек: JSON.
-// ACAPI_SetPreferences пишет блоб аддона В ФАЙЛ ПРОЕКТА (док DevKit-25,
-// Level3/Preferences_Save.html: «The preferences data is also stored in all
-// project files»), т.е. каждая запись модифицирует БД проекта — в Teamwork это
-// давало постоянные локальные изменения («аддон дописывает в файл»).
-// Поэтому настройки хранятся в файле в пользовательской папке настроек
-// (API_GraphisoftPrefsFolderID), а preferences проекта больше не трогаются.
-// Формат — SomeStuffAddonConfig.json (UTF-8) прямо в базовой папке prefs
-// (БЕЗ подпапки SomeStuff): чтение по ключам, неизвестные ключи игнорируются,
-// отсутствующие — дефолты, поэтому поле version информационное
-// (добавление нового поля не отбрасывает файл целиком, как это было в .dat).
-// --------------------------------------------------------------------
 static const GS::UniString SyncSettingsFileName ("SomeStuffAddonConfig.json");
 
+// --------------------------------------------------------------------
 // Возвращает папку файла настроек: Graphisoft prefs → Application prefs →
 // User documents (по убыванию приоритета). Подпапка не создаётся — файл
 // SomeStuffAddonConfig.json лежит прямо в базовой папке.
+// --------------------------------------------------------------------
 static bool GetSyncSettingsFolderLocation (IO::Location &folderLoc) {
     const API_SpecFolderID folderIds[] = {
         API_GraphisoftPrefsFolderID, API_ApplicationPrefsFolderID, API_UserDocumentsFolderID};
@@ -312,12 +251,7 @@ static bool ReadSyncSettingsFromFile (SyncSettings &syncSettings) {
     if (!ReadSyncSettingsFromJsonText (syncSettings, std::string (data.data (), (size_t)fileSize)))
         return false;
 
-    // Путь к файлу настроек логируем один раз за сессию: чтение вызывается
-    // в том числе в observer-путях (forceReload на каждое событие проекта),
-    // повторный вывод только замусорил бы лог. Логируем только когда проект
-    // уже открыт: первый успешный reading происходит в Initialize до открытия
-    // проекта, и строка в отчёте сессии тогда теряется (замечено при проверке
-    // #190) — ждём первого чтения в контексте проекта.
+    // Путь к файлу настроек логируем один раз за сессию
     static bool pathLogged = false;
     if (!pathLogged && IsTestProjectOpen ()) {
         msg_rep ("ReadSyncSettingsFromFile", "Settings file: " + fileLoc.ToDisplayText (), NoError, APINULLGuid);
@@ -404,8 +338,7 @@ static bool WriteSyncSettingsFile (const std::string &jsonText) {
 // --------------------------------------------------------------------
 // Сериализация настроек и запись их в локальный файл.
 // skipIfUnchanged — не писать, если JSON-текст не изменился с прошлой
-// успешной записи (в observer-путях запись вызывается часто, сравнение
-// строк дешевле I/O).
+// успешной записи
 // --------------------------------------------------------------------
 static bool WriteSyncSettingsToFile (const SyncSettings &syncSettings, bool skipIfUnchanged) {
     const std::string jsonText = SyncSettingsToJsonString (syncSettings);
@@ -425,15 +358,8 @@ static bool WriteSyncSettingsToFile (const SyncSettings &syncSettings, bool skip
 
 // --------------------------------------------------------------------
 // Чтение настроек: только SomeStuffAddonConfig.json из корня prefs;
-// при отсутствии/битости файла — значения по умолчанию (миграция из старых
-// хранилищ удалена, решение автора #190).
 // --------------------------------------------------------------------
-static bool ReadSyncSettings (SyncSettings &syncSettings) {
-    // Миграция из старых хранилищ (SomeStuff\SyncSettings.json / .dat / prefs
-    // проекта) удалена — аддон ещё не используется другими пользователями
-    // (решение автора, #190).
-    return ReadSyncSettingsFromFile (syncSettings);
-}
+static bool ReadSyncSettings (SyncSettings &syncSettings) { return ReadSyncSettingsFromFile (syncSettings); }
 
 // --------------------------------------------------------------------
 // Кэш настроек
