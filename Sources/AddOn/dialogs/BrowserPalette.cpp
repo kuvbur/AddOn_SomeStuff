@@ -1806,7 +1806,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             // Постфикс перед "pec_rule" (km, kzh, v2, v3) частью имени не считается:
             // все они начинаются с "pec_rule".
             const bool hasSpecRule =
-                !definition.description.IsEmpty () && definition.description.ToLowerCase ().Contains ("pec_rule");
+                !definition.description.IsEmpty () && UniStringToLower (definition.description).Contains ("pec_rule");
             GS::UniString name = EMPTYSTRING;
             GetPropertyFullName (definition, name);
             if (name.IsEmpty ())

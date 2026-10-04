@@ -221,7 +221,7 @@ ParsePropertyResult ParsePropertyDescriptionToRules (const GS::UniString &descri
             ruleInfo.parameters = cmd.parameters;
 
             // Определяем направление синхронизации по fullCommand
-            GS::UniString fullCmdLower = cmd.fullCommand.ToLowerCase ();
+            GS::UniString fullCmdLower = UniStringToLower (cmd.fullCommand);
             if (fullCmdLower.BeginsWith ("from_sub{") || fullCmdLower.BeginsWith ("to_sub{")) {
                 ruleInfo.hasSub = true;
             }

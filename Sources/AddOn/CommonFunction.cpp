@@ -255,7 +255,7 @@ bool IsTestProjectOpen () {
         return false;
     }
 
-    return projectInfo.projectName->ToLowerCase ().Contains ("test");
+    return UniStringToLower (*projectInfo.projectName).Contains ("test");
 }
 
 // -----------------------------------------------------------------------------
@@ -2736,7 +2736,7 @@ void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype) {
 GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
                                            const GS::UniString value,
                                            GS::Array<API_Guid> &elements) {
-    const GS::UniString lowerValue = value.ToLowerCase ();
+    const GS::UniString lowerValue = UniStringToLower (value);
     GSErrCode error = NoError;
     elements.Clear ();
 #ifndef ServerMainVers_2300
@@ -2777,7 +2777,7 @@ GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
                 continue;
             if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ())
                 continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase () == lowerValue) {
+            if (UniStringToLower (propertyflag.value.singleVariant.variant.uniStringValue) == lowerValue) {
                 candidates.Push (elemGuid);
     #else
             if (propertyflag.status != API_Property_HasValue)
@@ -2786,7 +2786,7 @@ GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
                 continue;
             if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ())
                 continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (lowerValue)) {
+            if (UniStringToLower (propertyflag.value.singleVariant.variant.uniStringValue).IsEqual (lowerValue)) {
                 candidates.Push (elemGuid);
     #endif
             }

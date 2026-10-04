@@ -823,7 +823,7 @@ namespace Spec {
             // заблокированные строки не попали бы в набор на разблокировку.
             GS::Array<API_Guid> exsist_elements = {};
             GetElementByPropertyDescription (
-                subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase (), exsist_elements);
+                subguid_pvalue.definition, UniStringToLower (rule.subguid_rulevalue), exsist_elements);
             for (const API_Guid &exsist_element : exsist_elements)
                 existingCandidates.Push (exsist_element);
             SelectExistingElements (rule, exsist_elements, selected_elements);
@@ -1608,7 +1608,7 @@ namespace Spec {
             // не подменяется результатом и повторный проход по тому же правилу
             // ищет то же самое.
             if (!searchMarker.IsEmpty ()) {
-                if (description.Contains (searchMarker.ToLowerCase ()) && description.Contains ("sync_guid")) {
+                if (description.Contains (UniStringToLower (searchMarker)) && description.Contains ("sync_guid")) {
                     if (!paramToWrite.ContainsKey (rawname)) {
                         ParamValue chpvalue;
                         if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) {
@@ -2244,7 +2244,7 @@ namespace Spec {
     // Всё остальное - разбор групп и полей - делает GetRuleFromDescription.
     // --------------------------------------------------------------------
     void ApplyRulePolicy (const GS::UniString &description, SpecRule &rule) {
-        const GS::UniString ldescription = description.ToLowerCase ();
+        const GS::UniString ldescription = UniStringToLower (description);
         if (ldescription.Contains ("pec_rule_v2")) {
             rule.delete_old = true;
         } else {
@@ -3035,10 +3035,10 @@ namespace Spec {
                         GS::UniString fname;
                         GS::UniString rawName = PROPERTYNAMEPREFIX;
                         GetPropertyFullName (property.definition, fname);
-                        rawName.Append (fname.ToLowerCase ());
+                        rawName.Append (UniStringToLower (fname));
                         rawName.Append (BRACEEND);
                         if (!paramdict.ContainsKey (rawName))
-                            paramdict.Add (rawName, property.definition.description.ToLowerCase ());
+                            paramdict.Add (rawName, UniStringToLower (property.definition.description));
                     }
                 }
                 if (favorite.memo.HasValue ()) {
@@ -3049,7 +3049,7 @@ namespace Spec {
                             API_AddParType &actParam = (*favorite.memo.Get ().params)[ii];
                             GS::UniString fname = GS::UniString (actParam.name);
                             GS::UniString rawName = GDLNAMEPREFIX;
-                            rawName.Append (fname.ToLowerCase ());
+                            rawName.Append (UniStringToLower (fname));
                             rawName.Append (BRACEEND);
                             if (!paramdict.ContainsKey (rawName))
                                 paramdict.Add (rawName, EMPTYSTRING);
@@ -3087,7 +3087,7 @@ namespace Spec {
                 API_AddParType &actParam = (*memo.params)[ii];
                 GS::UniString fname = GS::UniString (actParam.name);
                 GS::UniString rawName = GDLNAMEPREFIX;
-                rawName.Append (fname.ToLowerCase ());
+                rawName.Append (UniStringToLower (fname));
                 rawName.Append (BRACEEND);
                 if (!paramdict.ContainsKey (rawName))
                     paramdict.Add (rawName, EMPTYSTRING);
@@ -3110,10 +3110,10 @@ namespace Spec {
             GS::UniString fname;
             GS::UniString rawName = PROPERTYNAMEPREFIX;
             GetPropertyFullName (definition, fname);
-            rawName.Append (fname.ToLowerCase ());
+            rawName.Append (UniStringToLower (fname));
             rawName.Append (BRACEEND);
             if (!paramdict.ContainsKey (rawName))
-                paramdict.Add (rawName, definition.description.ToLowerCase ());
+                paramdict.Add (rawName, UniStringToLower (definition.description));
         }
         return err;
     }

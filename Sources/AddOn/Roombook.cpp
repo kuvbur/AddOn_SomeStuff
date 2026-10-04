@@ -916,7 +916,7 @@ namespace Roombook
                 fontname = partstring[3];
             }
             if (n > 4) {
-                GS::UniString space = partstring[4].ToLowerCase ();
+                GS::UniString space = UniStringToLower (partstring[4]);
                 if (space.Contains ("nbs"))
                     space = reinterpret_cast<const char *> (u8"\u2007");
                 if (space.Contains ("ns"))
@@ -926,7 +926,7 @@ namespace Roombook
                 c.no_breake_space = space;
             }
             if (n > 5) {
-                GS::UniString space = partstring[5].ToLowerCase ();
+                GS::UniString space = UniStringToLower (partstring[5]);
                 if (space.Contains ("nbs"))
                     space = reinterpret_cast<const char *> (u8"\u2007");
                 if (space.Contains ("ns"))
@@ -5169,7 +5169,7 @@ namespace Roombook
                 GS::UniString clasname = *cIt->key;
                 ClassificationFunc::ClassificationValues &clas = *cIt->value;
     #endif
-                GS::UniString desc = clas.item.description.ToLowerCase ();
+                GS::UniString desc = UniStringToLower (clas.item.description);
                 if (desc.Contains ("some_stuff_fin_")) {
                     if (desc.Contains (cls.all_class)) {
                         findict.Add (cls.all_class, clas);
@@ -5516,7 +5516,7 @@ namespace Roombook
         if (favdict.IsEmpty ())
             return;
         if (material.smaterial.Contains (ATSIGN)) {
-            GS::UniString part = material.smaterial.ToLowerCase () + '@';
+            GS::UniString part = UniStringToLower (material.smaterial) + '@';
             part = part.GetSubstring ('@', '@', 0);
             part.Trim ();
             if (!fav_name.IsEmpty ()) {

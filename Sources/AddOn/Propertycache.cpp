@@ -441,7 +441,7 @@ namespace ParamHelpers {
         }
         name = "surveyPointPosition_x";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -449,7 +449,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "surveyPointPosition_y";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -457,7 +457,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "surveyPointPosition_z";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -465,7 +465,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "eastings";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -473,7 +473,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "northings";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -481,7 +481,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "orthogonalHeight";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -489,7 +489,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "xAxisAbscissa";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -497,7 +497,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "xAxisOrdinate";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -505,7 +505,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "scale";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -541,7 +541,7 @@ namespace ParamHelpers {
         }
         name = "GLOB_NORTH_DIR";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -550,7 +550,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "GLOB_PROJECT_LONGITUDE";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -558,7 +558,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "GLOB_PROJECT_LATITUDE";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -566,7 +566,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "GLOB_PROJECT_ALTITUDE";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -574,7 +574,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "GLOB_SUN_AZIMUTH";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -583,7 +583,7 @@ namespace ParamHelpers {
         propertyParams.Add (rawName, pvalue);
         name = "GLOB_SUN_ALTITUDE";
         rawName = GLOBNAMEPREFIX;
-        rawName.Append (name.ToLowerCase ());
+        rawName.Append (UniStringToLower (name));
         rawName.Append (BRACEEND);
         pvalue.name = name;
         pvalue.rawName = rawName;
@@ -631,35 +631,35 @@ namespace ParamHelpers {
 
         pvalue.name = "locOrigin_x";
         pvalue.rawName = GLOBNAMEPREFIX;
-        pvalue.rawName.Append (pvalue.name.ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (pvalue.name));
         pvalue.rawName.Append (BRACEEND);
         ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.x + offset.x);
         propertyParams.Add (pvalue.rawName, pvalue);
 
         pvalue.name = "locOrigin_y";
         pvalue.rawName = GLOBNAMEPREFIX;
-        pvalue.rawName.Append (pvalue.name.ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (pvalue.name));
         pvalue.rawName.Append (BRACEEND);
         ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.y + offset.y);
         propertyParams.Add (pvalue.rawName, pvalue);
 
         pvalue.name = "locOrigin_z";
         pvalue.rawName = GLOBNAMEPREFIX;
-        pvalue.rawName.Append (pvalue.name.ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (pvalue.name));
         pvalue.rawName.Append (BRACEEND);
         ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.z);
         propertyParams.Add (pvalue.rawName, pvalue);
 
         pvalue.name = "offsetOrigin_x";
         pvalue.rawName = GLOBNAMEPREFIX;
-        pvalue.rawName.Append (pvalue.name.ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (pvalue.name));
         pvalue.rawName.Append (BRACEEND);
         ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, offset.x);
         propertyParams.Add (pvalue.rawName, pvalue);
 
         pvalue.name = "offsetOrigin_y";
         pvalue.rawName = GLOBNAMEPREFIX;
-        pvalue.rawName.Append (pvalue.name.ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (pvalue.name));
         pvalue.rawName.Append (BRACEEND);
         ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, offset.y);
         propertyParams.Add (pvalue.rawName, pvalue);
@@ -694,7 +694,7 @@ namespace ParamHelpers {
                 rawName = "{@info:addon_dimension_autotext}";
             } else {
                 rawName = INFONAMEPREFIX;
-                rawName.Append (autotexts[i][0].ToLowerCase ());
+                rawName.Append (UniStringToLower (autotexts[i][0]));
                 rawName.Append (BRACEEND);
             }
             if (!propertyParams.ContainsKey (rawName)) {
@@ -738,7 +738,7 @@ namespace ParamHelpers {
                 err = ACAPI_Attribute_Get (&attrib);
                 if (err == NoError) {
                     ParamValue pvalue = {};
-                    rawName = prefixes[typeInx] + "_name_" + attribname.ToLowerCase ();
+                    rawName = prefixes[typeInx] + "_name_" + UniStringToLower (attribname);
                     ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
                     propertyParams.Add (pvalue.rawName, pvalue);
                     pvalue.name = EMPTYSTRING;
@@ -861,7 +861,7 @@ namespace ParamHelpers {
             name.Append (definision.name);
 #endif
             rawName = PROPERTYNAMEPREFIX;
-            rawName.Append (name.ToLowerCase ());
+            rawName.Append (UniStringToLower (name));
             rawName.Append (BRACEEND);
             if (ParamValue *pvaluePtr = propertyParams.GetPtr (rawName)) {
                 if (pvaluePtr->definition.guid != definision.guid) {

@@ -1086,7 +1086,7 @@ bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
         name = BRACESTART + name;
     if (!name.Contains (BRACEEND))
         name += BRACEEND;
-    const GS::UniString loweredName = name.ToLowerCase ();
+    const GS::UniString loweredName = UniStringToLower (name);
 
     // 1) Каноническая форма rawname '{@prefix:name}': префикс известен — вход уже
     if (loweredName.BeginsWith (PVALPREFIX)) {
@@ -1168,7 +1168,7 @@ bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
     paramName = params.Get (0);
     FormatStringFunc::GetFormatString (paramName);
     paramName.ReplaceAll (SLASHEKR, SLASH);
-    rawname = paramNamePrefix + paramName.ToLowerCase () + BRACEEND;
+    rawname = paramNamePrefix + UniStringToLower (paramName) + BRACEEND;
     return true;
 }
 
@@ -1621,11 +1621,11 @@ bool SyncString (const API_ElemTypeID &elementType,
             GS::Array<GS::UniString> local_scratch;
             GS::UniString rule = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
             param.rawName = paramNamePrefix;
-            param.rawName.Append (rule.ToLowerCase ());
+            param.rawName.Append (UniStringToLower (rule));
             param.name = rule;
             param.rawName.Append (BRACEEND);
             if (StringSplt (rule, SEMICOLON, params, true, &local_scratch) > 1) {
-                GS::UniString type = params[0].ToLowerCase ();
+                GS::UniString type = UniStringToLower (params[0]);
                 if (type.Contains ("lookup") || type.Contains ("lokup"))
                     param.val.array_format_out = FILE_LOOKUP;
                 GS::Array<GS::UniString> params_2;
@@ -2045,7 +2045,7 @@ bool SyncString (const API_ElemTypeID &elementType,
 
     if (param.fromMaterial || param.val.hasFormula) {
         param.rawName = paramNamePrefix;
-        param.rawName.Append (paramName.ToLowerCase ());
+        param.rawName.Append (UniStringToLower (paramName));
         param.rawName.Append (SEMICOLON);
         param.rawName.Append (param.val.uniStringValue);
         param.rawName.Append (DOT);
@@ -2057,20 +2057,20 @@ bool SyncString (const API_ElemTypeID &elementType,
     }
     UInt32 start_ignore = 0;
     if (param.fromClassification) {
-        param.name = params.Get (0).ToLowerCase ();
+        param.name = UniStringToLower (params.Get (0));
         param.rawName = paramNamePrefix;
         param.rawName.Append (param.name);
         if (nparam > 1) {
             param.val.uniStringValue = params.Get (1);
             param.rawName.Append (SEMICOLON);
-            param.rawName.Append (param.val.uniStringValue.ToLowerCase ());
+            param.rawName.Append (UniStringToLower (param.val.uniStringValue));
         }
         param.rawName.Append (BRACEEND);
         start_ignore = 1 + nparam;
     }
     if (param.rawName.IsEmpty ()) {
         param.rawName = paramNamePrefix;
-        param.rawName.Append (paramName.ToLowerCase ());
+        param.rawName.Append (UniStringToLower (paramName));
         param.rawName.Append (BRACEEND);
     }
     if (param.name.IsEmpty ())
@@ -2079,7 +2079,7 @@ bool SyncString (const API_ElemTypeID &elementType,
         // Обработка данных о размерах массива и типе чтения
         if (start_ignore == 0)
             start_ignore = 1;
-        GS::UniString arrtype = params[1].ToLowerCase ();
+        GS::UniString arrtype = UniStringToLower (params[1]);
         bool hasArray = false;
         if (!hasArray && (arrtype.Contains ("uniq") || arrtype.Contains ("unic"))) {
             arrtype.ReplaceAll ("uniq", EMPTYSTRING);
@@ -2221,7 +2221,7 @@ bool SyncString (const API_ElemTypeID &elementType,
                 !rawName_col_end.IsEmpty ())
                 param.needPreRead = true;
             param.rawName = paramNamePrefix;
-            param.rawName.Append (paramName.ToLowerCase ());
+            param.rawName.Append (UniStringToLower (paramName));
             param.rawName.Append (GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d",
                                                          array_row_start,
                                                          array_row_end,
@@ -2262,7 +2262,7 @@ bool SyncString (const API_ElemTypeID &elementType,
                     ignorevals.reset_to_def = true;
                     continue;
                 }
-                ignorevals.ignorevals.Push (ignoreval.ToLowerCase ());
+                ignorevals.ignorevals.Push (UniStringToLower (ignoreval));
             }
         }
     }

@@ -327,20 +327,20 @@ bool Sum_Rule (const API_PropertyDefinition &definition, SumRule &paramtype) {
         return false;
     GS::UniString paramName = definition.description;
     GS::Array<GS::UniString> partstring = {};
-    if (StringSplt (paramName.ToLowerCase (), BRACEEND, partstring, "sum") > 0) {
+    if (StringSplt (UniStringToLower (paramName), BRACEEND, partstring, "sum") > 0) {
         paramName = partstring[0] + BRACEEND;
     }
     paramName = paramName.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
     paramName.ReplaceAll (SLASHEKR, SLASH);
     partstring.Clear ();
-    int nparam = StringSplt (paramName.ToLowerCase (), SEMICOLON, partstring, true);
+    int nparam = StringSplt (UniStringToLower (paramName), SEMICOLON, partstring, true);
     if (nparam == 0)
         return false;
     GS::UniString key = PVALPREFIX + partstring[0] + BRACEEND;
     GS::UniString rawName_rule;
     GetPropertyFullName (definition, rawName_rule);
     paramtype.rule_name = rawName_rule;
-    rawName_rule = PROPERTYNAMEPREFIX + rawName_rule.ToLowerCase () + BRACEEND;
+    rawName_rule = PROPERTYNAMEPREFIX + UniStringToLower (rawName_rule) + BRACEEND;
     if (ParamHelpers::isCacheContainsParamValue (key)) {
         // Если свойство ведёт в информцию о проекте - до складываем свойство, в котором указано правило
         if (key.Contains (INFONAMEPREFIX)) {

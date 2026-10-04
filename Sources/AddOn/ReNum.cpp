@@ -711,7 +711,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
             const GS::UniString rule_name = RenumRuleDisplayName (definition.description);
             // Разбираем - что записано в свойстве с флагом
             // В нём должно быть имя свойства и, возможно, флаг добавления нулей
-            GS::UniString paramName = definition.description.ToLowerCase ();
+            GS::UniString paramName = UniStringToLower (definition.description);
             partstring.Clear ();
             if (StringSplt (paramName, BRACEEND, partstring, "enum_flag", &local_scratch) > 0) {
                 paramName = partstring[0] + BRACEEND;
@@ -770,7 +770,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         GetFormulaTemplate (ruleParts[0], criteria_formula);
                     if (nRulePart > 1)
                         GetFormulaTemplate (ruleParts[1], delimetr_formula);
-                    ruleparamName = ruleBody.ToLowerCase ();
+                    ruleparamName = UniStringToLower (ruleBody);
                     GS::UniString rawNamecriteria = PVALPREFIX;
                     GS::UniString rawNamedelimetr;
                     if (ruleparamName.Contains (SEMICOLON)) { // Есть указание на нули
@@ -806,7 +806,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         GS::UniString fname;
                         GS::UniString rawName = PROPERTYNAMEPREFIX;
                         GetPropertyFullName (definition, fname);
-                        rawName.Append (fname.ToLowerCase ());
+                        rawName.Append (UniStringToLower (fname));
                         rawName.Append (BRACEEND);
                         rulecritetia.flag = rawName;
                         // Формульная часть не имеет имени свойства - вместо него
@@ -1332,7 +1332,7 @@ RenumMode ReNumGetFlag (const ParamValue &paramflag, const ParamValue &paramposi
         }
     }
     if (paramflag.type == API_PropertyStringValueType) {
-        GS::UniString flag = paramflag.val.uniStringValue.ToLowerCase ();
+        GS::UniString flag = UniStringToLower (paramflag.val.uniStringValue);
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         // Исключаемые позиции
         GS::UniString txtypenum = RSGetIndString (iseng, RenumSkipID, ACAPI_GetOwnResModule ());

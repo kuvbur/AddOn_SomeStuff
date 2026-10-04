@@ -17,6 +17,10 @@
 
 // RapidJSON входит в DevKit (Support/Modules/RapidJSON, header-only);
 // CMakeCommon.cmake добавляет Modules/* в include path.
+// В AC30 GRAPHISOFT переложил заголовки во вложенную папку: rapidjson/document.h
+// вместо RapidJSON/document.h. Собственные include у rapidjson относительные,
+// поэтому достаточно префикса. Ветка по ServerMainVers_3000, а не по AC_30:
+// константа означает «начиная с этой версии» (ACAPinc.h определяет их все разом).
 // Внутри заголовков rapidjson есть нестрогие memcpy — глушим только здесь,
 // чтобы clangd не поднимал -Wnontrivial-memcall до ошибки в этом файле.
 // Под MSVC прагмы clang неизвестны; до AC25 предупреждение C4068 глушилось
@@ -26,9 +30,15 @@
     #pragma clang diagnostic push
     #pragma clang diagnostic ignored "-Wnontrivial-memcall"
 #endif
-#include "document.h"
-#include "prettywriter.h"
-#include "stringbuffer.h"
+#ifdef ServerMainVers_3000
+    #include "rapidjson/document.h"
+    #include "rapidjson/prettywriter.h"
+    #include "rapidjson/stringbuffer.h"
+#else
+    #include "document.h"
+    #include "prettywriter.h"
+    #include "stringbuffer.h"
+#endif
 #ifdef __clang__
     #pragma clang diagnostic pop
 #endif

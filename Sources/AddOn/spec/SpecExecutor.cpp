@@ -113,7 +113,7 @@ namespace Spec {
                         GS::UniString rawname;
                         bool flag_find = false;
                         if (actParam.typeMod == API_ParSimple) {
-                            rawname = GDLNAMEPREFIX + name.ToLowerCase () + BRACEEND;
+                            rawname = GDLNAMEPREFIX + UniStringToLower (name) + BRACEEND;
                             flag_find = param.ContainsKey (rawname);
                         }
                         if (actParam.typeMod == API_ParSimple && flag_find) {

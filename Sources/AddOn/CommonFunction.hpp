@@ -29,6 +29,9 @@
     #ifdef AC_29
         #include "api_headers/APICommon29.h"
     #endif // AC_29
+    #ifdef AC_30
+        #include "api_headers/APICommon30.h"
+    #endif // AC_30
     #include <APIdefs_LibraryParts.h>
     #include <Definitions.hpp>
     #include <DG.h>
@@ -485,6 +488,15 @@ bool MenuInvertItemMark (short menuResID, short itemIndex);
 // Возвращает уникальные вхождения текста
 // -----------------------------------------------------------------------------
 GS::UniString StringUnic (const GS::UniString &instring, const GS::UniString &delim);
+
+    // -----------------------------------------------------------------------------
+    // Приведение строки к нижнему регистру - слой совместимости по версиям SDK.
+    // -----------------------------------------------------------------------------
+    #ifdef ServerMainVers_3000
+inline GS::UniString UniStringToLower (const GS::UniString &string) { return string.GetLowerCased (); }
+    #else
+inline GS::UniString UniStringToLower (const GS::UniString &string) { return string.ToLowerCase (); }
+    #endif
 
 // -----------------------------------------------------------------------------
 // Возвращает уникальные вхождения текста

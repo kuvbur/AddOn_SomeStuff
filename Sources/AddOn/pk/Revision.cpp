@@ -115,7 +115,7 @@ namespace Revision {
             GS::UniString name = *layout.value;
             API_Guid guid = *layout.key;
 #endif
-            name = name.ToLowerCase ();
+            name = UniStringToLower (name);
             if (name.Contains ("somestuff_")) {
                 layout_note_guid.Add (name, guid);
             }
@@ -140,7 +140,7 @@ namespace Revision {
             GS::UniString name = *rev.value;
             API_Guid guid = *rev.key;
 #endif
-            name = name.ToLowerCase ();
+            name = UniStringToLower (name);
             if (name.Contains ("somestuff_code_change")) {
                 layout_note_guid.Add ("somestuff_code_change", guid);
                 break;
@@ -578,7 +578,7 @@ namespace Revision {
             if (layout_note_guid.ContainsKey (prop_name)) {
                 API_Guid prop_guid = layout_note_guid.Get (prop_name);
                 if (layoutInfo.customData->ContainsKey (prop_guid)) {
-                    GS::UniString type = layoutInfo.customData->Get (prop_guid).ToLowerCase ();
+                    GS::UniString type = UniStringToLower (layoutInfo.customData->Get (prop_guid));
                     if (type.IsEqual (RVIString)) {
                         if (!layoutRVI.ContainsKey (change.changeId)) {
                             layoutRVI.Add (change.changeId, databaseUnId);
