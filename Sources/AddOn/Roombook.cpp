@@ -3520,6 +3520,32 @@ namespace Roombook
         return true;
     }
 
+    static bool CalculateOpeningRevealCoordinates (const OtdWall &otdw,
+                                                   const OtdOpening &op,
+                                                   const Geometry::Vector2<double> &walldir_perp,
+                                                   Point2D &left_begin,
+                                                   Point2D &left_end,
+                                                   Point2D &right_begin,
+                                                   Point2D &right_end) {
+        double dx = -otdw.endC.x + otdw.begC.x;
+        double dy = -otdw.endC.y + otdw.begC.y;
+        double dr = sqrt (dx * dx + dy * dy);
+        if (is_equal (dr, 0))
+            return false;
+        double lambda = 0;
+        lambda = (op.objLoc - op.width / 2) / dr;
+        left_begin.x = otdw.begC.x - dx * lambda;
+        left_begin.y = otdw.begC.y - dy * lambda;
+        left_end.x = left_begin.x + walldir_perp.x * op.base_reveal_width;
+        left_end.y = left_begin.y + walldir_perp.y * op.base_reveal_width;
+        lambda = (op.objLoc + op.width / 2) / dr;
+        right_begin.x = otdw.begC.x - dx * lambda;
+        right_begin.y = otdw.begC.y - dy * lambda;
+        right_end.x = right_begin.x + walldir_perp.x * op.base_reveal_width;
+        right_end.y = right_begin.y + walldir_perp.y * op.base_reveal_width;
+        return true;
+    }
+
     void OpeningReveals_Create_One (GS::Array<OtdSlab> &otdslabs,
                                     const OtdWall &otdw,
                                     OtdOpening &op,
@@ -3545,25 +3571,15 @@ namespace Roombook
         double height = 0;
         if (!CalculateOpeningRevealHeight (otdw, op, is_upper_wall, zDown, height))
             return;
-        Point2D begedge = {0, 0};
-        Point2D endedge = {0, 0};
-        Point2D begedge_up = {0, 0};
-        Point2D endedge_up = {0, 0};
-        Sector walledge = {begedge, endedge};
+        Point2D left_begin = {0, 0};
+        Point2D left_end = {0, 0};
+        Point2D right_begin = {0, 0};
+        Point2D right_end = {0, 0};
+        Sector walledge = {left_begin, left_end};
         // Строим перпендикулярные стенки к окну
-        double dx = -otdw.endC.x + otdw.begC.x;
-        double dy = -otdw.endC.y + otdw.begC.y;
-        double dr = sqrt (dx * dx + dy * dy);
-        if (is_equal (dr, 0))
+        if (!CalculateOpeningRevealCoordinates (otdw, op, walldir_perp, left_begin, left_end, right_begin, right_end))
             return;
-        double lambda = 0;
-        lambda = (op.objLoc - op.width / 2) / dr;
-        begedge.x = otdw.begC.x - dx * lambda;
-        begedge.y = otdw.begC.y - dy * lambda;
-        begedge_up = begedge;
-        endedge.x = begedge.x + walldir_perp.x * op.base_reveal_width;
-        endedge.y = begedge.y + walldir_perp.y * op.base_reveal_width;
-        walledge = {begedge, endedge};
+        walledge = {left_begin, left_end};
         if (!walledge.IsZeroLength ()) {
             OtdWall wallotd;
             InitializeOpeningRevealWall (
@@ -3585,13 +3601,7 @@ namespace Roombook
                                om_ceil,
                                om_zone);
         }
-        lambda = (op.objLoc + op.width / 2) / dr;
-        begedge.x = otdw.begC.x - dx * lambda;
-        begedge.y = otdw.begC.y - dy * lambda;
-        endedge_up = begedge; // Для горизнтальной части откоса
-        endedge.x = begedge.x + walldir_perp.x * op.base_reveal_width;
-        endedge.y = begedge.y + walldir_perp.y * op.base_reveal_width;
-        walledge = {begedge, endedge};
+        walledge = {right_begin, right_end};
         if (!walledge.IsZeroLength ()) {
             OtdWall wallotd;
             InitializeOpeningRevealWall (
@@ -3613,7 +3623,7 @@ namespace Roombook
                                om_ceil,
                                om_zone);
         }
-        walledge = {begedge_up, endedge_up};
+        walledge = {left_begin, right_begin};
         if (!walledge.IsZeroLength () && !is_upper_wall) {
             OtdWall wallotd;
             InitializeOpeningRevealWall (otdw,

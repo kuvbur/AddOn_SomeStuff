@@ -10,24 +10,24 @@ AC25 Windows; сначала состояние дерева, SDK и реаль�
 
 ## Status
 
-IN_PROGRESS — P3k выполнен поверх03ee158: последние6context-алиасов в ProcessRoomFinishes (:496)/RoomBook (:612) сняты; сигнатуры/порядок/пакетное чтение неизменны. BuildElementReadIndex5полей и ProcessElementsForRoomData6полей — контекст сохранён без длинных интерфейсов. Полный production равен исходному после6подстановок modulo formatting, строковые литералы совпали. AC25 Windows Debug BuildAddOn success; fresh LSP severity/code/message без изменений. Через VS MCP: все75итогов TestKit совпали до/после,75/8084/0, EXIT0; откосы3052/0. Read-back1778 box/доступные свойства совпали с p3j_vs_after, исходные GUID сохранены. Scoped symbols128/128,11границ/32fresh project edges и Menu->RoomBook source-site сверены; граф450,417прочих унаследованных edges сохранены. VS pane1196 ERROR IN TEST/1196 paramTo.isValid; отсутствие production-диагностик и полные контуры/материалы not verified. Мой VS-сеанс остановлен; push не выполнялся, #260 открыта.
+IN_PROGRESS — P2b2j/P4i выполнены и проверены, пока без коммита: private CalculateOpeningRevealCoordinates :3523; четыре endpoint, прежняя арифметика и три стадии/флаг до clipping. Правая координата считается до clipping; проверенный caller использует отдельный output-array, clipping не меняет исходные координаты. На неизменённом production выполнен контролируемый GREEN baseline; AC25 BuildAddOn success до/после, fresh LSP без новых severity/code/message. Откосы3754/0, TestKit76/8802/0, все76END/SUMMARY/EXIT совпали. VS before/after1778 box/доступные свойства совпали, исходные GUID сохранены. Scoped symbols129/129,13границ/36project edges joined, graph453;417прочих inherited edges сохранены. Мой VS-сеанс остановлен; полные контуры/материалы и отсутствие production-диагностик not verified. Параллельные изменения других файлов не затронуты; #260 открыта, push не выполнялся. После завершения контролируемого P4i-прогона общий APX пересобран параллельной работой: runtime APX mtime_ns1791116419085828300, свежий отчёт1791116510012487100; текущий APX1791116773819665700 новее отчёта. Roombook совпадает с проверенным снимком, но последний общий бинарник и параллельные изменения этим прогоном не проверены (not verified).
 P3a–P3e приняты ранее; детали в плане и `Docs/_progress.md`.
 Полные контуры/материалы и причины `paramTo.isValid` остаются not verified. Вне scope
 `.github/workflows/build_25+.yml` — не трогать.
 
 ## Last Completed
 
-P3k: инвентаризация оставшихся зависимостей и снятие6context-алиасов в ProcessRoomFinishes/RoomBook. Производственный diff, AC25 build, fresh LSP, все75TestKit итогов, VS read-back1778 и scoped docs/generated проверены. P4h/P2b2i/P3j ранее зафиксированы в03ee158.
+P2b2j/P4i: девять координатных сценариев на прежнем production, затем извлечение координат откосов; AC25 build, fresh LSP, два контролируемых VS TestKit/read-back и scoped docs/generated проверены. Изменения этого шага не закоммичены.
 
 P1 частично: четыре независимых прогона исходного AC25 Debug на чистой копии `test_25.pln` — `elapsedSeconds` 64.1296099 / 64.2839503 / 62.4861408 / 62.379905; все 63 зоны и +1301 Wall/+126 Object/+351 Window в трёх полностью снятых pre/post. Прогоны 3 и 4: ограничивающие 3D-параллелепипеды и 25 свойств для всех 1778 новых элементов, мультимножества `{тип, boundingBox3D, доступные свойства}` совпали (0 разниц). Артефакты в `Reviews/roombook_baseline/`. P2a: характеризационный `TestBuildOtdByParent` расширен (два родителя, два ребёнка-стены, неизвестный ребёнок, пустые входы, флаг на входе); исходная фикстура ошибочно ожидала мутации значения после `HashTable::Add`, исправлена. Форматирование, реестр 69/69/69, clangd 0 диагностик, AC25 `BuildAddOn.py` success, свежий TestKit: `TestBuildOtdByParent passed=12 failed=0`, всего `suites=69 passed=2567 failed=0`. Производственный код не менялся. Полная эквивалентность геометрии/материалов — not verified.
 
 ## Next Step
 
-Далее P2b2: инвентаризировать ещё не охарактеризованные ветви и выбрать содержательный набор до следующего извлечения production. Последние context-алиасы сняты; интерфейсы стадий с5/6полями не раздувать ради отказа от контекста. Смещённые отметки/min_dim закрыты P2b2i; новые геометрические интерфейсы остаются за Z0. Не менять #141/#148/#252 и не дробить тривиальные функции.
+Далее P2b2: выбрать оставшуюся содержательную границу по инвентаризации/характеризации, без изменения поведения и без дробления тривиальных функций. P2b2j/P4i готовы к отдельному checkpoint по запросу владельца; новые интерфейсы геометрии зоны остаются за Z0/#252.
 
 ## Last Checkpoint
 
-Checkpoint этой записи — `[P3k] Снять оставшиеся алиасы контекста Roombook` (Refs: IDEA.md step P3k; #260). Его хеш: `git log -1 --format=%h -- IDEA.md`. Предыдущий — `03ee158` [P3j], включающий P4h/P2b2i/P3j. Push не выполнялся; #260 открыта, #261 закрыта ранее по решению владельца.
+Checkpoint этой записи — [P4i] координаты откосов и характеризация P2b2j (Refs: IDEA.md step P4i; #260). Хеш: git log -1 --format=%h -- IDEA.md. Предыдущий checkpoint Roombook — d917a0a [P3k]. Параллельные файлы других задач в checkpoint не включены; push не выполнялся.
 
 ## Plan
 
@@ -54,6 +54,8 @@ Checkpoint этой записи — `[P3k] Снять оставшиеся ал
 - [x] P2b2i. 11 новых сценариев × два has_reveal: смещённые отметки и границы min_dim. Production совпадает с проверенным pre-step снимком; AC25 BuildAddOn success, fresh TestCore0 errors/3 прежних warnings, откосы3052/0, TestKit75/8084/0, EXIT0 через VS MCP.
 - [x] P3j. BuildMaterialSummaryForRooms (:377): OtdRooms/ParamDictElement напрямую вместо RoomProcessingContext, сняты два алиаса; полный pre-step reverse совпадает. AC25 BuildAddOn success; TestKit75/8084/0 до/после, fresh LSP без новых диагностик, fresh VS before/after1778 missing/extra0, GUID сохранены. Scoped symbols128/128;9helper boundaries/12fresh edges joined, project_edges430. Коммит/push не выполнялись.
 - [x] P3k. Инвентаризация5/6полей; контекст в стадиях сохранён. Последние6context-алиасов в ProcessRoomFinishes/RoomBook сняты; production равен6подстановкам modulo formatting. AC25 success, fresh LSP прежний, TestKit75/8084/0 и все75итогов совпали, VS1778/GUID без различий. Scoped symbols128/128,11границ/32fresh edges+Menu source-site, graph450;417прочих inherited edges сохранены.
+- [x] P2b2j. Девять сценариев ×2has_reveal: диагонали/objLoc/отрицательная ширина/масштаб перпендикуляра; на неизменённом production откосы3754/0, TestKit76/8802/0, EXIT0 через VS MCP.
+- [x] P4i. CalculateOpeningRevealCoordinates :3523; арифметика/endpoint сохранены, три стадии/флаг до clipping прежние. AC25 success, fresh LSP прежний, все76итогов совпали, VS1778 без различий, scoped symbols129/129/graph453. Пока без коммита.
 - [ ] P2b2. Остальные характеризационные сценарии; полноценный P1 остаётся непокрыт.
 - [x] P3a. Локализовать `paramDict` в `ReadElementParameters` без изменения порядка/числа вызовов; AC25, TestKit и частичный read-back проверены, худшее время 65.5245175 с против 65.7253702 с исходного (−0.31%), критерий владельца выполнен.
 - [x] P3b. `reducededges`: обнуление после синхронного SDK-вызова; контракт подтверждён, худшее 65.7452587 с против 65.7253702 с (+0,03%).

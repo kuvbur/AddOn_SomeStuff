@@ -805,10 +805,21 @@ namespace TestFunc {
             double resultBottom;
             double resultHeight;
             double wallBottom = 0;
+            double position = 5;
+            double perpendicularScale = 1;
         };
 
         const Case cases[] = {
             {"normal", 1, 3, 2, 0.5, 0, false, 3, 1, 3},
+            {"diagonal wall", 1, 3, 2, 0.5, 4, false, 3, 1, 3},
+            {"reversed diagonal wall", 1, 3, 2, 0.5, 5, false, 3, 1, 3},
+            {"opening at wall start", 1, 3, 2, 0.5, 0, false, 3, 1, 3, 0, 0},
+            {"opening at wall end", 1, 3, 2, 0.5, 0, false, 3, 1, 3, 0, 10},
+            {"opening before wall", 1, 3, 2, 0.5, 4, false, 3, 1, 3, 0, -2},
+            {"opening after wall", 1, 3, 2, 0.5, 5, false, 3, 1, 3, 0, 12},
+            {"negative opening width", 1, 3, -2, 0.5, 4, false, 3, 1, 3},
+            {"scaled perpendicular", 1, 3, 2, 0.5, 4, false, 3, 1, 3, 0, 5, 2},
+            {"opposite perpendicular", 1, 3, 2, 0.5, 5, false, 3, 1, 3, 0, 5, -1},
             {"clip bottom", -1, 3, 2, 0.5, 0, false, 3, 0, 2},
             {"clip top", 8, 4, 2, 0.5, 0, false, 2, 8, 2},
             {"exact top", 7, 3, 2, 0.5, 0, false, 3, 7, 3},
@@ -856,6 +867,12 @@ namespace TestFunc {
                     source.endC = {10, 30};
                 if (c.orientation == 3)
                     source.endC = source.begC;
+                if (c.orientation == 4)
+                    source.endC = {16, 28};
+                if (c.orientation == 5) {
+                    source.begC = {16, 28};
+                    source.endC = {10, 20};
+                }
                 source.height = 10;
                 source.zBottom = c.wallBottom;
                 source.base_guid = guid;
@@ -867,7 +884,7 @@ namespace TestFunc {
                 layer.val = "source layer";
                 source.base_composite.Push (layer);
                 Roombook::OtdOpening opening;
-                opening.objLoc = 5;
+                opening.objLoc = c.position;
                 opening.width = c.width;
                 opening.zBottom = c.bottom;
                 opening.height = c.height;
@@ -877,6 +894,12 @@ namespace TestFunc {
                 Geometry::Vector2<double> perpendicular = {0, 1};
                 if (c.orientation == 2)
                     perpendicular = {-1, 0};
+                if (c.orientation == 4)
+                    perpendicular = {-0.8, 0.6};
+                if (c.orientation == 5)
+                    perpendicular = {0.8, -0.6};
+                perpendicular.x *= c.perpendicularScale;
+                perpendicular.y *= c.perpendicularScale;
                 if (c.zeroPerp)
                     perpendicular = {0, 0};
                 Roombook::OtdMaterial materials[8];
@@ -911,7 +934,7 @@ namespace TestFunc {
                                                      materials[7]);
                 DBtest (walls.GetSize () == c.count, label + " count/order");
                 DBtest (opening.has_reveal == (hadReveal || c.count > 0), label + " reveal flag");
-                DBtest (opening.objLoc == 5 && opening.width == c.width && opening.height == c.height &&
+                DBtest (opening.objLoc == c.position && opening.width == c.width && opening.height == c.height &&
                             opening.zBottom == c.bottom && opening.base_reveal_width == c.depth,
                         label + " opening dimensions unchanged");
                 DBtest (source.height == 10 && source.zBottom == c.wallBottom && source.base_guid == guid &&
@@ -927,12 +950,16 @@ namespace TestFunc {
                 for (UInt32 i = 0; i < walls.GetSize (); ++i) {
                     const Roombook::OtdWall &wall = walls.Get (i);
                     bool top = c.zeroPerp || i == 2;
-                    double left = 5 - c.width / 2, right = 5 + c.width / 2;
+                    double left = c.position - c.width / 2, right = c.position + c.width / 2;
                     const auto pointAt = [&] (double distance) -> Point2D {
                         if (c.orientation == 1)
                             return {20 - distance, 20};
                         if (c.orientation == 2)
                             return {10, 20 + distance};
+                        if (c.orientation == 4)
+                            return {10 + distance * 0.6, 20 + distance * 0.8};
+                        if (c.orientation == 5)
+                            return {16 - distance * 0.6, 28 - distance * 0.8};
                         return {10 + distance, 20};
                     };
                     Point2D beg = pointAt (i == 0 && !top ? left : right);
