@@ -5992,6 +5992,13 @@
     "line": 795
   },
   {
+    "name": "TestFunc::TestClearZoneGuid",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestCore.cpp",
+    "module": "tests",
+    "line": 1210
+  },
+  {
     "name": "TestFunc::TestCalc",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestFormat.cpp",

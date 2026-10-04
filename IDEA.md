@@ -10,24 +10,24 @@ AC25 Windows; сначала состояние дерева, SDK и реаль�
 
 ## Status
 
-IN_PROGRESS — P2b2j/P4i закоммичены в8e242ef по запросу владельца, только8моих файлов; push не выполнялся. Начата P2b3: характеризация ClearZoneGUID на неизменённом production AC25; новые тесты пока не исполнены. Параллельные файлы других задач не затрагивать. Предыдущая верификация P4i относится к контролируемому бинарнику/отчётам, а не к последующим чужим пересборкам.
+IN_PROGRESS — P2b2j/P4i зафиксированы в 8e242ef. P2b3 завершён и проверен: TestClearZoneGuid 1719/0; TestKit 77/10521/0, EXIT 0; AC25 BuildAddOn success, fresh MCP без ошибок, scoped docs/generated обновлены. Этот checkpoint — P2b3. Production не изменялся мной; параллельные изменения и Test_file/test_30.pln не включены, push не выполнялся. #260 остаётся открытой.
 P3a–P3e приняты ранее; детали в плане и `Docs/_progress.md`.
 Полные контуры/материалы и причины `paramTo.isValid` остаются not verified. Вне scope
 `.github/workflows/build_25+.yml` — не трогать.
 
 ## Last Completed
 
-P2b2j/P4i: девять координатных сценариев на прежнем production, затем извлечение координат откосов; AC25 build, fresh LSP, два контролируемых VS TestKit/read-back и scoped docs/generated проверены. Изменения этого шага не закоммичены.
+P2b3: характеризация ClearZoneGUID на неизменённом теле функции; 1719/0, TestKit77/10521/0 EXIT0, прежние76END совпали с P4i. AC25 build, fresh MCP, scoped docs/generated и review проверены. Предыдущий P2b2j/P4i зафиксирован в8e242ef.
 
 P1 частично: четыре независимых прогона исходного AC25 Debug на чистой копии `test_25.pln` — `elapsedSeconds` 64.1296099 / 64.2839503 / 62.4861408 / 62.379905; все 63 зоны и +1301 Wall/+126 Object/+351 Window в трёх полностью снятых pre/post. Прогоны 3 и 4: ограничивающие 3D-параллелепипеды и 25 свойств для всех 1778 новых элементов, мультимножества `{тип, boundingBox3D, доступные свойства}` совпали (0 разниц). Артефакты в `Reviews/roombook_baseline/`. P2a: характеризационный `TestBuildOtdByParent` расширен (два родителя, два ребёнка-стены, неизвестный ребёнок, пустые входы, флаг на входе); исходная фикстура ошибочно ожидала мутации значения после `HashTable::Add`, исправлена. Форматирование, реестр 69/69/69, clangd 0 диагностик, AC25 `BuildAddOn.py` success, свежий TestKit: `TestBuildOtdByParent passed=12 failed=0`, всего `suites=69 passed=2567 failed=0`. Производственный код не менялся. Полная эквивалентность геометрии/материалов — not verified.
 
 ## Next Step
 
-Далее P2b2: выбрать оставшуюся содержательную границу по инвентаризации/характеризации, без изменения поведения и без дробления тривиальных функций. P2b2j/P4i готовы к отдельному checkpoint по запросу владельца; новые интерфейсы геометрии зоны остаются за Z0/#252.
+Далее P2b2: выбрать оставшуюся нетривиальную границу по активному плану и источнику; индекс ClearZoneGUID уже характеризован, короткую функцию не дробить. Новая геометрия зоны остаётся за Z0/#252; перед продолжением перепроверить параллельное дерево и состояние VS.
 
 ## Last Checkpoint
 
-Checkpoint этой записи — [P4i] координаты откосов и характеризация P2b2j (Refs: IDEA.md step P4i; #260). Хеш: git log -1 --format=%h -- IDEA.md. Предыдущий checkpoint Roombook — d917a0a [P3k]. Параллельные файлы других задач в checkpoint не включены; push не выполнялся.
+Этот checkpoint — [P2b3] характеризация ClearZoneGUID (Refs: IDEA.md step P2b3; #260). Хеш: git log -1 --format=%h --grep='^\[P2b3\]'. Предыдущий checkpoint Roombook — 8e242ef [P4i]. Push не выполнялся.
 
 ## Plan
 
@@ -55,8 +55,8 @@ Checkpoint этой записи — [P4i] координаты откосов �
 - [x] P3j. BuildMaterialSummaryForRooms (:377): OtdRooms/ParamDictElement напрямую вместо RoomProcessingContext, сняты два алиаса; полный pre-step reverse совпадает. AC25 BuildAddOn success; TestKit75/8084/0 до/после, fresh LSP без новых диагностик, fresh VS before/after1778 missing/extra0, GUID сохранены. Scoped symbols128/128;9helper boundaries/12fresh edges joined, project_edges430. Коммит/push не выполнялись.
 - [x] P3k. Инвентаризация5/6полей; контекст в стадиях сохранён. Последние6context-алиасов в ProcessRoomFinishes/RoomBook сняты; production равен6подстановкам modulo formatting. AC25 success, fresh LSP прежний, TestKit75/8084/0 и все75итогов совпали, VS1778/GUID без различий. Scoped symbols128/128,11границ/32fresh edges+Menu source-site, graph450;417прочих inherited edges сохранены.
 - [x] P2b2j. Девять сценариев ×2has_reveal: диагонали/objLoc/отрицательная ширина/масштаб перпендикуляра; на неизменённом production откосы3754/0, TestKit76/8802/0, EXIT0 через VS MCP.
-- [x] P4i. CalculateOpeningRevealCoordinates :3523; арифметика/endpoint сохранены, три стадии/флаг до clipping прежние. AC25 success, fresh LSP прежний, все76итогов совпали, VS1778 без различий, scoped symbols129/129/graph453. Пока без коммита.
-- [/] P2b3. ClearZoneGUID: характеризация вложенного индекса, dedup/NULL GUID/непросматриваемый тип/повторный вызов на неизменённом production AC25. Короткую функцию не дробить.
+- [x] P4i. CalculateOpeningRevealCoordinates :3523; арифметика/endpoint сохранены, три стадии/флаг до clipping прежние. AC25 success, fresh LSP прежний, все76итогов совпали, VS1778 без различий, scoped symbols129/129/graph453. Checkpoint8e242ef.
+- [x] P2b3. ClearZoneGUID: характеризация вложенного индекса, dedup/NULL GUID/непросматриваемый тип/повторный вызов на неизменённом production AC25. Короткую функцию не дробить. Проверено:1719/0; AC25 build success, fresh MCP, TestKit77/10521/0 EXIT0.
 - [ ] P2b2. Остальные характеризационные сценарии; полноценный P1 остаётся непокрыт.
 - [x] P3a. Локализовать `paramDict` в `ReadElementParameters` без изменения порядка/числа вызовов; AC25, TestKit и частичный read-back проверены, худшее время 65.5245175 с против 65.7253702 с исходного (−0.31%), критерий владельца выполнен.
 - [x] P3b. `reducededges`: обнуление после синхронного SDK-вызова; контракт подтверждён, худшее 65.7452587 с против 65.7253702 с (+0,03%).

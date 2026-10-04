@@ -11,7 +11,8 @@
     "test_edges": "74 ребра имеют вызывающим тест (tests/); они оставлены в графе, т.к. показывают реальные точки вызова. Фильтр «рёбра только внутри Sources/AddOn/» их не исключает — tests/ тоже внутри AddOn/.",
     "known_stale_non_spec": "ОСТОРОЖНО: из 418 рёбер 140 (все не-spec) указывают на строки, где имени функции нет — это унаследованная протухшая часть от 2026-09-22, НЕ результат сбора 2026-10-02. Пример: LoadSyncSettingsFromPreferences помечена :517, реальное определение :444. Все 272 spec-ребра проверены и корректны. Освежение не-spec части — отдельная задача.",
     "roombook_local_refresh": "2026-10-04 P4i: 13 boundaries recollected using fresh isolated clangd MCP; endpoints and sites joined to current source. Menu incoming cross-TU edge preserved and source-joined. Other inherited edges unchanged, NOT from this collection.",
-    "roombook_local_functions_queried": 13
+    "roombook_local_functions_queried": 13,
+    "p2b3_test_edge": "2026-10-04: TestClearZoneGuid -> ClearZoneGUID; endpoints fresh isolated MCP documentSymbols/hierarchy, three call sites source-joined. Fresh single-TU hierarchy omitted the cross-file test call; not a complete cross-TU MCP graph. Other inherited edges preserved."
   },
   "edges": [
     {
@@ -8081,6 +8082,32 @@
           "line": 6366
         }
       ]
+    },
+    {
+      "caller": {
+        "name": "TestClearZoneGuid",
+        "file": "Sources/AddOn/tests/TestCore.cpp",
+        "line": 1209
+      },
+      "callee": {
+        "name": "ClearZoneGUID",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 3446
+      },
+      "call_sites": [
+        {
+          "line": 1241,
+          "column": 8
+        },
+        {
+          "line": 1246,
+          "column": 8
+        },
+        {
+          "line": 1280,
+          "column": 16
+        }
+      ]
     }
   ],
   "sdk_edges_summary": {
@@ -8120,13 +8147,13 @@
     }
   ],
   "stats": {
-    "project_edges": 453,
+    "project_edges": 454,
     "functions_queried": 101,
     "functions_resolved": 95,
     "spec_functions_collected": 70,
     "spec_edges_added": 272,
     "spec_edges_dropped_stale": 9,
-    "edges_with_test_caller": 74
+    "edges_with_test_caller": 75
   },
   "body_scan": {
     "ResetProperty (Sources/AddOn/pk/ResetProperty.cpp:14)": {

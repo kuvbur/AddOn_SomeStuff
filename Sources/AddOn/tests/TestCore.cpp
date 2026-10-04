@@ -1207,5 +1207,114 @@ namespace TestFunc {
         }
     }
 
+    void TestClearZoneGuid () {
+        const API_Guid zones[] = {APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"),
+                                  APIGuidFromString ("{22222222-2222-2222-2222-222222222222}"),
+                                  APIGuidFromString ("{33333333-3333-3333-3333-333333333333}"),
+                                  APINULLGuid};
+        const API_Guid firstElement = APIGuidFromString ("{44444444-4444-4444-4444-444444444444}");
+        const API_Guid secondElement = APIGuidFromString ("{55555555-5555-5555-5555-555555555555}");
+        const API_ElemTypeID types[] = {API_WindowID, API_DoorID, API_WallID, API_ColumnID, API_SlabID, API_ZoneID};
+
+        struct Case {
+            const char *name;
+            UInt32 indices[6];
+            UInt32 count;
+            UInt32 uniqueCount;
+            UInt32 mask;
+            bool stress = false;
+        };
+
+        const Case cases[] = {{"empty list", {}, 0, 0, 0},
+                              {"single zone", {0}, 1, 1, 1},
+                              {"unique pair", {0, 1}, 2, 2, 3},
+                              {"unique triple", {0, 1, 2}, 3, 3, 7},
+                              {"one repeated zone", {0, 0, 0}, 3, 1, 1},
+                              {"grouped duplicates", {0, 0, 1, 1, 2, 2}, 6, 3, 7},
+                              {"interleaved duplicates", {1, 0, 1, 2, 0, 2}, 6, 3, 7},
+                              {"reverse duplicates", {2, 1, 0, 2, 1, 0}, 6, 3, 7},
+                              {"null zone retained", {3, 3}, 2, 1, 8},
+                              {"mixed null zone", {0, 3, 0, 3, 2}, 5, 3, 13},
+                              {"duplicate prefix", {2, 2, 0, 1}, 4, 3, 7},
+                              {"large repeated input", {}, 0, 4, 15, true}};
+
+        Roombook::UnicElementByType emptyIndex;
+        Roombook::ClearZoneGUID (emptyIndex);
+        DBtest (emptyIndex.IsEmpty (), "ClearZoneGUID empty index stays empty");
+        Roombook::UnicElementByType emptyBucket;
+        Roombook::UnicElement noElements;
+        emptyBucket.Add (API_WallID, noElements);
+        Roombook::ClearZoneGUID (emptyBucket);
+        DBrequire (emptyBucket.GetPtr (API_WallID) != nullptr, "ClearZoneGUID empty bucket key retained");
+        DBtest (emptyBucket.GetSize () == 1 && emptyBucket.GetPtr (API_WallID)->IsEmpty (),
+                "ClearZoneGUID empty bucket stays empty without adding types");
+
+        for (const Case &c : cases) {
+            GS::UniString label = GS::UniString ("ClearZoneGUID ") + c.name;
+            GS::Array<API_Guid> input;
+            for (UInt32 i = 0; i < c.count; ++i)
+                input.Push (zones[c.indices[i]]);
+            if (c.stress) {
+                for (UInt32 i = 0; i < 512; ++i)
+                    input.Push (zones[i % 4]);
+            }
+            GS::Array<API_Guid> sentinel;
+            sentinel.Push (zones[2]);
+            sentinel.Push (zones[2]);
+            Roombook::UnicElementByType index;
+            for (API_ElemTypeID type : types) {
+                Roombook::UnicElement elements;
+                elements.Add (firstElement, input);
+                elements.Add (secondElement, sentinel);
+                index.Add (type, elements);
+            }
+            GS::Array<API_Guid> skipped;
+            skipped.Push (zones[3]);
+            skipped.Push (zones[1]);
+            skipped.Push (zones[3]);
+            Roombook::UnicElement skippedElements;
+            skippedElements.Add (firstElement, skipped);
+            index.Add (API_BeamID, skippedElements);
+
+            // Порядок обработанных GUID не фиксируем: production перечисляет HashTable.
+            for (UInt32 repeat = 0; repeat < 2; ++repeat) {
+                Roombook::ClearZoneGUID (index);
+                DBtest (index.GetSize () == 7, label + " type keys retained");
+                for (API_ElemTypeID type : types) {
+                    const Roombook::UnicElement *elements = index.GetPtr (type);
+                    DBrequire (elements != nullptr, label + " processed type retained");
+                    DBtest (elements->GetSize () == 2, label + " element keys retained");
+                    const GS::Array<API_Guid> *actual = elements->GetPtr (firstElement);
+                    const GS::Array<API_Guid> *other = elements->GetPtr (secondElement);
+                    DBrequire (actual != nullptr && other != nullptr, label + " element GUIDs retained");
+                    DBtest (actual->GetSize () == c.uniqueCount, label + " unique count");
+                    UInt32 counts[4] = {};
+                    for (const API_Guid &guid : *actual) {
+                        bool known = false;
+                        for (UInt32 i = 0; i < 4; ++i) {
+                            if (guid == zones[i]) {
+                                ++counts[i];
+                                known = true;
+                            }
+                        }
+                        DBtest (known, label + " no foreign zone GUID");
+                    }
+                    for (UInt32 i = 0; i < 4; ++i)
+                        DBtest (counts[i] == ((c.mask & (1u << i)) != 0 ? 1u : 0u),
+                                label + " membership and uniqueness");
+                    DBtest (other->GetSize () == 1 && other->Get (0) == zones[2],
+                            label + " scratch cleared between elements and types");
+                }
+                const Roombook::UnicElement *unprocessed = index.GetPtr (API_BeamID);
+                DBrequire (unprocessed != nullptr, label + " unprocessed type retained");
+                const GS::Array<API_Guid> *untouched = unprocessed->GetPtr (firstElement);
+                DBrequire (untouched != nullptr, label + " unprocessed element retained");
+                DBtest (unprocessed->GetSize () == 1 && untouched->GetSize () == 3 && untouched->Get (0) == zones[3] &&
+                            untouched->Get (1) == zones[1] && untouched->Get (2) == zones[3],
+                        label + " unprocessed list preserves duplicates and order");
+            }
+        }
+    }
+
 } // namespace TestFunc
 #endif

@@ -135,6 +135,7 @@ namespace TestFunc {
     // --- core: разное (2) ---
     void TestStringSplt ();
     void TestBuildOtdByParent ();
+    void TestClearZoneGuid ();
     void TestOpeningAddOne ();
     void TestOtdWallDelimOne ();
     void TestOtdWallDelimAll ();

@@ -78,6 +78,7 @@ namespace TestFunc {
 
         TestKit::Register ("TestStringSplt", Groups::Core, TestStringSplt);
         TestKit::Register ("TestBuildOtdByParent", Groups::Core, TestBuildOtdByParent);
+        TestKit::Register ("TestClearZoneGuid", Groups::Core, TestClearZoneGuid);
         TestKit::Register ("TestOpeningAddOne", Groups::Core, TestOpeningAddOne);
         TestKit::Register ("TestOtdWallDelimOne", Groups::Core, TestOtdWallDelimOne);
         TestKit::Register ("TestOtdWallDelimAll", Groups::Core, TestOtdWallDelimAll);
