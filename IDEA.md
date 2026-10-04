@@ -10,24 +10,24 @@ AC25 Windows; сначала состояние дерева, SDK и реаль�
 
 ## Status
 
-IN_PROGRESS — P2b2j/P4i зафиксированы в 8e242ef. P2b3 завершён и проверен: TestClearZoneGuid 1719/0; TestKit 77/10521/0, EXIT 0; AC25 BuildAddOn success, fresh MCP без ошибок, scoped docs/generated обновлены. Этот checkpoint — P2b3. Production не изменялся мной; параллельные изменения и Test_file/test_30.pln не включены, push не выполнялся. #260 остаётся открытой.
+IN_PROGRESS — текущее состояние P2b4/P4j–P2b9 фиксируется по запросу владельца checkpoint [P2b9]. Новый TestCachedParameterReader :2362,1009/0; полный TestKit83/26783/0 EXIT0, прежние82END совпали. Production побайтно неизменен после P4m; AC25 BuildAddOn success, fresh Core/registry0errors. Scoped docs/generated актуализированы. Дальнейший рефакторинг в этом ходе не выполнялся; чужой Test_file/test_30.pln исключён, push не выполняется.
 P3a–P3e приняты ранее; детали в плане и `Docs/_progress.md`.
 Полные контуры/материалы и причины `paramTo.isValid` остаются not verified. Вне scope
 `.github/workflows/build_25+.yml` — не трогать.
 
 ## Last Completed
 
-P2b3: характеризация ClearZoneGUID на неизменённом теле функции; 1719/0, TestKit77/10521/0 EXIT0, прежние76END совпали с P4i. AC25 build, fresh MCP, scoped docs/generated и review проверены. Предыдущий P2b2j/P4i зафиксирован в8e242ef.
+P2b9: cached reader — шесть типов × шесть имён × четыре bool/fromProperty состояния, перестановки fallback, aggregate/preset, все поля значения/формата, сохранность источника/шаблона и два GUID в обоих порядках.1009/0, TestKit83/26783/0 EXIT0,82oldEND равны P4m. Production byte-identical, реальное SDK-чтение и новый model read-back не выполнялись.22fresh test symbols/1source-joined edge5sites,478inherited unchanged,graph479. Накопленные P2b4/P4j–P2b9 включаются в checkpoint [P2b9] по запросу владельца; предыдущий7140f15 [P2b3].
 
 P1 частично: четыре независимых прогона исходного AC25 Debug на чистой копии `test_25.pln` — `elapsedSeconds` 64.1296099 / 64.2839503 / 62.4861408 / 62.379905; все 63 зоны и +1301 Wall/+126 Object/+351 Window в трёх полностью снятых pre/post. Прогоны 3 и 4: ограничивающие 3D-параллелепипеды и 25 свойств для всех 1778 новых элементов, мультимножества `{тип, boundingBox3D, доступные свойства}` совпали (0 разниц). Артефакты в `Reviews/roombook_baseline/`. P2a: характеризационный `TestBuildOtdByParent` расширен (два родителя, два ребёнка-стены, неизвестный ребёнок, пустые входы, флаг на входе); исходная фикстура ошибочно ожидала мутации значения после `HashTable::Add`, исправлена. Форматирование, реестр 69/69/69, clangd 0 диагностик, AC25 `BuildAddOn.py` success, свежий TestKit: `TestBuildOtdByParent passed=12 failed=0`, всего `suites=69 passed=2567 failed=0`. Производственный код не менялся. Полная эквивалентность геометрии/материалов — not verified.
 
 ## Next Step
 
-Далее P2b2: выбрать оставшуюся нетривиальную границу по активному плану и источнику; индекс ClearZoneGUID уже характеризован, короткую функцию не дробить. Новая геометрия зоны остаётся за Z0/#252; перед продолжением перепроверить параллельное дерево и состояние VS.
+Продолжение P2b2 — после отдельного запроса: сначала инвентаризация оставшихся характеризационных сценариев по исходному плану и проверка уже имеющихся assertions, без дробления коротких функций. Непустой непредустановленный reader-запрос с кандидатами при отсутствующем GUID не исполнялся (baseparam без null-guard); не менять production в тестовой задаче. Новые геометрические интерфейсы по-прежнему за Z0/#252; полноценный P1 остаётся неполон. До продолжения перепроверить дерево/VS; push и закрытие #260 не разрешены.
 
 ## Last Checkpoint
 
-Этот checkpoint — [P2b3] характеризация ClearZoneGUID (Refs: IDEA.md step P2b3; #260). Хеш: git log -1 --format=%h --grep='^\[P2b3\]'. Предыдущий checkpoint Roombook — 8e242ef [P4i]. Push не выполнялся.
+Чекпоинт этой фиксации — [P2b9] Зафиксировать рефакторинг Roombook и характеризационные тесты (Refs: IDEA.md step P2b9; #260). Его SHA — git log -1; предыдущий checkpoint7140f15 [P2b3]. Накопленные P2b4/P4j–P2b9 включены; push не выполнялся.
 
 ## Plan
 
@@ -57,6 +57,16 @@ P1 частично: четыре независимых прогона исхо
 - [x] P2b2j. Девять сценариев ×2has_reveal: диагонали/objLoc/отрицательная ширина/масштаб перпендикуляра; на неизменённом production откосы3754/0, TestKit76/8802/0, EXIT0 через VS MCP.
 - [x] P4i. CalculateOpeningRevealCoordinates :3523; арифметика/endpoint сохранены, три стадии/флаг до clipping прежние. AC25 success, fresh LSP прежний, все76итогов совпали, VS1778 без различий, scoped symbols129/129/graph453. Checkpoint8e242ef.
 - [x] P2b3. ClearZoneGUID: характеризация вложенного индекса, dedup/NULL GUID/непросматриваемый тип/повторный вызов на неизменённом production AC25. Короткую функцию не дробить. Проверено:1719/0; AC25 build success, fresh MCP, TestKit77/10521/0 EXIT0.
+- [x] P2b4. Накопление материалов OtdData_CalcForRoom: площади/состав/фильтры/типы отделки и повторное суммирование, без форматирования и SDK-записи; baseline на неизменённом production AC25. Baseline8031/0, TestKit78/18552/0 EXIT0, VS1778 без различий.
+- [x] P4j. CollectMaterialAreasForRoom :985: два прежних обхода стен/перекрытий; reverse==pre-step, AC25 success, fresh LSP прежний,8031/0 и TestKit78/18552/0 до/после, VS1778 без различий; scoped docs/generated проверены. Включено в текущий checkpoint [P2b9].
+- [x] P2b5. TestRoomParameterIsolation:1921/0, TestKit79/20473/0 EXIT0; production byte-identical, AC25 BuildAddOn success, fresh Core/registry0errors, прежние78END совпали.
+- [x] P4k. NormalizeRoomFinishHeights :2702, Param_SetToRooms :2722/site3016; полный reverse==pre-step, порядок/валидность до rounding/арифметика прежние. AC25 success, fresh LSP без новых severity/code/message,1921/0 и TestKit79/20473/0 до/после, VS1778 без различий против baseline; scoped docs/generated проверены. Включено в текущий checkpoint [P2b9].
+- [x] P2b6. TestRoomMaterialFormatting :1737:973/0, TestKit80/21446/0 EXIT0, прежние79END совпали; production byte-identical, AC25 BuildAddOn success, fresh Core/registry0errors. SDK metrics исполнены, property-write в модель не выполняется. Scoped docs/generated проверены.
+- [x] P4l. CollectAreasForFinishTypes :1082: прежний copy/циклы/#if/суммирование; полный reverse==pre-step, AC25 success, fresh Root без новых диагностик. Tests973/0, TestKit80/21446/0 EXIT0, все80итогов совпали; VS1778 без различий/GUID сохранены. Scoped docs/generated проверены, включено в текущий checkpoint [P2b9].
+- [x] P2b7. TestOpeningParameterIsolation :1908:3692/0, TestKit81/25138/0 EXIT0, все80унаследованных END совпали.64маски/слои,13состояний ×оба порядка,5early-return на cached-данных; production byte-identical, AC25 success, fresh Core/registry0errors, scoped docs/generated проверены. Реальное GDL/private pipeline не проверены.
+- [x] P2b8. Характеризация Param_Property_FindInParams/windowParams на временном cache с RAII-восстановлением; production read-only AC25. Baseline 636/0,82/25774/0 EXIT0,81 old END equal,production bytes unchanged.
+- [x] P4m. ResolveParameterRawNames :2596, caller Param_Property_FindInParams :2640/site2646: только прежний цикл, полный reverse==pre-step. AC25 success, fresh LSP без новых диагностик;636/0 и TestKit82/25774/0 до/после, все82итогов равны, VS1778 без различий/GUID сохранены; scoped docs/generated проверены. Включено в текущий checkpoint [P2b9].
+- [x] P2b9. TestCachedParameterReader :2362:1009/0; TestKit83/26783/0 EXIT0,82inherited END равны P4m, registry83/83/83. Production byte-identical; AC25 success, fresh Core/registry0errors, scoped22symbols/edge5sites joined,graph479. Текущее состояние P2b4/P4j–P2b9 фиксируется checkpoint по запросу владельца, без push.
 - [ ] P2b2. Остальные характеризационные сценарии; полноценный P1 остаётся непокрыт.
 - [x] P3a. Локализовать `paramDict` в `ReadElementParameters` без изменения порядка/числа вызовов; AC25, TestKit и частичный read-back проверены, худшее время 65.5245175 с против 65.7253702 с исходного (−0.31%), критерий владельца выполнен.
 - [x] P3b. `reducededges`: обнуление после синхронного SDK-вызова; контракт подтверждён, худшее 65.7452587 с против 65.7253702 с (+0,03%).

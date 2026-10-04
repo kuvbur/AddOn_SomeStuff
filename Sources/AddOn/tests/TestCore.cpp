@@ -5,6 +5,7 @@
     #include "api_headers/APIEnvir.h"
 
     #include "Helpers.hpp"
+    #include "Propertycache.hpp"
     #include "Roombook.hpp"
     #include "tests/TestFunc.hpp"
     #include "tests/TestKit.hpp"
@@ -1312,6 +1313,1300 @@ namespace TestFunc {
                 DBtest (unprocessed->GetSize () == 1 && untouched->GetSize () == 3 && untouched->Get (0) == zones[3] &&
                             untouched->Get (1) == zones[1] && untouched->Get (2) == zones[3],
                         label + " unprocessed list preserves duplicates and order");
+            }
+        }
+    }
+
+    void TestRoomMaterialQuantities () {
+        const API_Guid firstZone = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
+        const API_Guid secondZone = APIGuidFromString ("{22222222-2222-2222-2222-222222222222}");
+        const GS::UniString materials[] = {
+            "M", "N", "", GS::UniString ("Материал", CC_UTF8), GS::UniString ("материал", CC_UTF8)};
+        const Roombook::TypeOtd types[] = {Roombook::NoSet,
+                                           Roombook::Wall_Main,
+                                           Roombook::Wall_Up,
+                                           Roombook::Wall_Down,
+                                           Roombook::Reveal_Main,
+                                           Roombook::Reveal_Up,
+                                           Roombook::Reveal_Down,
+                                           Roombook::Column,
+                                           Roombook::Floor,
+                                           Roombook::Ceil,
+                                           Roombook::Sloped};
+
+        struct Case {
+            const char *name;
+            const char *layers[2];
+            UInt32 layerCount;
+            double expected[5];
+            UInt32 geometry = 0;
+            UInt32 source = 0;
+            bool valid = true;
+            UInt32 count = 1;
+        };
+
+        const Case cases[] = {{"empty room", {}, 0, {}, 0, 0, true, 0},
+                              {"wall without layers", {}, 0, {}},
+                              {"single wall material", {"M"}, 1, {12}},
+                              {"duplicate inside layer", {"M;M"}, 1, {12}},
+                              {"split layer", {"M;N"}, 1, {12, 12}},
+                              {"duplicate layers", {"M", "M"}, 2, {24}},
+                              {"overlapping layers", {"M;N", "M"}, 2, {24, 12}},
+                              {"ignored marker substring", {"prefix----suffix"}, 1, {}},
+                              {"mixed ignored material", {"M;----;N"}, 1, {12, 12}},
+                              {"empty material name", {""}, 1, {0, 0, 12}},
+                              {"unicode case preserved", {"Материал;материал"}, 1, {0, 0, 0, 12, 12}},
+                              {"invalid wall", {"M"}, 1, {}, 0, 0, false},
+                              {"two walls", {"M"}, 1, {24}, 0, 0, true, 2},
+                              {"reveal length", {"M"}, 1, {2}, 1},
+                              {"reveal height", {"M"}, 1, {1.5}, 2},
+                              {"negative height", {"M"}, 1, {}, 3},
+                              {"opening larger than wall", {"M"}, 1, {}, 4},
+                              {"partial opening", {"M"}, 1, {10}, 5},
+                              {"zero length", {"M"}, 1, {}, 6},
+                              {"below area threshold", {"M"}, 1, {}, 7},
+                              {"exact area threshold", {"M"}, 1, {0.000001}, 8},
+                              {"float accumulation order", {"M"}, 1, {1e16}, 9, 0, true, 3},
+                              {"rectangular slab", {"M"}, 1, {6}, 0, 1},
+                              {"slab split and dedup", {"M;M;N"}, 1, {6, 6}, 0, 1},
+                              {"invalid slab", {"M"}, 1, {}, 0, 1, false},
+                              {"empty polygon", {"M"}, 1, {}, 0, 2},
+                              {"slab without layers", {}, 0, {}, 0, 1},
+                              {"two slabs", {"M"}, 1, {12}, 0, 1, true, 2}};
+        Box2DData box = {};
+        box.xMin = 0;
+        box.yMin = 0;
+        box.xMax = 2;
+        box.yMax = 3;
+        const Geometry::Polygon2D rectangle (box);
+        DBtest (rectangle.CalcArea () == 6, "Room materials rectangular fixture area");
+        Roombook::ColumnFormatDict format;
+        for (Roombook::TypeOtd type : types) {
+            for (const Case &c : cases) {
+                GS::UniString label = GS::UniString ("Room materials ") + c.name;
+                Roombook::OtdRoom room;
+                room.zone_guid = firstZone;
+                room.tip_otd = "target";
+                // Пустые rawname изолируют расчёт от форматирования и записи свойств.
+                for (UInt32 i = 0; i < c.count; ++i) {
+                    Roombook::OtdWall wall;
+                    wall.endC = {4, 0};
+                    wall.height = 3;
+                    wall.type = type;
+                    wall.isValid = c.valid;
+                    if (c.geometry == 1) {
+                        wall.width = 0.5;
+                        wall.length = 4;
+                    }
+                    if (c.geometry == 2)
+                        wall.width = 0.5;
+                    if (c.geometry == 3)
+                        wall.height = -3;
+                    if (c.geometry == 4 || c.geometry == 5) {
+                        Roombook::OtdOpening opening;
+                        opening.height = c.geometry == 4 ? 10 : 2;
+                        opening.width = c.geometry == 4 ? 10 : 1;
+                        wall.openings.Push (opening);
+                    }
+                    if (c.geometry == 6)
+                        wall.endC = wall.begC;
+                    if (c.geometry == 7 || c.geometry == 8) {
+                        wall.endC = {1, 0};
+                        wall.height = c.geometry == 7 ? 0.0000001 : 0.000001;
+                    }
+                    if (c.geometry == 9)
+                        wall.height = i == 0 ? 2500000000000000.0 : 0.25;
+                    for (UInt32 j = 0; j < c.layerCount; ++j) {
+                        ParamValueComposite layer;
+                        layer.val = GS::UniString (c.layers[j], CC_UTF8);
+                        wall.base_composite.Push (layer);
+                    }
+                    if (c.source == 0) {
+                        room.otdwall.Push (wall);
+                    } else {
+                        Roombook::OtdSlab slab;
+                        slab.type = type;
+                        slab.isValid = c.valid;
+                        slab.base_composite = wall.base_composite;
+                        if (c.source == 1)
+                            slab.poly = rectangle;
+                        room.otdslab.Push (slab);
+                    }
+                }
+                const Roombook::OtdRoom before = room;
+                ParamDictElement read;
+                ParamDictElement write;
+                ParamDictValue untouched;
+                write.Add (firstZone, untouched);
+                Roombook::OtdMaterialAreaDict sentinel;
+                sentinel.Add ("keep", 99);
+                Roombook::OtdMaterialAreaDictByType other;
+                other.Add (Roombook::Floor, sentinel);
+                Roombook::OtdMaterialAreaDictByOtdType quantities;
+                quantities.Add ("other", other);
+                for (UInt32 repeat = 1; repeat <= 2; ++repeat) {
+                    room.zone_guid = repeat == 1 ? firstZone : secondZone;
+                    Roombook::OtdData_CalcForRoom (format, room, write, read, quantities);
+                    DBtest (quantities.GetSize () == 2, label + " finish type keys retained");
+                    DBrequire (quantities.GetPtr ("target") != nullptr, label + " target finish type created");
+                    const Roombook::OtdMaterialAreaDictByType &actual = quantities.Get ("target");
+                    UInt32 expectedCount = 0;
+                    for (UInt32 j = 0; j < 5; ++j)
+                        if (c.expected[j] != 0)
+                            ++expectedCount;
+                    DBtest (actual.GetSize () == (expectedCount == 0 ? 0u : 1u), label + " only requested finish band");
+                    if (expectedCount != 0) {
+                        DBrequire (actual.GetPtr (type) != nullptr, label + " finish band retained");
+                        const Roombook::OtdMaterialAreaDict &byMaterial = actual.Get (type);
+                        DBtest (byMaterial.GetSize () == expectedCount, label + " exact material keys");
+                        for (UInt32 j = 0; j < 5; ++j) {
+                            if (c.expected[j] == 0) {
+                                DBtest (!byMaterial.ContainsKey (materials[j]), label + " absent material");
+                            } else {
+                                const double *area = byMaterial.GetPtr (materials[j]);
+                                DBrequire (area != nullptr, label + " expected material present");
+                                DBtest (*area == c.expected[j] * repeat, label + " exact accumulated area");
+                            }
+                        }
+                    }
+                    DBtest (quantities.Get ("other").Get (Roombook::Floor).Get ("keep") == 99,
+                            label + " unrelated finish type unchanged");
+                    DBtest (read.IsEmpty () && write.GetSize () == 1 && write.Get (firstZone).IsEmpty (),
+                            label + " no property output without rawnames");
+                    DBtest (room.otdwall.GetSize () == before.otdwall.GetSize () &&
+                                room.otdslab.GetSize () == before.otdslab.GetSize (),
+                            label + " inputs retained");
+                    for (UInt32 j = 0; j < room.otdwall.GetSize (); ++j) {
+                        const auto &wall = room.otdwall[j];
+                        const auto &original = before.otdwall[j];
+                        DBtest (wall.endC.x == original.endC.x && wall.height == original.height &&
+                                    wall.width == original.width && wall.length == original.length &&
+                                    wall.type == original.type && wall.isValid == original.isValid &&
+                                    wall.openings.GetSize () == original.openings.GetSize (),
+                                label + " wall unchanged");
+                        for (UInt32 k = 0; k < wall.base_composite.GetSize (); ++k)
+                            DBtest (wall.base_composite[k].val == original.base_composite[k].val,
+                                    label + " source layer unchanged");
+                    }
+                    for (UInt32 j = 0; j < room.otdslab.GetSize (); ++j)
+                        DBtest (room.otdslab[j].poly.CalcArea () == before.otdslab[j].poly.CalcArea () &&
+                                    room.otdslab[j].type == before.otdslab[j].type &&
+                                    room.otdslab[j].isValid == before.otdslab[j].isValid,
+                                label + " slab unchanged");
+                }
+            }
+        }
+    }
+
+    void TestRoomParameterIsolation () {
+        const API_Guid zones[] = {APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"),
+                                  APIGuidFromString ("{22222222-2222-2222-2222-222222222222}")};
+        const auto add = [] (Roombook::ReadParams &requests,
+                             ParamDictValue &data,
+                             const GS::UniString &key,
+                             const ParamValueData &value,
+                             bool valid = true) {
+            Roombook::ReadParam request;
+            request.rawnames.Push (key);
+            requests.Add (key, request);
+            ParamValue p;
+            p.rawName = key;
+            p.isValid = valid;
+            p.val = value;
+            data.Add (key, p);
+        };
+        const auto number = [] (double value) {
+            ParamValueData p;
+            p.type = API_PropertyRealValueType;
+            p.doubleValue = value;
+            return p;
+        };
+        const auto boolean = [] (bool value) {
+            ParamValueData p;
+            p.type = API_PropertyBooleanValueType;
+            p.boolValue = value;
+            return p;
+        };
+        const auto string = [] (const GS::UniString &value) {
+            ParamValueData p;
+            p.type = API_PropertyStringValueType;
+            p.uniStringValue = value;
+            return p;
+        };
+        GS::HashTable<GS::UniString, GS::Int32> materials;
+        materials.Add ("untouched", 49);
+        const char *flagKeys[] = {"create_column_elements",
+                                  "create_wall_elements",
+                                  "create_floor_elements",
+                                  "create_ceil_elements",
+                                  "create_reveal_elements"};
+        // Перебираем все отдельные флаги: общий отсутствует, невалиден, false либо true.
+        for (UInt32 mode = 0; mode < 4; ++mode) {
+            for (UInt32 mask = 0; mask < 32; ++mask) {
+                for (UInt32 initial = 0; initial < 2; ++initial) {
+                    Roombook::ReadParams requests;
+                    ParamDictValue data;
+                    add (requests, data, "tip_otd", string ("flags"));
+                    if (mode != 0)
+                        add (requests, data, "create_all_elements", boolean (mode == 3), mode != 1);
+                    for (UInt32 j = 0; j < 5; ++j)
+                        add (requests, data, flagKeys[j], boolean ((mask & (1u << j)) != 0));
+                    ParamDictElement read;
+                    read.Add (zones[0], data);
+                    Roombook::OtdRoom room;
+                    room.zone_guid = zones[0];
+                    room.height = 3;
+                    room.create_all_elements = initial != 0;
+                    Roombook::Param_SetToRooms (materials, room, read, requests);
+                    const bool actual[] = {room.create_column_elements,
+                                           room.create_wall_elements,
+                                           room.create_floor_elements,
+                                           room.create_ceil_elements,
+                                           room.create_reveal_elements};
+                    for (UInt32 j = 0; j < 5; ++j) {
+                        const bool expected = mode >= 2 ? mode == 3 : (mask & (1u << j)) != 0;
+                        DBtest (actual[j] == expected, "Room params all/individual flag precedence");
+                    }
+                    DBtest (room.create_all_elements == (mode >= 2 ? mode == 3 : initial != 0),
+                            "Room params absent/invalid global preserves initial value");
+                    DBtest (room.tip_otd == "flags" && room.height_main == 3 && room.height_up == 0,
+                            "Room params flags fixture read and normalized");
+                }
+            }
+        }
+
+        struct HeightCase {
+            const char *name;
+            double height;
+            double main;
+            double down;
+            double resultHeight;
+            double resultMain;
+            double resultDown;
+            double resultUp;
+            bool valid;
+            UInt32 direct = 2;
+            bool fallback = true;
+        };
+
+        const HeightCase heights[] = {{"explicit bands", 3, 2.5, 0.5, 3, 2, 0.5, 0.5, true},
+                                      {"main above height", 3, 5, 0.5, 3, 2.5, 0.5, 0, true},
+                                      {"main below threshold", 3, 0.099, 0.5, 3, 2.5, 0.5, 0, true},
+                                      {"main at threshold", 3, 0.1, 0.5, 3, -0.4, 0.5, 2.9, true},
+                                      {"negative main", 3, -2, 0.5, 3, 2.5, 0.5, 0, true},
+                                      {"negative down", 3, 2, -0.5, 3, 2.5, -0.5, 1, true},
+                                      {"zero height", 0, 2, 0.5, 0, -0.5, 0.5, 0, false},
+                                      {"height below validity threshold", 0.00009, 0, 0, 0, 0, 0, 0, false},
+                                      {"height at validity threshold", 0.0001, 0, 0, 0, 0, 0, 0, true},
+                                      {"millimeter rounding", 3.1234, 2.5434, 0.4324, 3.123, 2.111, 0.432, 0.58, true},
+                                      {"missing direct uses fallback", 3, 2.5, 0.5, 3, 2, 0.5, 0.5, true, 0},
+                                      {"invalid direct uses fallback", 3, 2.5, 0.5, 3, 2, 0.5, 0.5, true, 1},
+                                      {"false fallback makes zero", 3, 2.5, 0.5, 3, 2.5, 0, 0.5, true, 0, false}};
+        for (const HeightCase &c : heights) {
+            Roombook::ReadParams requests;
+            ParamDictValue data;
+            add (requests, data, "tip_otd", string ("height"));
+            add (requests, data, "height_main", number (c.main));
+            if (c.direct != 0)
+                add (requests, data, "height_down", number (c.down), c.direct == 2);
+            add (requests, data, "him_has_height_down", boolean (c.fallback));
+            add (requests, data, "him_height_down", number (c.direct == 2 ? 99 : c.down));
+            ParamDictElement read;
+            read.Add (zones[0], data);
+            Roombook::OtdRoom room;
+            room.zone_guid = zones[0];
+            room.height = c.height;
+            room.height_up = 99;
+            Roombook::Param_SetToRooms (materials, room, read, requests);
+            const GS::UniString label = GS::UniString ("Room params height ") + c.name;
+            DBtest (room.height, c.resultHeight, label + " total");
+            DBtest (room.height_main, c.resultMain, label + " main");
+            DBtest (room.height_down, c.resultDown, label + " down");
+            DBtest (room.height_up, c.resultUp, label + " up");
+            DBtest (room.isValid == c.valid, label + " validity before rounding");
+        }
+        Roombook::ReadParams seed;
+        ParamDictValue data[2];
+        for (UInt32 i = 0; i < 2; ++i) {
+            Roombook::ReadParams requests;
+            add (requests, data[i], "tip_otd", string (GS::UniString (i == 0 ? "Зона А" : "Зона Б", CC_UTF8)));
+            add (requests, data[i], "tip_pot", string (i == 0 ? "ceiling A" : "ceiling B"));
+            add (requests, data[i], "tip_pol", string (i == 0 ? "floor A" : "invalid floor B"), i == 0);
+            add (requests, data[i], "height_main", number (i == 0 ? 2.5 : 3.5));
+            add (requests, data[i], "height_down", number (i == 0 ? 0.5 : 1));
+            add (requests, data[i], "has_ceil", boolean (i != 0));
+            add (requests, data[i], "has_floor", boolean (i == 0));
+            add (requests, data[i], "ceil_by_slab", boolean (i == 0));
+            add (requests, data[i], "floor_by_slab", boolean (i == 0));
+            add (requests, data[i], "create_all_elements", boolean (false), i == 0);
+            for (UInt32 j = 0; j < 5; ++j)
+                add (requests, data[i], flagKeys[j], boolean (i == 0 || j == 1 || j == 3 || j == 4));
+            if (i == 0)
+                seed = requests;
+        }
+        Roombook::ReadParam target;
+        target.isValid = true;
+        target.val = string ("preset target");
+        seed.Add ("om_reveals.rawname", target);
+        ParamDictElement read;
+        read.Add (zones[0], data[0]);
+        read.Add (zones[1], data[1]);
+        // Как в ProcessRoomFinishes: новая рабочая копия шаблона для каждой зоны.
+        for (UInt32 reverse = 0; reverse < 2; ++reverse) {
+            for (UInt32 step = 0; step < 2; ++step) {
+                const UInt32 i = reverse == 0 ? step : 1 - step;
+                Roombook::ReadParams work = seed;
+                Roombook::OtdRoom room;
+                room.zone_guid = zones[i];
+                room.height = i == 0 ? 3 : 4.5;
+                room.tip_pol = "keep floor B";
+                room.ceil_by_slab = true;
+                room.floor_by_slab = i != 0;
+                Roombook::Param_SetToRooms (materials, room, read, work);
+                DBtest (room.tip_otd == data[i].Get ("tip_otd").val.uniStringValue,
+                        "Room params independent zone Unicode finish");
+                DBtest (room.tip_pot == data[i].Get ("tip_pot").val.uniStringValue, "Room params independent ceiling");
+                DBtest (room.tip_pol == (i == 0 ? "floor A" : "keep floor B"),
+                        "Room params invalid value does not inherit first zone");
+                DBtest (room.height_main == (i == 0 ? 2 : 2.5) && room.height_down == (i == 0 ? 0.5 : 1) &&
+                            room.height_up == (i == 0 ? 0.5 : 1),
+                        "Room params independent heights");
+                DBtest (room.has_ceil == (i != 0) && room.has_floor == (i == 0),
+                        "Room params independent availability");
+                DBtest (room.ceil_by_slab == (i == 0) && room.floor_by_slab,
+                        "Room params slab flag assigned only when enabled");
+                DBtest (room.create_wall_elements == (i != 0) && room.create_ceil_elements == (i != 0) &&
+                            room.create_reveal_elements == (i != 0) && !room.create_floor_elements &&
+                            !room.create_column_elements,
+                        "Room params independent create flags");
+                DBtest (room.om_reveals.rawname == "preset target", "Room params preset target retained");
+                DBtest (!seed.Get ("tip_otd").isValid && !seed.Get ("height_down").isValid &&
+                            !seed.Get ("create_all_elements").isValid && seed.Get ("om_reveals.rawname").isValid,
+                        "Room params request template unchanged");
+                DBtest (read.Get (zones[1]).Get ("tip_pol").isValid == false &&
+                            read.Get (zones[0]).Get ("height_down").val.doubleValue == 0.5 &&
+                            read.Get (zones[1]).Get ("height_down").val.doubleValue == 1,
+                        "Room params source dictionary unchanged");
+            }
+        }
+        // Fallback выбирает первый валидный rawname; false vots не считается ответом.
+        for (UInt32 mode = 0; mode < 6; ++mode) {
+            Roombook::ReadParams requests;
+            Roombook::ReadParam request;
+            request.rawnames.Push ("{@gdl:vots}");
+            request.rawnames.Push ("fallback");
+            request.isValid = mode == 4;
+            request.val = string ("preset");
+            requests.Add ("selection", request);
+            ParamDictValue source;
+            ParamValue first;
+            first.isValid = mode != 1;
+            first.val = number (7);
+            first.val.boolValue = mode != 2;
+            first.fromProperty = mode == 3;
+            source.Add ("{@gdl:vots}", first);
+            ParamValue fallback;
+            fallback.isValid = mode != 5;
+            fallback.val = number (11);
+            source.Add ("fallback", fallback);
+            if (mode == 5)
+                source.Get ("{@gdl:vots}").isValid = false;
+            ParamDictElement inputs;
+            inputs.Add (zones[0], source);
+            const bool got = Roombook::Param_Property_Read (zones[0], inputs, requests);
+            const Roombook::ReadParam &result = requests.Get ("selection");
+            DBtest (got == (mode != 4 && mode != 5), "Room reader actual-read return flag");
+            if (mode == 4) {
+                DBtest (result.val.uniStringValue == "preset", "Room reader skips preset valid request");
+            } else if (mode == 5) {
+                DBtest (!result.isValid && result.val.uniStringValue == "preset",
+                        "Room reader invalid sources preserve previous value");
+            } else {
+                DBtest (result.isValid && result.val.doubleValue == (mode == 1 || mode == 2 ? 11 : 7),
+                        "Room reader ordered fallback and false vots");
+                DBtest (result.val.type == (mode == 3 ? API_PropertyStringValueType : API_PropertyRealValueType),
+                        "Room reader property type override");
+            }
+            DBtest (inputs.Get (zones[0]).Get ("fallback").val.doubleValue == 11, "Room reader source retained");
+        }
+        Roombook::ReadParams empty;
+        DBtest (!Roombook::Param_Property_Read (zones[0], read, empty), "Room reader empty requests return false");
+        DBtest (materials.GetSize () == 1 && materials.Get ("untouched") == 49,
+                "Room params no material lookup without material requests");
+    }
+
+    void TestRoomMaterialFormatting () {
+        const API_Guid zone = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
+        const API_Guid other = APIGuidFromString ("{22222222-2222-2222-2222-222222222222}");
+        const GS::UniString raw = "{@property:fixture/finish}";
+        const GS::UniString untouched = "{@property:fixture/untouched}";
+        Roombook::ColumnFormat format;
+        format.no_breake_space = "_";
+        format.narow_space = "~";
+        format.width_mat = 0;
+        format.width_area = 0;
+        format.width_narow_space = 1;
+        format.delim_line = "|";
+        format.space_line = "<wrap>";
+        GS::UniString probe = "2.00";
+        GS::UniString narrow = "~";
+        const double probeWidth = GetTextWidth (format.font, format.fontsize, probe);
+        const double narrowWidth = GetTextWidth (format.font, format.fontsize, narrow);
+        DBtest (probeWidth > 0.1 && narrowWidth > 0.001, "Room formatting SDK text measurement available");
+        if (probeWidth <= 0.1 || narrowWidth <= 0.001)
+            return;
+        const Roombook::TypeOtd types[] = {Roombook::NoSet,
+                                           Roombook::Wall_Main,
+                                           Roombook::Wall_Up,
+                                           Roombook::Wall_Down,
+                                           Roombook::Reveal_Main,
+                                           Roombook::Reveal_Up,
+                                           Roombook::Reveal_Down,
+                                           Roombook::Column,
+                                           Roombook::Floor,
+                                           Roombook::Ceil,
+                                           Roombook::Sloped};
+        const char *expected[] = {"M~2.00 ",
+                                  "-",
+                                  "-",
+                                  "M~5.00 ",
+                                  "Mat1~1.00 |Mat2~2.00 |Mat10~10.00 ",
+                                  "M~2.00 ",
+                                  "M~2.00 ",
+                                  "Материал~2.00 ",
+                                  "-",
+                                  "M~2.00 ",
+                                  "A<wrap>B~2.00 "};
+        for (const Roombook::TypeOtd type : types) {
+            const Roombook::TypeOtd second = type == Roombook::Wall_Main ? Roombook::Wall_Up : Roombook::Wall_Main;
+            for (UInt32 mode = 0; mode < 11; ++mode) {
+                ParamValue original;
+                original.rawName = raw;
+                original.name = "fixture name";
+                original.fromGuid = zone;
+                original.fromProperty = true;
+                original.isValid = false;
+                original.val.type = API_PropertyStringValueType;
+                original.val.uniStringValue = "old";
+                original.val.doubleValue = 47;
+                ParamValue sentinel = original;
+                sentinel.rawName = untouched;
+                sentinel.val.uniStringValue = "keep";
+                ParamDictValue values;
+                values.Add (raw, original);
+                values.Add (untouched, sentinel);
+                ParamDictElement input;
+                input.Add (zone, values);
+                input.Add (other, values);
+                ParamDictElement output;
+                ParamDictValue keep;
+                keep.Add (untouched, sentinel);
+                output.Add (zone, keep);
+                output.Add (other, values);
+                GS::HashTable<Roombook::TypeOtd, GS::UniString> names;
+                names.Add (type, raw);
+                names.Add (Roombook::Floor == type ? Roombook::Ceil : Roombook::Floor, "");
+                Roombook::OtdMaterialAreaDict inner;
+                if (mode == 4) {
+                    inner.Add ("Mat10", 10);
+                    inner.Add ("Mat2", 2);
+                    inner.Add ("Mat1", 1);
+                } else if (mode != 1 && mode != 2) {
+                    GS::UniString material = "M";
+                    if (mode == 5)
+                        material = "   M   ";
+                    if (mode == 6)
+                        material = "0&#& M";
+                    if (mode == 7)
+                        material = GS::UniString ("Материал", CC_UTF8);
+                    if (mode == 8)
+                        material = "";
+                    if (mode == 10)
+                        material = "A  B";
+                    inner.Add (material, 2);
+                }
+                Roombook::OtdMaterialAreaDictByType materials;
+                if (mode != 1)
+                    materials.Add (type, inner);
+                if (mode == 3 || mode == 9) {
+                    names.Put (second, raw);
+                    if (mode == 3) {
+                        Roombook::OtdMaterialAreaDict more;
+                        more.Add ("M", 3);
+                        materials.Add (second, more);
+                    }
+                }
+                Roombook::ColumnFormatDict formats;
+                formats.Add (raw, format);
+                Roombook::OtdData_WriteToRoom (formats, zone, output, input, materials, names);
+                DBtest (output.Get (zone).ContainsKey (raw), "Room formatting output present");
+                if (!output.Get (zone).ContainsKey (raw))
+                    continue;
+                const ParamValue &result = output.Get (zone).Get (raw);
+                const GS::UniString text (expected[mode], CC_UTF8);
+                DBtest (result.val.uniStringValue, text, "Room formatting exact material text");
+                DBtest (result.isValid && result.fromProperty && result.fromGuid == zone &&
+                            result.name == original.name && result.val.type == original.val.type &&
+                            result.val.doubleValue == 47,
+                        "Room formatting retains metadata");
+                DBtest (output.Get (zone).Get (untouched).val.uniStringValue == "keep" &&
+                            output.Get (other).Get (raw).val.uniStringValue == "old" && output.GetSize () == 2,
+                        "Room formatting unrelated outputs retained");
+                DBtest (input.Get (zone).Get (raw).val.uniStringValue == "old" && !input.Get (zone).Get (raw).isValid &&
+                            input.Get (other).Get (raw).val.uniStringValue == "old",
+                        "Room formatting input immutable");
+                DBtest (materials.ContainsKey (type) == (mode != 1), "Room formatting material dictionary retained");
+                // Имитируем следующий read-back только в локальной фикстуре, без записи в модель.
+                ParamDictElement reread = input;
+                reread.Get (zone).Put (raw, result);
+                ParamDictElement repeat;
+                Roombook::OtdData_WriteToRoom (formats, zone, repeat, reread, materials, names);
+                DBtest (repeat.IsEmpty (), "Room formatting unchanged text no write");
+                names.Put (type, "missing");
+                names.Put (second, "");
+                ParamDictElement absent;
+                Roombook::OtdData_WriteToRoom (formats, zone, absent, input, materials, names);
+                DBtest (absent.IsEmpty (), "Room formatting absent/empty target no write");
+            }
+        }
+        // Выравнивание проверяется при измеренной ширине, без привязки к метрике установленного шрифта.
+        for (UInt32 spaces = 0; spaces < 4; ++spaces) {
+            Roombook::ColumnFormat padded = format;
+            padded.width_narow_space = narrowWidth;
+            // Малый запас исключает потерю целого числа пробелов из-за float-погрешности.
+            padded.width_area = probeWidth + (spaces + 0.0001) * narrowWidth;
+            GS::UniString material = "M";
+            padded.width_mat = GetTextWidth (padded.font, padded.fontsize, material);
+            ParamValue p;
+            p.rawName = raw;
+            p.val.uniStringValue = "old";
+            ParamDictValue v;
+            v.Add (raw, p);
+            ParamDictElement input;
+            input.Add (zone, v);
+            Roombook::OtdMaterialAreaDict areas;
+            areas.Add ("M", 2);
+            Roombook::OtdMaterialAreaDictByType dct;
+            dct.Add (Roombook::Wall_Main, areas);
+            GS::HashTable<Roombook::TypeOtd, GS::UniString> names;
+            names.Add (Roombook::Wall_Main, raw);
+            Roombook::ColumnFormatDict formats;
+            formats.Add (raw, padded);
+            ParamDictElement output;
+            Roombook::OtdData_WriteToRoom (formats, zone, output, input, dct, names);
+            GS::UniString expectedText = "M";
+            if (spaces > 1) {
+                for (UInt32 i = 0; i < spaces; ++i)
+                    expectedText.Append ("~");
+            }
+            expectedText.Append ("2.00 ");
+            DBtest (output.Get (zone).Get (raw).val.uniStringValue,
+                    expectedText,
+                    "Room formatting measured area alignment");
+        }
+    }
+
+    void TestOpeningParameterIsolation () {
+        const API_Guid guids[] = {APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"),
+                                  APIGuidFromString ("{22222222-2222-2222-2222-222222222222}")};
+        const char *keys[] = {"frame", "sill", "plaster_show_3D", "plaster_show_2D", "AutoTurnIn", "bOverIn"};
+        Roombook::ReadParams requests;
+        for (const char *key : keys) {
+            Roombook::ReadParam request;
+            request.rawnames.Push (key);
+            requests.Add (key, request);
+        }
+        const auto dataFor = [&] (double frame, double sill, UInt32 flags, int invalid = -1) {
+            ParamDictValue data;
+            for (UInt32 i = 0; i < 6; ++i) {
+                ParamValue value;
+                value.rawName = keys[i];
+                value.isValid = static_cast<int> (i) != invalid;
+                if (i < 2) {
+                    value.val.type = API_PropertyRealValueType;
+                    value.val.doubleValue = i == 0 ? frame : sill;
+                } else {
+                    value.val.type = API_PropertyBooleanValueType;
+                    value.val.boolValue = (flags & (1u << (i - 2))) != 0;
+                }
+                data.Add (keys[i], value);
+            }
+            return data;
+        };
+        const auto openingFor = [&] (UInt32 i) {
+            Roombook::OtdOpening op;
+            op.base_guid = guids[i];
+            op.otd_guid = guids[1 - i];
+            op.width = i == 0 ? 1.5 : 2.5;
+            op.height = i == 0 ? 2.2 : 3.2;
+            op.zBottom = 7 + i;
+            op.objLoc = 3 + i;
+            op.lower = 0.4;
+            op.base_reveal_width = 99;
+            op.reflected = i != 0;
+            op.has_reveal = i == 0;
+            return op;
+        };
+        const auto unchangedOpening = [] (const Roombook::OtdOpening &op, const Roombook::OtdOpening &before) {
+            DBtest (op.base_guid == before.base_guid && op.otd_guid == before.otd_guid &&
+                        op.reflected == before.reflected && op.has_reveal == before.has_reveal,
+                    "Opening params preserve identity and flags");
+            DBtest (op.zBottom, before.zBottom, "Opening params preserve bottom");
+            DBtest (op.objLoc, before.objLoc, "Opening params preserve location");
+            DBtest (op.lower, before.lower, "Opening params preserve lower");
+        };
+        const auto unchangedTemplate = [&] () {
+            DBtest (requests.GetSize () == 6, "Opening params template size");
+            for (const char *key : keys) {
+                const Roombook::ReadParam &request = requests.Get (key);
+                DBtest (!request.isValid && request.rawnames.GetSize () == 1 && request.rawnames.Get (0) == key &&
+                            request.val.doubleValue == 0 && !request.val.boolValue,
+                        "Opening params template remains unread");
+            }
+        };
+        const auto wallFor = [] (double thickness, UInt32 layers) {
+            Roombook::OtdWall wall;
+            wall.base_th = thickness;
+            const double widths[] = {0.02, 0.03, 0.55};
+            for (UInt32 i = 0; i < layers; ++i) {
+                ParamValueComposite layer;
+                layer.fillThick = widths[i];
+                layer.val = "source";
+                wall.base_composite.Push (layer);
+            }
+            return wall;
+        };
+        // Условие поправки и число включённых слоёв характеризуем по прежнему коду.
+        for (UInt32 layers = 0; layers <= 3; ++layers) {
+            for (UInt32 flags = 0; flags < 16; ++flags) {
+                const Roombook::OtdWall wall = wallFor (0.6, layers);
+                ParamDictElement read;
+                read.Add (guids[0], dataFor (0.1, 0.05, flags));
+                Roombook::ReadParams work = requests;
+                Roombook::OtdOpening op = openingFor (0);
+                const Roombook::OtdOpening before = op;
+                Roombook::Param_SetToWindows (op, read, work, wall);
+                const bool show = (flags & 3u) == 3u;
+                const double autoThickness[] = {0, 0, 0.02, 0.05};
+                const double plaster =
+                    !show ? 0
+                          : ((flags & 4u) != 0 ? autoThickness[layers] : ((flags & 8u) != 0 && layers > 0 ? 0.02 : 0));
+                DBtest (op.base_reveal_width, show ? 0.45 : 0, "Opening params reveal depth by visibility");
+                DBtest (op.width, 1.5 - plaster * 2, "Opening params layer width correction");
+                DBtest (op.height, 2.2 - plaster, "Opening params layer height correction");
+                unchangedOpening (op, before);
+                DBtest (wall.base_th == 0.6 && wall.base_composite.GetSize () == layers,
+                        "Opening params wall metadata unchanged");
+                for (UInt32 i = 0; i < layers; ++i) {
+                    const double widths[] = {0.02, 0.03, 0.55};
+                    DBtest (wall.base_composite.Get (i).fillThick == widths[i] &&
+                                wall.base_composite.Get (i).val == "source",
+                            "Opening params source layers unchanged");
+                }
+                for (UInt32 i = 0; i < 6; ++i) {
+                    const Roombook::ReadParam &actual = work.Get (keys[i]);
+                    const ParamValue &source = read.Get (guids[0]).Get (keys[i]);
+                    DBtest (actual.isValid && source.isValid && source.rawName == keys[i],
+                            "Opening params read all required keys");
+                    if (i < 2)
+                        DBtest (actual.val.doubleValue, source.val.doubleValue, "Opening params numeric values");
+                    else
+                        DBtest (actual.val.boolValue == ((flags & (1u << (i - 2))) != 0) &&
+                                    source.val.boolValue == actual.val.boolValue,
+                                "Opening params flag values");
+                }
+                unchangedTemplate ();
+            }
+        }
+        // Два проёма имеют разные числа и флаги; второй может иметь невалидный либо отсутствующий ключ.
+        for (UInt32 mode = 0; mode < 13; ++mode) {
+            for (UInt32 order = 0; order < 2; ++order) {
+                ParamDictElement read;
+                read.Add (guids[0], dataFor (0.1, 0.05, 15));
+                read.Add (guids[1], dataFor (0.12, 0.03, 3, mode > 0 && mode <= 6 ? static_cast<int> (mode) - 1 : -1));
+                for (UInt32 step = 0; step < 2; ++step) {
+                    const UInt32 i = order == 0 ? step : 1 - step;
+                    const Roombook::OtdWall wall = wallFor (i == 0 ? 0.6 : 0.8, 3);
+                    Roombook::ReadParams work = requests;
+                    if (i == 1 && mode >= 7)
+                        work.Delete (keys[mode - 7]);
+                    Roombook::OtdOpening op = openingFor (i);
+                    const Roombook::OtdOpening before = op;
+                    Roombook::Param_SetToWindows (op, read, work, wall);
+                    const bool complete = i == 0 || mode == 0;
+                    DBtest (op.base_reveal_width,
+                            complete ? (i == 0 ? 0.45 : 0.65) : 0.8,
+                            "Opening params independent depth and partial return");
+                    DBtest (op.width, i == 0 ? 1.4 : 2.5, "Opening params independent width");
+                    DBtest (op.height, i == 0 ? 2.15 : 3.2, "Opening params independent height");
+                    unchangedOpening (op, before);
+                    for (UInt32 j = 0; j < 6; ++j) {
+                        const auto *actual = work.GetPtr (keys[j]);
+                        if (i == 1 && mode >= 7 && j == mode - 7) {
+                            DBtest (actual == nullptr, "Opening params missing request stays absent");
+                        } else {
+                            const bool valid = !(i == 1 && mode > 0 && mode <= 6 && j == mode - 1);
+                            DBtest (actual != nullptr && actual->isValid == valid,
+                                    "Opening params validity isolated by GUID");
+                            if (actual != nullptr && valid) {
+                                const ParamValueData &expected = read.Get (guids[i]).Get (keys[j]).val;
+                                if (j < 2)
+                                    DBtest (actual->val.doubleValue,
+                                            expected.doubleValue,
+                                            "Opening params GUID-specific number");
+                                else
+                                    DBtest (actual->val.boolValue == expected.boolValue,
+                                            "Opening params GUID-specific flag");
+                            }
+                        }
+                    }
+                    unchangedTemplate ();
+                }
+                for (UInt32 i = 0; i < 2; ++i) {
+                    const ParamDictValue &source = read.Get (guids[i]);
+                    DBtest (source.GetSize () == 6, "Opening params source dictionary size");
+                    DBtest (source.Get ("frame").val.doubleValue,
+                            i == 0 ? 0.1 : 0.12,
+                            "Opening params source frame unchanged");
+                    DBtest (source.Get ("sill").val.doubleValue,
+                            i == 0 ? 0.05 : 0.03,
+                            "Opening params source sill unchanged");
+                    for (UInt32 j = 0; j < 6; ++j) {
+                        const ParamValue &value = source.Get (keys[j]);
+                        DBtest (value.rawName == keys[j] &&
+                                    value.isValid == !(i == 1 && mode > 0 && mode <= 6 && j == mode - 1),
+                                "Opening params source validity unchanged");
+                    }
+                }
+            }
+        }
+        // Часть ранних выходов меняет глубину на толщину стены, но не меняет размеры.
+        for (UInt32 mode = 0; mode < 5; ++mode) {
+            ParamDictElement read;
+            Roombook::ReadParams work = requests;
+            if (mode != 0) {
+                ParamDictValue data = dataFor (0.1, 0.05, 15);
+                if (mode == 2) {
+                    for (const char *key : keys)
+                        data.Get (key).isValid = false;
+                }
+                read.Add (guids[0], data);
+            }
+            if (mode == 1)
+                work.Clear ();
+            if (mode == 3) {
+                DBtest (Roombook::Param_Property_Read (guids[0], read, work), "Opening params seed cached reader");
+            }
+            if (mode == 4)
+                read.Get (guids[0]).Clear ();
+            const Roombook::OtdWall wall = wallFor (0.6, 3);
+            Roombook::OtdOpening op = openingFor (0);
+            const Roombook::OtdOpening before = op;
+            Roombook::Param_SetToWindows (op, read, work, wall);
+            DBtest (op.base_reveal_width, mode == 0 ? 99 : 0.6, "Opening params early-return depth");
+            DBtest (op.width, before.width, "Opening params early-return width");
+            DBtest (op.height, before.height, "Opening params early-return height");
+            unchangedOpening (op, before);
+            if (mode == 3)
+                DBtest (work.Get ("frame").isValid && work.Get ("frame").val.doubleValue == 0.1,
+                        "Opening params cached values survive aggregate false");
+            unchangedTemplate ();
+        }
+    }
+
+    void TestRoomParameterResolution () {
+        auto &cache = PROPERTYCACHE ();
+        const ParamDictValue original = cache.property;
+        const bool originalFull = cache.isPropertyDefinitionRead_full;
+        const bool originalOK = cache.isPropertyDefinition_OK;
+        {
+            // Подменяем только читаемую часть кэша и возвращаем её на любом выходе из фикстуры.
+            struct CacheRestore {
+                PropertyCache &cache;
+                ParamDictValue property;
+                bool full;
+                bool ok;
+
+                explicit CacheRestore (PropertyCache &source)
+                    : cache (source), property (source.property), full (source.isPropertyDefinitionRead_full),
+                      ok (source.isPropertyDefinition_OK) {}
+
+                ~CacheRestore () {
+                    cache.property = property;
+                    cache.isPropertyDefinitionRead_full = full;
+                    cache.isPropertyDefinition_OK = ok;
+                }
+            } restore (cache);
+
+            cache.isPropertyDefinitionRead_full = true;
+            cache.isPropertyDefinition_OK = true;
+            const auto setProperty = [&] (const GS::UniString &description) {
+                cache.property.Clear ();
+                ParamValue property;
+                property.rawName = "{@property:matched}";
+                property.definition.description = description;
+                property.val.uniStringValue = "property value sentinel";
+                cache.property.Add (property.rawName, property);
+            };
+            const auto requestFor = [] (const GS::Array<GS::UniString> &names, bool valid = false) {
+                Roombook::ReadParam request;
+                request.rawnames = names;
+                request.isValid = valid;
+                request.val.uniStringValue = "request sentinel";
+                return request;
+            };
+
+            struct MatchCase {
+                const char *description;
+                const char *token;
+                bool found;
+            };
+
+            const MatchCase cases[] = {{"token", "token", true},
+                                       {"prefix token suffix", "token", true},
+                                       {"token_extra", "token", false},
+                                       {"token and token_extra", "token", false},
+                                       {"TOKEN", "token", false},
+                                       {"other", "token", false},
+                                       {"параметр отделки", "отделки", true}};
+            for (const MatchCase &c : cases) {
+                for (UInt32 raw = 0; raw < 2; ++raw) {
+                    setProperty (c.description);
+                    GS::Array<GS::UniString> names;
+                    names.Push (c.token);
+                    Roombook::ReadParams requests;
+                    const GS::UniString key = raw == 0 ? "value_target" : "prefix_rawname_target";
+                    requests.Add (key, requestFor (names));
+                    Roombook::Param_Property_FindInParams (requests);
+                    const Roombook::ReadParam &actual = requests.Get (key);
+                    DBtest (actual.rawnames.GetSize () == (c.found ? 1u : 0u), "Resolution description filtering");
+                    if (c.found)
+                        DBtest (actual.rawnames.Get (0) == "{@property:matched}", "Resolution property raw name");
+                    DBtest (actual.isValid == (raw != 0 && c.found), "Resolution rawname-only validity");
+                    DBtest (actual.val.uniStringValue ==
+                                (raw != 0 && c.found ? "{@property:matched}" : "request sentinel"),
+                            "Resolution rawname-only value");
+                    DBtest (cache.property.GetSize () == 1 &&
+                                cache.property.Get ("{@property:matched}").definition.description == c.description &&
+                                cache.property.Get ("{@property:matched}").val.uniStringValue ==
+                                    "property value sentinel",
+                            "Resolution source property unchanged");
+                }
+            }
+
+            struct OrderCase {
+                const char *key;
+                bool initialValid;
+                const char *input[3];
+                UInt32 count;
+                const char *output[3];
+                bool valid;
+                const char *value;
+            };
+
+            const OrderCase orders[] = {
+                {"value",
+                 false,
+                 {"{@gdl:first}", "token", "{@property:direct}"},
+                 3,
+                 {"{@gdl:first}", "{@property:matched}", "{@property:direct}"},
+                 false,
+                 "request sentinel"},
+                {"rawname",
+                 false,
+                 {"{@gdl:first}", "token", "{@gdl:last}"},
+                 2,
+                 {"{@gdl:first}", "{@property:matched}", ""},
+                 true,
+                 "{@property:matched}"},
+                {"value",
+                 false,
+                 {"token", "{@gdl:last}", "missing"},
+                 2,
+                 {"{@property:matched}", "{@gdl:last}", ""},
+                 false,
+                 "request sentinel"},
+                {"rawname",
+                 false,
+                 {"token", "{@gdl:last}", "missing"},
+                 1,
+                 {"{@property:matched}", "", ""},
+                 true,
+                 "{@property:matched}"},
+                {"rawname",
+                 false,
+                 {"missing", "{@gdl:last}", "absent"},
+                 1,
+                 {"{@gdl:last}", "", ""},
+                 false,
+                 "request sentinel"},
+                {"value", true, {"missing", "{@gdl:last}", "token"}, 0, {"", "", ""}, true, "request sentinel"},
+                {"rawname",
+                 true,
+                 {"{@gdl:first}", "token", "{@gdl:last}"},
+                 1,
+                 {"{@gdl:first}", "", ""},
+                 true,
+                 "request sentinel"},
+                {"rawname",
+                 true,
+                 {"token", "{@gdl:last}", "missing"},
+                 1,
+                 {"{@property:matched}", "", ""},
+                 true,
+                 "{@property:matched}"}};
+            setProperty ("token");
+            for (const OrderCase &c : orders) {
+                GS::Array<GS::UniString> names;
+                for (const char *name : c.input)
+                    names.Push (name);
+                Roombook::ReadParams requests;
+                requests.Add (c.key, requestFor (names, c.initialValid));
+                Roombook::Param_Property_FindInParams (requests);
+                const Roombook::ReadParam &actual = requests.Get (c.key);
+                DBtest (actual.rawnames.GetSize () == c.count, "Resolution order and early break count");
+                for (UInt32 i = 0; i < actual.rawnames.GetSize () && i < c.count; ++i)
+                    DBtest (actual.rawnames.Get (i) == c.output[i], "Resolution preserved candidate order");
+                DBtest (actual.isValid == c.valid && actual.val.uniStringValue == c.value,
+                        "Resolution preset-valid behavior");
+            }
+            // Дубликаты выбираются по фактическому порядку словаря, а не по предположению о сортировке.
+            ParamValue duplicate;
+            duplicate.rawName = "{@property:duplicate}";
+            duplicate.definition.description = "token";
+            cache.property.Add (duplicate.rawName, duplicate);
+            GS::UniString first;
+            for (const auto &p : cache.property) {
+    #ifdef ServerMainVers_2800
+                first = p.value.rawName;
+    #else
+                first = p.value->rawName;
+    #endif
+                break;
+            }
+            GS::Array<GS::UniString> token;
+            token.Push ("token");
+            Roombook::ReadParams duplicateRequest;
+            duplicateRequest.Add ("rawname", requestFor (token));
+            Roombook::Param_Property_FindInParams (duplicateRequest);
+            DBtest (duplicateRequest.Get ("rawname").val.uniStringValue == first &&
+                        duplicateRequest.Get ("rawname").rawnames.GetSize () == 1 && cache.property.GetSize () == 2,
+                    "Resolution first matching property wins without source mutation");
+            cache.property.Clear ();
+            for (UInt32 valid = 0; valid < 2; ++valid) {
+                Roombook::ReadParams requests;
+                GS::Array<GS::UniString> names;
+                requests.Add ("empty", requestFor (names, valid != 0));
+                Roombook::Param_Property_FindInParams (requests);
+                DBtest (requests.Get ("empty").rawnames.IsEmpty () && requests.Get ("empty").isValid == (valid != 0) &&
+                            requests.Get ("empty").val.uniStringValue == "request sentinel",
+                        "Resolution empty candidate list preserves value and validity");
+            }
+            Roombook::ReadParams empty;
+            Roombook::Param_Property_FindInParams (empty);
+            DBtest (empty.IsEmpty (), "Resolution empty request dictionary");
+            cache.isPropertyDefinition_OK = false;
+            Roombook::ReadParams unavailable;
+            unavailable.Add ("rawname", requestFor (token));
+            Roombook::Param_Property_FindInParams (unavailable);
+            DBtest (!unavailable.Get ("rawname").isValid && unavailable.Get ("rawname").rawnames.Get (0) == "token" &&
+                        unavailable.Get ("rawname").val.uniStringValue == "request sentinel",
+                    "Resolution unavailable cached definitions leave request unchanged");
+            const char *keys[] = {"frame",
+                                  "sill",
+                                  "useWallFinishSkin",
+                                  "maxPlasterThk",
+                                  "AutoTurnIn",
+                                  "bOverIn",
+                                  "plaster_show_3D",
+                                  "plaster_show_2D"};
+            const char *names[] = {"{@gdl:gs_frame_thk}",
+                                   "{@gdl:gs_wido_sill}",
+                                   "{@gdl:gs_usewallfinishskin}",
+                                   "{@gdl:gs_maxplasterthk}",
+                                   "{@gdl:gs_bautoturnin}",
+                                   "{@gdl:gs_boverin}",
+                                   "{@gdl:gs_turn_plaster_show_3d}",
+                                   "{@gdl:gs_turn_plaster_dim_2d}"};
+            for (UInt32 available = 0; available < 2; ++available) {
+                cache.isPropertyDefinition_OK = available != 0;
+                Roombook::ReadParams windows = Roombook::Param_GetForWindowParams ();
+                DBtest (windows.GetSize () == 8, "Window request template size");
+                for (UInt32 i = 0; i < 8; ++i) {
+                    const auto *request = windows.GetPtr (keys[i]);
+                    DBtest (request != nullptr && !request->isValid && request->rawnames.GetSize () == 1 &&
+                                request->rawnames.Get (0) == names[i] && request->val.uniStringValue.IsEmpty (),
+                            "Window request exact key/GDL name and default validity");
+                }
+            }
+        }
+        DBtest (cache.isPropertyDefinitionRead_full == originalFull && cache.isPropertyDefinition_OK == originalOK &&
+                    cache.property.GetSize () == original.GetSize (),
+                "Resolution cache metadata restored");
+        for (const auto &p : original) {
+    #ifdef ServerMainVers_2800
+            const GS::UniString &key = p.key;
+            const ParamValue &before = p.value;
+    #else
+            const GS::UniString &key = *p.key;
+            const ParamValue &before = *p.value;
+    #endif
+            const auto *after = cache.property.GetPtr (key);
+            DBtest (after != nullptr && after->rawName == before.rawName && after->isValid == before.isValid &&
+                        after->definition.description == before.definition.description &&
+                        after->val.uniStringValue == before.val.uniStringValue && after->val.type == before.val.type,
+                    "Resolution cache property restored");
+        }
+    }
+
+    void TestCachedParameterReader () {
+        const API_Guid guids[] = {APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"),
+                                  APIGuidFromString ("{22222222-2222-2222-2222-222222222222}")};
+        const auto valueFor = [&] (API_VariantType type, Int32 seed, bool boolean) {
+            ParamValueData value;
+            value.type = type;
+            value.uniStringValue = seed == 1 ? "primary cached value" : "fallback cached value";
+            value.intValue = seed * 10;
+            value.boolValue = boolean;
+            value.doubleValue = seed + 0.25;
+            value.rawDoubleValue = seed + 0.125;
+            value.guidval = guids[seed == 1 ? 0 : 1];
+            value.canCalculate = seed == 1;
+            value.hasrawDouble = seed != 1;
+            value.hasFormula = seed == 1;
+            value.array_row_start = seed;
+            value.array_row_end = seed + 3;
+            value.array_column_start = seed + 4;
+            value.array_column_end = seed + 5;
+            value.array_format_out = seed;
+            value.formatstring.n_zero = seed;
+            value.formatstring.stringformat = seed == 1 ? "primary format" : "fallback format";
+            value.formatstring.needRound = seed == 1;
+            value.formatstring.krat = seed * 2;
+            value.formatstring.koeff = seed + 0.5;
+            value.formatstring.trim_zero = seed == 1;
+            value.formatstring.isRead = seed != 1;
+            value.formatstring.isEmpty = seed == 1;
+            value.formatstring.forceRaw = seed != 1;
+            value.formatstring.delimetr = seed == 1 ? "," : ".";
+            return value;
+        };
+        const auto sameValue = [] (const ParamValueData &a, const ParamValueData &b) {
+            return a.type == b.type && a.uniStringValue == b.uniStringValue && a.intValue == b.intValue &&
+                   a.boolValue == b.boolValue && a.doubleValue == b.doubleValue &&
+                   a.rawDoubleValue == b.rawDoubleValue && a.guidval == b.guidval && a.canCalculate == b.canCalculate &&
+                   a.hasrawDouble == b.hasrawDouble && a.hasFormula == b.hasFormula &&
+                   a.array_row_start == b.array_row_start && a.array_row_end == b.array_row_end &&
+                   a.array_column_start == b.array_column_start && a.array_column_end == b.array_column_end &&
+                   a.array_format_out == b.array_format_out && a.formatstring.n_zero == b.formatstring.n_zero &&
+                   a.formatstring.stringformat == b.formatstring.stringformat &&
+                   a.formatstring.needRound == b.formatstring.needRound && a.formatstring.krat == b.formatstring.krat &&
+                   a.formatstring.koeff == b.formatstring.koeff &&
+                   a.formatstring.trim_zero == b.formatstring.trim_zero &&
+                   a.formatstring.isRead == b.formatstring.isRead && a.formatstring.isEmpty == b.formatstring.isEmpty &&
+                   a.formatstring.forceRaw == b.formatstring.forceRaw &&
+                   a.formatstring.delimetr == b.formatstring.delimetr;
+        };
+        const auto sameNames = [] (const GS::Array<GS::UniString> &a, const GS::Array<GS::UniString> &b) {
+            if (a.GetSize () != b.GetSize ())
+                return false;
+            for (UInt32 i = 0; i < a.GetSize (); ++i)
+                if (a.Get (i) != b.Get (i))
+                    return false;
+            return true;
+        };
+        const auto requestFor = [&] (const GS::Array<GS::UniString> &names, bool valid = false) {
+            Roombook::ReadParam request;
+            request.rawnames = names;
+            request.val = valueFor (API_PropertyRealValueType, 9, false);
+            request.isValid = valid;
+            return request;
+        };
+        const API_VariantType types[] = {API_PropertyUndefinedValueType,
+                                         API_PropertyIntegerValueType,
+                                         API_PropertyRealValueType,
+                                         API_PropertyStringValueType,
+                                         API_PropertyBooleanValueType,
+                                         API_PropertyGuidValueType};
+
+        struct TagCase {
+            const char *name;
+            bool filtered;
+        };
+
+        const TagCase tags[] = {{"{@gdl:vots}", true},
+                                {"{@gdl:vots_fill}", true},
+                                {"prefix{@gdl:vots}suffix", true},
+                                {"{@gdl:vots_fill}_extra", true},
+                                {"{@gdl:VOTS}", false},
+                                {"ordinary", false}};
+        for (API_VariantType type : types) {
+            for (const TagCase &tag : tags) {
+                for (UInt32 mask = 0; mask < 4; ++mask) {
+                    const bool boolean = (mask & 1) != 0;
+                    const bool property = (mask & 2) != 0;
+                    ParamValue primary;
+                    primary.rawName = tag.name;
+                    primary.isValid = true;
+                    primary.fromProperty = property;
+                    primary.definition.description = "primary metadata";
+                    primary.val = valueFor (type, 1, boolean);
+                    ParamValue fallback;
+                    fallback.rawName = "fallback";
+                    fallback.isValid = true;
+                    fallback.val = valueFor (API_PropertyIntegerValueType, 2, true);
+                    ParamDictValue source;
+                    source.Add (primary.rawName, primary);
+                    source.Add (fallback.rawName, fallback);
+                    ParamDictElement read;
+                    read.Add (guids[0], source);
+                    GS::Array<GS::UniString> names;
+                    names.Push (tag.name);
+                    names.Push ("missing");
+                    names.Push ("fallback");
+                    const Roombook::ReadParam templ = requestFor (names);
+                    Roombook::ReadParams requests;
+                    requests.Add ("target", templ);
+                    ParamValueData expected = tag.filtered && !boolean ? fallback.val : primary.val;
+                    if (!(tag.filtered && !boolean) && property)
+                        expected.type = API_PropertyStringValueType;
+                    DBtest (Roombook::Param_Property_Read (guids[0], read, requests), "Cached reader accepted value");
+                    const auto &actual = requests.Get ("target");
+                    DBtest (actual.isValid && sameValue (actual.val, expected),
+                            "Cached reader complete value and type");
+                    DBtest (sameNames (actual.rawnames, names), "Cached reader candidate names unchanged");
+                    DBtest (!templ.isValid && sameValue (templ.val, valueFor (API_PropertyRealValueType, 9, false)) &&
+                                sameNames (templ.rawnames, names),
+                            "Cached reader template unchanged");
+                    const auto &saved = read.Get (guids[0]).Get (tag.name);
+                    DBtest (read.GetSize () == 1 && read.Get (guids[0]).GetSize () == 2 && saved.isValid &&
+                                saved.fromProperty == property && saved.definition.description == "primary metadata" &&
+                                saved.rawName == tag.name && sameValue (saved.val, primary.val) &&
+                                sameValue (read.Get (guids[0]).Get ("fallback").val, fallback.val),
+                            "Cached reader source data unchanged");
+                    // Мутация результата не должна затрагивать источник или шаблон запроса.
+                    requests.Get ("target").val.uniStringValue = "changed result";
+                    requests.Get ("target").val.formatstring.stringformat = "changed format";
+                    requests.Get ("target").rawnames[0] = "changed candidate";
+                    DBtest (sameValue (read.Get (guids[0]).Get (tag.name).val, primary.val) &&
+                                sameValue (read.Get (guids[0]).Get ("fallback").val, fallback.val) &&
+                                sameNames (templ.rawnames, names) && templ.val.uniStringValue != "changed result",
+                            "Cached reader result owns independent copies");
+                }
+            }
+        }
+        // Три кандидата: отсутствие, невалидность и false-фильтр различаются; порядок задаёт запрос.
+        const char *rawnames[] = {"{@gdl:vots_fill}", "middle", "last"};
+        const UInt32 orders[][3] = {{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}};
+        for (UInt32 mode = 0; mode < 5; ++mode) {
+            for (const auto &order : orders) {
+                ParamDictValue source;
+                for (UInt32 i = 0; i < 3; ++i) {
+                    if (mode == 0 && i == 0)
+                        continue;
+                    ParamValue p;
+                    p.rawName = rawnames[i];
+                    p.isValid = mode != 4 && !(mode == 1 && i == 0);
+                    p.val = valueFor (API_PropertyRealValueType, static_cast<Int32> (i + 1), mode != 2 || i != 0);
+                    source.Add (p.rawName, p);
+                }
+                ParamDictElement read;
+                read.Add (guids[0], source);
+                GS::Array<GS::UniString> names;
+                for (UInt32 i : order)
+                    names.Push (rawnames[i]);
+                Roombook::ReadParams requests;
+                const Roombook::ReadParam templ = requestFor (names);
+                requests.Add ("ordered", templ);
+                Int32 chosen = -1;
+                if (mode != 4)
+                    for (UInt32 i : order)
+                        if (mode == 3 || i != 0) {
+                            chosen = static_cast<Int32> (i);
+                            break;
+                        }
+                const bool got = Roombook::Param_Property_Read (guids[0], read, requests);
+                const auto &actual = requests.Get ("ordered");
+                DBtest (got == (chosen >= 0) && actual.isValid == (chosen >= 0), "Cached reader ordered fallback flag");
+                DBtest (sameValue (actual.val, chosen >= 0 ? source.Get (rawnames[chosen]).val : templ.val),
+                        "Cached reader ordered fallback value");
+                DBtest (sameNames (actual.rawnames, names) && read.Get (guids[0]).GetSize () == source.GetSize (),
+                        "Cached reader ordered fallback inputs retained");
+            }
+        }
+        // Флаг возвращает наличие нового чтения, а не общую валидность набора.
+        for (UInt32 mask = 0; mask < 8; ++mask) {
+            ParamValue readable;
+            readable.rawName = "readable";
+            readable.isValid = true;
+            readable.val = valueFor (API_PropertyStringValueType, 1, true);
+            ParamDictValue source;
+            source.Add (readable.rawName, readable);
+            ParamDictElement read;
+            read.Add (guids[0], source);
+            Roombook::ReadParams requests;
+            for (UInt32 i = 0; i < 3; ++i) {
+                GS::Array<GS::UniString> names;
+                names.Push (i == 0 ? "readable" : "missing");
+                requests.Add (rawnames[i], requestFor (names, (mask & (1u << i)) != 0));
+            }
+            const Roombook::ReadParams before = requests;
+            DBtest (Roombook::Param_Property_Read (guids[0], read, requests) == ((mask & 1) == 0),
+                    "Cached reader aggregate is new-read any, not all-valid");
+            for (UInt32 i = 0; i < 3; ++i) {
+                const auto &actual = requests.Get (rawnames[i]);
+                const auto &saved = before.Get (rawnames[i]);
+                const bool newlyRead = i == 0 && (mask & 1) == 0;
+                DBtest (actual.isValid == (saved.isValid || newlyRead) &&
+                            sameValue (actual.val, newlyRead ? readable.val : saved.val) &&
+                            sameNames (actual.rawnames, saved.rawnames),
+                        "Cached reader mixed request states");
+            }
+            DBtest (sameValue (read.Get (guids[0]).Get ("readable").val, readable.val),
+                    "Cached reader aggregate source unchanged");
+        }
+        // Без записи GUID безопасны только пути, которые не разыменовывают baseparam.
+        for (UInt32 mode = 0; mode < 4; ++mode) {
+            ParamDictElement read;
+            Roombook::ReadParams requests;
+            GS::Array<GS::UniString> names;
+            if (mode == 1 || mode == 3)
+                names.Push ("missing");
+            if (mode != 0)
+                requests.Add ("safe", requestFor (names, mode == 1));
+            if (mode == 3)
+                read.Add (guids[0], ParamDictValue{});
+            const Roombook::ReadParams before = requests;
+            DBtest (!Roombook::Param_Property_Read (guids[0], read, requests), "Cached reader safe empty/preset exits");
+            if (mode != 0)
+                DBtest (requests.Get ("safe").isValid == before.Get ("safe").isValid &&
+                            sameValue (requests.Get ("safe").val, before.Get ("safe").val) &&
+                            sameNames (requests.Get ("safe").rawnames, before.Get ("safe").rawnames),
+                        "Cached reader safe exit preserves request");
+        }
+        for (UInt32 reverse = 0; reverse < 2; ++reverse) {
+            ParamDictElement read;
+            GS::Array<GS::UniString> names;
+            names.Push ("shared");
+            for (UInt32 i = 0; i < 2; ++i) {
+                ParamValue p;
+                p.isValid = true;
+                p.val = valueFor (API_PropertyRealValueType, static_cast<Int32> (i + 1), i == 0);
+                ParamDictValue source;
+                source.Add ("shared", p);
+                read.Add (guids[i], source);
+            }
+            const Roombook::ReadParam templ = requestFor (names);
+            for (UInt32 j = 0; j < 2; ++j) {
+                const UInt32 i = reverse == 0 ? j : 1 - j;
+                Roombook::ReadParams requests;
+                requests.Add ("target", templ);
+                DBtest (Roombook::Param_Property_Read (guids[i], read, requests) &&
+                            sameValue (requests.Get ("target").val,
+                                       valueFor (API_PropertyRealValueType, static_cast<Int32> (i + 1), i == 0)),
+                        "Cached reader GUID isolation in both orders");
+                DBtest (sameNames (requests.Get ("target").rawnames, names) && !templ.isValid,
+                        "Cached reader GUID template retained");
             }
         }
     }

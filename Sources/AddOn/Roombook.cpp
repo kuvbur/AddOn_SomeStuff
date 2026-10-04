@@ -982,12 +982,7 @@ namespace Roombook
         columnFormat.Add (rawname, c);
     }
 
-    void OtdData_CalcForRoom (const ColumnFormatDict &columnFormat,
-                              const OtdRoom &otd,
-                              ParamDictElement &paramToWrite,
-                              const ParamDictElement &paramToRead,
-                              OtdMaterialAreaDictByOtdType &dct_bytype) {
-        OtdMaterialAreaDictByType dct; // Основной словарь
+    static void CollectMaterialAreasForRoom (const OtdRoom &otd, OtdMaterialAreaDictByType &dct) {
         // Разбивка по отделочным слоям, вычисление площадей и добавление их в
         // словарь по типам отделки
         for (const OtdWall &otdw : otd.otdwall) {
@@ -1035,6 +1030,15 @@ namespace Roombook
                 }
             }
         }
+    }
+
+    void OtdData_CalcForRoom (const ColumnFormatDict &columnFormat,
+                              const OtdRoom &otd,
+                              ParamDictElement &paramToWrite,
+                              const ParamDictElement &paramToRead,
+                              OtdMaterialAreaDictByOtdType &dct_bytype) {
+        OtdMaterialAreaDictByType dct; // Основной словарь
+        CollectMaterialAreasForRoom (otd, dct);
         // Записываем результаты в результаты для каждого помещения
         GS::HashTable<TypeOtd, GS::UniString> paramnamebytype;
         paramnamebytype.Add (Wall_Up,
@@ -1071,6 +1075,38 @@ namespace Roombook
                 const GS::UniString mat = *cIt.key;
     #endif
                 OtdData_AddValueToDict (dct_to, typeotd, mat, area);
+            }
+        }
+    }
+
+    static void CollectAreasForFinishTypes (const GS::Array<TypeOtd> &typeotd,
+                                            const OtdMaterialAreaDictByType &dct,
+                                            OtdMaterialAreaDict &dcta) {
+        if (typeotd.GetSize () == 1) {
+            if (dct.ContainsKey (typeotd[0]))
+                dcta = dct.Get (typeotd[0]);
+        } else {
+            // В одно свойство записывается несколько типов. Суммируем
+            // материалы.
+            for (auto &t : typeotd) {
+                if (!dct.ContainsKey (t))
+                    continue;
+                const OtdMaterialAreaDict &d = dct.Get (t);
+                for (auto &m : d) {
+    #ifdef ServerMainVers_2800
+                    const GS::UniString mat = m.key;
+                    const double area = m.value;
+    #else
+                    const GS::UniString mat = *m.key;
+                    const double area = *m.value;
+    #endif
+                    if (dcta.ContainsKey (mat)) {
+                        double area_sum = dcta.Get (mat) + area;
+                        dcta.Set (mat, area_sum);
+                    } else {
+                        dcta.Add (mat, area);
+                    }
+                }
             }
         }
     }
@@ -1120,33 +1156,7 @@ namespace Roombook
             // Если такой тип отделки есть в словаре - записываем послойно материалы
             // и площади
             OtdMaterialAreaDict dcta;
-            if (typeotd.GetSize () == 1) {
-                if (dct.ContainsKey (typeotd[0]))
-                    dcta = dct.Get (typeotd[0]);
-            } else {
-                // В одно свойство записывается несколько типов. Суммируем
-                // материалы.
-                for (auto &t : typeotd) {
-                    if (!dct.ContainsKey (t))
-                        continue;
-                    const OtdMaterialAreaDict &d = dct.Get (t);
-                    for (auto &m : d) {
-    #ifdef ServerMainVers_2800
-                        const GS::UniString mat = m.key;
-                        const double area = m.value;
-    #else
-                        const GS::UniString mat = *m.key;
-                        const double area = *m.value;
-    #endif
-                        if (dcta.ContainsKey (mat)) {
-                            double area_sum = dcta.Get (mat) + area;
-                            dcta.Set (mat, area_sum);
-                        } else {
-                            dcta.Add (mat, area);
-                        }
-                    }
-                }
-            }
+            CollectAreasForFinishTypes (typeotd, dct, dcta);
             if (!dcta.IsEmpty ()) {
                 ColumnFormat c;
                 if (columnFormat.ContainsKey (rawname))
@@ -2583,12 +2593,7 @@ namespace Roombook
         return zoneparams;
     }
 
-    void Param_Property_FindInParams (ReadParams &zoneparams) {
-        if (zoneparams.IsEmpty ())
-            return;
-        if (!ParamHelpers::isPropertyDefinitionRead ())
-            return;
-        ParamDictValue &propertyParams = PROPERTYCACHE ().property;
+    static void ResolveParameterRawNames (ReadParams &zoneparams, ParamDictValue &propertyParams) {
         GS::Array<GS::UniString> valid_rawnames; // список проверенных имён параметров
         for (auto &p : zoneparams) {
     #ifdef ServerMainVers_2800
@@ -2630,6 +2635,15 @@ namespace Roombook
             }
             param.rawnames = valid_rawnames;
         }
+    }
+
+    void Param_Property_FindInParams (ReadParams &zoneparams) {
+        if (zoneparams.IsEmpty ())
+            return;
+        if (!ParamHelpers::isPropertyDefinitionRead ())
+            return;
+        ParamDictValue &propertyParams = PROPERTYCACHE ().property;
+        ResolveParameterRawNames (zoneparams, propertyParams);
     }
 
     bool Param_Property_Read (const API_Guid &elGuid, ParamDictElement &paramToRead, ReadParams &zoneparams) {
@@ -2695,6 +2709,26 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Запись прочитанных свойств в зону
     // -----------------------------------------------------------------------------
+    static void NormalizeRoomFinishHeights (OtdRoom &roominfo) {
+        // Заполнение непрочитанных
+        // Высоты
+        if (roominfo.height_main > roominfo.height)
+            roominfo.height_main = roominfo.height;
+        if (roominfo.height_main < 0.1) {
+            roominfo.height_main = roominfo.height - roominfo.height_down;
+            roominfo.height_up = 0;
+        } else {
+            roominfo.height_up = roominfo.height - roominfo.height_main;
+            roominfo.height_main = roominfo.height_main - roominfo.height_down;
+        }
+        if (roominfo.height < 0.0001)
+            roominfo.isValid = false;
+        roominfo.height = std::round (roominfo.height * 1000) / 1000;
+        roominfo.height_main = std::round (roominfo.height_main * 1000) / 1000;
+        roominfo.height_down = std::round (roominfo.height_down * 1000) / 1000;
+        roominfo.height_up = std::round (roominfo.height_up * 1000) / 1000;
+    }
+
     void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
                            OtdRoom &roominfo,
                            ParamDictElement &paramToRead,
@@ -2989,23 +3023,7 @@ namespace Roombook
             roominfo.create_reveal_elements = roominfo.create_all_elements; // Создавать элементы отделки откосов
             roominfo.create_floor_elements = roominfo.create_all_elements;  // Создавать элементы отделки откосов
         }
-        // Заполнение непрочитанных
-        // Высоты
-        if (roominfo.height_main > roominfo.height)
-            roominfo.height_main = roominfo.height;
-        if (roominfo.height_main < 0.1) {
-            roominfo.height_main = roominfo.height - roominfo.height_down;
-            roominfo.height_up = 0;
-        } else {
-            roominfo.height_up = roominfo.height - roominfo.height_main;
-            roominfo.height_main = roominfo.height_main - roominfo.height_down;
-        }
-        if (roominfo.height < 0.0001)
-            roominfo.isValid = false;
-        roominfo.height = std::round (roominfo.height * 1000) / 1000;
-        roominfo.height_main = std::round (roominfo.height_main * 1000) / 1000;
-        roominfo.height_down = std::round (roominfo.height_down * 1000) / 1000;
-        roominfo.height_up = std::round (roominfo.height_up * 1000) / 1000;
+        NormalizeRoomFinishHeights (roominfo);
     }
 
     // -----------------------------------------------------------------------------

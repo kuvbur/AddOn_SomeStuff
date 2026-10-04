@@ -136,6 +136,12 @@ namespace TestFunc {
     void TestStringSplt ();
     void TestBuildOtdByParent ();
     void TestClearZoneGuid ();
+    void TestRoomMaterialQuantities ();
+    void TestRoomParameterIsolation ();
+    void TestRoomMaterialFormatting ();
+    void TestOpeningParameterIsolation ();
+    void TestRoomParameterResolution ();
+    void TestCachedParameterReader ();
     void TestOpeningAddOne ();
     void TestOtdWallDelimOne ();
     void TestOtdWallDelimAll ();

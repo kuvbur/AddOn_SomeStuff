@@ -1,6 +1,6 @@
 # TestFunc — Локальное тестирование
 
-> Базовый хеш карточки: 1e67983 (2026-09-22); локальное дополнение #199 — 2026-09-24 (ещё без коммита). Полное покрытие API (hpp:17-123, 33 функции); строки — объявления в hpp, определения .cpp не фиксировались. P2b3 #260: дополнение поверх ce0f0e0, 2026-10-04; свежие координаты/контракт/AC25-прогон в секции P2b3.
+> Базовый хеш карточки: 1e67983 (2026-09-22); локальное дополнение #199 — 2026-09-24 (ещё без коммита). Полное покрытие API (hpp:17-123, 33 функции); строки — объявления в hpp, определения .cpp не фиксировались. P2b3 #260: дополнение поверх ce0f0e0, 2026-10-04; свежие координаты/контракт/AC25-прогон в секции P2b3. P2b4/P4j #260: рабочее дерево поверх7140f15, 2026-10-04; текущие координаты/проверки в новой секции.
 
 ## Назначение
 Вспомогательные функции для локального тестирования и отладки. Активен только под `TESTING`. [из комментария, TestFunc.hpp:16]
@@ -154,6 +154,44 @@ NOTE [Verbose] TestPropertyRuleFlagOnProjectElements | RuleFlagProj.desc | name=
 
 ## Зависимости
 - `api_headers/APICommon25/26/27.h` [по include]
+
+## P2b4 — TestRoomMaterialQuantities (#260)
+
+- `tests/TestCore.cpp:1320`: 28 сценариев ×11типов ×два накопления разных зон; стены/перекрытия, составы/дедуп/----/Unicode, пустые/невалидные входы, порог площади, проёмы/откосы и порядок float. Пустые rawname исключают форматирование/запись свойств. Прямоугольная SDK-фикстура имеет площадь6. Проверяются итоговые ключи/точные суммы, сохранность чужого типа отделки, отсутствие property-output и отдельные исходные поля. [по коду]
+- Production read-only до baseline;8031/0 до/после P4j, TestKit78/18552/0 EXIT0; все78итогов совпали. AC25 BuildAddOn success; fresh Core/registry0errors, прежние include warnings. Реестр78/78/78. Штатные отчёты свежие относительно APX; pane прочитан, production-диагностики не смешиваются с TestKit-verdict. Форматирование текста/SDK-запись данным набором не проверяются. [по build/MCP/report/runtime]
+
+## P2b5 — TestRoomParameterIsolation (#260)
+
+- `tests/TestCore.cpp:1501`: 256 комбинаций флагов,13 случаев высот/fallback, две зоны в обоих порядках и шесть reader-вариантов + пустые запросы. Проверены шаблон/входной словарь, Unicode, preset target, условные slab-флаги, фактический return-флаг чтения и приоритет rawname/false vots. Material-запросов нет, запись в модель не вызывается. [по исходнику]
+- Production read-only до baseline;1921/0 и TestKit79/20473/0 EXIT0 до/после отдельного P4k. Прежние78 END совпали с P4j, все79 END/SUMMARY/EXIT совпали до/после P4k. AC25 BuildAddOn success, fresh Core/registry0errors; реестр79/79/79. Отсутствующий словарь зоны и реальное SDK-чтение материалов данным набором не проверяются. [по build/MCP/report]
+
+## P2b6 — TestRoomMaterialFormatting (#260)
+
+- `tests/TestCore.cpp:1738`:11сценариев ×11типов +4padding cases +SDK metrics guard,973/0; точный текст, естественная сортировка/объединение, trim/маркер/Unicode/перенос, отсутствие повторной записи и сохранность metadata/сторонних значений. Формируется локальный output-словарь, реальной записи свойств нет; SDK-метрики текста реально вызваны. [по source/runtime]
+- TestKit80/21446/0 EXIT0; прежние79END совпали с P4k. Production byte-identical; AC25 BuildAddOn success, fresh Core/registry0errors, реестр80/80/80. Другие шрифты/сложные Unicode-переносы/реальная property-write не проверены. [по build/MCP/report]
+
+## P2b7 — TestOpeningParameterIsolation (#260)
+
+- `tests/TestCore.cpp:1909`:64маски/слои +13состояний второго проёма ×оба порядка +5early-return. Публичный Param_SetToWindows вызывается на синтетических cached-данных; проверяются глубина, width/height, val/isValid, сохранность identity/геометрических полей, исходных слоёв/словарей и шаблона. Сам private ProcessWallFinishes не вызывается. [по исходнику]
+- Production read-only,3692/0; TestKit81/25138/0 EXIT0, прежние80END совпали, реестр81/81/81. AC25 BuildAddOn success, fresh Core/registry0errors/прежние3и2include warnings. APX1791137672828327000, отчёт1791137775872208700; загружен Build/SomeStuff/25/Debug/SomeStuff.apx. [по build/MCP/report/runtime]
+- Preset-only requests дают false aggregate при сохранённых valid values; missing/invalid required keys оставляют base_th и исходные размеры. Пять ожидаемых Param_SetToWindows err в pane не являются TestKit-verdict. Реальное GDL-чтение, модельный read-back/полные контуры/материалы не проверялись. [по source/runtime]
+
+### TestRoomParameterResolution (#260 P2b8)
+
+- Новый `TestRoomParameterResolution` — `Sources/AddOn/tests/TestCore.cpp:2117`: 7 description-cases × 2 вида ключа, 8 порядков/preset-valid, дубликаты, пустые списки/словарь, unavailable cache gate, шаблон окон и восстановление оригинального кэша. RAII временно подменяет только property и два флага `isPropertyDefinitionRead_full`/`isPropertyDefinition_OK`; full=true исключает реальный SDK-load в этой фикстуре. До изменения production — побайтная неизменность. [по коду + assertions]
+- AC25 Windows Debug: оба `BuildAddOn.py` success; fresh Root — прежние 8 unused-variable errors + 5 include warnings, Core/registry — 0 errors и прежние 3/2 include warnings. Реестр 82/82/82. До/после: новый тест 636/0, TestKit 82/25774/0 EXIT0; все 82 END/SUMMARY/EXIT совпали, прежние 81 END совпали с P2b7. [build log + fresh MCP + свежие штатные TestKit reports]
+- Полные контуры/материалы, SDK-failure/load путь при full=false, macOS/другие AC и performance A/B — not verified. Мой VS-сеанс остановлен; коммит/push не выполнялись, #260 остаётся открытой.
+
+### P2b9 — полный cached reader (#260, 2026-10-04)
+
+- `TestCachedParameterReader` — `Sources/AddOn/tests/TestCore.cpp:2362`. Production побайтно совпадает с проверенным P4m: `Param_Property_Read` (`Roombook.cpp:2649`) не изменён и не раздроблен. [по коду + byte snapshot]
+- Матрица: шесть API_VariantType × шесть имён × четыре bool/fromProperty состояния. Дополнены `vots_fill`, содержащие тег строки, другой регистр, type-agnostic bool-фильтр и сохранность всех полей ParamValueData/FormatString. `fromProperty` меняет только type результата на String; исходный cached ParamValue не меняется. [по исходнику + runtime assertions]
+- Все шесть перестановок трёх кандидатов × пять состояний (missing/invalid/false-filter/valid/all-invalid), восемь масок preset-valid в трёх запросах, четыре безопасных ранних выхода, два GUID в обоих порядках. Aggregate return проверен отдельно от общей валидности. Мутация результата не меняет исходное значение и шаблон rawnames. [по исходнику + runtime assertions]
+- Отсутствующий GUID проверен только при пустых запросах, полностью preset-запросе или пустом списке кандидатов — эти пути не разыменовывают baseparam. Непустой непредустановленный запрос с кандидатами и отсутствующим GUID НЕ исполнялся: текущий код получает GetPtr(elGuid), затем разыменовывает его без null-guard. Это ограничение входной фикстуры, не подтверждённый runtime-дефект и не повод менять production в тестовой задаче. [по коду; unsafe missing-GUID not verified]
+- AC25 Windows Debug `BuildAddOn.py`: success; свежие изолированные Core/registry MCP — 0 errors, прежние 3/2 include warnings. Новый тест 1009 passed/0 failed; TestKit 83 suites/26783 passed/0 failed/EXIT0, все 82 унаследованных END совпали с P4m. Реестр 83/83/83. [build log + свежий штатный TestKit report + MCP]
+- VS launch загрузил `Build/SomeStuff/25/Debug/SomeStuff.apx`; runtime mtime_ns1791142015500552900, scratch-копия штатного отчёта p2b9_test_report.txt mtime_ns1791142161702406500, бинарник не изменился во время прогона. Pane «Отладка» прочитан, TestKit-вердикт из штатного отчёта; мой debuggee остановлен. Новый model read-back/A-B не выполнялись: production byte-identical. SDK-генерация cached значений и полноценные геометрия/материалы not verified. [Modules + VS + report]
+- Scoped generated: 22 test symbols из fresh MCP/source join, одно test→Param_Property_Read ребро с пятью source-joined sites, 478 унаследованных рёбер неизменны, graph479. Root endpoint из прежнего fresh MCP повторно сопряжён с неизменённым source; cross-TU outgoing0 не принят за отсутствие вызовов. Полный regen не выполнялся. [MCP + source join]
+- По запросу владельца накопленные P2b4/P4j–P2b9 фиксируются одним checkpoint `[P2b9]`; push и закрытие #260 не выполняются. Чужой `Test_file/test_30.pln` исключён.
 
 ## Инварианты
 - Прод-код в тестовых задачах read-only; провал виден как строка `FAIL ... | expected ... got ...` в отчёте и как `FAILED_SUITE`/`exit_code=70` от раннера [из AGENTS.md]
