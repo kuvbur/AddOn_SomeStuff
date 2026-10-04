@@ -1983,6 +1983,33 @@ bool SyncString (const API_ElemTypeID &elementType,
             if (elementType != API_MorphID)
                 synctypefind = false;
         }
+        if (param.fromAttribElement) {
+            if (!rulestring_one.Contains ("Layer")) {
+                if (elementType != API_WallID && elementType != API_SlabID && elementType != API_ColumnID &&
+                    elementType != API_BeamID && elementType != API_RoofID && elementType != API_BeamSegmentID &&
+                    elementType != API_ColumnSegmentID && elementType != API_MeshID && elementType != API_MorphID &&
+                    elementType != API_ShellID)
+                    synctypefind = false;
+                if (synctypefind) {
+                    if (rulestring_one.Contains ("CompositeType")) {
+                        // TODO : добавить проверку на CompositeType
+                    } else {
+                        if (rulestring_one.Contains ("Composite")) {
+                            if (elementType != API_WallID && elementType != API_SlabID && elementType != API_RoofID &&
+                                elementType != API_MeshID && elementType != API_ShellID)
+                                synctypefind = false;
+                        } else {
+                            if (rulestring_one.Contains ("Profile")) {
+                                if (elementType != API_WallID && elementType != API_ColumnID &&
+                                    elementType != API_BeamID && elementType != API_BeamSegmentID &&
+                                    elementType != API_ColumnSegmentID && elementType != API_ShellID)
+                                    synctypefind = false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Проверка включенных флагов
