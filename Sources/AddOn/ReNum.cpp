@@ -137,8 +137,8 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     // записанных позиций принадлежит всем правилам сразу, и вне окна ему
     // показываться негде.
     runResult.elementsToWrite = qtywrite;
-    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
-    msg_rep ("ReNumSelected", GS::UniString::Printf ("Time spent%s", time), NoError, APINULLGuid);
+    GS::UniString time = GS::UniString::Printf ("Time spent %.3f s", duration);
+    msg_rep ("ReNumSelected", time, NoError, APINULLGuid);
     // Окно результата - единственное место, где пользователь видит итог по
     // правилам. Показывается и на успешном запуске: список счётчиков и есть
     // результат, а не только ошибка.
