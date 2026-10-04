@@ -4190,588 +4190,588 @@
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 557
+    "line": 554
   },
   {
     "name": "Roombook::RoomBook",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 615
+    "line": 612
   },
   {
     "name": "Roombook::Otd_GetOtd_ByZone",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 694
+    "line": 690
   },
   {
     "name": "Roombook::BuildOtdByParent",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 812
+    "line": 808
   },
   {
     "name": "Roombook::Otd_GetOtd_Parent",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 853
+    "line": 849
   },
   {
     "name": "Roombook::OtdData_GetColumnfFormat",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 897
+    "line": 893
   },
   {
     "name": "Roombook::OtdData_CalcForRoom",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 989
+    "line": 985
   },
   {
     "name": "Roombook::OtdData_WriteToRoom",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1082
+    "line": 1078
   },
   {
     "name": "Roombook::OtdData_AddValueToDict",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1224
+    "line": 1220
   },
   {
     "name": "Roombook::OtdWall_GetArea",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1253
+    "line": 1249
   },
   {
     "name": "Roombook::CollectRoomInfo",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1286
+    "line": 1282
   },
   {
     "name": "Roombook::Opening_Create_One",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1438
+    "line": 1434
   },
   {
     "name": "Roombook::OtdWall_Create_FromWall",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1487
+    "line": 1483
   },
   {
     "name": "Roombook::CalculateOpeningForWall",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1678
+    "line": 1674
   },
   {
     "name": "Roombook::Opening_Add_One",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1710
+    "line": 1706
   },
   {
     "name": "Roombook::OtdWall_Add_One",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1722
+    "line": 1718
   },
   {
     "name": "Roombook::OtdWall_Create_FromColumn",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1751
+    "line": 1747
   },
   {
     "name": "Roombook::Floor_FindAll",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1847
+    "line": 1843
   },
   {
     "name": "Roombook::Floor_FindInOneRoom",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1889
+    "line": 1885
   },
   {
     "name": "Roombook::Floor_Create_All",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1930
+    "line": 1926
   },
   {
     "name": "Roombook::Floor_Create_One",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 1983
+    "line": 1979
   },
   {
     "name": "Roombook::Param_ToParamDict",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 2142
+    "line": 2138
   },
   {
     "name": "Roombook::Param_GetForWindowParams",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 2156
+    "line": 2152
   },
   {
     "name": "Roombook::Param_GetForBase",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 2208
+    "line": 2204
   },
   {
     "name": "Roombook::Param_GetForRooms",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 2352
+    "line": 2348
   },
   {
     "name": "Roombook::Param_Property_FindInParams",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 2590
+    "line": 2586
   },
   {
     "name": "Roombook::Param_Property_Read",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 2639
+    "line": 2635
   },
   {
     "name": "Roombook::Param_Material_Get",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 2676
+    "line": 2672
   },
   {
     "name": "Roombook::Param_SetToRooms",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 2702
+    "line": 2698
   },
   {
     "name": "Roombook::Param_SetToBase",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3018
+    "line": 3014
   },
   {
     "name": "Roombook::Param_SetComposite",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3081
+    "line": 3077
   },
   {
     "name": "Roombook::Param_SetToWindows",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3194
+    "line": 3190
   },
   {
     "name": "Roombook::RoomRedProc",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3323
+    "line": 3319
   },
   {
     "name": "Roombook::Edges_GetFromRoom",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3379
+    "line": 3375
   },
   {
     "name": "Roombook::ClearZoneGUID",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3451
+    "line": 3447
   },
   {
     "name": "Roombook::InitializeOpeningRevealWall",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3489
+    "line": 3485
   },
   {
     "name": "Roombook::CalculateOpeningRevealHeight",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3513
+    "line": 3509
   },
   {
     "name": "Roombook::OpeningReveals_Create_One",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3527
+    "line": 3523
   },
   {
     "name": "Roombook::GetWallFinishBandType",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3654
+    "line": 3650
   },
   {
     "name": "Roombook::GetFallbackWallFinishType",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3690
+    "line": 3686
   },
   {
     "name": "Roombook::OtdWall_Delim_All",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3702
+    "line": 3698
   },
   {
     "name": "Roombook::TrimOpeningsToWallHeight",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3807
+    "line": 3803
   },
   {
     "name": "Roombook::CalculateWallHeightIntersection",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3834
+    "line": 3830
   },
   {
     "name": "Roombook::OtdWall_Delim_One",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3857
+    "line": 3853
   },
   {
     "name": "Roombook::SelectWallFinishMaterial",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3889
+    "line": 3885
   },
   {
     "name": "Roombook::SetMaterialByType",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 3997
+    "line": 3993
   },
   {
     "name": "Roombook::SetMaterialFinish_ByComposite",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4013
+    "line": 4009
   },
   {
     "name": "Roombook::SetMaterialFinish",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4024
+    "line": 4020
   },
   {
     "name": "Roombook::Edge_FindOnEdge",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4053
+    "line": 4049
   },
   {
     "name": "Roombook::Edge_FindEdge",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4084
+    "line": 4080
   },
   {
     "name": "Roombook::Draw_Elements",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4101
+    "line": 4097
   },
   {
     "name": "Roombook::OtdWall_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4229
+    "line": 4225
   },
   {
     "name": "Roombook::OtdBeam_Draw_Beam",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4258
+    "line": 4254
   },
   {
     "name": "Roombook::OtdBeam_GetDefult_Beam",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4314
+    "line": 4310
   },
   {
     "name": "Roombook::OtdBeam_Draw_Object",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4333
+    "line": 4329
   },
   {
     "name": "Roombook::OtdBeam_GetDefult_Object",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4344
+    "line": 4340
   },
   {
     "name": "Roombook::OtdWall_Draw_Object",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4371
+    "line": 4367
   },
   {
     "name": "Roombook::OtdWall_GetDefult_Object",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4500
+    "line": 4496
   },
   {
     "name": "Roombook::OtdWall_Draw_Wall",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4527
+    "line": 4523
   },
   {
     "name": "Roombook::OtdWall_GetDefult_Wall",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4580
+    "line": 4576
   },
   {
     "name": "Roombook::Opening_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4609
+    "line": 4605
   },
   {
     "name": "Roombook::Opening_GetDefult",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4668
+    "line": 4664
   },
   {
     "name": "Roombook::Floor_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4690
+    "line": 4686
   },
   {
     "name": "Roombook::Floor_Draw_Slab",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4721
+    "line": 4717
   },
   {
     "name": "Roombook::Floor_Draw_Object",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4821
+    "line": 4817
   },
   {
     "name": "Roombook::Floor_GetDefult_Object",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4966
+    "line": 4962
   },
   {
     "name": "Roombook::Floor_GetDefult_Slab",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 4990
+    "line": 4986
   },
   {
     "name": "Roombook::Class_SetClass",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5017
+    "line": 5013
   },
   {
     "name": "Roombook::Class_SetClass",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5028
+    "line": 5024
   },
   {
     "name": "Roombook::Class_SetClass",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5041
+    "line": 5037
   },
   {
     "name": "Roombook::Class_GetClassGuid",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5049
+    "line": 5045
   },
   {
     "name": "Roombook::Class_GetOtdTypeByClass",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5096
+    "line": 5092
   },
   {
     "name": "Roombook::Class_FindFinClass",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5140
+    "line": 5136
   },
   {
     "name": "Roombook::SetSyncOtdWall",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5211
+    "line": 5207
   },
   {
     "name": "Roombook::Class_IsElementFinClass",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5285
+    "line": 5281
   },
   {
     "name": "Roombook::Param_AddUnicElementByType",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5300
+    "line": 5296
   },
   {
     "name": "Roombook::Param_AddUnicGUIDByType",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5328
+    "line": 5324
   },
   {
     "name": "Roombook::Favorite_GetType",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5340
+    "line": 5336
   },
   {
     "name": "Roombook::Favorite_GetDict",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5355
+    "line": 5351
   },
   {
     "name": "Roombook::Favorite_ReadComposite",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5464
+    "line": 5460
   },
   {
     "name": "Roombook::Favorite_FindName",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5501
+    "line": 5497
   },
   {
     "name": "Roombook::Favorite_GetByName",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5601
+    "line": 5597
   },
   {
     "name": "Roombook::Favorite_GetByName",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5619
+    "line": 5615
   },
   {
     "name": "Roombook::Check",
     "kind": "Function",
     "file": "Sources/AddOn/Roombook.cpp",
     "module": "Roombook",
-    "line": 5641
+    "line": 5637
   },
   {
     "name": "TableRenderer::kMinWidthMm",

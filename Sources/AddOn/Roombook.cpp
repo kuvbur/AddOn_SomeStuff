@@ -499,14 +499,11 @@ namespace Roombook
                                      MatarialToFavoriteDict &favdict,
                                      bool has_base_element,
                                      GS::UniString &funcname) {
-        auto &roomsinfo = context.roomsinfo;
-        auto &paramToRead = context.paramToRead;
         auto &roomParams = readParams.roomParams;
-        auto &storyLevels = context.storyLevels;
         // На этом этапе уже рассчитываются фактические отделочные элементы для каждой комнаты.
-        funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", roomsinfo.GetSize ());
+        funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", context.roomsinfo.GetSize ());
         GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
-        for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
+        for (OtdRooms::PairIterator cIt = context.roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
             OtdRoom &otd = cIt->value;
             API_Guid zoneGuid = cIt->key;
@@ -516,7 +513,7 @@ namespace Roombook
     #endif
             if (AdvanceProcessPhase (funcname))
                 return false;
-            if (!paramToRead.ContainsKey (zoneGuid))
+            if (!context.paramToRead.ContainsKey (zoneGuid))
                 continue; // Если у зоны нет прочитанных параметров - дальше делать
                           // нечего
             // Заполняем данные для зон
@@ -524,11 +521,11 @@ namespace Roombook
             // выставленным isValid и не перечитывает val — общая копия тянула бы
             // значения первой зоны во все остальные.
             ReadParams roomParamsWork = roomParams;
-            Param_SetToRooms (material_dict, otd, paramToRead, roomParamsWork);
+            Param_SetToRooms (material_dict, otd, context.paramToRead, roomParamsWork);
             if (!otd.isValid)
                 continue;
             // Расчёт пола и потолка
-            Floor_Create_All (storyLevels, otd);
+            Floor_Create_All (context.storyLevels, otd);
             if (otd.otdwall.IsEmpty () && otd.otdslab.IsEmpty ())
                 continue;
             ProcessSlabFinishes (otd,
@@ -628,9 +625,6 @@ namespace Roombook
         // Контейнеры остаются общими для всех этапов; ссылки сохраняют текущие места их использования.
         RoomProcessingContext context;
         PrepareRoomProcessingContext (context, zones);
-        auto &finclass = context.finclass;
-        auto &finclassguids = context.finclassguids;
-        auto &paramToRead = context.paramToRead;
         // После сбора связей временные GUID зон очищаются перед обработкой базовых элементов.
         if (!BuildElementReadIndex (zones, context, funcname))
             return;
@@ -639,20 +633,21 @@ namespace Roombook
         // Необходимые для чтения параметры и свойства
         ReadParamsForRoomBook readParams = PrepareReadParams ();
         ReadElementParameters (context, readParams);
-        funcname = GS::UniString::Printf ("Read data from %d elements(s)", paramToRead.GetSize ());
+        funcname = GS::UniString::Printf ("Read data from %d elements(s)", context.paramToRead.GetSize ());
         if (AdvanceProcessPhase (funcname))
             return;
         // Читаем свойства всех элементов
         ParamDictCompositeElement paramCompositeToRead;
         ListData::LibElements paramListDataToRead;
-        ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, false);
+        ParamHelpers::ElementsRead (context.paramToRead, paramCompositeToRead, paramListDataToRead, true, false);
         // Словарь избранного нужен для выбора подходящего шаблона отделки по материалу и типу поверхности.
         MatarialToFavoriteDict favdict = Favorite_GetDict ();
         // Ищём уже существующие элементы отделки и определяем, к каким базовым элементам они привязаны.
         // Это нужно, чтобы не создавать дубли и правильно обновлять существующие элементы.
         bool has_base_element = false;
         UnicGuid reserv_elements; // Словарь незарезервированных или скрытых элементов
-        context.exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, has_base_element, reserv_elements);
+        context.exsistot_byzone =
+            Otd_GetOtd_ByZone (zones, context.finclassguids, context.finclass, has_base_element, reserv_elements);
         if (!ProcessRoomFinishes (context, readParams, paramCompositeToRead, favdict, has_base_element, funcname))
             return;
         // Получаем список уже существующих отделочных элементов для обработанных зон.
@@ -665,10 +660,10 @@ namespace Roombook
             return;
         WriteRoomMaterialData (context.roomsinfo, context.paramToRead, summary);
         auto &paramToWrite = summary.paramToWrite;
-        paramToRead.Clear ();
+        context.paramToRead.Clear ();
         // Проверка существования классов и свойств
         if (!zones.IsEmpty ()) {
-            if (!Check (finclass, finclassguids))
+            if (!Check (context.finclass, context.finclassguids))
                 return;
         }
         RemoveUnusedFinishingElements (context.exsistot_byzone, context.deletelist);
@@ -681,7 +676,8 @@ namespace Roombook
         UnicElementByType subelementByparent; // Словарь с созданными родительскими
                                               // и дочерними элементами
         // Отросовка элементов отделки
-        Draw_Elements (context.storyLevels, context.roomsinfo, subelementByparent, finclass, context.deletelist);
+        Draw_Elements (
+            context.storyLevels, context.roomsinfo, subelementByparent, context.finclass, context.deletelist);
         // Привязка отделочных элементов к базовым
         SetSyncOtdWall (subelementByparent, paramToWrite);
         finish = clock ();
