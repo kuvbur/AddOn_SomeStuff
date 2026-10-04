@@ -374,12 +374,11 @@ namespace Roombook
         GS::Array<API_Guid> zones_bytype;
     };
 
-    static bool BuildMaterialSummaryForRooms (RoomProcessingContext &context,
+    static bool BuildMaterialSummaryForRooms (OtdRooms &roomsinfo,
+                                              ParamDictElement &paramToRead,
                                               GS::Array<API_Guid> &zones,
                                               MaterialSummary &summary,
                                               GS::UniString &funcname) {
-        auto &roomsinfo = context.roomsinfo;
-        auto &paramToRead = context.paramToRead;
         auto &paramToWrite = summary.paramToWrite;
         auto &columnFormat = summary.columnFormat;
         auto &dct_bytype = summary.dct_bytype;
@@ -662,7 +661,7 @@ namespace Roombook
         context.paramDict_favorite.Clear ();
         favdict.Clear ();
         MaterialSummary summary;
-        if (!BuildMaterialSummaryForRooms (context, zones, summary, funcname))
+        if (!BuildMaterialSummaryForRooms (context.roomsinfo, context.paramToRead, zones, summary, funcname))
             return;
         WriteRoomMaterialData (context.roomsinfo, context.paramToRead, summary);
         auto &paramToWrite = summary.paramToWrite;
@@ -3511,6 +3510,20 @@ namespace Roombook
         wallotd.type = Reveal_Main;
     }
 
+    static bool CalculateOpeningRevealHeight (
+        const OtdWall &otdw, const OtdOpening &op, bool &is_upper_wall, double &zDown, double &height) {
+        is_upper_wall = false; // Проём заканчивается выше стены, построение
+                               // верхнего откоса не требуется
+        if ((op.zBottom + op.height) > (otdw.zBottom + otdw.height))
+            is_upper_wall = true;
+        double zDup = fmin (op.zBottom + op.height, otdw.zBottom + otdw.height);
+        zDown = fmax (op.zBottom, otdw.zBottom);
+        height = fmin (op.height, zDup - zDown);
+        if (height < min_dim)
+            return false;
+        return true;
+    }
+
     void OpeningReveals_Create_One (GS::Array<OtdSlab> &otdslabs,
                                     const OtdWall &otdw,
                                     OtdOpening &op,
@@ -3531,14 +3544,10 @@ namespace Roombook
                                     OtdMaterial &om_zone) {
         if (op.base_reveal_width < min_dim)
             return;
-        bool is_upper_wall = false; // Проём заканчивается выше стены, построение
-                                    // верхнего откоса не требуется
-        if ((op.zBottom + op.height) > (otdw.zBottom + otdw.height))
-            is_upper_wall = true;
-        double zDup = fmin (op.zBottom + op.height, otdw.zBottom + otdw.height);
-        double zDown = fmax (op.zBottom, otdw.zBottom);
-        double height = fmin (op.height, zDup - zDown);
-        if (height < min_dim)
+        bool is_upper_wall = false;
+        double zDown = 0;
+        double height = 0;
+        if (!CalculateOpeningRevealHeight (otdw, op, is_upper_wall, zDown, height))
             return;
         Point2D begedge = {0, 0};
         Point2D endedge = {0, 0};

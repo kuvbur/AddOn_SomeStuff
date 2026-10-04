@@ -804,21 +804,43 @@ namespace TestFunc {
             UInt32 count;
             double resultBottom;
             double resultHeight;
+            double wallBottom = 0;
         };
 
-        const Case cases[] = {{"normal", 1, 3, 2, 0.5, 0, false, 3, 1, 3},
-                              {"clip bottom", -1, 3, 2, 0.5, 0, false, 3, 0, 2},
-                              {"clip top", 8, 4, 2, 0.5, 0, false, 2, 8, 2},
-                              {"exact top", 7, 3, 2, 0.5, 0, false, 3, 7, 3},
-                              {"touch top", 10, 3, 2, 0.5, 0, false, 0, 0, 0},
-                              {"touch bottom", -3, 3, 2, 0.5, 0, false, 0, 0, 0},
-                              {"short depth", 1, 3, 2, Roombook::min_dim / 2, 0, false, 0, 0, 0},
-                              {"exact depth", 1, 3, 2, Roombook::min_dim, 0, false, 3, 1, 3},
-                              {"zero wall", 1, 3, 2, 0.5, 3, false, 0, 0, 0},
-                              {"zero width", 1, 3, 0, 0.5, 0, false, 2, 1, 3},
-                              {"zero perpendicular", 1, 3, 2, 0.5, 0, true, 1, 1, 3},
-                              {"reversed wall", 1, 3, 2, 0.5, 1, false, 3, 1, 3},
-                              {"vertical wall", 1, 3, 2, 0.5, 2, false, 3, 1, 3}};
+        const Case cases[] = {
+            {"normal", 1, 3, 2, 0.5, 0, false, 3, 1, 3},
+            {"clip bottom", -1, 3, 2, 0.5, 0, false, 3, 0, 2},
+            {"clip top", 8, 4, 2, 0.5, 0, false, 2, 8, 2},
+            {"exact top", 7, 3, 2, 0.5, 0, false, 3, 7, 3},
+            {"touch top", 10, 3, 2, 0.5, 0, false, 0, 0, 0},
+            {"touch bottom", -3, 3, 2, 0.5, 0, false, 0, 0, 0},
+            {"short depth", 1, 3, 2, Roombook::min_dim / 2, 0, false, 0, 0, 0},
+            {"exact depth", 1, 3, 2, Roombook::min_dim, 0, false, 3, 1, 3},
+            {"zero wall", 1, 3, 2, 0.5, 3, false, 0, 0, 0},
+            {"zero width", 1, 3, 0, 0.5, 0, false, 2, 1, 3},
+            {"zero perpendicular", 1, 3, 2, 0.5, 0, true, 1, 1, 3},
+            {"reversed wall", 1, 3, 2, 0.5, 1, false, 3, 1, 3},
+            {"vertical wall", 1, 3, 2, 0.5, 2, false, 3, 1, 3},
+            {"positive wall datum", 101, 3, 2, 0.5, 0, false, 3, 101, 3, 100},
+            {"negative wall datum", -99, 3, 2, 0.5, 0, false, 3, -99, 3, -100},
+            {"shifted clip bottom", 9, 3, 2, 0.5, 0, false, 3, 10, 2, 10},
+            {"shifted clip top", 18, 4, 2, 0.5, 0, false, 2, 18, 2, 10},
+            {"shifted exact top", 17, 3, 2, 0.5, 0, false, 3, 17, 3, 10},
+            {"shifted below wall", 1, 3, 2, 0.5, 0, false, 0, 0, 0, 10},
+            {"short opening height", 0, Roombook::min_dim / 2, 2, 0.5, 0, false, 0, 0, 0},
+            {"exact opening height", 0, Roombook::min_dim, 2, 0.5, 0, false, 3, 0, Roombook::min_dim},
+            {"above minimum height", 0, Roombook::min_dim * 2, 2, 0.5, 0, false, 3, 0, Roombook::min_dim * 2},
+            {"short clipped height", -Roombook::min_dim, Roombook::min_dim * 1.5, 2, 0.5, 0, false, 0, 0, 0},
+            {"exact clipped height",
+             -Roombook::min_dim,
+             Roombook::min_dim * 2,
+             2,
+             0.5,
+             0,
+             false,
+             3,
+             0,
+             Roombook::min_dim}};
         const API_Guid guid = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
         for (const Case &c : cases) {
             for (bool hadReveal : {false, true}) {
@@ -835,6 +857,7 @@ namespace TestFunc {
                 if (c.orientation == 3)
                     source.endC = source.begC;
                 source.height = 10;
+                source.zBottom = c.wallBottom;
                 source.base_guid = guid;
                 source.floorInd = -1;
                 source.material.smaterial = "source material";
@@ -867,7 +890,7 @@ namespace TestFunc {
                 Roombook::OtdSlab sentinel;
                 sentinel.height = 99;
                 slabs.Push (sentinel);
-                double bottom = 0, down = 0, main = 0, up = 0, height = 20;
+                double bottom = c.wallBottom, down = 0, main = 0, up = 0, height = 20;
                 Roombook::OpeningReveals_Create_One (slabs,
                                                      source,
                                                      opening,
@@ -891,13 +914,13 @@ namespace TestFunc {
                 DBtest (opening.objLoc == 5 && opening.width == c.width && opening.height == c.height &&
                             opening.zBottom == c.bottom && opening.base_reveal_width == c.depth,
                         label + " opening dimensions unchanged");
-                DBtest (source.height == 10 && source.base_guid == guid && source.floorInd == -1 &&
-                            source.material.smaterial == "source material" &&
+                DBtest (source.height == 10 && source.zBottom == c.wallBottom && source.base_guid == guid &&
+                            source.floorInd == -1 && source.material.smaterial == "source material" &&
                             source.favorite.name == "source favorite" && source.base_composite.GetSize () == 1 &&
                             source.openings.GetSize () == 1,
                         label + " source preserved");
                 DBtest (slabs.GetSize () == 1 && slabs.Get (0).height == 99, label + " slab output untouched");
-                DBtest (bottom == 0 && down == 0 && main == 0 && up == 0 && height == 20,
+                DBtest (bottom == c.wallBottom && down == 0 && main == 0 && up == 0 && height == 20,
                         label + " band inputs unchanged");
                 if (walls.GetSize () != c.count)
                     continue;
@@ -941,6 +964,217 @@ namespace TestFunc {
                             label + " material/composite");
                     DBtest (wall.openings.IsEmpty () && wall.favorite.name.IsEmpty (),
                             label + " unused fields default");
+                }
+            }
+        }
+
+        struct Piece {
+            int side;
+            double bottom;
+            double height;
+            const char *material;
+        };
+
+        struct BandCase {
+            const char *name;
+            double openingBottom;
+            double openingHeight;
+            double bottom;
+            double down;
+            double main;
+            double up;
+            double total;
+            UInt32 count;
+            Piece pieces[5];
+        };
+
+        const double thickness = Roombook::otd_thickness;
+        const BandCase bandCases[] = {
+            {"three bands",
+             1,
+             3,
+             0,
+             2,
+             2,
+             6,
+             10,
+             5,
+             {{0, 1, 1, "down"}, {0, 2, 2, "main"}, {1, 1, 1, "down"}, {1, 2, 2, "main"}, {2, 4, thickness, "up"}}},
+            {"down only and beam fallback",
+             1,
+             3,
+             0,
+             2,
+             0,
+             0,
+             10,
+             3,
+             {{0, 1, 1, "down"}, {1, 1, 1, "down"}, {2, 4, thickness, "main"}}},
+            {"band ends at beam bottom", 1, 3, 0, 0, 4, 0, 4, 2, {{0, 1, 3, "main"}, {1, 1, 3, "main"}}},
+            {"beam partial intersection",
+             1,
+             3,
+             0,
+             0,
+             4 + thickness / 2,
+             0,
+             10,
+             3,
+             {{0, 1, 3, "main"}, {1, 1, 3, "main"}, {2, 4, thickness / 2, "main"}}},
+            {"rejected band and broad fallback",
+             1,
+             3,
+             0,
+             0.5,
+             0,
+             0,
+             10,
+             3,
+             {{0, 1, 3, "main"}, {1, 1, 3, "main"}, {2, 4, thickness, "main"}}},
+            {"all outputs rejected", 1, 3, 0, 0.5, 0, 0, 0.5, 0, {}},
+            {"zero fallback height", 1, 3, 0, 0, 0, 0, 0, 0, {}},
+            {"tiny band and broad fallback",
+             1,
+             3,
+             0,
+             Roombook::min_dim / 2,
+             0,
+             0,
+             10,
+             3,
+             {{0, 1, 3, "main"}, {1, 1, 3, "main"}, {2, 4, thickness, "main"}}},
+            {"opening above wall top", 8, 4, 0, 2, 2, 6, 10, 2, {{0, 8, 2, "up"}, {1, 8, 2, "up"}}},
+            {"opening below wall bottom",
+             -1,
+             3,
+             0,
+             2,
+             2,
+             6,
+             10,
+             3,
+             {{0, 0, 2, "down"}, {1, 0, 2, "down"}, {2, 2, thickness, "main"}}}};
+        for (const BandCase &c : bandCases) {
+            for (bool emptyReveal : {false, true}) {
+                for (bool hadReveal : {false, true}) {
+                    GS::UniString label (c.name);
+                    label += emptyReveal ? " empty reveal" : " explicit reveal";
+                    label += hadReveal ? " existing flag" : " unset flag";
+                    Roombook::OtdWall source;
+                    source.begC = {10, 20};
+                    source.endC = {20, 20};
+                    source.height = 10;
+                    source.base_guid = guid;
+                    source.floorInd = -1;
+                    source.material.smaterial = "source material";
+                    ParamValueComposite layer;
+                    layer.structype = 0;
+                    layer.val = "source layer";
+                    source.base_composite.Push (layer);
+                    Roombook::OtdOpening opening;
+                    opening.objLoc = 5;
+                    opening.width = 2;
+                    opening.zBottom = c.openingBottom;
+                    opening.height = c.openingHeight;
+                    opening.base_reveal_width = 0.5;
+                    opening.has_reveal = hadReveal;
+                    source.openings.Push (opening);
+                    Geometry::Vector2<double> perpendicular = {0, 1};
+                    Roombook::OtdMaterial materials[8];
+                    const char *names[] = {"main", "up", "down", "reveal", "column", "floor", "ceil", "zone"};
+                    for (int i = 0; i < 8; ++i) {
+                        materials[i].smaterial = names[i];
+                        materials[i].rawname = names[i];
+                        materials[i].rawname_bytype = names[i];
+                    }
+                    if (emptyReveal)
+                        materials[3].smaterial = EMPTYSTRING;
+                    GS::Array<Roombook::OtdWall> walls;
+                    Roombook::OtdWall sentinelWall;
+                    sentinelWall.height = 99;
+                    sentinelWall.material.smaterial = "sentinel wall";
+                    walls.Push (sentinelWall);
+                    GS::Array<Roombook::OtdSlab> slabs;
+                    Roombook::OtdSlab sentinelSlab;
+                    sentinelSlab.height = 98;
+                    slabs.Push (sentinelSlab);
+                    double bottom = c.bottom, down = c.down, main = c.main, up = c.up, height = c.total;
+                    Roombook::OpeningReveals_Create_One (slabs,
+                                                         source,
+                                                         opening,
+                                                         perpendicular,
+                                                         walls,
+                                                         bottom,
+                                                         down,
+                                                         main,
+                                                         up,
+                                                         height,
+                                                         materials[0],
+                                                         materials[1],
+                                                         materials[2],
+                                                         materials[3],
+                                                         materials[4],
+                                                         materials[5],
+                                                         materials[6],
+                                                         materials[7]);
+                    DBtest (walls.GetSize () == c.count + 1, label + " count/order");
+                    // Флаг отмечает попытку построения до Delim_All, а не наличие выходных стенок.
+                    DBtest (opening.has_reveal, label + " flag retained even when all outputs rejected");
+                    DBtest (walls.Get (0).height == 99 && walls.Get (0).material.smaterial == "sentinel wall",
+                            label + " existing wall retained");
+                    DBtest (slabs.GetSize () == 1 && slabs.Get (0).height == 98, label + " slab output untouched");
+                    DBtest (bottom == c.bottom && down == c.down && main == c.main && up == c.up && height == c.total,
+                            label + " band inputs unchanged");
+                    DBtest (opening.objLoc == 5 && opening.width == 2 && opening.zBottom == c.openingBottom &&
+                                opening.height == c.openingHeight && opening.base_reveal_width == 0.5,
+                            label + " opening dimensions unchanged");
+                    DBtest (source.height == 10 && source.base_guid == guid && source.floorInd == -1 &&
+                                source.begC.x == 10 && source.endC.x == 20 &&
+                                source.material.smaterial == "source material" &&
+                                source.base_composite.GetSize () == 1 &&
+                                source.base_composite.Get (0).val == "source layer" &&
+                                source.openings.GetSize () == 1 && source.openings.Get (0).has_reveal == hadReveal,
+                            label + " source preserved");
+                    for (int i = 0; i < 8; ++i) {
+                        DBtest (materials[i].smaterial == GS::UniString (i == 3 && emptyReveal ? "" : names[i]) &&
+                                    materials[i].rawname == names[i] && materials[i].rawname_bytype == names[i],
+                                label + " settings preserved");
+                    }
+                    if (walls.GetSize () != c.count + 1)
+                        continue;
+                    for (UInt32 i = 0; i < c.count; ++i) {
+                        const Piece &piece = c.pieces[i];
+                        const Roombook::OtdWall &wall = walls.Get (i + 1);
+                        Point2D beg = {14, 20}, end = {14, 20.5};
+                        if (piece.side == 1) {
+                            beg = {16, 20.5};
+                            end = {16, 20};
+                        } else if (piece.side == 2) {
+                            beg = {16, 20};
+                            end = {14, 20};
+                        }
+                        DBtest (wall.begC.x, beg.x, label + " begin x");
+                        DBtest (wall.begC.y, beg.y, label + " begin y");
+                        DBtest (wall.endC.x, end.x, label + " end x");
+                        DBtest (wall.endC.y, end.y, label + " end y");
+                        DBtest (wall.zBottom, piece.bottom, label + " bottom");
+                        DBtest (wall.height, piece.height, label + " height");
+                        DBtest (wall.length, piece.height, label + " length after clipping");
+                        DBtest (wall.width, 0.5, label + " depth");
+                        DBtest (wall.type == Roombook::Reveal_Main && wall.base_type == API_WindowID &&
+                                    wall.draw_type == (piece.side == 2 ? API_BeamID : API_WallID) &&
+                                    wall.base_guid == guid && wall.floorInd == -1,
+                                label + " identity/classification");
+                        GS::UniString material (emptyReveal ? piece.material : "reveal");
+                        DBtest (wall.material.smaterial == material && wall.material.rawname == material &&
+                                    wall.material.rawname_bytype == material,
+                                label + " selected material");
+                        DBtest (wall.base_composite.GetSize () == 2 &&
+                                    wall.base_composite.Get (0).val == "source layer",
+                                label + " copied composite and finish");
+                        DBtest (wall.openings.IsEmpty () && wall.favorite.name.IsEmpty (),
+                                label + " unused fields default");
+                    }
                 }
             }
         }
