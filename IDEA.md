@@ -10,7 +10,7 @@ AC25 Windows; сначала состояние дерева, SDK и реаль�
 
 ## Status
 
-IN_PROGRESS — P2b2j/P4i выполнены и проверены, пока без коммита: private CalculateOpeningRevealCoordinates :3523; четыре endpoint, прежняя арифметика и три стадии/флаг до clipping. Правая координата считается до clipping; проверенный caller использует отдельный output-array, clipping не меняет исходные координаты. На неизменённом production выполнен контролируемый GREEN baseline; AC25 BuildAddOn success до/после, fresh LSP без новых severity/code/message. Откосы3754/0, TestKit76/8802/0, все76END/SUMMARY/EXIT совпали. VS before/after1778 box/доступные свойства совпали, исходные GUID сохранены. Scoped symbols129/129,13границ/36project edges joined, graph453;417прочих inherited edges сохранены. Мой VS-сеанс остановлен; полные контуры/материалы и отсутствие production-диагностик not verified. Параллельные изменения других файлов не затронуты; #260 открыта, push не выполнялся. После завершения контролируемого P4i-прогона общий APX пересобран параллельной работой: runtime APX mtime_ns1791116419085828300, свежий отчёт1791116510012487100; текущий APX1791116773819665700 новее отчёта. Roombook совпадает с проверенным снимком, но последний общий бинарник и параллельные изменения этим прогоном не проверены (not verified).
+IN_PROGRESS — P2b2j/P4i закоммичены в8e242ef по запросу владельца, только8моих файлов; push не выполнялся. Начата P2b3: характеризация ClearZoneGUID на неизменённом production AC25; новые тесты пока не исполнены. Параллельные файлы других задач не затрагивать. Предыдущая верификация P4i относится к контролируемому бинарнику/отчётам, а не к последующим чужим пересборкам.
 P3a–P3e приняты ранее; детали в плане и `Docs/_progress.md`.
 Полные контуры/материалы и причины `paramTo.isValid` остаются not verified. Вне scope
 `.github/workflows/build_25+.yml` — не трогать.
@@ -56,6 +56,7 @@ Checkpoint этой записи — [P4i] координаты откосов �
 - [x] P3k. Инвентаризация5/6полей; контекст в стадиях сохранён. Последние6context-алиасов в ProcessRoomFinishes/RoomBook сняты; production равен6подстановкам modulo formatting. AC25 success, fresh LSP прежний, TestKit75/8084/0 и все75итогов совпали, VS1778/GUID без различий. Scoped symbols128/128,11границ/32fresh edges+Menu source-site, graph450;417прочих inherited edges сохранены.
 - [x] P2b2j. Девять сценариев ×2has_reveal: диагонали/objLoc/отрицательная ширина/масштаб перпендикуляра; на неизменённом production откосы3754/0, TestKit76/8802/0, EXIT0 через VS MCP.
 - [x] P4i. CalculateOpeningRevealCoordinates :3523; арифметика/endpoint сохранены, три стадии/флаг до clipping прежние. AC25 success, fresh LSP прежний, все76итогов совпали, VS1778 без различий, scoped symbols129/129/graph453. Пока без коммита.
+- [/] P2b3. ClearZoneGUID: характеризация вложенного индекса, dedup/NULL GUID/непросматриваемый тип/повторный вызов на неизменённом production AC25. Короткую функцию не дробить.
 - [ ] P2b2. Остальные характеризационные сценарии; полноценный P1 остаётся непокрыт.
 - [x] P3a. Локализовать `paramDict` в `ReadElementParameters` без изменения порядка/числа вызовов; AC25, TestKit и частичный read-back проверены, худшее время 65.5245175 с против 65.7253702 с исходного (−0.31%), критерий владельца выполнен.
 - [x] P3b. `reducededges`: обнуление после синхронного SDK-вызова; контракт подтверждён, худшее 65.7452587 с против 65.7253702 с (+0,03%).
@@ -108,6 +109,35 @@ Checkpoint этой записи — [P4i] координаты откосов �
   обращения по одной строке заголовка — заголовок `for` часто разбит переносом;
 - `gh --body-file` не принимает MSYS-путь (`/c/...`) — нужен нативный
   `C:/Users/...`.
+
+## Открыто — сборка под AC30
+
+**Scope:** `CommonFunction.hpp` (слой `UniStringToLower`), 96 вызовов в 15 файлах,
+`api_headers/APICommon30.h/.c`, `dialogs/SyncSettings.cpp` (RapidJSON).
+
+**Status:** DONE по компиляции — `db6f277`. AC30 Debug success, AC25 Debug
+success. Runtime не проверен.
+
+**Причина:** в AC30 переименован `GS::UniString::ToLowerCase` в `GetLowerCased`
+(старое имя осталось как `ToLowerCaseDeprecated`), GRAPHISOFT переложил RapidJSON
+в `Modules/RapidJSON/rapidjson/`, и в проекте не было заголовка
+`api_headers/APICommon30.h`.
+
+**Что сделано:**
+- `UniStringToLower()` — свободная `inline`-функция в `CommonFunction.hpp` с
+  веткой по `ServerMainVers_3000`; 96 вызовов `X.ToLowerCase ()` переведены на
+  неё. `SetToLowerCase()` в AC30 сохранился, не заворачивался;
+- RapidJSON подключается как `rapidjson/document.h` под AC30, как `document.h`
+  раньше;
+- `api_headers/APICommon30.h/.c` взяты из примера DevKit-30, подключение через
+  `#ifdef AC_30`.
+
+**Грабли по ходу:** скриптовая замена вызовов не должна переписывать файл целиком
+с вырезанием `//`-комментариев и не должна терять окончания строк CRLF — оба
+случая привели к откату через `git checkout HEAD --`. Парсер выражения-получателя
+обязан понимать `->` и `Get (0)`, иначе склейка скобок ломает код.
+
+**not verified:** runtime на живой модели, AC22–24/26–29, macOS.
 
 ## Прочее открытое
 
