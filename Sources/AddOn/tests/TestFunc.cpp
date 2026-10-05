@@ -85,6 +85,7 @@ namespace TestFunc {
         TestKit::Register ("TestOpeningParameterIsolation", Groups::Core, TestOpeningParameterIsolation);
         TestKit::Register ("TestRoomParameterResolution", Groups::Core, TestRoomParameterResolution);
         TestKit::Register ("TestCachedParameterReader", Groups::Core, TestCachedParameterReader);
+        TestKit::Register ("TestRoomMaterialRawNames", Groups::Core, TestRoomMaterialRawNames);
         TestKit::Register ("TestOpeningAddOne", Groups::Core, TestOpeningAddOne);
         TestKit::Register ("TestOtdWallDelimOne", Groups::Core, TestOtdWallDelimOne);
         TestKit::Register ("TestOtdWallDelimAll", Groups::Core, TestOtdWallDelimAll);

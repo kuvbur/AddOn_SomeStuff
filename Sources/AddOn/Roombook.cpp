@@ -2729,6 +2729,194 @@ namespace Roombook
         roominfo.height_up = std::round (roominfo.height_up * 1000) / 1000;
     }
 
+    static void ApplyRoomCreationFlags (const ReadParams &readparams, OtdRoom &roominfo) {
+        GS::UniString param_name;
+        ParamValueData val;
+        bool find_create_all_elements = false;
+        param_name = "create_all_elements";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                find_create_all_elements = true;
+                roominfo.create_all_elements = val.boolValue;
+            }
+        }
+        // Если найдено свойство create_all_elements, то читать смысла нет
+        if (!find_create_all_elements) {
+            param_name = "create_column_elements";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    roominfo.create_column_elements = val.boolValue;
+                }
+            }
+            param_name = "create_wall_elements";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    roominfo.create_wall_elements = val.boolValue;
+                }
+            }
+            param_name = "create_floor_elements";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    roominfo.create_floor_elements = val.boolValue;
+                }
+            }
+            param_name = "create_ceil_elements";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    roominfo.create_ceil_elements = val.boolValue;
+                }
+            }
+            param_name = "create_reveal_elements";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    roominfo.create_reveal_elements = val.boolValue;
+                }
+            }
+        }
+        if (find_create_all_elements) {
+            roominfo.create_ceil_elements = roominfo.create_all_elements;   // Создавать элементы отделки потолка
+            roominfo.create_wall_elements = roominfo.create_all_elements;   // Создавать элементы отделки стен
+            roominfo.create_column_elements = roominfo.create_all_elements; // Создавать элементы отделки колонн
+            roominfo.create_reveal_elements = roominfo.create_all_elements; // Создавать элементы отделки откосов
+            roominfo.create_floor_elements = roominfo.create_all_elements;  // Создавать элементы отделки откосов
+        }
+    }
+
+    static void ApplyRoomMaterialRawNames (const ReadParams &readparams, OtdRoom &roominfo) {
+        GS::UniString param_name;
+        ParamValueData val;
+        param_name = "om_ceil.rawname";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_ceil.rawname = val.uniStringValue;
+            }
+        }
+        param_name = "om_reveals.rawname";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_reveals.rawname = val.uniStringValue;
+            }
+        }
+        param_name = "om_up.rawname";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_up.rawname = val.uniStringValue;
+            }
+        }
+        param_name = "om_main.rawname";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_main.rawname = val.uniStringValue;
+            }
+        }
+        param_name = "om_down.rawname";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_down.rawname = val.uniStringValue;
+            }
+        }
+        param_name = "om_column.rawname";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_column.rawname = val.uniStringValue;
+            }
+        }
+
+        param_name = "om_ceil.rawname_bytype";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_ceil.rawname_bytype = val.uniStringValue;
+            }
+        }
+        param_name = "om_reveals.rawname_bytype";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_reveals.rawname_bytype = val.uniStringValue;
+            }
+        }
+        param_name = "om_up.rawname_bytype";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_up.rawname_bytype = val.uniStringValue;
+            }
+        }
+        param_name = "om_main.rawname_bytype";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_main.rawname_bytype = val.uniStringValue;
+            }
+        }
+        param_name = "om_down.rawname_bytype";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_down.rawname_bytype = val.uniStringValue;
+            }
+        }
+        param_name = "om_column.rawname_bytype";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_column.rawname_bytype = val.uniStringValue;
+            }
+        }
+    }
+
+    static void ApplyRoomHeightParameters (const ReadParams &readparams, OtdRoom &roominfo) {
+        GS::UniString param_name;
+        ParamValueData val;
+        bool has_height_down = false;
+
+        param_name = "height_down";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.height_down = val.doubleValue;
+                has_height_down = true;
+            }
+        }
+
+        if (!has_height_down) {
+            param_name = "him_has_height_down";
+            if (const auto *p = readparams.GetPtr (param_name)) {
+                if (p->isValid) {
+                    val = p->val;
+                    bool him_has_height_down = val.boolValue;
+                    param_name = "him_height_down";
+                    if (readparams.ContainsKey (param_name)) {
+                        if (readparams.Get (param_name).isValid) {
+                            val = readparams.Get (param_name).val;
+                            roominfo.height_down = val.doubleValue * him_has_height_down;
+                        }
+                    }
+                }
+            }
+        }
+        param_name = "height_main";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.height_main = val.doubleValue;
+            }
+        }
+    }
+
     void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
                            OtdRoom &roominfo,
                            ParamDictElement &paramToRead,
@@ -2850,179 +3038,9 @@ namespace Roombook
                 roominfo.om_up.smaterial = val.uniStringValue;
             }
         }
-        bool has_height_down = false;
-
-        param_name = "height_down";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.height_down = val.doubleValue;
-                has_height_down = true;
-            }
-        }
-
-        if (!has_height_down) {
-            param_name = "him_has_height_down";
-            if (const auto *p = readparams.GetPtr (param_name)) {
-                if (p->isValid) {
-                    val = p->val;
-                    bool him_has_height_down = val.boolValue;
-                    param_name = "him_height_down";
-                    if (readparams.ContainsKey (param_name)) {
-                        if (readparams.Get (param_name).isValid) {
-                            val = readparams.Get (param_name).val;
-                            roominfo.height_down = val.doubleValue * him_has_height_down;
-                        }
-                    }
-                }
-            }
-        }
-        param_name = "height_main";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.height_main = val.doubleValue;
-            }
-        }
-        param_name = "om_ceil.rawname";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_ceil.rawname = val.uniStringValue;
-            }
-        }
-        param_name = "om_reveals.rawname";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_reveals.rawname = val.uniStringValue;
-            }
-        }
-        param_name = "om_up.rawname";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_up.rawname = val.uniStringValue;
-            }
-        }
-        param_name = "om_main.rawname";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_main.rawname = val.uniStringValue;
-            }
-        }
-        param_name = "om_down.rawname";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_down.rawname = val.uniStringValue;
-            }
-        }
-        param_name = "om_column.rawname";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_column.rawname = val.uniStringValue;
-            }
-        }
-
-        param_name = "om_ceil.rawname_bytype";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_ceil.rawname_bytype = val.uniStringValue;
-            }
-        }
-        param_name = "om_reveals.rawname_bytype";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_reveals.rawname_bytype = val.uniStringValue;
-            }
-        }
-        param_name = "om_up.rawname_bytype";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_up.rawname_bytype = val.uniStringValue;
-            }
-        }
-        param_name = "om_main.rawname_bytype";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_main.rawname_bytype = val.uniStringValue;
-            }
-        }
-        param_name = "om_down.rawname_bytype";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_down.rawname_bytype = val.uniStringValue;
-            }
-        }
-        param_name = "om_column.rawname_bytype";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.om_column.rawname_bytype = val.uniStringValue;
-            }
-        }
-        bool find_create_all_elements = false;
-        param_name = "create_all_elements";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                find_create_all_elements = true;
-                roominfo.create_all_elements = val.boolValue;
-            }
-        }
-        // Если найдено свойство create_all_elements, то читать смысла нет
-        if (!find_create_all_elements) {
-            param_name = "create_column_elements";
-            if (const auto *p = readparams.GetPtr (param_name)) {
-                if (p->isValid) {
-                    val = p->val;
-                    roominfo.create_column_elements = val.boolValue;
-                }
-            }
-            param_name = "create_wall_elements";
-            if (const auto *p = readparams.GetPtr (param_name)) {
-                if (p->isValid) {
-                    val = p->val;
-                    roominfo.create_wall_elements = val.boolValue;
-                }
-            }
-            param_name = "create_floor_elements";
-            if (const auto *p = readparams.GetPtr (param_name)) {
-                if (p->isValid) {
-                    val = p->val;
-                    roominfo.create_floor_elements = val.boolValue;
-                }
-            }
-            param_name = "create_ceil_elements";
-            if (const auto *p = readparams.GetPtr (param_name)) {
-                if (p->isValid) {
-                    val = p->val;
-                    roominfo.create_ceil_elements = val.boolValue;
-                }
-            }
-            param_name = "create_reveal_elements";
-            if (const auto *p = readparams.GetPtr (param_name)) {
-                if (p->isValid) {
-                    val = p->val;
-                    roominfo.create_reveal_elements = val.boolValue;
-                }
-            }
-        }
-        if (find_create_all_elements) {
-            roominfo.create_ceil_elements = roominfo.create_all_elements;   // Создавать элементы отделки потолка
-            roominfo.create_wall_elements = roominfo.create_all_elements;   // Создавать элементы отделки стен
-            roominfo.create_column_elements = roominfo.create_all_elements; // Создавать элементы отделки колонн
-            roominfo.create_reveal_elements = roominfo.create_all_elements; // Создавать элементы отделки откосов
-            roominfo.create_floor_elements = roominfo.create_all_elements;  // Создавать элементы отделки откосов
-        }
+        ApplyRoomHeightParameters (readparams, roominfo);
+        ApplyRoomMaterialRawNames (readparams, roominfo);
+        ApplyRoomCreationFlags (readparams, roominfo);
         NormalizeRoomFinishHeights (roominfo);
     }
 

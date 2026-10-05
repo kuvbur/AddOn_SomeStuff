@@ -1575,6 +1575,74 @@ namespace TestFunc {
             }
         }
 
+        // Выбор значений до нормализации: direct имеет приоритет, даже если он равен нулю.
+        for (UInt32 direct = 0; direct < 5; ++direct) {
+            for (UInt32 gate = 0; gate < 4; ++gate) {
+                for (UInt32 fallback = 0; fallback < 3; ++fallback) {
+                    for (UInt32 main = 0; main < 3; ++main) {
+                        Roombook::ReadParams seed;
+                        ParamDictValue source;
+                        add (seed, source, "tip_otd", string ("height selection"));
+                        const double directValue = direct == 3 ? 0 : direct == 4 ? -0.5 : 0.75;
+                        if (direct != 0)
+                            add (seed, source, "height_down", number (directValue), direct >= 2);
+                        if (gate != 0)
+                            add (seed, source, "him_has_height_down", boolean (gate == 3), gate >= 2);
+                        if (fallback != 0)
+                            add (seed, source, "him_height_down", number (1.25), fallback == 2);
+                        if (main != 0)
+                            add (seed, source, "height_main", number (2.75), main == 2);
+                        const Roombook::ReadParams originalSeed = seed;
+                        const ParamDictValue originalSource = source;
+                        ParamDictElement read;
+                        read.Add (zones[0], source);
+                        Roombook::ReadParams work = seed;
+                        Roombook::OtdRoom room;
+                        room.zone_guid = zones[0];
+                        room.height = 4;
+                        room.height_down = 0.25;
+                        room.height_main = 3;
+                        room.height_up = 99;
+                        room.om_main.smaterial = "untouched height material";
+                        const double expectedDown = direct >= 2                  ? directValue
+                                                    : gate >= 2 && fallback == 2 ? (gate == 3 ? 1.25 : 0)
+                                                                                 : 0.25;
+                        const double expectedMain = main == 2 ? 2.75 : 3;
+                        Roombook::Param_SetToRooms (materials, room, read, work);
+                        DBtest (room.height_down, expectedDown, "Room height selection direct/fallback down");
+                        DBtest (room.height_main, expectedMain - expectedDown, "Room height selection main minus down");
+                        DBtest (room.height_up, 4 - expectedMain, "Room height selection upper band");
+                        DBtest (room.height == 4 && room.isValid && room.tip_otd == "height selection" &&
+                                    room.om_main.smaterial == "untouched height material",
+                                "Room height selection independent fields and readable anchor");
+                        const char *keys[] = {"height_down", "him_has_height_down", "him_height_down", "height_main"};
+                        for (const char *key : keys) {
+                            const bool present = originalSeed.ContainsKey (key);
+                            DBtest (seed.ContainsKey (key) == present &&
+                                        read.Get (zones[0]).ContainsKey (key) == present,
+                                    "Room height selection source/template presence retained");
+                            if (!present)
+                                continue;
+                            const auto &originalRequest = originalSeed.Get (key);
+                            const auto &request = seed.Get (key);
+                            const auto &originalValue = originalSource.Get (key);
+                            const auto &value = read.Get (zones[0]).Get (key);
+                            DBtest (request.isValid == originalRequest.isValid &&
+                                        request.rawnames.GetSize () == originalRequest.rawnames.GetSize () &&
+                                        request.rawnames[0] == originalRequest.rawnames[0] &&
+                                        request.val.doubleValue == originalRequest.val.doubleValue,
+                                    "Room height selection template retained");
+                            DBtest (value.isValid == originalValue.isValid &&
+                                        value.val.type == originalValue.val.type &&
+                                        value.val.doubleValue == originalValue.val.doubleValue &&
+                                        value.val.boolValue == originalValue.val.boolValue,
+                                    "Room height selection cached value retained");
+                        }
+                    }
+                }
+            }
+        }
+
         struct HeightCase {
             const char *name;
             double height;
@@ -2609,6 +2677,221 @@ namespace TestFunc {
                         "Cached reader GUID template retained");
             }
         }
+    }
+
+    void TestRoomMaterialRawNames () {
+        const API_Guid zones[] = {APIGuidFromString ("{11111111-1111-1111-1111-111111111111}"),
+                                  APIGuidFromString ("{22222222-2222-2222-2222-222222222222}")};
+        const char *keys[] = {"om_ceil.rawname",
+                              "om_reveals.rawname",
+                              "om_up.rawname",
+                              "om_main.rawname",
+                              "om_down.rawname",
+                              "om_column.rawname",
+                              "om_ceil.rawname_bytype",
+                              "om_reveals.rawname_bytype",
+                              "om_up.rawname_bytype",
+                              "om_main.rawname_bytype",
+                              "om_down.rawname_bytype",
+                              "om_column.rawname_bytype"};
+        const char *initial[] = {"keep-ceil",
+                                 "keep-reveals",
+                                 "keep-up",
+                                 "keep-main",
+                                 "keep-down",
+                                 "keep-column",
+                                 "keep-ceil-bytype",
+                                 "keep-reveals-bytype",
+                                 "keep-up-bytype",
+                                 "keep-main-bytype",
+                                 "keep-down-bytype",
+                                 "keep-column-bytype"};
+        const auto slots = [] (Roombook::OtdRoom &room) {
+            GS::Array<GS::UniString *> result;
+            result.Push (&room.om_ceil.rawname);
+            result.Push (&room.om_reveals.rawname);
+            result.Push (&room.om_up.rawname);
+            result.Push (&room.om_main.rawname);
+            result.Push (&room.om_down.rawname);
+            result.Push (&room.om_column.rawname);
+            result.Push (&room.om_ceil.rawname_bytype);
+            result.Push (&room.om_reveals.rawname_bytype);
+            result.Push (&room.om_up.rawname_bytype);
+            result.Push (&room.om_main.rawname_bytype);
+            result.Push (&room.om_down.rawname_bytype);
+            result.Push (&room.om_column.rawname_bytype);
+            return result;
+        };
+        const auto string = [] (const GS::UniString &value) {
+            ParamValueData result;
+            result.type = API_PropertyStringValueType;
+            result.uniStringValue = value;
+            return result;
+        };
+        const auto add = [] (Roombook::ReadParams &requests,
+                             ParamDictValue &source,
+                             const GS::UniString &key,
+                             const ParamValueData &value,
+                             bool valid = true) {
+            Roombook::ReadParam request;
+            request.rawnames.Push (key);
+            request.val.uniStringValue = "stale request";
+            requests.Add (key, request);
+            ParamValue p;
+            p.rawName = key;
+            p.isValid = valid;
+            p.val = value;
+            source.Add (key, p);
+        };
+        GS::HashTable<GS::UniString, GS::Int32> materials;
+        materials.Add ("untouched", 49);
+        const GS::UniString unicode ("  Стена Ё / №1;{@property:Имя}\t  ", CC_UTF8);
+        // Один ключ меняется за раз: остальные поля имеют различные исходные значения.
+        for (UInt32 selected = 0; selected < 12; ++selected) {
+            for (UInt32 mode = 0; mode < 7; ++mode) {
+                Roombook::ReadParams seed;
+                ParamDictValue source;
+                add (seed, source, "tip_otd", string ("reader anchor"));
+                const GS::UniString value = mode == 2   ? GS::UniString ()
+                                            : mode == 4 ? unicode
+                                                        : GS::UniString ("  {@Property:A; B}%\t  ");
+                if (mode != 0) {
+                    ParamValueData data = string (value);
+                    if (mode == 6) {
+                        data.type = API_PropertyBooleanValueType;
+                        data.boolValue = false;
+                    }
+                    add (seed, source, keys[selected], data, mode != 1);
+                    if (mode == 5) {
+                        seed.Get (keys[selected]).isValid = true;
+                        seed.Get (keys[selected]).val = data;
+                    }
+                }
+                ParamDictElement read;
+                read.Add (zones[0], source);
+                Roombook::ReadParams work = seed;
+                Roombook::OtdRoom room;
+                room.zone_guid = zones[0];
+                room.height = 3;
+                room.om_floor.rawname = "untouched floor";
+                room.om_zone.rawname_bytype = "untouched zone";
+                room.om_main.smaterial = "untouched material";
+                room.om_main.material = 49;
+                const auto fields = slots (room);
+                for (UInt32 j = 0; j < 12; ++j)
+                    *fields[j] = initial[j];
+                Roombook::Param_SetToRooms (materials, room, read, work);
+                for (UInt32 j = 0; j < 12; ++j) {
+                    const GS::UniString expected = j == selected && mode >= 2 ? value : GS::UniString (initial[j]);
+                    DBtest (*fields[j] == expected, GS::UniString ("Room rawname isolated destination ") + keys[j]);
+                }
+                DBtest (room.tip_otd == "reader anchor", "Room rawname reaches application after actual read");
+                DBtest (room.om_floor.rawname == "untouched floor" && room.om_zone.rawname_bytype == "untouched zone" &&
+                            room.om_main.smaterial == "untouched material" && room.om_main.material == 49,
+                        "Room rawname unrelated material fields unchanged");
+                DBtest (!seed.Get ("tip_otd").isValid && seed.Get ("tip_otd").val.uniStringValue == "stale request",
+                        "Room rawname template anchor unchanged");
+                DBtest (read.Get (zones[0]).Get ("tip_otd").val.uniStringValue == "reader anchor",
+                        "Room rawname cached anchor unchanged");
+                if (mode != 0) {
+                    const auto &original = read.Get (zones[0]).Get (keys[selected]);
+                    const auto &request = seed.Get (keys[selected]);
+                    DBtest (original.isValid == (mode != 1) && original.val.uniStringValue == value &&
+                                original.val.type ==
+                                    (mode == 6 ? API_PropertyBooleanValueType : API_PropertyStringValueType),
+                            "Room rawname cached value and type unchanged");
+                    DBtest (request.isValid == (mode == 5) && request.rawnames.GetSize () == 1 &&
+                                request.rawnames[0] == keys[selected] &&
+                                request.val.uniStringValue == (mode == 5 ? value : GS::UniString ("stale request")),
+                            "Room rawname selected template unchanged");
+                }
+            }
+        }
+        // Preset-only не считается новым чтением: wrapper возвращается до всех назначений.
+        Roombook::ReadParams presets;
+        for (UInt32 j = 0; j < 12; ++j) {
+            Roombook::ReadParam p;
+            p.isValid = true;
+            p.val = string (unicode);
+            presets.Add (keys[j], p);
+        }
+        ParamDictElement emptySource;
+        emptySource.Add (zones[0], ParamDictValue ());
+        Roombook::OtdRoom presetRoom;
+        presetRoom.zone_guid = zones[0];
+        presetRoom.height = 3.1234;
+        presetRoom.height_main = 7;
+        const auto presetFields = slots (presetRoom);
+        for (UInt32 j = 0; j < 12; ++j)
+            *presetFields[j] = initial[j];
+        Roombook::ReadParams presetWork = presets;
+        DBtest (!Roombook::Param_Property_Read (zones[0], emptySource, presetWork),
+                "Room rawname preset-only aggregate reader false");
+        Roombook::Param_SetToRooms (materials, presetRoom, emptySource, presetWork);
+        for (UInt32 j = 0; j < 12; ++j) {
+            DBtest (*presetFields[j] == initial[j], "Room rawname preset-only leaves room target unchanged");
+            DBtest (presets.Get (keys[j]).isValid && presets.Get (keys[j]).val.uniStringValue == unicode &&
+                        presetWork.Get (keys[j]).isValid && presetWork.Get (keys[j]).val.uniStringValue == unicode,
+                    "Room rawname preset-only keeps request values");
+        }
+        DBtest (presetRoom.height == 3.1234 && presetRoom.height_main == 7,
+                "Room rawname preset-only returns before height normalization");
+        Roombook::ReadParams seed;
+        ParamDictValue source[2];
+        add (seed, source[0], "tip_otd", string ("Zone A"));
+        Roombook::ReadParams ignored;
+        add (ignored, source[1], "tip_otd", string ("Zone B"));
+        for (UInt32 j = 0; j < 12; ++j) {
+            add (seed, source[0], keys[j], string (GS::UniString ("A:") + keys[j]));
+            if (j % 4 != 1)
+                add (ignored,
+                     source[1],
+                     keys[j],
+                     string (j % 4 == 3 ? GS::UniString () : unicode + keys[j]),
+                     j % 4 != 2);
+        }
+        ParamDictElement read;
+        read.Add (zones[0], source[0]);
+        read.Add (zones[1], source[1]);
+        for (UInt32 reverse = 0; reverse < 2; ++reverse) {
+            for (UInt32 step = 0; step < 2; ++step) {
+                const UInt32 i = reverse == 0 ? step : 1 - step;
+                Roombook::ReadParams work = seed;
+                Roombook::OtdRoom room;
+                room.zone_guid = zones[i];
+                room.height = 3;
+                const auto fields = slots (room);
+                for (UInt32 j = 0; j < 12; ++j)
+                    *fields[j] = initial[j];
+                Roombook::Param_SetToRooms (materials, room, read, work);
+                DBtest (room.tip_otd == (i == 0 ? "Zone A" : "Zone B"), "Room rawname zone anchor independent");
+                for (UInt32 j = 0; j < 12; ++j) {
+                    const GS::UniString expected = i == 0       ? GS::UniString ("A:") + keys[j]
+                                                   : j % 4 == 0 ? unicode + keys[j]
+                                                   : j % 4 == 3 ? GS::UniString ()
+                                                                : GS::UniString (initial[j]);
+                    DBtest (*fields[j] == expected, "Room rawname two zones independent in both orders");
+                    const auto &templateValue = seed.Get (keys[j]);
+                    DBtest (!templateValue.isValid && templateValue.val.uniStringValue == "stale request" &&
+                                templateValue.rawnames.GetSize () == 1 && templateValue.rawnames[0] == keys[j],
+                            "Room rawname multi-field template retained");
+                    DBtest (read.Get (zones[0]).Get (keys[j]).isValid &&
+                                read.Get (zones[0]).Get (keys[j]).val.uniStringValue == GS::UniString ("A:") + keys[j],
+                            "Room rawname zone A cached value retained");
+                    if (j % 4 == 1) {
+                        DBtest (!read.Get (zones[1]).ContainsKey (keys[j]),
+                                "Room rawname zone B missing source remains absent");
+                    } else {
+                        const auto &p = read.Get (zones[1]).Get (keys[j]);
+                        DBtest (p.isValid == (j % 4 != 2) &&
+                                    p.val.uniStringValue == (j % 4 == 3 ? GS::UniString () : unicode + keys[j]),
+                                "Room rawname zone B cached value retained");
+                    }
+                }
+            }
+        }
+        DBtest (materials.GetSize () == 1 && materials.Get ("untouched") == 49,
+                "Room rawname fixtures never invoke material lookup");
     }
 
 } // namespace TestFunc
