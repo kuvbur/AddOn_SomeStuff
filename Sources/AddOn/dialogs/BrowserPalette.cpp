@@ -324,8 +324,8 @@ void BrowserPalette::Show (bool reloadContent) {
         GS::Array<API_Guid> selectedElements;
         UpdateSelectionInfoInUI (selectedElements);
     }
-    // Обновляем информацию о выделении после загрузки страницы
-    // onLoadingStateChange вызовет RegisterACAPIJavaScriptObject и UpdateSelectionInfoInUI
+    // Обновляем информацию о выделении после загрузки страницы.
+    // onLoadingStateChange обновит UI через уже зарегистрированный мост.
 }
 
 void BrowserPalette::Hide () {
@@ -377,28 +377,26 @@ void BrowserPalette::UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedEleme
 }
 
 void BrowserPalette::InitBrowserControl () {
-    DBprnt ("BrowserPalette::InitBrowserControl () — loading HTML");
-    // Загружаем HTML
-    browser.LoadHTML (LoadHtmlFromResource ());
-    DBprnt ("BrowserPalette::InitBrowserControl () — HTML load started");
+    // Мост принадлежит контролу: не заменяем его при перезагрузке страницы,
+    // пока ответы предыдущих асинхронных вызовов могут ещё обрабатываться.
+    RegisterACAPIJavaScriptObject ();
 
-    // Подписываемся на событие завершения загрузки страницы
-    // Используем event notifier браузера
     browser.onLoadingStateChange +=
         [this] (const DG::BrowserBase & /*source*/, const DG::BrowserLoadingStateChangeArg &eventArg) {
             DBprnt ("BrowserPalette::onLoadingStateChange () — isLoading=" + GS::ValueToUniString (eventArg.isLoading) +
                     " canGoBack=" + GS::ValueToUniString (eventArg.canGoBack) +
                     " canGoForward=" + GS::ValueToUniString (eventArg.canGoForward));
 
-            // Когда загрузка завершена — регистрируем JS-объект
-            if (!eventArg.isLoading) {
-                DBprnt ("BrowserPalette::onLoadingStateChange () — page loaded, registering JS");
-                RegisterACAPIJavaScriptObject ();
-                // Сразу обновляем информацию о выделении
+            if (!eventArg.isLoading && jsObjectRegistered) {
+                DBprnt ("BrowserPalette::onLoadingStateChange () — page loaded, refreshing selection");
                 GS::Array<API_Guid> selectedElements;
                 UpdateSelectionInfoInUI (selectedElements);
             }
         };
+
+    // Подписка и мост готовы до начала загрузки HTML.
+    browser.LoadHTML (LoadHtmlFromResource ());
+    DBprnt ("BrowserPalette::InitBrowserControl () — HTML load started");
 }
 
 void BrowserPalette::RegisterACAPIJavaScriptObject () {
@@ -1982,13 +1980,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 return new DG::JSValue (emptyAnswer);
             }
         }));
-#if defined(ServerMainVers_2700) || !defined(ServerMainVers_2600)
-    // AC26 удалил UnregisterJSObject из DGLib, AC27 вернул его (перегрузку по имени)
-    // уже в JavascriptEngine — компилируем вызов только там, где метод есть.
-    browser.UnregisterJSObject (GS::UniString ("ACAPI"));
-#endif
-    const bool registerOk = browser.RegisterAsynchJSObject (jsACAPI);
-    if (!registerOk) {
+    jsObjectRegistered = browser.RegisterAsynchJSObject (jsACAPI);
+    if (!jsObjectRegistered) {
         DBprnt ("RegisterACAPIJavaScriptObject: browser.RegisterAsynchJSObject failed for object 'ACAPI'");
     }
 }

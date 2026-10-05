@@ -50,6 +50,7 @@
 - Побочные эффекты: показ окна; при reloadContent — сброс активной вкладки/фильтра (FIX). [из комментария + по коду]
 
 ## Инварианты
+- JS-мост `ACAPI` регистрируется при InitBrowserControl до LoadHTML; подписка onLoadingStateChange также подключается до загрузки. На reload регистрация не заменяется, выполняется только refresh при успешной регистрации. Флаг jsObjectRegistered хранит результат RegisterAsynchJSObject. [по текущему коду; владелец подтвердил отсутствие падения в цикле выделение → крестик → повторный показ → Монитор; агент сборку/runtime не выполнял]
 - Palette resize: `UnDock()` → `SetClientWidth()` → `Dock()`; min width ослаблять перед сжатием (AGENTS.md §6) [из AGENTS.md]
 - JS bridge: `DynamicCast<JSValue>` — `DynamicCast<JSArray>` крашит ArchiCAD (AGENTS.md §6) [из AGENTS.md]
 - Поля ширины: expandedClientWidth/expandedMinClientWidth/collapsedClientWidth (hpp:74-88) [из комментария]

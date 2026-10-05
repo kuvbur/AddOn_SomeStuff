@@ -2,6 +2,12 @@
 
 ## Обновления по задачам
 
+### #265 — lifecycle JS-моста Монитора
+
+- ACAPI регистрируется один раз до LoadHTML; onLoadingStateChange только обновляет UI при успешной регистрации. UnregisterJSObject на reload удалён. [по текущему коду]
+- Карточка dialogs/BrowserPalette обновлена. Generated не обновлены: MCP documentSymbols возвращает старый конец файла 2138 (0-based), текущий исходник содержит 2132 строки. Force-refresh diagnostics вернул 0, но независимый clangd --check показал две существовавшие до правки unused-диагностики; чистый MCP ответ не принят за проверку. Требуется свежий scoped сбор. [MCP + standalone clangd]
+- Владелец подтвердил отсутствие падения в точном цикле и запросил commit. Runtime агентом и каноническая сборка/runner не выполнялись; #265 остаётся открыта до финального runner. Чужие правки BrowserPalette.cpp не включаются в commit. [подтверждение владельца]
+
 ### #264 — безопасный вывод авторского кода
 
 - SafeWriteReport добавлен в CommonFunction.hpp/.cpp; 23 вызова в CommonFunction/Roombook/Sync/MEPv1 мигрированы. APICommon исключены и побайтно равны исходным снимкам. clang-format по диапазонам и scoped diff --check выполнены. [по коду]
