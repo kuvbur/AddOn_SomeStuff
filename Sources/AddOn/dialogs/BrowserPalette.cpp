@@ -274,6 +274,10 @@ BrowserPalette::BrowserPalette ()
 BrowserPalette::~BrowserPalette () {
     EndEventProcessing ();
     Detach (*this);
+}
+
+void BrowserPalette::DestroyInstance () {
+    // Освобождаем браузер до выгрузки DLL, вне блокировки загрузчика ОС.
     instance = nullptr;
 }
 

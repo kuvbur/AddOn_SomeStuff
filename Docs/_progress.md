@@ -2,6 +2,11 @@
 
 ## Обновления по задачам
 
+### #266 — завершение палитры до DLL detach
+
+- DestroyInstance сбрасывает instance на APINotify_Quit; деструктор больше не сбрасывает собственного владельца, EndEventProcessing/Detach сохранены. BrowserPalette и SomeStuff_Main карточки обновлены. [по коду]
+- clang-format/diff проверены; standalone clangd обоих cpp показывает только unused-диагностики вне новой логики. Сборка/runtime не выполнялись: активная отладка Break на предыдущем бинарнике. Generated не обновлялись из-за ранее обнаруженного устаревшего MCP AST; нужен свежий scoped сбор после восстановления MCP. Устранение LoaderLock not verified, #266 остаётся открыта.
+
 ### #265 — lifecycle JS-моста Монитора
 
 - ACAPI регистрируется один раз до LoadHTML; onLoadingStateChange только обновляет UI при успешной регистрации. UnregisterJSObject на reload удалён. [по текущему коду]

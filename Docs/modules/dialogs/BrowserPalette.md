@@ -50,6 +50,7 @@
 - Побочные эффекты: показ окна; при reloadContent — сброс активной вкладки/фильтра (FIX). [из комментария + по коду]
 
 ## Инварианты
+- DestroyInstance сбрасывает статический GS::Ref на APINotify_Quit; деструктор вызывает EndEventProcessing/Detach, но не меняет instance. Разрушение браузера вынесено из статического DLL detach в событие завершения приложения. Закрытие крестиком по-прежнему только скрывает палитру. [по текущему коду; завершение без LoaderLock после правки not verified]
 - JS-мост `ACAPI` регистрируется при InitBrowserControl до LoadHTML; подписка onLoadingStateChange также подключается до загрузки. На reload регистрация не заменяется, выполняется только refresh при успешной регистрации. Флаг jsObjectRegistered хранит результат RegisterAsynchJSObject. [по текущему коду; владелец подтвердил отсутствие падения в цикле выделение → крестик → повторный показ → Монитор; агент сборку/runtime не выполнял]
 - Palette resize: `UnDock()` → `SetClientWidth()` → `Dock()`; min width ослаблять перед сжатием (AGENTS.md §6) [из AGENTS.md]
 - JS bridge: `DynamicCast<JSValue>` — `DynamicCast<JSArray>` крашит ArchiCAD (AGENTS.md §6) [из AGENTS.md]

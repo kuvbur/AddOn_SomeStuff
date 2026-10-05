@@ -121,6 +121,7 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
 
     static bool HasInstance ();
     static void CreateInstance ();
+    static void DestroyInstance ();
     static BrowserPalette &GetInstance ();
 
     // reloadContent = false — показ без перезагрузки HTML (путь

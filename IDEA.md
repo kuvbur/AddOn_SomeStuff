@@ -16,15 +16,16 @@ WAITING_FOR_FINAL_CHECK: правка lifecycle ACAPI внесена; владе
 
 - [x] M1. Сохранить и разобрать вывод завершения, сверить границу исходника BrowserPalette.cpp:337–376, зарегистрировать #265.
 - [/] M2. На повторении пойман C0000005/null read в GSRoot.dll:0x00007FFE514E3AC8; скриншот стека GSRoot→DG→CLR/WindowsBase, MCP стек пуст. Последний лог count=4, GetPropertiesList вернул данные, затем повторная регистрация ACAPI и ExecuteJS. Проверить возвраты callback и lifetime при unregister/register; не приписывать причину последней строке JS. После этого процесса уже нет, VS Design; агент не продолжал исключение и не останавливал процесс.
+- [/] M4. По запросу владельца исправить завершение AC25 (#266, https://github.com/kuvbur/AddOn_SomeStuff/issues/266): добавить DestroyInstance, освобождать на APINotify_Quit в существующем ProjectEventHandlerProc; убрать instance=nullptr из деструктора, сохранить EndEventProcessing/Detach. Подтверждён MDA LoaderLock при статическом DLL detach. Активная отладка Break — сборка/runner до согласования запрещены. Чужие правки сохранить; проверить clangd/diff, затем открытие Монитора и завершение AC25.
 - [/] M3. По явному запросу владельца внести правку lifecycle по образцу Browser_Control: регистрация до загрузки HTML, без замены на reload; проверить clangd/diff, затем сборку и точный цикл AC25. До правки clangd: 2 существующих unused-диагностики (propertiesListStart, withSpecRule). VS Run — сборку/runner не запускать до согласованного завершения сессии. Исправление падения not verified.
 
 ### Next Step
 
-Следующее действие: после согласования финальный runner AC25 перед закрытием #265; обновить scoped generated после восстановления свежести MCP AST. Ручной цикл выделение → крестик → повторный показ → Монитор подтверждён владельцем. Commit по запросу владельца фиксирует только lifecycle-правку и её документацию; чужие изменения BrowserPalette.cpp остаются вне индекса. Push не запрошен.
+Для #266 внесены DestroyInstance, вызов на APINotify_Quit и удаление самосброса из деструктора; EndEventProcessing/Detach сохранены. clang-format/scoped diff выполнены, standalone clangd разобрал оба cpp: только unused-диагностики (BrowserPalette 2 прежних; Main 2 вне изменённой ветки), новых ошибок DestroyInstance нет. Отладчик остаётся Break на старом бинарнике; после согласованного завершения сессии — сборка AC25, открытие Монитора и штатное закрытие без LoaderLock. Generated ждёт свежего MCP AST. #265/#266 открыты, нового commit/push не было.
 
 ### Last Checkpoint
 
-Текущий checkpoint по запросу владельца: [M3] Сохранить JS-мост при повторном открытии палитры; Refs: IDEA.md step M3; Refs: #265. Хеш — в git log; ручная проверка подтверждена владельцем, каноническая сборка/runner агентом не выполнялись.
+Checkpoint по запросу владельца: [M4] Освобождать палитру до выгрузки DLL; Refs: IDEA.md step M4; Refs: #266. Фиксация без сборки/runtime; устранение LoaderLock not verified. Предыдущий checkpoint #265: ebe8d2f. Хеш нового коммита — git log; push не запрошен.
 
 ## Spec / безопасный вывод отчётов — #264
 
