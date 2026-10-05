@@ -2992,6 +2992,8 @@ function renderSpecTab(container) {
   pickerWrap.appendChild(dropdown);
 
   function matchesSpecQuery(name) {
+    // Подставленное имя обозначает выбор, а не поисковый запрос.
+    if (cfg.query === cfg.selectedName) return true;
     const q = (cfg.query || "").trim ().toLowerCase ();
     return !q || (name || "").toLowerCase ().indexOf (q) >= 0;
   }
