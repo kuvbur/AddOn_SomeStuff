@@ -29,6 +29,12 @@
 
 ## Карточки
 
+### `SafeWriteReport(GS::UniString text, bool withDial) -> void` (#264, рабочее дерево)
+- Определение: `Sources/AddOn/CommonFunction.cpp:410`; объявление: `CommonFunction.hpp:339`. [по коду после clang-format]
+- Принимает готовый текст по значению; удаляет все `%` через `ReplaceAll` из копии и передаёт её в `ACAPI_WriteReport`. Значение `withDial` сохраняется; исходные правила не меняются. Не является вариадической форматной функцией. [по коду]
+- `msg_rep` использует обёртку; обе перегрузки `DBprnt` очищают копии строк также перед отладочным форматным выводом. В Roombook/Sync/MEPv1 заменены только авторские вызовы отчёта; api_headers/APICommon не мигрировались по указанию владельца. [по коду]
+- Компиляция/runtime не выполнялись по решению владельца; LSP/generated not verified: MCP вернул дерево CommonFunction без новой функции. Падение после исправления не воспроизводилось.
+
 ### `UnhideUnlockElementLayer(const API_Guid &elemGuid)`
 - Расположение: `Sources/AddOn/CommonFunction.cpp:2448`
 - Назначение: если слой элемента скрыт или заблокирован — делает видимым/разблокированным (по GUID → заголовок → индекс слоя). [из комментария, CommonFunction.hpp:467-476]

@@ -264,6 +264,7 @@ bool IsTestProjectOpen () {
 // -----------------------------------------------------------------------------
 void DBprnt (double a, GS::UniString reportString) {
 #if defined(TESTING)
+    reportString.ReplaceAll ("%", "");
     // Форматируем число и выводим отладочный префикс
     GS::UniString msg = GS::UniString::Printf ("%f", a);
     std::string reportString_str;
@@ -306,6 +307,8 @@ void DBprnt (double a, GS::UniString reportString) {
 // -----------------------------------------------------------------------------
 void DBprnt (GS::UniString msg, GS::UniString reportString) {
 #if defined(TESTING)
+    msg.ReplaceAll ("%", "");
+    reportString.ReplaceAll ("%", "");
     // Если хоть одно сообщение выглядит как ошибка, добавляем ERROR-префикс
     if (msg.Contains ("err") || msg.Contains ("ERROR") || reportString.Contains ("err") ||
         reportString.Contains ("ERROR")) {
@@ -404,6 +407,12 @@ void DBtest (double a, double b, GS::UniString reportString) {
 // -----------------------------------------------------------------------------
 // Вывод сообщения в отчёт
 // -----------------------------------------------------------------------------
+void SafeWriteReport (GS::UniString text, bool withDial) {
+    // Текст правила может содержать %n: SDK не должен воспринимать его как формат.
+    text.ReplaceAll ("%", "");
+    ACAPI_WriteReport (text, withDial);
+}
+
 void msg_rep (const GS::UniString &modulename,
               const GS::UniString &reportString,
               const GSErrCode &err,
@@ -733,9 +742,9 @@ void msg_rep (const GS::UniString &modulename,
     version = version + " =TESTING ON= ";
 #endif
     msg = version + msg + LINEBRAKE;
-    ACAPI_WriteReport (msg, false);
+    SafeWriteReport (msg, false);
     if (show)
-        ACAPI_WriteReport (msg, show);
+        SafeWriteReport (msg, show);
     if (err != NoError) {
         msg = "== SMSTF ERROR ==" + msg;
     }

@@ -2489,7 +2489,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
                     SubElementHotFoundIdString + LINEBRAKE +
                     RSGetIndString (iseng, SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
             }
-            ACAPI_WriteReport (SubElementHotFoundIdString, true);
+            SafeWriteReport (SubElementHotFoundIdString, true);
             return;
         }
     } else {
@@ -2675,7 +2675,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
         GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
         msg_rep (fmane, time, err, APINULLGuid);
         if (!errmsg.IsEmpty ())
-            ACAPI_WriteReport (errmsg, true);
+            SafeWriteReport (errmsg, true);
         return;
     }
     // Шаг 5. Выделяем найденные элементы и приближаем к ним; при частичном
@@ -2697,7 +2697,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
         ShowOtherDbDialog (otherDbTargets);
 #else
     fmane = fmane + " not work in AC22";
-    ACAPI_WriteReport ("Function not work in AC22", true);
+    SafeWriteReport ("Function not work in AC22", true);
 #endif
     finish = clock ();
     duration = (double)(finish - start) / CLOCKS_PER_SEC;

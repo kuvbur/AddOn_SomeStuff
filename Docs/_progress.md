@@ -2,6 +2,11 @@
 
 ## Обновления по задачам
 
+### #264 — безопасный вывод авторского кода
+
+- SafeWriteReport добавлен в CommonFunction.hpp/.cpp; 23 вызова в CommonFunction/Roombook/Sync/MEPv1 мигрированы. APICommon исключены и побайтно равны исходным снимкам. clang-format по диапазонам и scoped diff --check выполнены. [по коду]
+- generated в этом ходе не обновлялись: документные символы CommonFunction из MCP не содержат новой SafeWriteReport; свежесть LSP not verified. Существующие чужие изменения symbols.json/callgraph.json сохранены. Следующий шаг после разрешения — свежий AST, scoped сбор символов/рёбер, AC25 build/runtime. Компиляция и запуск запрещены владельцем в этом ходе. #264 не закрыта.
+
 ### P2b11/P4p — выбор параметров высот (#260, 2026-10-05, AC25 Windows)
 
 [рабочее дерево поверх ff6779c, P4n/P2b10/P4o сохранены]

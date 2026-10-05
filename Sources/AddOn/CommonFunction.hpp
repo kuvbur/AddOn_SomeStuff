@@ -335,6 +335,9 @@ GS::UniString TextToQRCode (const GS::UniString &text, const int error_lvl);
 
 GS::UniString TextToQRCode (const GS::UniString &text);
 
+// Готовый текст отчёта: проценты удаляются из копии перед передачей SDK.
+void SafeWriteReport (GS::UniString text, bool withDial);
+
 void DBprnt (double a, GS::UniString reportString);
 
 void DBprnt (GS::UniString msg, GS::UniString reportString = "");

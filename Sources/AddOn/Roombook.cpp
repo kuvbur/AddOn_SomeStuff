@@ -20,7 +20,7 @@ namespace Roombook
 
 {
 #ifndef ServerMainVers_2400
-    void RoomBook () { ACAPI_WriteReport ("Function not work in AC22 and AC23", true); }
+    void RoomBook () { SafeWriteReport ("Function not work in AC22 and AC23", true); }
 #else
     static const API_ElemTypeID typeinzone[] = {
         API_WindowID, API_DoorID, API_WallID, API_ColumnID, API_SlabID, API_ZoneID};
@@ -5686,7 +5686,7 @@ namespace Roombook
         if (finclass.IsEmpty ()) {
             GS::UniString msgString = RSGetIndString (iseng, 50, ACAPI_GetOwnResModule ());
             msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
-            ACAPI_WriteReport (msgString, true);
+            SafeWriteReport (msgString, true);
             return false;
         }
         if (!finclass.ContainsKey (cls.all_class)) {
@@ -5729,7 +5729,7 @@ namespace Roombook
             if (!msg) {
                 GS::UniString msgString = RSGetIndString (iseng, 52, ACAPI_GetOwnResModule ());
                 msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
-                ACAPI_WriteReport (msgString, true);
+                SafeWriteReport (msgString, true);
                 return false;
             }
         }
