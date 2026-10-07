@@ -1464,6 +1464,7 @@ namespace Roombook
             op.lower = element.window.lower;
             op.objLoc = element.window.objLoc;
             op.reflected = element.window.openingBase.reflected;
+            op.ref_side = element.window.openingBase.refSide;
             break;
         case API_DoorID:
             wallguid = element.door.owner;
@@ -1472,6 +1473,7 @@ namespace Roombook
             op.lower = element.door.lower;
             op.objLoc = element.door.objLoc;
             op.reflected = element.door.openingBase.reflected;
+            op.ref_side = element.door.openingBase.refSide;
             break;
         default:
             break;
@@ -1698,6 +1700,9 @@ namespace Roombook
 
         if (newLeft < newRight) {
             opinwall.base_guid = op.base_guid;
+            opinwall.ref_side = op.ref_side;
+            // Используем разворот участка до поправки на flipped стены и порядок слоёв.
+            opinwall.reveal_from_sill = op.ref_side != is_fliped;
             opinwall.width = newRight - newLeft;
             opinwall.height = op.height;
             opinwall.zBottom = zBottom + op.lower;
@@ -2171,36 +2176,6 @@ namespace Roombook
 
         zoneparam_name = "sill";
         zoneparam.rawnames.Push ("{@gdl:gs_wido_sill}");
-        zoneparams.Add (zoneparam_name, zoneparam);
-        zoneparam.rawnames.Clear ();
-
-        zoneparam_name = "useWallFinishSkin";
-        zoneparam.rawnames.Push ("{@gdl:gs_usewallfinishskin}");
-        zoneparams.Add (zoneparam_name, zoneparam);
-        zoneparam.rawnames.Clear ();
-
-        zoneparam_name = "maxPlasterThk";
-        zoneparam.rawnames.Push ("{@gdl:gs_maxplasterthk}");
-        zoneparams.Add (zoneparam_name, zoneparam);
-        zoneparam.rawnames.Clear ();
-
-        zoneparam_name = "AutoTurnIn";
-        zoneparam.rawnames.Push ("{@gdl:gs_bautoturnin}");
-        zoneparams.Add (zoneparam_name, zoneparam);
-        zoneparam.rawnames.Clear ();
-
-        zoneparam_name = "bOverIn";
-        zoneparam.rawnames.Push ("{@gdl:gs_boverin}");
-        zoneparams.Add (zoneparam_name, zoneparam);
-        zoneparam.rawnames.Clear ();
-
-        zoneparam_name = "plaster_show_3D";
-        zoneparam.rawnames.Push ("{@gdl:gs_turn_plaster_show_3d}");
-        zoneparams.Add (zoneparam_name, zoneparam);
-        zoneparam.rawnames.Clear ();
-
-        zoneparam_name = "plaster_show_2D";
-        zoneparam.rawnames.Push ("{@gdl:gs_turn_plaster_dim_2d}");
         zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
@@ -3252,10 +3227,6 @@ namespace Roombook
         GS::UniString param_name;
         double frame = 0;
         double sill = 0;
-        bool plaster_show_3D = false;
-        bool plaster_show_2D = false;
-        bool AutoTurnIn = false;
-        int bOverIn = 0;
 
         param_name = "frame";
         if (const auto *p = readparams.GetPtr (param_name)) {
@@ -3279,78 +3250,8 @@ namespace Roombook
             return;
         }
 
-        param_name = "plaster_show_3D";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                plaster_show_3D = p->val.boolValue;
-            } else {
-                return;
-            }
-        } else {
-            return;
-        }
-
-        param_name = "plaster_show_2D";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                plaster_show_2D = p->val.boolValue;
-            } else {
-                return;
-            }
-        } else {
-            return;
-        }
-
-        param_name = "AutoTurnIn";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                AutoTurnIn = p->val.boolValue;
-            } else {
-                return;
-            }
-        } else {
-            return;
-        }
-
-        param_name = "bOverIn";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                bOverIn = p->val.boolValue;
-            } else {
-                return;
-            }
-        } else {
-            return;
-        }
-
-        // Расчёт ширины откосы
-        op.base_reveal_width = op.base_reveal_width - sill - frame;
-        // Поправка на поворот отделки
-        if (plaster_show_3D && plaster_show_2D) {
-            double max_plaster_th = 0;
-            UInt32 nsl = 0;
-            if (!AutoTurnIn || otdw.base_composite.IsEmpty ()) {
-                nsl = bOverIn;
-            } else {
-                if (otdw.base_composite.GetSize () > 0) {
-                    nsl = otdw.base_composite.GetSize () - 1;
-                } else {
-                    nsl = 0;
-                }
-            }
-            if (nsl > 0 && !otdw.base_composite.IsEmpty ()) {
-                nsl = nsl - 1;
-                if (nsl >= 0) {
-                    for (UInt32 j = 0; j <= nsl; j++) {
-                        max_plaster_th += otdw.base_composite[j].fillThick;
-                    }
-                    op.width -= max_plaster_th * 2;
-                    op.height -= max_plaster_th;
-                }
-            }
-        } else {
-            op.base_reveal_width = 0;
-        }
+        // Коробка разделяет откосы двух помещений: глубины зависят от стороны отделки.
+        op.base_reveal_width = op.reveal_from_sill ? sill : otdw.base_th - sill - frame;
     }
 
     // -----------------------------------------------------------------------------
@@ -4582,15 +4483,17 @@ namespace Roombook
         if (!OtdWall_GetDefult_Wall (favorite_name, wallelement)) {
             return;
         }
+        const bool is_upper_reveal = edges.draw_type == API_BeamID && edges.favorite.type == API_WallID;
         // Откосы
-        if (edges.draw_type == API_BeamID && edges.favorite.type == API_WallID) {
+        if (is_upper_reveal) {
             edges.height = wallelement.wall.thickness;
             edges.zBottom -= edges.height;
             if (!is_equal (edges.width, 0) && edges.width > 0)
                 wallelement.wall.thickness = edges.width;
         }
-        wallelement.wall.begC = edges.begC;
-        wallelement.wall.endC = edges.endC;
+        // При замене верхнего откоса стеной разворачиваем линию, чтобы толщина шла в проём.
+        wallelement.wall.begC = is_upper_reveal ? edges.endC : edges.begC;
+        wallelement.wall.endC = is_upper_reveal ? edges.begC : edges.endC;
         wallelement.wall.height = edges.height;
         wallelement.header.floorInd = edges.floorInd;
         wallelement.wall.bottomOffset = GetOffsetFromStory (edges.zBottom, edges.floorInd, storyLevels);

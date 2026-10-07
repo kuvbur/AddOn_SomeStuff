@@ -2166,7 +2166,42 @@ namespace TestFunc {
             }
             return wall;
         };
-        // Условие поправки и число включённых слоёв характеризуем по прежнему коду.
+
+        // Сторона проёма переносится до нормализации порядка слоёв стены.
+        struct RevealSideCase {
+            bool ref_side;
+            bool reversed;
+            double depth;
+        };
+
+        const RevealSideCase sideCases[] = {
+            {false, false, 0.04}, {false, true, 0.12}, {true, false, 0.12}, {true, true, 0.04}};
+        for (const auto &side : sideCases) {
+            for (UInt32 mirror = 0; mirror < 2; ++mirror) {
+                for (UInt32 wallFlipped = 0; wallFlipped < 2; ++wallFlipped) {
+                    Roombook::OtdWall wall = wallFor (0.26, 0);
+                    wall.base_flipped = wallFlipped != 0;
+                    Roombook::OtdOpening source = openingFor (0);
+                    source.ref_side = side.ref_side;
+                    source.reflected = mirror != 0;
+                    Roombook::Opening_Add_One (source, side.reversed, 0, 0, 4, 4, wall);
+                    DBtest (wall.openings.GetSize () == 1, "Opening reveal side survives wall clipping");
+                    if (wall.openings.IsEmpty ())
+                        continue;
+                    Roombook::OtdOpening &op = wall.openings.Get (0);
+                    DBtest (op.ref_side == source.ref_side, "Opening reveal reference side preserved");
+                    ParamDictElement read;
+                    read.Add (guids[0], dataFor (0.1, 0.12, 0));
+                    Roombook::ReadParams work = requests;
+                    Roombook::Param_SetToWindows (op, read, work, wall);
+                    DBtest (
+                        op.base_reveal_width, side.depth, "Opening reveal depth matches face independent of layers");
+                    DBtest (op.width, source.width, "Opening reveal side preserves clipped width");
+                    DBtest (op.height, source.height, "Opening reveal side preserves height");
+                }
+            }
+        }
+        // Старые флаги и слои стены больше не влияют на глубину и размеры проёма.
         for (UInt32 layers = 0; layers <= 3; ++layers) {
             for (UInt32 flags = 0; flags < 16; ++flags) {
                 const Roombook::OtdWall wall = wallFor (0.6, layers);
@@ -2176,14 +2211,9 @@ namespace TestFunc {
                 Roombook::OtdOpening op = openingFor (0);
                 const Roombook::OtdOpening before = op;
                 Roombook::Param_SetToWindows (op, read, work, wall);
-                const bool show = (flags & 3u) == 3u;
-                const double autoThickness[] = {0, 0, 0.02, 0.05};
-                const double plaster =
-                    !show ? 0
-                          : ((flags & 4u) != 0 ? autoThickness[layers] : ((flags & 8u) != 0 && layers > 0 ? 0.02 : 0));
-                DBtest (op.base_reveal_width, show ? 0.45 : 0, "Opening params reveal depth by visibility");
-                DBtest (op.width, 1.5 - plaster * 2, "Opening params layer width correction");
-                DBtest (op.height, 2.2 - plaster, "Opening params layer height correction");
+                DBtest (op.base_reveal_width, 0.45, "Opening params depth ignores old flags");
+                DBtest (op.width, before.width, "Opening params layers do not shrink width");
+                DBtest (op.height, before.height, "Opening params layers do not shrink height");
                 unchangedOpening (op, before);
                 DBtest (wall.base_th == 0.6 && wall.base_composite.GetSize () == layers,
                         "Opening params wall metadata unchanged");
@@ -2223,12 +2253,12 @@ namespace TestFunc {
                     Roombook::OtdOpening op = openingFor (i);
                     const Roombook::OtdOpening before = op;
                     Roombook::Param_SetToWindows (op, read, work, wall);
-                    const bool complete = i == 0 || mode == 0;
+                    const bool complete = i == 0 || (mode != 1 && mode != 2 && mode != 7 && mode != 8);
                     DBtest (op.base_reveal_width,
                             complete ? (i == 0 ? 0.45 : 0.65) : 0.8,
                             "Opening params independent depth and partial return");
-                    DBtest (op.width, i == 0 ? 1.4 : 2.5, "Opening params independent width");
-                    DBtest (op.height, i == 0 ? 2.15 : 3.2, "Opening params independent height");
+                    DBtest (op.width, before.width, "Opening params independent unchanged width");
+                    DBtest (op.height, before.height, "Opening params independent unchanged height");
                     unchangedOpening (op, before);
                     for (UInt32 j = 0; j < 6; ++j) {
                         const auto *actual = work.GetPtr (keys[j]);
@@ -2269,6 +2299,35 @@ namespace TestFunc {
                     }
                 }
             }
+        }
+        // Отсутствующие или невалидные старые флаги в источнике не блокируют frame/sill.
+        for (UInt32 mode = 0; mode < 2; ++mode) {
+            ParamDictValue data = dataFor (0.1, 0.05, 15);
+            for (UInt32 i = 2; i < 6; ++i) {
+                if (mode == 0)
+                    data.Delete (keys[i]);
+                else
+                    data.Get (keys[i]).isValid = false;
+            }
+            ParamDictElement read;
+            read.Add (guids[0], data);
+            Roombook::ReadParams work = requests;
+            const Roombook::OtdWall wall = wallFor (0.6, 3);
+            Roombook::OtdOpening op = openingFor (0);
+            const Roombook::OtdOpening before = op;
+            Roombook::Param_SetToWindows (op, read, work, wall);
+            DBtest (op.base_reveal_width, 0.45, "Opening params absent/invalid old flags do not block depth");
+            DBtest (op.width, before.width, "Opening params absent/invalid old flags preserve width");
+            DBtest (op.height, before.height, "Opening params absent/invalid old flags preserve height");
+            unchangedOpening (op, before);
+            DBtest (read.Get (guids[0]).GetSize () == (mode == 0 ? 2u : 6u),
+                    "Opening params absent/invalid source size unchanged");
+            for (UInt32 i = 2; i < 6; ++i) {
+                const auto *source = read.Get (guids[0]).GetPtr (keys[i]);
+                DBtest (mode == 0 ? source == nullptr : source != nullptr && !source->isValid && source->val.boolValue,
+                        "Opening params absent/invalid source flags unchanged");
+            }
+            unchangedTemplate ();
         }
         // Часть ранних выходов меняет глубину на толщину стены, но не меняет размеры.
         for (UInt32 mode = 0; mode < 5; ++mode) {
@@ -2502,32 +2561,22 @@ namespace TestFunc {
             DBtest (!unavailable.Get ("rawname").isValid && unavailable.Get ("rawname").rawnames.Get (0) == "token" &&
                         unavailable.Get ("rawname").val.uniStringValue == "request sentinel",
                     "Resolution unavailable cached definitions leave request unchanged");
-            const char *keys[] = {"frame",
-                                  "sill",
-                                  "useWallFinishSkin",
-                                  "maxPlasterThk",
-                                  "AutoTurnIn",
-                                  "bOverIn",
-                                  "plaster_show_3D",
-                                  "plaster_show_2D"};
-            const char *names[] = {"{@gdl:gs_frame_thk}",
-                                   "{@gdl:gs_wido_sill}",
-                                   "{@gdl:gs_usewallfinishskin}",
-                                   "{@gdl:gs_maxplasterthk}",
-                                   "{@gdl:gs_bautoturnin}",
-                                   "{@gdl:gs_boverin}",
-                                   "{@gdl:gs_turn_plaster_show_3d}",
-                                   "{@gdl:gs_turn_plaster_dim_2d}"};
+            const char *keys[] = {"frame", "sill"};
+            const char *names[] = {"{@gdl:gs_frame_thk}", "{@gdl:gs_wido_sill}"};
+            const char *removedKeys[] = {
+                "useWallFinishSkin", "maxPlasterThk", "AutoTurnIn", "bOverIn", "plaster_show_3D", "plaster_show_2D"};
             for (UInt32 available = 0; available < 2; ++available) {
                 cache.isPropertyDefinition_OK = available != 0;
                 Roombook::ReadParams windows = Roombook::Param_GetForWindowParams ();
-                DBtest (windows.GetSize () == 8, "Window request template size");
-                for (UInt32 i = 0; i < 8; ++i) {
+                DBtest (windows.GetSize () == 2, "Window request template size");
+                for (UInt32 i = 0; i < 2; ++i) {
                     const auto *request = windows.GetPtr (keys[i]);
                     DBtest (request != nullptr && !request->isValid && request->rawnames.GetSize () == 1 &&
                                 request->rawnames.Get (0) == names[i] && request->val.uniStringValue.IsEmpty (),
                             "Window request exact key/GDL name and default validity");
                 }
+                for (const char *key : removedKeys)
+                    DBtest (windows.GetPtr (key) == nullptr, "Window request omits obsolete finish parameters");
             }
         }
         DBtest (cache.isPropertyDefinitionRead_full == originalFull && cache.isPropertyDefinition_OK == originalOK &&

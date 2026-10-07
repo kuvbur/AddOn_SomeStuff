@@ -1,5 +1,7 @@
 ﻿# Current Task
 
+Задача #148 завершена по решению владельца; результат, проверки и оговорки — IDEA_ARCHIVE.md. Остальные потоки ниже сохранены.
+
 ## Монитор / завершение Archicad при показе — #265
 
 https://github.com/kuvbur/AddOn_SomeStuff/issues/265

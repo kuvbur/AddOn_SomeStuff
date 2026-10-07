@@ -59,6 +59,8 @@ namespace Roombook {
         double objLoc = 0;  // Расстояние от начала стены для середины проёма
         double lower = 0;   // Привязка к низу стены
         bool reflected = false;
+        bool ref_side = false;            // Сторона четверти в системе координат базовой стены
+        bool reveal_from_sill = false;    // Отделка находится со стороны подоконника, а не за коробкой
         bool has_reveal = false;          // Наличие откосов у родительского проёма
         double base_reveal_width = 0;     // Глубина откоса базового проёма
         API_Guid base_guid = APINULLGuid; // GUID базового проёма
