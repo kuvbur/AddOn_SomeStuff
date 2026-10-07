@@ -2,6 +2,10 @@
 
 ## Обновления по задачам
 
+### P2b12 — типы/доступность отделки (#260, AC25 Windows)
+
+P2b12/P4q validated: TestRoomParameterIsolation5959/0, TestKit84/32532/0 EXIT0 до/после,84END/SUMMARY/EXIT равны;83прежних END равны P4p. ApplyRoomFinishTypeParameters :2920/caller2979/site2991: порядок/копии/guard сохранены, full reverse==pre-step modulo whitespace,39GetPtr прежние. AC25 Debug BuildAddOn success/relink/loaded module; fresh Root8errors/5warnings прежние, Core0errors/3прежних warnings. Model1778 до/после равен57полным after captures по type/box/доступным свойствам, исходные GUID сохранены; partial21(selected zones) исключён, raw notAvailable-mismatch исправлен нормализацией без повторного model-run. Scoped145symbols/1newedge/35coordinate-site refreshes joined,graph485, unrelated records NOT from this collection/no full regen. Карточки Roombook/TestFunc обновлены. Последний checkpoint da87136; нового commit/push/закрытия#260 нет.
+
 ### #266 — завершение палитры до DLL detach
 
 - DestroyInstance сбрасывает instance на APINotify_Quit; деструктор больше не сбрасывает собственного владельца, EndEventProcessing/Detach сохранены. BrowserPalette и SomeStuff_Main карточки обновлены. [по коду]

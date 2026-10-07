@@ -2917,15 +2917,7 @@ namespace Roombook
         }
     }
 
-    void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
-                           OtdRoom &roominfo,
-                           ParamDictElement &paramToRead,
-                           ReadParams &readparams) {
-        API_Guid base_guid = roominfo.zone_guid;
-        if (!Param_Property_Read (base_guid, paramToRead, readparams)) {
-            msg_rep ("Roombook", "Can't read zone params", NoError, base_guid);
-            return;
-        }
+    static void ApplyRoomFinishTypeParameters (const ReadParams &readparams, OtdRoom &roominfo) {
         GS::UniString param_name;
         ParamValueData val;
 
@@ -2982,6 +2974,21 @@ namespace Roombook
                     roominfo.floor_by_slab = val.boolValue;
             }
         }
+    }
+
+    void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
+                           OtdRoom &roominfo,
+                           ParamDictElement &paramToRead,
+                           ReadParams &readparams) {
+        API_Guid base_guid = roominfo.zone_guid;
+        if (!Param_Property_Read (base_guid, paramToRead, readparams)) {
+            msg_rep ("Roombook", "Can't read zone params", NoError, base_guid);
+            return;
+        }
+        GS::UniString param_name;
+        ParamValueData val;
+
+        ApplyRoomFinishTypeParameters (readparams, roominfo);
 
         param_name = "om_column";
         if (const auto *p = readparams.GetPtr (param_name)) {

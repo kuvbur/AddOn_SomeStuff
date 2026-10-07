@@ -63,12 +63,16 @@ AC25 Windows; сначала состояние дерева, SDK и реаль�
 
 ## Status
 
-IN_PROGRESS — P2b11/P4p завершены и проверены (2026-10-05, AC25 Windows):180комбинаций выбора высот на неизменённом P4o production, затем private ApplyRoomHeightParameters без изменения поведения. TestRoomParameterIsolation4399/0, TestKit84/30972/0 EXIT0 до/после; все84итога и read-back1778(type/box/properties) равны, исходные GUID сохранены. Полный reverse==P4o modulo whitespace, AC25 BuildAddOn success/relink, fresh Core0errors и Root без новых диагностик; scoped docs/generated обновлены. Остальные P2b2/P4–P7 открыты. P4n/P2b10/P4o/P2b11/P4p включаются в checkpoint [P4p] по запросу владельца; push/закрытие#260 не выполняются.
+IN_PROGRESS — P2b12/P4q завершены и validated: ApplyRoomFinishTypeParameters :2920/caller2979/site2991, порядок/копии/guard сохранены, full reverse==pre-step,39GetPtr прежние. AC25 Debug BuildAddOn success/relink, fresh LSP без новых диагностик;5959/0 и TestKit84/32532/0 EXIT0 до/после, все84итога равны. Model1778/type/box/доступные свойства и исходные GUID без различий;57полных captures в after-сравнении. Scoped145symbols/graph485 joined. Следующий малый шаг ещё не выбран; новое изменение только после инвентаризации. Commit/push/закрытие#260 не выполнялись.
+
+Предыдущий завершённый этап: P2b11/P4p завершены и проверены (2026-10-05, AC25 Windows):180комбинаций выбора высот на неизменённом P4o production, затем private ApplyRoomHeightParameters без изменения поведения. TestRoomParameterIsolation4399/0, TestKit84/30972/0 EXIT0 до/после; все84итога и read-back1778(type/box/properties) равны, исходные GUID сохранены. Полный reverse==P4o modulo whitespace, AC25 BuildAddOn success/relink, fresh Core0errors и Root без новых диагностик; scoped docs/generated обновлены. Остальные P2b2/P4–P7 открыты. P4n/P2b10/P4o/P2b11/P4p включаются в checkpoint [P4p] по запросу владельца; push/закрытие#260 не выполняются.
 P3a–P3e приняты ранее; детали в плане и `Docs/_progress.md`.
 Полные контуры/материалы и причины `paramTo.isValid` остаются not verified. Вне scope
 `.github/workflows/build_25+.yml` — не трогать.
 
 ## Last Completed
+
+P2b12/P4q: ApplyRoomFinishTypeParameters :2920/caller2979/site2991; TestRoomParameterIsolation5959/0 и TestKit84/32532/0 EXIT0 до/после, все84END/SUMMARY/EXIT равны. Full reverse==pre-step modulo whitespace,39GetPtr прежние. AC25 Debug BuildAddOn success/relink, fresh LSP без новых severity/code/message; model1778/type/box/доступные свойства равны57полным captures после, исходные GUID сохранены. Scoped145symbols/1newedge/35coordinate-site refreshes joined,graph485; docs updated. Нового commit/push нет.
 
 P2b11/P4p: TestRoomParameterIsolation :1501 дополнен180комбинациями direct/gate/fallback/main;4399/0 baseline на неизменённом production,83прочих END равны P4o. ApplyRoomHeightParameters :2881, Param_SetToRooms :2920/site3041: приоритет valid direct (включая0), missing/invalid gate/value/main и bool multiplication сохранены; material SDK/нормализация остаются вне helper. Полный reverse==P4o modulo whitespace,93source/test snapshots стабильны после извлечения. Свежие before/after84/30972/0 EXIT0 и все84END/SUMMARY/EXIT равны;1778model multiset/GUID без различий. AC25 Debug BuildAddOn success, реальный relink и loaded APX подтверждены; fresh Root128/Core16symbols,1newhelper-edge/34coordinate refreshes,graph484. Core0errors/3warnings и Root8errors/5warnings прежние; pane ERROR IN TEST/paramTo.isValid126/126 не исправлялись. VS остановлен. Details/artifacts: Docs/modules/Roombook.md, TestFunc.md и Docs/_progress.md, секция P2b11/P4p. P4n/P2b10/P4o/P2b11/P4p входят в checkpoint [P4p] по запросу владельца; push не выполняется.
 
@@ -76,11 +80,11 @@ P1 частично: четыре независимых прогона исхо
 
 ## Next Step
 
-Продолжение P2b2/P4: сверить дерево/VS, затем инвентаризировать применение tip_* / has_* / *_by_slab и имеющуюся характеризацию перед возможным малым извлечением. SDK material lookup/геометрия не входят в эту чистую границу; короткие функции не дробить. Артефакты P2b11/P4p — Docs/modules/Roombook.md и Docs/_progress.md. Missing GUID/non-preset/nonempty request остаётся not verified (нет null-guard), отдельный defect scope. Полные контуры/материалы/полноценный P1 не проверены; новая геометрия за Z0/#252. Commit/push/закрытие#260 без отдельного разрешения не выполнять.
+Продолжение P2b2/P4: инвентаризировать оставшиеся блоки Param_SetToRooms и их тестовое покрытие, затем выбрать одну следующую границу. P2b12/P4q полностью проверены; артефакты Reviews/roombook_baseline/p4q_before_full_*/p4q_after_* и Hermes scratch/p4q_*; подробности Docs/modules/Roombook.md, TestFunc.md, Docs/_progress.md. SDK material lookup/геометрия не входят в эту чистую границу; короткие функции не дробить. Артефакты P2b11/P4p — Docs/modules/Roombook.md и Docs/_progress.md. Missing GUID/non-preset/nonempty request остаётся not verified (нет null-guard), отдельный defect scope. Полные контуры/материалы/полноценный P1 не проверены; новая геометрия за Z0/#252. Commit/push/закрытие#260 без отдельного разрешения не выполнять.
 
 ## Last Checkpoint
 
-Чекпоинт этой фиксации — [P4p] Зафиксировать этапы рефакторинга Roombook P4n–P4p (Refs: IDEA.md step P4p; #260). SHA — git log по метке [P4p]; предыдущий Roombook checkpoint ff6779c [P2b9]. Push не выполнялся.
+Checkpoint P2b12/P4q по запросу владельца: [P4q] Выделить применение типа и доступности отделки (Refs: IDEA.md step P4q; #260). SHA — git log по метке [P4q]; предыдущий Roombook checkpoint da87136 [P4p]. Push/закрытие#260 не выполняются.
 
 ## Plan
 
@@ -125,6 +129,8 @@ P1 частично: четыре независимых прогона исхо
 - [x] P4o. ApplyRoomMaterialRawNames :2791, Param_SetToRooms :2881/site3036; full reverse==P4n modulo whitespace. AC25 build/relink success, fresh Root без новых диагностик,1711/0 и TestKit84/28494/0 EXIT0 до/после, все84итога равны; VS1778/GUID без различий. Scoped150symbols/3newedges/24coordinate refreshes joined,graph483; commit/push не выполнялись.
 - [x] P2b11.180комбинаций direct/gate/fallback/main в TestRoomParameterIsolation:4399/0, TestKit84/30972/0 EXIT0 на неизменённом P4o production;83остальных END равны. AC25 build/relink и fresh Core0errors; VS baseline без различий.
 - [x] P4p. ApplyRoomHeightParameters :2881/caller2920/site3041, full reverse==P4o modulo whitespace. AC25 success/relink, fresh Root без новых диагностик;4399/0 и TestKit84/30972/0 EXIT0 до/после, все84итога равны, model1778/GUID без различий. Scoped144symbols/1newedge/34coordinate refreshes joined,graph484; без commit/push.
+- [x] P2b12. Характеризовать tip_pot/tip_otd/tip_pol и has_ceil/has_floor/ceil_by_slab/floor_by_slab через Param_SetToRooms на неизменённом production AC25: missing/invalid/empty/preset/type-agnostic строки, состояния флагов и оба начальных значения. До GREEN production read-only.
+- [x] P4q. После P2b12 извлечь только последовательный блок :2932–2984 в private helper с const ReadParams/OtdRoom; сохранить порядок has_* перед *_by_slab, scratch-копии и aggregate-reader guard. Полный reverse, LSP, сборка AC25, before/after TestKit и модельный read-back; без commit/push/закрытия #260 без отдельного разрешения.
 - [ ] P2b2. Остальные характеризационные сценарии; полноценный P1 остаётся непокрыт.
 - [x] P3a. Локализовать `paramDict` в `ReadElementParameters` без изменения порядка/числа вызовов; AC25, TestKit и частичный read-back проверены, худшее время 65.5245175 с против 65.7253702 с исходного (−0.31%), критерий владельца выполнен.
 - [x] P3b. `reducededges`: обнуление после синхронного SDK-вызова; контракт подтверждён, худшее 65.7452587 с против 65.7253702 с (+0,03%).

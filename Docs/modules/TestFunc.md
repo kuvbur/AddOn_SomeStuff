@@ -2,6 +2,10 @@
 
 > Базовый хеш карточки: 1e67983 (2026-09-22); локальное дополнение #199 — 2026-09-24 (ещё без коммита). Полное покрытие API (hpp:17-123, 33 функции); строки — объявления в hpp, определения .cpp не фиксировались. P2b3 #260: дополнение поверх ce0f0e0, 2026-10-04; свежие координаты/контракт/AC25-прогон в секции P2b3. P2b4/P4j #260: рабочее дерево поверх7140f15, 2026-10-04; текущие координаты/проверки в новой секции. P2b10/P4o #260: рабочее дерево поверх ff6779c (AC25 Windows); актуальные координаты и проверки — в секции P2b10/P4o, остальные исторические строки не обновлялись. P2b11/P4p (2026-10-05): свежие координаты и проверки в соответствующей секции.
 
+### P2b12/P4q — типы и доступность отделки (#260, AC25 Windows)
+
+`TestRoomParameterIsolation` :1501–1926, новые матрицы :1578–1698: tip_pot/tip_otd/tip_pol (missing/invalid/empty/whitespace/Unicode/preset/type-agnostic), has_ceil/has_floor и gated ceil_by_slab/floor_by_slab с обоими начальными флагами; destination/template/cache сохранены. P2b12 на неизменённом production5959/0, после private ApplyRoomFinishTypeParameters те же5959/0; полный TestKit84/32532/0 EXIT0, все84итога равны. AC25 Debug BuildAddOn success/relink, fresh Core0errors/3прежних warnings; scoped16symbols joined, TestRoomMaterialRawNames :2804–3017. [исходник + fresh MCP + завершённый runtime]
+
 ## Назначение
 Вспомогательные функции для локального тестирования и отладки. Активен только под `TESTING`. [из комментария, TestFunc.hpp:16]
 

@@ -1575,6 +1575,128 @@ namespace TestFunc {
             }
         }
 
+        // Разные начальные значения выявляют перепутанные назначения и очистку валидной пустой строкой.
+        const char *typeKeys[] = {"tip_pot", "tip_otd", "tip_pol"};
+        for (UInt32 targetIndex = 0; targetIndex < 3; ++targetIndex) {
+            for (UInt32 mode = 0; mode < 7; ++mode) {
+                Roombook::ReadParams requests;
+                ParamDictValue source;
+                add (requests, source, "height_main", number (2.5));
+                ParamValueData value = string (mode == 2   ? GS::UniString ("")
+                                               : mode == 3 ? GS::UniString ("  Mixed; Case  ")
+                                               : mode == 4 ? GS::UniString ("Отделка А", CC_UTF8)
+                                                           : GS::UniString ("assigned type"));
+                if (mode == 6)
+                    value.type = API_PropertyBooleanValueType;
+                if (mode != 0) {
+                    add (requests, source, typeKeys[targetIndex], value, mode != 1);
+                    if (mode == 5) {
+                        requests.Get (typeKeys[targetIndex]).isValid = true;
+                        requests.Get (typeKeys[targetIndex]).val = string ("preset type");
+                    }
+                }
+                const Roombook::ReadParams original = requests;
+                ParamDictElement inputs;
+                inputs.Add (zones[0], source);
+                Roombook::OtdRoom room;
+                room.zone_guid = zones[0];
+                room.height = 3;
+                room.tip_pot = "ceiling sentinel";
+                room.tip_otd = "finish sentinel";
+                room.tip_pol = "floor sentinel";
+                const GS::UniString initial[] = {room.tip_pot, room.tip_otd, room.tip_pol};
+                Roombook::ReadParams work = requests;
+                Roombook::Param_SetToRooms (materials, room, inputs, work);
+                const GS::UniString actual[] = {room.tip_pot, room.tip_otd, room.tip_pol};
+                for (UInt32 field = 0; field < 3; ++field) {
+                    const GS::UniString expected = field != targetIndex || mode < 2 ? initial[field]
+                                                   : mode == 5                      ? GS::UniString ("preset type")
+                                                                                    : value.uniStringValue;
+                    DBtest (actual[field] == expected, "Room type exact destination and unnormalized value");
+                }
+                DBtest (room.has_ceil && room.has_floor && !room.ceil_by_slab && !room.floor_by_slab &&
+                            room.height_main == 2.5 && room.height_up == 0.5,
+                        "Room type unrelated flags and readable anchor");
+                if (mode != 0) {
+                    const auto &before = original.Get (typeKeys[targetIndex]);
+                    const auto &after = requests.Get (typeKeys[targetIndex]);
+                    DBtest (before.isValid == after.isValid && before.val.type == after.val.type &&
+                                before.val.uniStringValue == after.val.uniStringValue &&
+                                before.rawnames[0] == after.rawnames[0],
+                            "Room type request template unchanged");
+                    const auto &cached = inputs.Get (zones[0]).Get (typeKeys[targetIndex]);
+                    DBtest (cached.isValid == (mode != 1) && cached.val.type == value.type &&
+                                cached.val.uniStringValue == value.uniStringValue,
+                            "Room type cached source unchanged");
+                }
+            }
+        }
+
+        // by_slab зависит от уже применённого has, а при false сохраняет прежний флаг.
+        const char *availabilityKeys[] = {"has_ceil", "has_floor"};
+        const char *slabKeys[] = {"ceil_by_slab", "floor_by_slab"};
+        for (UInt32 side = 0; side < 2; ++side) {
+            for (UInt32 availability = 0; availability < 5; ++availability) {
+                for (UInt32 slab = 0; slab < 5; ++slab) {
+                    for (UInt32 initial = 0; initial < 4; ++initial) {
+                        Roombook::ReadParams requests;
+                        ParamDictValue source;
+                        add (requests, source, "height_main", number (2.5));
+                        const UInt32 modes[] = {availability, slab};
+                        const char *keys[] = {availabilityKeys[side], slabKeys[side]};
+                        for (UInt32 j = 0; j < 2; ++j) {
+                            if (modes[j] == 0)
+                                continue;
+                            ParamValueData value = boolean (modes[j] >= 3);
+                            if (modes[j] == 4)
+                                value.type = API_PropertyRealValueType;
+                            add (requests, source, keys[j], value, modes[j] != 1);
+                        }
+                        const Roombook::ReadParams original = requests;
+                        ParamDictElement inputs;
+                        inputs.Add (zones[0], source);
+                        Roombook::OtdRoom room;
+                        room.zone_guid = zones[0];
+                        room.height = 3;
+                        room.tip_pot = "ceiling sentinel";
+                        room.tip_otd = "finish sentinel";
+                        room.tip_pol = "floor sentinel";
+                        bool *has[] = {&room.has_ceil, &room.has_floor};
+                        bool *bySlab[] = {&room.ceil_by_slab, &room.floor_by_slab};
+                        *has[side] = (initial & 1u) != 0;
+                        *bySlab[side] = (initial & 2u) != 0;
+                        *has[1 - side] = false;
+                        *bySlab[1 - side] = true;
+                        const bool expectedHas = availability < 2 ? (initial & 1u) != 0 : availability >= 3;
+                        const bool expectedSlab = !expectedHas || slab < 2 ? (initial & 2u) != 0 : slab >= 3;
+                        Roombook::ReadParams work = requests;
+                        Roombook::Param_SetToRooms (materials, room, inputs, work);
+                        DBtest (*has[side] == expectedHas, "Room availability absent invalid false true and type");
+                        DBtest (*bySlab[side] == expectedSlab, "Room slab gate uses applied availability");
+                        DBtest (!*has[1 - side] && *bySlab[1 - side], "Room slab opposite side unchanged");
+                        DBtest (room.tip_pot == "ceiling sentinel" && room.tip_otd == "finish sentinel" &&
+                                    room.tip_pol == "floor sentinel" && room.height_main == 2.5 &&
+                                    room.height_up == 0.5,
+                                "Room slab unrelated types and readable anchor");
+                        for (UInt32 j = 0; j < 2; ++j) {
+                            if (modes[j] == 0)
+                                continue;
+                            const auto &before = original.Get (keys[j]);
+                            const auto &after = requests.Get (keys[j]);
+                            const auto &cached = inputs.Get (zones[0]).Get (keys[j]);
+                            DBtest (before.isValid == after.isValid && before.val.boolValue == after.val.boolValue &&
+                                        before.val.type == after.val.type && before.rawnames[0] == after.rawnames[0],
+                                    "Room slab request template unchanged");
+                            DBtest (cached.isValid == (modes[j] != 1) && cached.val.boolValue == (modes[j] >= 3) &&
+                                        cached.val.type ==
+                                            (modes[j] == 4 ? API_PropertyRealValueType : API_PropertyBooleanValueType),
+                                    "Room slab cached source unchanged");
+                        }
+                    }
+                }
+            }
+        }
+
         // Выбор значений до нормализации: direct имеет приоритет, даже если он равен нулю.
         for (UInt32 direct = 0; direct < 5; ++direct) {
             for (UInt32 gate = 0; gate < 4; ++gate) {
