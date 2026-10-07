@@ -44,6 +44,8 @@ namespace Roombook {
         const GS::UniString otdwall_class = "some_stuff_fin_walls";
         const GS::UniString otdwall_down_class = "some_stuff_fin_down_walls";
         const GS::UniString reveal_class = "some_stuff_fin_reveals";
+        const GS::UniString reveal_windows_class = "some_stuff_fin_windows_reveals";
+        const GS::UniString reveal_doors_class = "some_stuff_fin_doors_reveals";
         const GS::UniString column_class = "some_stuff_fin_columns";
         const GS::UniString floor_class = "some_stuff_fin_floors";
         const GS::UniString ceil_class = "some_stuff_fin_ceils";

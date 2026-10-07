@@ -5078,6 +5078,16 @@ namespace Roombook
                 return Reveal_Main;
         }
 
+        if (const auto *p = finclass.GetPtr (cls.reveal_windows_class)) {
+            if (p->item.guid == classguid)
+                return Reveal_Main;
+        }
+
+        if (const auto *p = finclass.GetPtr (cls.reveal_doors_class)) {
+            if (p->item.guid == classguid)
+                return Reveal_Main;
+        }
+
         if (const auto *p = finclass.GetPtr (cls.all_class)) {
             if (p->item.guid == classguid)
                 return NoSet;
@@ -5144,6 +5154,16 @@ namespace Roombook
                     }
                     if (desc.Contains (cls.reveal_class)) {
                         findict.Add (cls.reveal_class, clas);
+                        if (!finclassguids.ContainsKey (clas.item.guid))
+                            finclassguids.Add (clas.item.guid, false);
+                    }
+                    if (desc.Contains (cls.reveal_windows_class)) {
+                        findict.Add (cls.reveal_windows_class, clas);
+                        if (!finclassguids.ContainsKey (clas.item.guid))
+                            finclassguids.Add (clas.item.guid, false);
+                    }
+                    if (desc.Contains (cls.reveal_doors_class)) {
+                        findict.Add (cls.reveal_doors_class, clas);
                         if (!finclassguids.ContainsKey (clas.item.guid))
                             finclassguids.Add (clas.item.guid, false);
                     }
