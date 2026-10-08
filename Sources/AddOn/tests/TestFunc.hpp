@@ -143,6 +143,7 @@ namespace TestFunc {
     void TestRoomParameterResolution ();
     void TestCachedParameterReader ();
     void TestRoomMaterialRawNames ();
+    void TestRoomCompositeSelection ();
     void TestOpeningAddOne ();
     void TestOtdWallDelimOne ();
     void TestOtdWallDelimAll ();

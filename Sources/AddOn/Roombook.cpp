@@ -2951,20 +2951,11 @@ namespace Roombook
         }
     }
 
-    void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
-                           OtdRoom &roominfo,
-                           ParamDictElement &paramToRead,
-                           ReadParams &readparams) {
-        API_Guid base_guid = roominfo.zone_guid;
-        if (!Param_Property_Read (base_guid, paramToRead, readparams)) {
-            msg_rep ("Roombook", "Can't read zone params", NoError, base_guid);
-            return;
-        }
+    static void ApplyRoomMaterialParameters (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
+                                             const ReadParams &readparams,
+                                             OtdRoom &roominfo) {
         GS::UniString param_name;
         ParamValueData val;
-
-        ApplyRoomFinishTypeParameters (readparams, roominfo);
-
         param_name = "om_column";
         if (const auto *p = readparams.GetPtr (param_name)) {
             if (p->isValid) {
@@ -3020,6 +3011,20 @@ namespace Roombook
                 roominfo.om_up.smaterial = val.uniStringValue;
             }
         }
+    }
+
+    void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
+                           OtdRoom &roominfo,
+                           ParamDictElement &paramToRead,
+                           ReadParams &readparams) {
+        API_Guid base_guid = roominfo.zone_guid;
+        if (!Param_Property_Read (base_guid, paramToRead, readparams)) {
+            msg_rep ("Roombook", "Can't read zone params", NoError, base_guid);
+            return;
+        }
+        ApplyRoomFinishTypeParameters (readparams, roominfo);
+
+        ApplyRoomMaterialParameters (material_dict, readparams, roominfo);
         ApplyRoomHeightParameters (readparams, roominfo);
         ApplyRoomMaterialRawNames (readparams, roominfo);
         ApplyRoomCreationFlags (readparams, roominfo);
@@ -3092,17 +3097,11 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Запись прочитанных свойств в отделочные стены
     // -----------------------------------------------------------------------------
-    void Param_SetComposite (const ParamComposite &base_composite,
-                             bool base_flipped,
-                             GS::Array<ParamValueComposite> &otdcpmpoosite,
-                             GS::UniString &fav_name,
-                             bool has_fin) {
-        Int32 ncomp = base_composite.composite.GetSize ();
-        if (ncomp == 0)
-            return;
-        fav_name.Clear ();
+    static void CollectBaseCompositeLayers (const ParamComposite &base_composite,
+                                            bool base_flipped,
+                                            Int32 ncomp,
+                                            GS::Array<ParamValueComposite> &cpmpoosite) {
         bool flag_core = false;
-        GS::Array<ParamValueComposite> cpmpoosite;
         if (base_flipped) {
             for (Int32 j = ncomp - 1; j >= 0; j--) {
                 if (!flag_core) {
@@ -3120,6 +3119,19 @@ namespace Roombook
                 }
             }
         }
+    }
+
+    void Param_SetComposite (const ParamComposite &base_composite,
+                             bool base_flipped,
+                             GS::Array<ParamValueComposite> &otdcpmpoosite,
+                             GS::UniString &fav_name,
+                             bool has_fin) {
+        Int32 ncomp = base_composite.composite.GetSize ();
+        if (ncomp == 0)
+            return;
+        fav_name.Clear ();
+        GS::Array<ParamValueComposite> cpmpoosite;
+        CollectBaseCompositeLayers (base_composite, base_flipped, ncomp, cpmpoosite);
         for (UInt32 j = 0; j < cpmpoosite.GetSize (); j++) {
             GS::UniString v = cpmpoosite[j].val;
             bool fin_add = true;

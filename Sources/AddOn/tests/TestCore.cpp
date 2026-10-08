@@ -1923,6 +1923,168 @@ namespace TestFunc {
         DBtest (!Roombook::Param_Property_Read (zones[0], read, empty), "Room reader empty requests return false");
         DBtest (materials.GetSize () == 1 && materials.Get ("untouched") == 49,
                 "Room params no material lookup without material requests");
+
+        // Кэш содержит исходное и обрезанное имена с разными индексами: lookup должен предшествовать Trim.
+        const char *materialKeys[] = {"om_column", "om_down", "om_main", "om_ceil", "om_up"};
+        const auto materialSlots = [] (Roombook::OtdRoom &room) {
+            GS::Array<Roombook::OtdMaterial *> result;
+            result.Push (&room.om_column);
+            result.Push (&room.om_down);
+            result.Push (&room.om_main);
+            result.Push (&room.om_ceil);
+            result.Push (&room.om_up);
+            result.Push (&room.om_floor);
+            result.Push (&room.om_reveals);
+            return result;
+        };
+        const GS::UniString materialName ("  Материал Ё; %  ", CC_UTF8);
+        const GS::UniString trimmedName ("Материал Ё; %", CC_UTF8);
+        GS::HashTable<GS::UniString, GS::Int32> cachedMaterials;
+        cachedMaterials.Add (materialName, 71);
+        cachedMaterials.Add (trimmedName, 909);
+        cachedMaterials.Add ("", 72);
+        for (UInt32 selected = 0; selected < 5; ++selected) {
+            for (UInt32 mode = 0; mode < 8; ++mode) {
+                Roombook::ReadParams seed;
+                ParamDictValue source;
+                add (seed, source, "tip_otd", string ("material anchor"));
+                ParamValueData value = string (mode == 3 ? GS::UniString () : materialName);
+                value.intValue = 41;
+                if (mode == 4)
+                    value.type = API_PropertyIntegerValueType;
+                if (mode == 5)
+                    value.type = API_PropertyRealValueType;
+                if (mode == 6)
+                    value.type = API_PropertyBooleanValueType;
+                if (mode != 0) {
+                    add (seed, source, materialKeys[selected], value, mode != 1);
+                    if (mode == 7) {
+                        seed.Get (materialKeys[selected]).isValid = true;
+                        seed.Get (materialKeys[selected]).val = value;
+                    }
+                }
+                ParamDictElement inputs;
+                inputs.Add (zones[0], source);
+                Roombook::ReadParams work = seed;
+                Roombook::OtdRoom room;
+                room.zone_guid = zones[0];
+                room.height = 3;
+                const auto fields = materialSlots (room);
+                for (UInt32 field = 0; field < fields.GetSize (); ++field) {
+                    fields[field]->material = 100 + field;
+                    fields[field]->smaterial = "keep material";
+                    fields[field]->rawname = "keep rawname";
+                    fields[field]->rawname_bytype = "keep bytype";
+                }
+                Roombook::Param_SetToRooms (cachedMaterials, room, inputs, work);
+                for (UInt32 field = 0; field < fields.GetSize (); ++field) {
+                    const bool changed = field == selected && mode >= 2;
+                    const GS::Int32 expectedIndex = !changed                 ? 100 + field
+                                                    : mode == 3              ? 72
+                                                    : mode >= 4 && mode <= 6 ? 41
+                                                                             : 71;
+                    const GS::UniString expectedName = !changed    ? GS::UniString ("keep material")
+                                                       : mode == 3 ? GS::UniString ("0&#& ")
+                                                                   : GS::UniString ("0&#& ") + trimmedName;
+                    DBtest (fields[field]->material == expectedIndex && fields[field]->smaterial == expectedName,
+                            GS::UniString ("Room material isolated destination ") + materialKeys[selected]);
+                    DBtest (fields[field]->rawname == "keep rawname" && fields[field]->rawname_bytype == "keep bytype",
+                            "Room material names do not overwrite property targets");
+                }
+                DBtest (room.tip_otd == "material anchor" && room.height_main == 3,
+                        "Room material anchor and subsequent normalization preserved");
+                DBtest (cachedMaterials.GetSize () == 3 && cachedMaterials.Get (materialName) == 71 &&
+                            cachedMaterials.Get (trimmedName) == 909 && cachedMaterials.Get ("") == 72,
+                        "Room material cached or non-string lookup leaves dictionary unchanged");
+                DBtest (!seed.Get ("tip_otd").isValid &&
+                            inputs.Get (zones[0]).Get ("tip_otd").val.uniStringValue == "material anchor",
+                        "Room material template and source anchor preserved");
+                if (mode != 0) {
+                    const auto &original = inputs.Get (zones[0]).Get (materialKeys[selected]);
+                    const auto &request = seed.Get (materialKeys[selected]);
+                    DBtest (original.isValid == (mode != 1) && original.val.uniStringValue == value.uniStringValue &&
+                                original.val.intValue == 41 && original.val.type == value.type,
+                            "Room material lookup and Trim do not mutate source");
+                    DBtest (
+                        request.isValid == (mode == 7) && request.rawnames.GetSize () == 1 &&
+                            request.rawnames[0] == materialKeys[selected] &&
+                            (mode != 7 || (request.val.uniStringValue == materialName && request.val.intValue == 41)),
+                        "Room material lookup does not mutate request template");
+                    if (mode >= 2)
+                        DBtest (work.Get (materialKeys[selected]).val.uniStringValue == value.uniStringValue &&
+                                    work.Get (materialKeys[selected]).val.intValue == 41,
+                                "Room material scratch normalization leaves read request unchanged");
+                }
+            }
+        }
+        // Обе зоны получают свежий шаблон; числовые индексы не требуют обращения к SDK.
+        for (UInt32 reverse = 0; reverse < 2; ++reverse) {
+            Roombook::ReadParams seed;
+            ParamDictValue source[2];
+            for (UInt32 field = 0; field < 5; ++field) {
+                ParamValueData value = number (2);
+                value.intValue = 201 + field;
+                value.uniStringValue = " Zone A ";
+                add (seed, source[0], materialKeys[field], value);
+                ParamValue p = source[0].Get (materialKeys[field]);
+                p.val.intValue = 301 + field;
+                p.val.uniStringValue = " Zone B ";
+                p.isValid = field != 1;
+                source[1].Add (materialKeys[field], p);
+            }
+            ParamDictElement inputs;
+            inputs.Add (zones[0], source[0]);
+            inputs.Add (zones[1], source[1]);
+            for (UInt32 visit = 0; visit < 2; ++visit) {
+                const UInt32 index = reverse ? 1 - visit : visit;
+                Roombook::OtdRoom room;
+                room.zone_guid = zones[index];
+                room.height = 3;
+                const auto fields = materialSlots (room);
+                for (UInt32 field = 0; field < 5; ++field) {
+                    fields[field]->material = 100 + field;
+                    fields[field]->smaterial = "keep";
+                }
+                Roombook::ReadParams work = seed;
+                Roombook::Param_SetToRooms (cachedMaterials, room, inputs, work);
+                for (UInt32 field = 0; field < 5; ++field) {
+                    const bool changed = index == 0 || field != 1;
+                    DBtest (fields[field]->material == (changed ? (index == 0 ? 201 : 301) + field : 100 + field) &&
+                                fields[field]->smaterial ==
+                                    (changed ? GS::UniString (index == 0 ? "0&#& Zone A" : "0&#& Zone B")
+                                             : GS::UniString ("keep")),
+                            "Room material two zones independent in both orders");
+                    DBtest (!seed.Get (materialKeys[field]).isValid &&
+                                inputs.Get (zones[index]).Get (materialKeys[field]).val.intValue ==
+                                    (index == 0 ? 201 : 301) + field,
+                            "Room material two-zone source and seed preserved");
+                }
+            }
+        }
+        Roombook::ReadParams materialPresets;
+        for (UInt32 field = 0; field < 5; ++field) {
+            Roombook::ReadParam request;
+            request.isValid = true;
+            request.val = string (materialName);
+            materialPresets.Add (materialKeys[field], request);
+        }
+        ParamDictElement presetInputs;
+        presetInputs.Add (zones[0], ParamDictValue ());
+        Roombook::OtdRoom presetRoom;
+        presetRoom.zone_guid = zones[0];
+        presetRoom.height = 3.1234;
+        const auto presetFields = materialSlots (presetRoom);
+        for (UInt32 field = 0; field < presetFields.GetSize (); ++field) {
+            presetFields[field]->material = 100 + field;
+            presetFields[field]->smaterial = "preset untouched";
+        }
+        Roombook::Param_SetToRooms (cachedMaterials, presetRoom, presetInputs, materialPresets);
+        for (UInt32 field = 0; field < presetFields.GetSize (); ++field)
+            DBtest (presetFields[field]->material == 100 + field &&
+                        presetFields[field]->smaterial == "preset untouched",
+                    "Room material preset-only aggregate guard preserves destinations");
+        DBtest (presetRoom.height == 3.1234 && cachedMaterials.GetSize () == 3,
+                "Room material preset-only returns before normalization and lookup");
     }
 
     void TestRoomMaterialFormatting () {
@@ -3063,6 +3225,191 @@ namespace TestFunc {
         }
         DBtest (materials.GetSize () == 1 && materials.Get ("untouched") == 49,
                 "Room rawname fixtures never invoke material lookup");
+    }
+
+    void TestRoomCompositeSelection () {
+        const char *tokens[] = {"T0", "T1", "T2", "T3", "T4"};
+        const char *favorites[] = {"FAV0", "FAV1", "FAV2", "FAV3", "FAV4"};
+        const char *expectedFavorites[] = {"fav0", "fav1", "fav2", "fav3", "fav4"};
+        const auto sameLayer = [] (const ParamValueComposite &a, const ParamValueComposite &b) {
+            return a.inx == b.inx && a.fillThick == b.fillThick && a.fillThick_min == b.fillThick_min &&
+                   a.rfromstart == b.rfromstart && a.structype == b.structype && a.num == b.num && a.val == b.val &&
+                   a.area == b.area && a.area_fill == b.area_fill && a.volume == b.volume && a.length == b.length &&
+                   a.width == b.width && a.kzap == b.kzap && a.qty == b.qty && a.unit == b.unit && a.pos == b.pos;
+        };
+        // Совмещённые биты не равны Core: фиксируем точное legacy-сравнение, а не битовую проверку.
+        for (UInt32 count = 0; count <= 5; ++count) {
+            for (UInt32 mask = 0; mask < (1U << count); ++mask) {
+                ParamComposite input;
+                input.isValid = true;
+                input.templatestring = "template unchanged";
+                input.fromGuid = APIGuidFromString ("{55555555-5555-5555-5555-555555555555}");
+                input.eltype = API_WallID;
+                input.composite_pen = 7;
+                input.hasFormula = true;
+                input.fromQuantity = true;
+                for (UInt32 i = 0; i < count; ++i) {
+                    ParamValueComposite layer;
+                    layer.fillThick = 0.125 * (i + 1);
+                    layer.fillThick_min = 0.0625 * (i + 1);
+                    layer.rfromstart = 0.25 * i;
+                    layer.structype = (mask & (1U << i)) ? APICWallComp_Core
+                                      : i % 2 == 0       ? APICWallComp_Core | APICWallComp_Finish
+                                                         : APICWallComp_Finish;
+                    layer.num = 10 + i;
+                    layer.val = GS::UniString ("l[1:") + tokens[i] + "]f[ " + favorites[i] + " ]";
+                    layer.area = 20 + i;
+                    layer.area_fill = 30 + i;
+                    layer.volume = 40 + i;
+                    layer.length = 50 + i;
+                    layer.width = 60 + i;
+                    layer.kzap = 70 + i;
+                    layer.qty = 80 + i;
+                    layer.unit = "unit sentinel";
+                    layer.pos = "position sentinel";
+                    input.composite.Push (layer);
+                }
+                const ParamComposite original = input;
+                for (UInt32 flipped = 0; flipped < 2; ++flipped) {
+                    GS::Array<UInt32> selected;
+                    GS::UniString expectedFavorite;
+                    for (UInt32 visit = 0; visit < count; ++visit) {
+                        const UInt32 i = flipped ? count - visit - 1 : visit;
+                        selected.Push (i);
+                        if (!expectedFavorite.IsEmpty ())
+                            expectedFavorite.Append ("_");
+                        expectedFavorite.Append (expectedFavorites[i]);
+                        if (mask & (1U << i))
+                            break;
+                    }
+                    for (UInt32 seeded = 0; seeded < 2; ++seeded) {
+                        for (UInt32 hasFin = 0; hasFin < 2; ++hasFin) {
+                            GS::Array<ParamValueComposite> output;
+                            ParamValueComposite sentinel;
+                            sentinel.structype = APICWallComp_Finish;
+                            sentinel.num = -99;
+                            sentinel.val = "output sentinel";
+                            sentinel.pos = "output position";
+                            if (seeded)
+                                output.Push (sentinel);
+                            GS::UniString favorite = "Favorite retained";
+                            // Ни один результат не имеет structype=-1: SDK attribute lookup здесь исключён.
+                            Roombook::Param_SetComposite (input, flipped != 0, output, favorite, hasFin != 0);
+                            DBrequire (output.GetSize () == seeded + selected.GetSize (),
+                                       "Room composite selected size includes first core and appends");
+                            DBtest (favorite == (count == 0 ? GS::UniString ("Favorite retained") : expectedFavorite),
+                                    "Room composite favorite selected order and empty input retained");
+                            if (seeded)
+                                DBtest (sameLayer (output[0], sentinel), "Room composite existing output unchanged");
+                            for (UInt32 j = 0; j < selected.GetSize (); ++j) {
+                                ParamValueComposite expected = original.composite[selected[j]];
+                                expected.val = tokens[selected[j]];
+                                DBtest (sameLayer (output[seeded + j], expected),
+                                        "Room composite exact selected layer and all metadata preserved");
+                            }
+                            DBtest (
+                                input.templatestring == original.templatestring &&
+                                    input.composite_type == original.composite_type &&
+                                    input.isValid == original.isValid && input.fromGuid == original.fromGuid &&
+                                    input.eltype == original.eltype && input.composite_pen == original.composite_pen &&
+                                    input.hasFormula == original.hasFormula &&
+                                    input.fromQuantity == original.fromQuantity && input.composite.GetSize () == count,
+                                "Room composite source metadata unchanged");
+                            for (UInt32 i = 0; i < count; ++i)
+                                DBtest (sameLayer (input.composite[i], original.composite[i]),
+                                        "Room composite source layers unchanged");
+                            if (!selected.IsEmpty ()) {
+                                output[seeded].val = "mutated output";
+                                DBtest (sameLayer (input.composite[selected[0]], original.composite[selected[0]]),
+                                        "Room composite output owns its selected layer copy");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        struct RuleCase {
+            const char *rule;
+            const char *value;
+            const char *favorite;
+            bool emitted;
+            bool finish;
+        };
+
+        // f[] сохраняет legacy-срез GetLength()-5: последний символ значения также отбрасывается.
+        const RuleCase cases[] = {{"l[1:Alpha]f[ Fav One ]", "Alpha", "fav one", true, true},
+                                  {"l[1: Alpha ]f[]", " Alpha", "", true, true},
+                                  {"l[1:Beta]f[ ]", "Beta", "", true, true},
+                                  {"l[1:]f[EMPTY]", "", "empty", true, true},
+                                  {"l[2:Skip]f[ONLY]", "", "only", false, true},
+                                  {"f[ NO LAYER ]", "", "no layer", false, true},
+                                  {"h[1]l[1:Gamma]f[G]", "Gamma", "g", true, true},
+                                  {"h[]l[1:Delta]f[D]", "Delta", "d", true, true},
+                                  {"h[0]l[1:Epsilon]f[E]", "Epsilon", "e", true, false},
+                                  {"h[1]h[0]l[1:Zeta]f[Z]", "Zeta", "z", true, false},
+                                  {"l[1:One]l[1:Two]f[FIRST]f[SECOND]", "One", "first", true, true},
+                                  {"L[1:Skip]f[CASE]", "", "case", false, true},
+                                  {"l[1:Стена Ё]f[ ОТДЕЛКА Ё ]", "Стена Ё", "отделка ё", true, true},
+                                  {"h[0]l[1:Eta]f[]", "Et", "", true, false}};
+        for (const auto &c : cases) {
+            for (UInt32 flipped = 0; flipped < 2; ++flipped) {
+                for (UInt32 seeded = 0; seeded < 2; ++seeded) {
+                    for (UInt32 hasFin = 0; hasFin < 2; ++hasFin) {
+                        ParamValueComposite layer;
+                        layer.structype = APICWallComp_Finish;
+                        layer.num = 73;
+                        layer.fillThick = 0.125;
+                        layer.rfromstart = 0.25;
+                        layer.val = GS::UniString (c.rule, CC_UTF8);
+                        layer.area = 17;
+                        layer.pos = "source position";
+                        ParamValueComposite anchor = layer;
+                        anchor.num = 74;
+                        anchor.val = "l[1:Anchor]f[ END ]";
+                        ParamComposite input;
+                        // Последний выбранный слой не -1: проверяем h[0] без SDK attribute lookup.
+                        input.composite.Push (flipped ? anchor : layer);
+                        input.composite.Push (flipped ? layer : anchor);
+                        GS::Array<ParamValueComposite> output;
+                        ParamValueComposite sentinel = layer;
+                        sentinel.num = -99;
+                        sentinel.val = "seed retained";
+                        if (seeded)
+                            output.Push (sentinel);
+                        GS::UniString favorite = "old favorite";
+                        Roombook::Param_SetComposite (input, flipped != 0, output, favorite, hasFin != 0);
+                        DBrequire (output.GetSize () == seeded + (c.emitted ? 2U : 1U),
+                                   "Room composite rule filtering and append count");
+                        GS::UniString expectedFavorite (c.favorite, CC_UTF8);
+                        if (!expectedFavorite.IsEmpty ())
+                            expectedFavorite.Append ("_");
+                        expectedFavorite.Append ("end");
+                        DBtest (favorite == expectedFavorite, "Room composite rule favorite trim case and order");
+                        if (seeded)
+                            DBtest (sameLayer (output[0], sentinel), "Room composite rule seed retained");
+                        if (c.emitted) {
+                            ParamValueComposite expected = layer;
+                            expected.val = GS::UniString (c.value, CC_UTF8);
+                            if (!c.finish)
+                                expected.structype = -1;
+                            DBtest (sameLayer (output[seeded], expected),
+                                    "Room composite parsed value finish flag and metadata");
+                        }
+                        ParamValueComposite expectedAnchor = anchor;
+                        expectedAnchor.val = "Anchor";
+                        DBtest (sameLayer (output.GetLast (), expectedAnchor),
+                                "Room composite trailing anchor excludes SDK and preserves order");
+                        DBtest (sameLayer (input.composite[flipped ? 1 : 0], layer) &&
+                                    sameLayer (input.composite[flipped ? 0 : 1], anchor),
+                                "Room composite rule parsing preserves source layers");
+                        output.GetLast ().val = "mutated anchor";
+                        DBtest (sameLayer (input.composite[flipped ? 0 : 1], anchor),
+                                "Room composite parsed output independent of source");
+                    }
+                }
+            }
+        }
     }
 
 } // namespace TestFunc
