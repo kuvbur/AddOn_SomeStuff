@@ -22,23 +22,27 @@
     "p2b11_p4p_heights": "P2b11/P4p (AC25 Windows): fresh isolated MCP Root128/Core16, source-joined. Height helper incoming1/outgoing0; graph484 with483inherited edges kept semantically, moved endpoints/source sites refreshed. Existing TestRoomParameterIsolation gains one height-matrix caller site. Other modules NOT from this collection; full regen not performed.",
     "p2b12_p4q_finish_types": "P2b12/P4q AC25: fresh isolated MCP Root129/Core16 source-joined; helper incoming1/outgoing0. Existing changed-file endpoints and sites refreshed from fresh MCP boundaries and live source. Other inherited edges NOT from this collection; no full regeneration.",
     "p2b13_p4r_materials": "P2b13/P4r AC25: fresh isolated MCP Roombook130/TestCore16 symbols; three callHierarchy anchors (ApplyRoomMaterialParameters, Param_SetToRooms, Param_Material_Get), nine unique project edges. Replaced direct Param_SetToRooms -> Param_Material_Get with two helper edges (five material sites); TestRoomParameterIsolation -> Param_SetToRooms has nine live sites. All changed-file endpoints/sites source-joined. Cross-TU preserved edges use mixed provenance: fresh MCP endpoints plus live source sites; single-TU hierarchy is not complete. Unrelated inherited records NOT from this collection.",
-    "p2b14_p4s_composite_layers": "P2b14/P4s (AC25 Windows): fresh isolated clangd MCP documentSymbols for Roombook/TestCore/TestFunc and hierarchy for CollectBaseCompositeLayers/Param_SetComposite/TestRoomCompositeSelection. 155 scoped symbol records source-joined; 486 inherited edges preserved in order, 18 coordinate-only refreshes; two hierarchy-confirmed edges added. Scoped endpoints/sites audited against live source. Hierarchy omits the cross-TU test incoming call, although test outgoing resolves it; inherited cross-TU edges retain prior provenance plus fresh MCP endpoints/source sites. Unrelated modules NOT recollected; no full regeneration."
+    "p2b14_p4s_composite_layers": "P2b14/P4s (AC25 Windows): fresh isolated clangd MCP documentSymbols for Roombook/TestCore/TestFunc and hierarchy for CollectBaseCompositeLayers/Param_SetComposite/TestRoomCompositeSelection. 155 scoped symbol records source-joined; 486 inherited edges preserved in order, 18 coordinate-only refreshes; two hierarchy-confirmed edges added. Scoped endpoints/sites audited against live source. Hierarchy omits the cross-TU test incoming call, although test outgoing resolves it; inherited cross-TU edges retain prior provenance plus fresh MCP endpoints/source sites. Unrelated modules NOT recollected; no full regeneration.",
+    "roombook_comment_coordinate_refresh": {
+      "source": "Comment-only exact original-line mapping, every scoped symbol/endpoint/site source-joined;108 active function locations cross-checked with fresh isolated direct AC25 LSP. MCP shared AST stale; hierarchy not recollected. Existing edges/provenance/other modules preserved.",
+      "added_comment_blocks": 89
+    }
   },
   "edges": [
     {
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "AdvanceProcessPhase",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 100
+        "line": 104
       },
       "call_sites": [
         {
-          "line": 636,
+          "line": 662,
           "column": 12
         }
       ]
@@ -47,16 +51,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "BuildElementReadIndex",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 111
+        "line": 117
       },
       "call_sites": [
         {
-          "line": 628,
+          "line": 654,
           "column": 13
         }
       ]
@@ -65,16 +69,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "BuildMaterialSummaryForRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 376
+        "line": 395
       },
       "call_sites": [
         {
-          "line": 658,
+          "line": 684,
           "column": 13
         }
       ]
@@ -83,16 +87,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "Check",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 5624
+        "line": 5791
       },
       "call_sites": [
         {
-          "line": 665,
+          "line": 691,
           "column": 17
         }
       ]
@@ -101,16 +105,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "Draw_Elements",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 4062
+        "line": 4180
       },
       "call_sites": [
         {
-          "line": 678,
+          "line": 704,
           "column": 8
         }
       ]
@@ -119,16 +123,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "Favorite_GetDict",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 5338
+        "line": 5495
       },
       "call_sites": [
         {
-          "line": 643,
+          "line": 669,
           "column": 41
         }
       ]
@@ -137,16 +141,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "GetTargetZones",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 33
+        "line": 36
       },
       "call_sites": [
         {
-          "line": 620,
+          "line": 646,
           "column": 13
         }
       ]
@@ -155,16 +159,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "Otd_GetOtd_ByZone",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 689
+        "line": 717
       },
       "call_sites": [
         {
-          "line": 649,
+          "line": 675,
           "column": 12
         }
       ]
@@ -173,16 +177,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "PrepareReadParams",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 180
+        "line": 189
       },
       "call_sites": [
         {
-          "line": 633,
+          "line": 659,
           "column": 43
         }
       ]
@@ -191,16 +195,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "PrepareRoomProcessingContext",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 90
+        "line": 94
       },
       "call_sites": [
         {
-          "line": 626,
+          "line": 652,
           "column": 8
         }
       ]
@@ -209,16 +213,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "ProcessElementsForRoomData",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 127
+        "line": 135
       },
       "call_sites": [
         {
-          "line": 630,
+          "line": 656,
           "column": 13
         }
       ]
@@ -227,16 +231,16 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "ProcessRoomFinishes",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 495
+        "line": 517
       },
       "call_sites": [
         {
-          "line": 650,
+          "line": 676,
           "column": 13
         }
       ]
@@ -245,66 +249,12 @@
       "caller": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "callee": {
         "name": "ReadElementParameters",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 182
-      },
-      "call_sites": [
-        {
-          "line": 634,
-          "column": 8
-        }
-      ]
-    },
-    {
-      "caller": {
-        "name": "RoomBook",
-        "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
-      },
-      "callee": {
-        "name": "RemoveUnusedFinishingElements",
-        "file": "Sources/AddOn/Roombook.cpp",
-        "line": 553
-      },
-      "call_sites": [
-        {
-          "line": 668,
-          "column": 8
-        }
-      ]
-    },
-    {
-      "caller": {
-        "name": "RoomBook",
-        "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
-      },
-      "callee": {
-        "name": "SetSyncOtdWall",
-        "file": "Sources/AddOn/Roombook.cpp",
-        "line": 5194
-      },
-      "call_sites": [
-        {
-          "line": 681,
-          "column": 8
-        }
-      ]
-    },
-    {
-      "caller": {
-        "name": "RoomBook",
-        "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
-      },
-      "callee": {
-        "name": "WriteRoomMaterialData",
-        "file": "Sources/AddOn/Roombook.cpp",
-        "line": 469
+        "line": 193
       },
       "call_sites": [
         {
@@ -315,18 +265,72 @@
     },
     {
       "caller": {
+        "name": "RoomBook",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 637
+      },
+      "callee": {
+        "name": "RemoveUnusedFinishingElements",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 576
+      },
+      "call_sites": [
+        {
+          "line": 694,
+          "column": 8
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "RoomBook",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 637
+      },
+      "callee": {
+        "name": "SetSyncOtdWall",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 5341
+      },
+      "call_sites": [
+        {
+          "line": 707,
+          "column": 8
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "RoomBook",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 637
+      },
+      "callee": {
+        "name": "WriteRoomMaterialData",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 489
+      },
+      "call_sites": [
+        {
+          "line": 686,
+          "column": 8
+        }
+      ]
+    },
+    {
+      "caller": {
         "name": "ProcessRoomFinishes",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 495
+        "line": 517
       },
       "callee": {
         "name": "AdvanceProcessPhase",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 100
+        "line": 104
       },
       "call_sites": [
         {
-          "line": 513,
+          "line": 535,
           "column": 16
         }
       ]
@@ -335,16 +339,16 @@
       "caller": {
         "name": "ProcessRoomFinishes",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 495
+        "line": 517
       },
       "callee": {
         "name": "Floor_Create_All",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1940
+        "line": 1993
       },
       "call_sites": [
         {
-          "line": 527,
+          "line": 549,
           "column": 12
         }
       ]
@@ -353,16 +357,16 @@
       "caller": {
         "name": "ProcessRoomFinishes",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 495
+        "line": 517
       },
       "callee": {
         "name": "Param_SetToRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3015
+        "line": 3092
       },
       "call_sites": [
         {
-          "line": 523,
+          "line": 545,
           "column": 12
         }
       ]
@@ -371,16 +375,16 @@
       "caller": {
         "name": "ProcessRoomFinishes",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 495
+        "line": 517
       },
       "callee": {
         "name": "ProcessSlabFinishes",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 206
+        "line": 219
       },
       "call_sites": [
         {
-          "line": 530,
+          "line": 552,
           "column": 12
         }
       ]
@@ -389,16 +393,16 @@
       "caller": {
         "name": "ProcessRoomFinishes",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 495
+        "line": 517
       },
       "callee": {
         "name": "ProcessWallFinishes",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 285
+        "line": 302
       },
       "call_sites": [
         {
-          "line": 541,
+          "line": 563,
           "column": 12
         }
       ]
@@ -407,16 +411,16 @@
       "caller": {
         "name": "Opening_Add_One",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1720
+        "line": 1767
       },
       "callee": {
         "name": "CalculateOpeningForWall",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1685
+        "line": 1731
       },
       "call_sites": [
         {
-          "line": 1728,
+          "line": 1775,
           "column": 12
         }
       ]
@@ -425,16 +429,16 @@
       "caller": {
         "name": "OtdWall_Delim_One",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3818
+        "line": 3928
       },
       "callee": {
         "name": "TrimOpeningsToWallHeight",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3768
+        "line": 3874
       },
       "call_sites": [
         {
-          "line": 3839,
+          "line": 3949,
           "column": 8
         }
       ]
@@ -443,24 +447,24 @@
       "caller": {
         "name": "OtdWall_Delim_All",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3663
+        "line": 3767
       },
       "callee": {
         "name": "GetWallFinishBandType",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3615
+        "line": 3716
       },
       "call_sites": [
         {
-          "line": 3686,
+          "line": 3790,
           "column": 19
         },
         {
-          "line": 3704,
+          "line": 3808,
           "column": 19
         },
         {
-          "line": 3726,
+          "line": 3830,
           "column": 19
         }
       ]
@@ -469,16 +473,16 @@
       "caller": {
         "name": "OtdWall_Delim_All",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3663
+        "line": 3767
       },
       "callee": {
         "name": "GetFallbackWallFinishType",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3651
+        "line": 3753
       },
       "call_sites": [
         {
-          "line": 3746,
+          "line": 3850,
           "column": 19
         }
       ]
@@ -487,16 +491,16 @@
       "caller": {
         "name": "OtdWall_Delim_One",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3818
+        "line": 3928
       },
       "callee": {
         "name": "CalculateWallHeightIntersection",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3795
+        "line": 3903
       },
       "call_sites": [
         {
-          "line": 3833,
+          "line": 3943,
           "column": 13
         }
       ]
@@ -505,16 +509,16 @@
       "caller": {
         "name": "SetMaterialByType",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3958
+        "line": 4071
       },
       "callee": {
         "name": "SelectWallFinishMaterial",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3850
+        "line": 3962
       },
       "call_sites": [
         {
-          "line": 3968,
+          "line": 4081,
           "column": 8
         }
       ]
@@ -523,24 +527,24 @@
       "caller": {
         "name": "OpeningReveals_Create_One",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3504
+        "line": 3604
       },
       "callee": {
         "name": "InitializeOpeningRevealWall",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3440
+        "line": 3534
       },
       "call_sites": [
         {
-          "line": 3540,
+          "line": 3640,
           "column": 12
         },
         {
-          "line": 3562,
+          "line": 3662,
           "column": 12
         },
         {
-          "line": 3584,
+          "line": 3684,
           "column": 12
         }
       ]
@@ -549,16 +553,16 @@
       "caller": {
         "name": "OpeningReveals_Create_One",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3504
+        "line": 3604
       },
       "callee": {
         "name": "CalculateOpeningRevealHeight",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3464
+        "line": 3560
       },
       "call_sites": [
         {
-          "line": 3527,
+          "line": 3627,
           "column": 13
         }
       ]
@@ -567,16 +571,16 @@
       "caller": {
         "name": "BuildMaterialSummaryForRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 376
+        "line": 395
       },
       "callee": {
         "name": "AdvanceProcessPhase",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 100
+        "line": 104
       },
       "call_sites": [
         {
-          "line": 392,
+          "line": 411,
           "column": 16
         }
       ]
@@ -585,16 +589,16 @@
       "caller": {
         "name": "BuildMaterialSummaryForRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 376
+        "line": 395
       },
       "callee": {
         "name": "OtdData_CalcForRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1034
+        "line": 1070
       },
       "call_sites": [
         {
-          "line": 460,
+          "line": 479,
           "column": 24
         }
       ]
@@ -603,16 +607,16 @@
       "caller": {
         "name": "BuildMaterialSummaryForRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 376
+        "line": 395
       },
       "callee": {
         "name": "OtdData_GetColumnfFormat",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 892
+        "line": 924
       },
       "call_sites": [
         {
-          "line": 456,
+          "line": 475,
           "column": 28
         }
       ]
@@ -621,16 +625,16 @@
       "caller": {
         "name": "OpeningReveals_Create_One",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3504
+        "line": 3604
       },
       "callee": {
         "name": "CalculateOpeningRevealCoordinates",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3478
+        "line": 3576
       },
       "call_sites": [
         {
-          "line": 3535,
+          "line": 3635,
           "column": 13
         }
       ]
@@ -639,24 +643,24 @@
       "caller": {
         "name": "OpeningReveals_Create_One",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3504
+        "line": 3604
       },
       "callee": {
         "name": "OtdWall_Delim_All",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3663
+        "line": 3767
       },
       "call_sites": [
         {
-          "line": 3543,
+          "line": 3643,
           "column": 12
         },
         {
-          "line": 3565,
+          "line": 3665,
           "column": 12
         },
         {
-          "line": 3594,
+          "line": 3694,
           "column": 12
         }
       ]
@@ -665,16 +669,16 @@
       "caller": {
         "name": "ProcessWallFinishes",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 285
+        "line": 302
       },
       "callee": {
         "name": "OpeningReveals_Create_One",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3504
+        "line": 3604
       },
       "call_sites": [
         {
-          "line": 326,
+          "line": 343,
           "column": 16
         }
       ]
@@ -683,36 +687,36 @@
       "caller": {
         "name": "CollectMaterialAreasForRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 984
+        "line": 1018
       },
       "callee": {
         "name": "OtdData_AddValueToDict",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1229
+        "line": 1270
       },
       "call_sites": [
         {
-          "line": 998,
+          "line": 1032,
           "column": 24
         },
         {
-          "line": 1001,
+          "line": 1035,
           "column": 28
         },
         {
-          "line": 1005,
+          "line": 1039,
           "column": 20
         },
         {
-          "line": 1021,
+          "line": 1055,
           "column": 24
         },
         {
-          "line": 1024,
+          "line": 1058,
           "column": 28
         },
         {
-          "line": 1028,
+          "line": 1062,
           "column": 20
         }
       ]
@@ -721,16 +725,16 @@
       "caller": {
         "name": "CollectMaterialAreasForRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 984
+        "line": 1018
       },
       "callee": {
         "name": "OtdWall_GetArea",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1258
+        "line": 1299
       },
       "call_sites": [
         {
-          "line": 991,
+          "line": 1025,
           "column": 32
         }
       ]
@@ -739,16 +743,16 @@
       "caller": {
         "name": "OtdData_CalcForRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1034
+        "line": 1070
       },
       "callee": {
         "name": "CollectMaterialAreasForRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 984
+        "line": 1018
       },
       "call_sites": [
         {
-          "line": 1040,
+          "line": 1076,
           "column": 8
         }
       ]
@@ -757,16 +761,16 @@
       "caller": {
         "name": "OtdData_CalcForRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1034
+        "line": 1070
       },
       "callee": {
         "name": "OtdData_AddValueToDict",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1229
+        "line": 1270
       },
       "call_sites": [
         {
-          "line": 1076,
+          "line": 1112,
           "column": 16
         }
       ]
@@ -775,16 +779,16 @@
       "caller": {
         "name": "OtdData_CalcForRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1034
+        "line": 1070
       },
       "callee": {
         "name": "OtdData_WriteToRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1113
+        "line": 1152
       },
       "call_sites": [
         {
-          "line": 1052,
+          "line": 1088,
           "column": 8
         }
       ]
@@ -793,16 +797,16 @@
       "caller": {
         "name": "OtdData_WriteToRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1113
+        "line": 1152
       },
       "callee": {
         "name": "CollectAreasForFinishTypes",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1081
+        "line": 1118
       },
       "call_sites": [
         {
-          "line": 1158,
+          "line": 1197,
           "column": 12
         }
       ]
@@ -811,16 +815,16 @@
       "caller": {
         "name": "WriteRoomMaterialData",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 469
+        "line": 489
       },
       "callee": {
         "name": "OtdData_WriteToRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1113
+        "line": 1152
       },
       "call_sites": [
         {
-          "line": 490,
+          "line": 510,
           "column": 12
         }
       ]
@@ -829,16 +833,16 @@
       "caller": {
         "name": "BuildElementReadIndex",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 111
+        "line": 117
       },
       "callee": {
         "name": "ClearZoneGUID",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3402
+        "line": 3494
       },
       "call_sites": [
         {
-          "line": 123,
+          "line": 129,
           "column": 8
         }
       ]
@@ -847,16 +851,16 @@
       "caller": {
         "name": "Param_SetToRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3015
+        "line": 3092
       },
       "callee": {
         "name": "NormalizeRoomFinishHeights",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2686
+        "line": 2753
       },
       "call_sites": [
         {
-          "line": 3030,
+          "line": 3107,
           "column": 8
         }
       ]
@@ -865,16 +869,16 @@
       "caller": {
         "name": "Param_SetToRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3015
+        "line": 3092
       },
       "callee": {
         "name": "Param_Property_Read",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2623
+        "line": 2687
       },
       "call_sites": [
         {
-          "line": 3020,
+          "line": 3097,
           "column": 13
         }
       ]
@@ -883,16 +887,16 @@
       "caller": {
         "name": "Param_SetToWindows",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3219
+        "line": 3305
       },
       "callee": {
         "name": "Param_Property_Read",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2623
+        "line": 2687
       },
       "call_sites": [
         {
-          "line": 3231,
+          "line": 3317,
           "column": 13
         }
       ]
@@ -906,7 +910,7 @@
       "callee": {
         "name": "RoomBook",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 611
+        "line": 637
       },
       "call_sites": [
         {
@@ -924,7 +928,7 @@
       "callee": {
         "name": "ClearZoneGUID",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3402
+        "line": 3494
       },
       "call_sites": [
         {
@@ -950,7 +954,7 @@
       "callee": {
         "name": "OtdData_CalcForRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1034
+        "line": 1070
       },
       "call_sites": [
         {
@@ -968,7 +972,7 @@
       "callee": {
         "name": "Param_SetToRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3015
+        "line": 3092
       },
       "call_sites": [
         {
@@ -1018,7 +1022,7 @@
       "callee": {
         "name": "Param_Property_Read",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2623
+        "line": 2687
       },
       "call_sites": [
         {
@@ -1040,7 +1044,7 @@
       "callee": {
         "name": "OtdData_WriteToRoom",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 1113
+        "line": 1152
       },
       "call_sites": [
         {
@@ -8492,7 +8496,7 @@
       "callee": {
         "name": "Param_SetToWindows",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3219
+        "line": 3305
       },
       "call_sites": [
         {
@@ -8526,7 +8530,7 @@
       "callee": {
         "name": "Param_Property_Read",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2623
+        "line": 2687
       },
       "call_sites": [
         {
@@ -8539,16 +8543,16 @@
       "caller": {
         "name": "Param_Property_FindInParams",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2614
+        "line": 2676
       },
       "callee": {
         "name": "ResolveParameterRawNames",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2570
+        "line": 2631
       },
       "call_sites": [
         {
-          "line": 2620,
+          "line": 2682,
           "column": 8
         }
       ]
@@ -8557,16 +8561,16 @@
       "caller": {
         "name": "Param_GetForRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2332
+        "line": 2391
       },
       "callee": {
         "name": "Param_Property_FindInParams",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2614
+        "line": 2676
       },
       "call_sites": [
         {
-          "line": 2566,
+          "line": 2625,
           "column": 8
         }
       ]
@@ -8575,16 +8579,16 @@
       "caller": {
         "name": "Param_GetForWindowParams",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2166
+        "line": 2223
       },
       "callee": {
         "name": "Param_Property_FindInParams",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2614
+        "line": 2676
       },
       "call_sites": [
         {
-          "line": 2181,
+          "line": 2238,
           "column": 8
         }
       ]
@@ -8598,7 +8602,7 @@
       "callee": {
         "name": "Param_Property_FindInParams",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2614
+        "line": 2676
       },
       "call_sites": [
         {
@@ -8636,7 +8640,7 @@
       "callee": {
         "name": "Param_GetForWindowParams",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2166
+        "line": 2223
       },
       "call_sites": [
         {
@@ -8654,7 +8658,7 @@
       "callee": {
         "name": "Param_Property_Read",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2623
+        "line": 2687
       },
       "call_sites": [
         {
@@ -8683,16 +8687,16 @@
       "caller": {
         "name": "Param_SetToRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3015
+        "line": 3092
       },
       "callee": {
         "name": "ApplyRoomCreationFlags",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2706
+        "line": 2775
       },
       "call_sites": [
         {
-          "line": 3029,
+          "line": 3106,
           "column": 8
         }
       ]
@@ -8701,16 +8705,16 @@
       "caller": {
         "name": "Param_SetToRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3015
+        "line": 3092
       },
       "callee": {
         "name": "ApplyRoomMaterialRawNames",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2765
+        "line": 2835
       },
       "call_sites": [
         {
-          "line": 3028,
+          "line": 3105,
           "column": 8
         }
       ]
@@ -8724,7 +8728,7 @@
       "callee": {
         "name": "Param_SetToRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3015
+        "line": 3092
       },
       "call_sites": [
         {
@@ -8750,7 +8754,7 @@
       "callee": {
         "name": "Param_Property_Read",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2623
+        "line": 2687
       },
       "call_sites": [
         {
@@ -8763,16 +8767,16 @@
       "caller": {
         "name": "Param_SetToRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3015
+        "line": 3092
       },
       "callee": {
         "name": "ApplyRoomHeightParameters",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2855
+        "line": 2926
       },
       "call_sites": [
         {
-          "line": 3027,
+          "line": 3104,
           "column": 8
         }
       ]
@@ -8781,16 +8785,16 @@
       "caller": {
         "name": "Param_SetToRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3015
+        "line": 3092
       },
       "callee": {
         "name": "ApplyRoomFinishTypeParameters",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2894
+        "line": 2967
       },
       "call_sites": [
         {
-          "line": 3024,
+          "line": 3101,
           "column": 8
         }
       ]
@@ -8799,16 +8803,16 @@
       "caller": {
         "name": "Param_SetToRooms",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3015
+        "line": 3092
       },
       "callee": {
         "name": "ApplyRoomMaterialParameters",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2953
+        "line": 3028
       },
       "call_sites": [
         {
-          "line": 3026,
+          "line": 3103,
           "column": 8
         }
       ]
@@ -8817,32 +8821,32 @@
       "caller": {
         "name": "ApplyRoomMaterialParameters",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2953
+        "line": 3028
       },
       "callee": {
         "name": "Param_Material_Get",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 2660
+        "line": 2725
       },
       "call_sites": [
         {
-          "line": 2962,
+          "line": 3037,
           "column": 16
         },
         {
-          "line": 2973,
+          "line": 3048,
           "column": 16
         },
         {
-          "line": 2984,
+          "line": 3059,
           "column": 16
         },
         {
-          "line": 2995,
+          "line": 3070,
           "column": 16
         },
         {
-          "line": 3006,
+          "line": 3081,
           "column": 16
         }
       ]
@@ -8851,16 +8855,16 @@
       "caller": {
         "name": "Param_SetComposite",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3123
+        "line": 3206
       },
       "callee": {
         "name": "CollectBaseCompositeLayers",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3099
+        "line": 3180
       },
       "call_sites": [
         {
-          "line": 3133,
+          "line": 3216,
           "column": 8
         }
       ]
@@ -8874,7 +8878,7 @@
       "callee": {
         "name": "Param_SetComposite",
         "file": "Sources/AddOn/Roombook.cpp",
-        "line": 3123
+        "line": 3206
       },
       "call_sites": [
         {

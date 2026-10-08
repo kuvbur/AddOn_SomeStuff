@@ -20,6 +20,7 @@ namespace Roombook
 
 {
 #ifndef ServerMainVers_2400
+    // В AC22/AC23 сообщает, что расчёт RoomBook недоступен.
     void RoomBook () { SafeWriteReport ("Function not work in AC22 and AC23", true); }
 #else
     static const API_ElemTypeID typeinzone[] = {
@@ -31,6 +32,8 @@ namespace Roombook
 
     GS::Int32 nPhase = 1;
 
+    // Добавляет зоны из выделения, прошедшие фильтр доступности; если список пуст, запрашивает все зоны с тем же
+    // фильтром. Возвращает false при ошибке общего запроса или отсутствии зон.
     static bool GetTargetZones (GS::Array<API_Guid> &zones) {
         GSErrCode err = NoError;
         API_SelectionInfo selectionInfo = {};
@@ -88,6 +91,7 @@ namespace Roombook
         GS::HashTable<API_Guid, GS::Array<API_Guid>> slabsinzone;
     };
 
+    // Находит классификации отделки, читает уровни этажей и собирает перекрытия, пересекающие заданные зоны.
     static void PrepareRoomProcessingContext (RoomProcessingContext &context, const GS::Array<API_Guid> &zones) {
         Class_FindFinClass (context.finclass, context.finclassguids);
         context.storyLevels = GetStories ();
@@ -109,6 +113,8 @@ namespace Roombook
     #endif
     }
 
+    // Собирает данные комнат и связи с базовыми элементами, добавляет зоны в список чтения и очищает временные GUID
+    // зон. Прерывается с false при отмене очередной фазы.
     static bool BuildElementReadIndex (const GS::Array<API_Guid> &zones,
                                        RoomProcessingContext &context,
                                        GS::UniString &funcname) {
@@ -125,6 +131,8 @@ namespace Roombook
         return true;
     }
 
+    // Обрабатывает собранные проёмы, стены, колонны и перекрытия, пропуская элементы с классификацией отделки.
+    // Заполняет данные комнат и списки чтения; при отмене возвращает false.
     static bool ProcessElementsForRoomData (RoomProcessingContext &context, GS::UniString &funcname) {
         for (const API_ElemTypeID &typeelem : typeinzone) {
             if (auto *elems = context.elementToRead.GetPtr (typeelem)) {
@@ -178,8 +186,11 @@ namespace Roombook
         ReadParams roomParams = Param_GetForRooms ();
     };
 
+    // Создаёт отдельные шаблоны параметров окон и комнат для последующего чтения.
     static ReadParamsForRoomBook PrepareReadParams () { return {}; }
 
+    // Формирует задания чтения параметров для зон, окон и базовых конструкций из собранных GUID.
+    // Набор параметров базовой конструкции также сохраняет для поиска избранного.
     static void ReadElementParameters (RoomProcessingContext &context, ReadParamsForRoomBook &readParams) {
         ParamDictValue paramDict;
         for (const API_ElemTypeID &typeelem : typeinzone) {
@@ -204,6 +215,8 @@ namespace Roombook
         }
     }
 
+    // Заполняет состав и избранное допустимых полов и потолков и назначает им тип помещения.
+    // При наличии привязок забирает подходящий существующий GUID из словаря зоны и базового элемента.
     static void ProcessSlabFinishes (OtdRoom &otd,
                                      const API_Guid &zoneGuid,
                                      ParamDictElement &paramToRead,
@@ -267,6 +280,8 @@ namespace Roombook
         } // Обработка перекрытий
     }
 
+    // Подбирает избранное для допустимых стен; прочитанный непустой состав избранного добавляет к базовому составу и
+    // учитывает в материале.
     static void ApplyFavoriteAndMaterialData (GS::Array<OtdWall> &opw,
                                               ParamDictValue &paramDict_favorite,
                                               ParamValue &param_composite,
@@ -283,6 +298,8 @@ namespace Roombook
         } // Назначение избранного
     }
 
+    // Читает состав стен, рассчитывает откосы проёмов и разбивает стены по высотным участкам помещения.
+    // Назначает избранное и заменяет исходный массив стен рассчитанными участками.
     static void ProcessWallFinishes (OtdRoom &otd,
                                      ParamDictElement &paramToRead,
                                      ParamValue &param_composite,
@@ -374,6 +391,8 @@ namespace Roombook
         GS::Array<API_Guid> zones_bytype;
     };
 
+    // Собирает зоны с включённым созданием отделки и рассчитывает площади для комнат с нужными свойствами результата.
+    // Читает форматы столбцов, накапливает сводку и возвращает false при отмене.
     static bool BuildMaterialSummaryForRooms (OtdRooms &roomsinfo,
                                               ParamDictElement &paramToRead,
                                               GS::Array<API_Guid> &zones,
@@ -467,6 +486,7 @@ namespace Roombook
         return true;
     }
 
+    // Подготавливает значения свойств зон по общей сводке материалов для их tip_otd, используя имена rawname_bytype.
     static void WriteRoomMaterialData (OtdRooms &roomsinfo, ParamDictElement &paramToRead, MaterialSummary &summary) {
         // Запись отделки с разбивкой
         for (const API_Guid &subguid : summary.zones_bytype) {
@@ -493,6 +513,8 @@ namespace Roombook
         }
     }
 
+    // Для комнат с прочитанными параметрами рассчитывает полы, потолки, стены и откосы, пропуская недопустимые данные.
+    // Использует отдельную копию параметров каждой комнаты; при отмене возвращает false.
     static bool ProcessRoomFinishes (RoomProcessingContext &context,
                                      ReadParamsForRoomBook &readParams,
                                      ParamDictCompositeElement &paramCompositeToRead,
@@ -551,6 +573,7 @@ namespace Roombook
     }
 
     // -----------------------------------------------------------------------------
+    // Собирает оставшиеся GUID существующей отделки в deletelist; само удаление здесь не выполняется.
     static void RemoveUnusedFinishingElements (GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,
                                                GS::Array<API_Guid> &deletelist) {
         // Неиспользованные существующие элементы удаляем
@@ -609,6 +632,9 @@ namespace Roombook
     // 7. Extract RemoveUnusedFinishingElements() and PrepareElementsForUpdate() from the cleanup block.
     // 8. After each extraction, keep behavior identical and verify the build.
     //    The goal is to make RoomBook() a thin orchestrator with small single-purpose helpers.
+    // Собирает данные зон и конструкций, рассчитывает отделку и подготавливает результаты по материалам.
+    // Проверяет классификации и доступность существующей отделки, затем вызывает отрисовку и запись связей; при ошибках
+    // или отмене выходит.
     void RoomBook () {
         clock_t start, finish;
         double duration;
@@ -687,6 +713,8 @@ namespace Roombook
         msg_rep ("RoomBook", time, NoError, APINULLGuid);
     }
 
+    // Находит существующую отделку по Sync_GUID zone и группирует её по зоне, основанию и типу.
+    // Одновременно собирает GUID для проверки резервирования существующих элементов.
     GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_Guid> &zones,
                                                                const UnicGuid &finclassguids,
                                                                const ClassificationFunc::ClassificationDict &finclass,
@@ -805,6 +833,8 @@ namespace Roombook
         return exsistot_byzone;
     }
 
+    // Группирует известную отделку по GUID базового элемента и типу, пропуская неизвестные дочерние GUID.
+    // При добавлении элемента устанавливает has_base_element, не сбрасывая прежнее значение.
     UnicGuidByBase BuildOtdByParent (GS::HashTable<API_Guid, TypeOtd> &otd_elements,
                                      UnicGuidByGuid &parentdict,
                                      bool &has_base_element) {
@@ -846,6 +876,8 @@ namespace Roombook
         return exsistot_byparent;
     }
 
+    // Читает связи отделки с основаниями и строит индекс по GUID основания и типу.
+    // При отказе чтения помещает известную отделку под APINULLGuid без установки has_base_element.
     UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd> &otd_elements, bool &has_base_element) {
         int errcode = 0;
         UnicGuidByBase exsistot_byparent;
@@ -982,6 +1014,8 @@ namespace Roombook
         columnFormat.Add (rawname, c);
     }
 
+    // Накапливает площади материалов валидных стен и перекрытий комнаты в словаре по типам отделки.
+    // Имена слоёв разделяет по точке с запятой; переданный словарь не очищает.
     static void CollectMaterialAreasForRoom (const OtdRoom &otd, OtdMaterialAreaDictByType &dct) {
         // Разбивка по отделочным слоям, вычисление площадей и добавление их в
         // словарь по типам отделки
@@ -1032,6 +1066,8 @@ namespace Roombook
         }
     }
 
+    // Собирает площади материалов комнаты, подготавливает её свойства результата и добавляет площади в сводку по
+    // tip_otd.
     void OtdData_CalcForRoom (const ColumnFormatDict &columnFormat,
                               const OtdRoom &otd,
                               ParamDictElement &paramToWrite,
@@ -1079,6 +1115,7 @@ namespace Roombook
         }
     }
 
+    // Для одного типа копирует его площади материалов; для нескольких суммирует найденные площади в переданный словарь.
     static void CollectAreasForFinishTypes (const GS::Array<TypeOtd> &typeotd,
                                             const OtdMaterialAreaDictByType &dct,
                                             OtdMaterialAreaDict &dcta) {
@@ -1111,6 +1148,8 @@ namespace Roombook
         }
     }
 
+    // Объединяет типы отделки с одинаковым именем свойства, сортирует материалы и форматирует площади в текстовую
+    // таблицу. Добавляет в paramToWrite только изменённые значения; пустой результат заменяет на «-».
     void OtdData_WriteToRoom (const ColumnFormatDict &columnFormat,
                               const API_Guid &zone_guid,
                               ParamDictElement &paramToWrite,
@@ -1227,6 +1266,8 @@ namespace Roombook
         }
     }
 
+    // Добавляет площадь к материалу заданного типа отделки, создавая отсутствующие словари.
+    // Пропускает площади меньше 0.000001 и имена, содержащие IGNORENAME.
     void OtdData_AddValueToDict (OtdMaterialAreaDictByType &dct,
                                  const TypeOtd &type,
                                  const GS::UniString &mat,
@@ -1289,6 +1330,9 @@ namespace Roombook
         return area;
     }
 
+    // Читает геометрию и связи зоны, заполняет данные комнаты и индекс связанных конструкций и проёмов.
+    // Дополнительно ищет стены по серединам рёбер; возвращает признак найденных связей или стен, при ошибках чтения —
+    // false.
     bool CollectRoomInfo (const Stories &storyLevels,
                           const API_Guid &zoneGuid,
                           OtdRoom &roominfo,
@@ -1683,6 +1727,8 @@ namespace Roombook
         }
     }
 
+    // Обрезает проём границами участка стены и задаёт его локальное положение, отметку низа и сторону откоса.
+    // Возвращает false, если ширина пересечения неположительна.
     static bool CalculateOpeningForWall (const OtdOpening &op,
                                          bool is_fliped,
                                          double zBottom,
@@ -1718,6 +1764,7 @@ namespace Roombook
         return false;
     }
 
+    // Добавляет в стену проём, рассчитанный для заданного участка, только при положительной ширине пересечения.
     void Opening_Add_One (const OtdOpening &op,
                           bool is_fliped,
                           double zBottom,
@@ -1730,6 +1777,8 @@ namespace Roombook
             wallotd.openings.Push (std::move (opinwall));
     }
 
+    // Заполняет геометрию и базовые данные участка отделочной стены с типом Wall_Main.
+    // Возвращает false, если длина участка меньше min_dim.
     bool OtdWall_Add_One (const API_Guid &wallguid,
                           const Sector &walledge,
                           bool is_fliped,
@@ -1897,6 +1946,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Обработка полов и потолков
     // -----------------------------------------------------------------------------
+    // По отметкам относит перекрытие к полу или потолку валидных зон; при совпадении приоритет у пола.
+    // Добавляет перекрытие в список чтения параметров, если обработана хотя бы одна валидная зона.
     void Floor_FindInOneRoom (const Stories &storyLevels,
                               API_Guid &elGuid,
                               const GS::Array<API_Guid> &zoneGuids,
@@ -1938,6 +1989,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Обработка потолков и полов в зоне
     // -----------------------------------------------------------------------------
+    // Готовит отделку включённых пола и потолка по перекрытиям либо по полигону зоны, если это разрешено.
+    // После обработки очищает исходный полигон комнаты.
     void Floor_Create_All (const Stories &storyLevels, OtdRoom &roominfo) {
         if (!roominfo.has_floor && !roominfo.has_ceil) {
             roominfo.poly.poly.Clear ();
@@ -1991,6 +2044,8 @@ namespace Roombook
         roominfo.poly.poly.Clear ();
     }
 
+    // Обрабатывает перекрытия по убыванию отметки выбранной грани и сохраняет наибольшие пересечения с комнатой.
+    // Добавляет боковую отделку перепадов и вычитает обработанные участки; остаток сохраняет, если разрешено.
     void Floor_Create_One (const Stories &storyLevels,
                            short floorInd,
                            OtdSlab &poly,
@@ -2150,6 +2205,7 @@ namespace Roombook
         }
     }
 
+    // Добавляет все rawnames из списка параметров в словарь значений для чтения.
     void Param_ToParamDict (ParamDictValue &paramDict, ReadParams &zoneparams) {
         if (zoneparams.IsEmpty ())
             return;
@@ -2164,6 +2220,7 @@ namespace Roombook
         }
     }
 
+    // Готовит параметры толщины коробки и отступа окна gs_frame_thk и gs_wido_sill для чтения.
     ReadParams Param_GetForWindowParams () {
         ReadParams zoneparams;
         ReadParam zoneparam;
@@ -2330,6 +2387,8 @@ namespace Roombook
         ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param_composite, paramDict);
     }
 
+    // Готовит варианты имён параметров отделки зоны, свойств для записи результатов и флагов создания.
+    // Разрешает описания свойств в rawnames через кеш определений.
     ReadParams Param_GetForRooms () {
         ReadParams zoneparams;
         ReadParam zoneparam;
@@ -2568,6 +2627,8 @@ namespace Roombook
         return zoneparams;
     }
 
+    // Сохраняет имена с PVALPREFIX, остальные заменяет именами свойств, найденных по описанию.
+    // Для параметров rawname записывает найденное имя как готовое значение и прекращает поиск.
     static void ResolveParameterRawNames (ReadParams &zoneparams, ParamDictValue &propertyParams) {
         GS::Array<GS::UniString> valid_rawnames; // список проверенных имён параметров
         for (auto &p : zoneparams) {
@@ -2612,6 +2673,7 @@ namespace Roombook
         }
     }
 
+    // Разрешает имена параметров через кеш свойств, если список непуст и определения прочитаны.
     void Param_Property_FindInParams (ReadParams &zoneparams) {
         if (zoneparams.IsEmpty ())
             return;
@@ -2621,6 +2683,8 @@ namespace Roombook
         ResolveParameterRawNames (zoneparams, propertyParams);
     }
 
+    // Заполняет непрочитанные параметры первым валидным значением из их rawnames и сообщает, найдено ли такое значение.
+    // Отбрасывает выключенные vots/vots_fill; предполагает наличие словаря элемента в paramToRead.
     bool Param_Property_Read (const API_Guid &elGuid, ParamDictElement &paramToRead, ReadParams &zoneparams) {
         if (zoneparams.IsEmpty ())
             return false;
@@ -2658,6 +2722,7 @@ namespace Roombook
         return flag;
     }
 
+    // Для строкового значения получает индекс покрытия по имени, используя и пополняя material_dict.
     void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32> &material_dict, ParamValueData &val) {
         if (val.type != API_PropertyStringValueType)
             return;
@@ -2684,6 +2749,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Запись прочитанных свойств в зону
     // -----------------------------------------------------------------------------
+    // Пересчитывает высоты основной и верхней отделки с учётом нижней полосы и округляет высоты до миллиметров.
+    // При высоте комнаты меньше 0.0001 снимает признак валидности.
     static void NormalizeRoomFinishHeights (OtdRoom &roominfo) {
         // Заполнение непрочитанных
         // Высоты
@@ -2704,6 +2771,8 @@ namespace Roombook
         roominfo.height_up = std::round (roominfo.height_up * 1000) / 1000;
     }
 
+    // Переносит валидные флаги создания элементов в комнату.
+    // Найденный create_all_elements заменяет все частные флаги, даже если его значение false.
     static void ApplyRoomCreationFlags (const ReadParams &readparams, OtdRoom &roominfo) {
         GS::UniString param_name;
         ParamValueData val;
@@ -2763,6 +2832,7 @@ namespace Roombook
         }
     }
 
+    // Переносит валидные имена свойств для записи общих результатов и результатов по типам в материалы комнаты.
     static void ApplyRoomMaterialRawNames (const ReadParams &readparams, OtdRoom &roominfo) {
         GS::UniString param_name;
         ParamValueData val;
@@ -2853,6 +2923,7 @@ namespace Roombook
         }
     }
 
+    // Переносит высоты нижней и основной отделки; при отсутствии height_down использует параметры химеры.
     static void ApplyRoomHeightParameters (const ReadParams &readparams, OtdRoom &roominfo) {
         GS::UniString param_name;
         ParamValueData val;
@@ -2892,6 +2963,8 @@ namespace Roombook
         }
     }
 
+    // Переносит типы отделки и признаки наличия пола и потолка.
+    // Флаги отделки только по плитам применяет лишь при включённом соответствующем виде отделки.
     static void ApplyRoomFinishTypeParameters (const ReadParams &readparams, OtdRoom &roominfo) {
         GS::UniString param_name;
         ParamValueData val;
@@ -2951,6 +3024,8 @@ namespace Roombook
         }
     }
 
+    // Переносит валидные материалы колонн, нижней, основной, верхней отделки и потолка в комнату.
+    // Разрешает имена покрытий в индексы и добавляет префикс 0&#& к строковым обозначениям.
     static void ApplyRoomMaterialParameters (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
                                              const ReadParams &readparams,
                                              OtdRoom &roominfo) {
@@ -3013,6 +3088,8 @@ namespace Roombook
         }
     }
 
+    // Читает параметры зоны, применяет типы, материалы, высоты, имена результатов и флаги создания.
+    // При отсутствии прочитанных значений сообщает об ошибке; иначе нормализует высоты отделки.
     void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
                            OtdRoom &roominfo,
                            ParamDictElement &paramToRead,
@@ -3034,6 +3111,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Запись прочитанных свойств в отделочные стены
     // -----------------------------------------------------------------------------
+    // Проверяет доступность состава и флаги базового элемента, затем подготавливает слои отделки и имя избранного.
+    // Возвращает false только при валидном выключенном флаге element_onoff; отсутствие данных даёт true.
     bool Param_SetToBase (const API_Guid &base_guid,
                           bool base_flipped,
                           GS::Array<ParamValueComposite> &otdComposite,
@@ -3097,6 +3176,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Запись прочитанных свойств в отделочные стены
     // -----------------------------------------------------------------------------
+    // Добавляет слои от выбранной стороны до первого слоя с точным типом APICWallComp_Core включительно.
+    // Уже накопленные слои не очищает; если ядра нет, добавляет весь состав.
     static void CollectBaseCompositeLayers (const ParamComposite &base_composite,
                                             bool base_flipped,
                                             Int32 ncomp,
@@ -3121,6 +3202,8 @@ namespace Roombook
         }
     }
 
+    // Разбирает метки l[1:], h и f в слоях выбранной стороны и добавляет результат к переданному составу.
+    // Собирает имя избранного; для последнего слоя с structype == -1 читает покрытие строительного материала.
     void Param_SetComposite (const ParamComposite &base_composite,
                              bool base_flipped,
                              GS::Array<ParamValueComposite> &otdcpmpoosite,
@@ -3217,6 +3300,9 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Задание прочитанных параметров для окон
     // -----------------------------------------------------------------------------
+    // После проверки словаря задаёт глубину по толщине стены, затем уточняет её по frame, sill и стороне откоса.
+    // При отсутствии словаря выходит без изменений; при отказе чтения или невалидных frame/sill оставляет толщину
+    // стены.
     void Param_SetToWindows (OtdOpening &op,
                              ParamDictElement &paramToRead,
                              ReadParams &readparams,
@@ -3270,8 +3356,12 @@ namespace Roombook
     // Получение полигона зоны (в том числе стен, колонн)
     // -----------------------------------------------------------------------------
     #ifdef ServerMainVers_2700
+    // Добавляет рёбра редукции в reducededges по типам rest, wall, column и gable; затем освобождает handles.
+    // При отсутствии reducededges или некорректных массивах выходит до освобождения handles.
     void RoomReductionPolyProc (const API_RoomReductionPolyType *roomRed)
     #else
+    // Добавляет рёбра редукции в reducededges по типам rest, wall, column и gable; затем освобождает handles.
+    // При отсутствии reducededges или некорректных массивах выходит до освобождения handles.
     static void __ACENV_CALL RoomRedProc (const API_RoomReductionPolyType *roomRed)
     #endif
     {
@@ -3328,6 +3418,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Получение очищенного полигона зоны, включая стены, колонны
     // -----------------------------------------------------------------------------
+    // Получает рёбра редукций зоны и оставляет рёбра стен, колонн и скатов, совпавшие с restedges редукции.
+    // В restedges возвращает исходные рёбра полигона с нулевым разделителем после каждого контура.
     void Edges_GetFromRoom (const API_ElementMemo &zonememo,
                             API_Element &zoneelement,
                             GS::Array<Sector> &walledges,
@@ -3438,6 +3530,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Создание стенок для откосов одного проёма
     // -----------------------------------------------------------------------------
+    // Заполняет геометрию стенки откоса и наследует основание, этаж, материал и состав от отделочной стены.
+    // Устанавливает тип основания API_WindowID, тип отделки Reveal_Main и заданный тип рисования.
     static void InitializeOpeningRevealWall (const OtdWall &otdw,
                                              OtdWall &wallotd,
                                              double height,
@@ -3462,6 +3556,8 @@ namespace Roombook
         wallotd.type = Reveal_Main;
     }
 
+    // Вычисляет вертикальное пересечение проёма со стеной и признак выхода проёма выше стены.
+    // Возвращает false, если высота пересечения меньше min_dim.
     static bool CalculateOpeningRevealHeight (
         const OtdWall &otdw, const OtdOpening &op, bool &is_upper_wall, double &zDown, double &height) {
         is_upper_wall = false; // Проём заканчивается выше стены, построение
@@ -3476,6 +3572,8 @@ namespace Roombook
         return true;
     }
 
+    // Вычисляет концы боковых откосов по положению и ширине проёма и заданному перпендикуляру стены.
+    // При нулевой длине стены возвращает false.
     static bool CalculateOpeningRevealCoordinates (const OtdWall &otdw,
                                                    const OtdOpening &op,
                                                    const Geometry::Vector2<double> &walldir_perp,
@@ -3502,6 +3600,8 @@ namespace Roombook
         return true;
     }
 
+    // Готовит боковые и, если проём не выходит выше стены, верхний откос, разбивая их по высотам отделки.
+    // Пропускает недостаточную глубину или высоту и нулевую геометрию; при подготовке откоса ставит has_reveal.
     void OpeningReveals_Create_One (GS::Array<OtdSlab> &otdslabs,
                                     const OtdWall &otdw,
                                     OtdOpening &op,
@@ -3613,6 +3713,7 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Разбивка созданных стен по высотам на основании информации из зоны
     // -----------------------------------------------------------------------------
+    // Преобразует тип высотной полосы в тип отделки с учётом основания и исходного типа пола или потолка.
     static TypeOtd GetWallFinishBandType (const OtdWall &otdw, TypeOtd type) {
         switch (type) {
         case Wall_Down:
@@ -3649,6 +3750,7 @@ namespace Roombook
         return type;
     }
 
+    // Выбирает резервный тип отделки по основанию; исходные типы потолка и пола имеют приоритет.
     static TypeOtd GetFallbackWallFinishType (const OtdWall &otdw, TypeOtd type) {
         if (otdw.base_type == API_ColumnID)
             type = Column;
@@ -3661,6 +3763,8 @@ namespace Roombook
         return type;
     }
 
+    // Подрезает стенку по нижней, основной и верхней полосам отделки с положительной высотой.
+    // Если ни одна полоса не добавлена, пробует подрезку по полной высоте комнаты.
     void OtdWall_Delim_All (GS::Array<OtdWall> &opw,
                             OtdWall &otdw,
                             double otd_zBottom,
@@ -3766,6 +3870,8 @@ namespace Roombook
     // Удаляет отверстия, не попадающие в диапазон
     // Подгоняет размер отверсий
     // -----------------------------------------------------------------------------
+    // Удаляет проёмы вне заданного диапазона и подрезает остальные по высоте с пересчётом lower.
+    // Сохраняет только проёмы с высотой и шириной больше min_dim.
     static void TrimOpeningsToWallHeight (
         OtdWall &localCopy, double zBottom, double height, double zDup, double zDown) {
         if (!localCopy.openings.IsEmpty ()) {
@@ -3793,6 +3899,8 @@ namespace Roombook
         }
     }
 
+    // Пересекает заданный высотный диапазон со стенкой и обновляет его нижнюю и верхнюю отметки.
+    // Возвращает false при отсутствии пересечения или недостаточной высоте.
     static bool CalculateWallHeightIntersection (
         const OtdWall &otdn, double &height, double &zBottom, double &zDup, double &zDown) {
         if (height < min_dim || is_equal (height, 0)) {
@@ -3816,6 +3924,8 @@ namespace Roombook
         return true;
     }
 
+    // Добавляет копию стенки, подрезанную по высотному диапазону, с подрезанными проёмами и выбранным материалом.
+    // При отсутствии допустимого пересечения возвращает false без добавления.
     bool OtdWall_Delim_One (const OtdWall &otdn,
                             GS::Array<OtdWall> &opw,
                             double height,
@@ -3848,6 +3958,8 @@ namespace Roombook
         return true;
     }
 
+    // Выбирает материал по типу отделки, используя резервные материалы при пустом smaterial.
+    // Уточняет тип по совпадению свойств записи; окончательный резерв — материал зоны.
     static void SelectWallFinishMaterial (TypeOtd &type,
                                           OtdMaterial &material,
                                           const OtdMaterial &om_main,
@@ -3956,6 +4068,7 @@ namespace Roombook
             material = om_zone;
     }
 
+    // Выбирает материал и уточняет тип стенки, учитывает состав основания и сохраняет итоговый материал.
     void SetMaterialByType (OtdWall &otdw,
                             OtdMaterial &om_main,
                             OtdMaterial &om_up,
@@ -3972,6 +4085,7 @@ namespace Roombook
         otdw.material = material;
     }
 
+    // Заменяет покрытие материала индексом и именем последнего слоя состава только при structype == -1.
     void SetMaterialFinish_ByComposite (OtdMaterial &material, GS::Array<ParamValueComposite> &base_composite) {
         // Проверим последний слой - а нужна ли вообще отделка?
         if (base_composite.IsEmpty ())
@@ -3983,6 +4097,8 @@ namespace Roombook
         material.material = (short)last.length;
     }
 
+    // Учитывает покрытие последнего слоя и добавляет его обозначение в состав с structype == -1.
+    // Метки fin_ignore и IGNORENAME запрещают добавление; при наличии @ извлекает обозначение между разделителями.
     void SetMaterialFinish (OtdMaterial &material, GS::Array<ParamValueComposite> &base_composite) {
         SetMaterialFinish_ByComposite (material, base_composite);
         ParamValueComposite p;
@@ -4012,6 +4128,8 @@ namespace Roombook
         base_composite.Push (p);
     }
 
+    // Ищет параллельный отрезок с хотя бы одним концом на другом отрезке и длиной больше min_dim.
+    // Найденный кандидат записывает в findedge; при отсутствии подходящего возвращает false.
     bool Edge_FindOnEdge (const Sector &edge, const GS::Array<Sector> &edges, Sector &findedge) {
         double dx;
         double dy;
@@ -4217,6 +4335,8 @@ namespace Roombook
                                     subelementByparent); // Привязка отделочной стены к базовой
     }
 
+    // Создаёт балку с координатами, размерами первого сегмента и материалом из edges; задаёт этаж и отметку.
+    // После успешного создания записывает GUID в edges.otd_guid, при ошибке создания сообщает о ней.
     void OtdBeam_Draw_Beam (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges) {
         GSErrCode err = NoError;
         API_Element beamelement = {};
@@ -4273,6 +4393,8 @@ namespace Roombook
         edges.otd_guid = beamelement.header.guid;
     }
 
+    // Обнуляет элемент и memo; использует избранное, если оно содержит балку, иначе получает настройки балки по
+    // умолчанию. При ошибке получения настроек освобождает memo и возвращает false.
     bool OtdBeam_GetDefult_Beam (const GS::UniString &favorite_name,
                                  API_Element &beamelement,
                                  API_ElementMemo &beammemo) {
@@ -4292,6 +4414,7 @@ namespace Roombook
         return true;
     }
 
+    // Ничего не делает: тело создания объекта закомментировано, edges.otd_guid не изменяется.
     void OtdBeam_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges) {
         // API_Element beamelement;
         // API_ElementMemo beammemo;
@@ -4303,6 +4426,9 @@ namespace Roombook
         // ACAPI_DisposeElemMemoHdls (&beammemo);
     }
 
+    // Обнуляет элемент и memo; возвращает объект из избранного либо получает настройки объекта по умолчанию.
+    // Только для настроек по умолчанию сбрасывает угол и автовидимость по этажам, включает параметры пера, линий и
+    // материалов объекта.
     bool OtdBeam_GetDefult_Object (const GS::UniString &favorite_name,
                                    API_Element &beamelement,
                                    API_ElementMemo &beammemo) {
@@ -4459,6 +4585,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Получение из избранного аксессуара стены для простроения
     // -----------------------------------------------------------------------------
+    // Обнуляет элемент и memo; возвращает объект из избранного либо получает настройки объекта по умолчанию.
+    // Только в ветке настроек по умолчанию задаёт угол, видимость и использование перьев, линий и материалов объекта.
     bool OtdWall_GetDefult_Object (const GS::UniString &favorite_name,
                                    API_Element &wallobjelement,
                                    API_ElementMemo &wallobjmemo) {
@@ -4541,6 +4669,9 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Получение из избранного стены для простроения
     // -----------------------------------------------------------------------------
+    // Возвращает стену из избранного, если её тип подходит; иначе получает настройки стены по умолчанию.
+    // В ветке настроек по умолчанию задаёт базовую структуру, толщину otd_thickness, внутреннюю линию привязки и
+    // zoneRel.
     bool OtdWall_GetDefult_Wall (const GS::UniString &favorite_name, API_Element &wallelement) {
         GSErrCode err = NoError;
         BNZeroMemory (&wallelement, sizeof (API_Element));
@@ -4682,6 +4813,9 @@ namespace Roombook
                                     subelementByparent); // Привязка отделочного перекрытия к базовому
     }
 
+    // Создаёт или изменяет перекрытие по полигону, отметке и материалу otdslab; пропускает площадь менее 0.0001.
+    // При изменении задаёт материалы и перпендикулярную подрезку рёбер; GUID записывает только при успехе и не обнуляет
+    // при ошибках.
     void Floor_Draw_Slab (const GS::UniString &favorite_name, const Stories &storyLevels, OtdSlab &otdslab) {
         GSErrCode err = NoError;
         if (otdslab.poly.CalcArea () < 0.0001)
@@ -4782,6 +4916,8 @@ namespace Roombook
         return;
     }
 
+    // Создаёт или обновляет объект пола/потолка, передавая контуры и параметры отделки в GDL.
+    // При отказе чтения существующего элемента, memo или записи обнуляет otd_guid; при успехе сохраняет GUID.
     void Floor_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdSlab &otdslab) {
         GSErrCode err = NoError;
         API_Element slabobjelement = {};
@@ -4927,6 +5063,9 @@ namespace Roombook
         }
     }
 
+    // Возвращает объект из избранного подходящего типа либо получает настройки объекта по умолчанию.
+    // Только для настроек по умолчанию сбрасывает угол и автовидимость по этажам, включает перья, линии и материалы
+    // объекта.
     bool Floor_GetDefult_Object (const GS::UniString &favorite_name,
                                  API_Element &slabobjelement,
                                  API_ElementMemo &slabobjmemo) {
@@ -4951,6 +5090,8 @@ namespace Roombook
         return true;
     }
 
+    // Возвращает перекрытие из избранного подходящего типа либо получает настройки перекрытия по умолчанию.
+    // Только для настроек по умолчанию задаёт нулевой offsetFromTop, связанные материалы и базовую структуру.
     bool Floor_GetDefult_Slab (const GS::UniString &favorite_name, API_Element &slabelement) {
         GSErrCode err = NoError;
         BNZeroMemory (&slabelement, sizeof (API_Element));
@@ -4989,6 +5130,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Назначение класса проёму
     // -----------------------------------------------------------------------------
+    // Для ненулевого GUID проёма выбирает класс NoSet, затем при его отсутствии класс Wall_Main.
+    // Вызывает добавление классификации только при ненулевом GUID выбранного класса.
     void Class_SetClass (const OtdOpening &op, const ClassificationFunc::ClassificationDict &finclass) {
         if (op.otd_guid == APINULLGuid)
             return;
@@ -5010,6 +5153,8 @@ namespace Roombook
             ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
     }
 
+    // Выбирает GUID класса по типу отделки; для откосов и нижней стены пробует также общий класс стен.
+    // Если подходящий класс не найден, возвращает класс all_class либо APINULLGuid.
     API_Guid Class_GetClassGuid (const TypeOtd &type, const ClassificationFunc::ClassificationDict &finclass) {
         switch (type) {
         case Column:
@@ -5057,6 +5202,8 @@ namespace Roombook
         return APINULLGuid;
     }
 
+    // Сопоставляет GUID с классами стен, нижней стены, потолка, пола, колонны и откосов в порядке проверок.
+    // Классы оконных и дверных откосов возвращают Reveal_Main; общий и неизвестный класс возвращают NoSet.
     TypeOtd Class_GetOtdTypeByClass (const API_Guid &classguid,
                                      const ClassificationFunc::ClassificationDict &finclass) {
 
@@ -5266,6 +5413,8 @@ namespace Roombook
         }
     }
 
+    // Ищет среди классификаций элемента первый GUID, присутствующий в finclassguids, записывает его в classguid и
+    // возвращает true. При ошибке чтения или отсутствии совпадения возвращает false, не меняя classguid.
     bool Class_IsElementFinClass (const API_Guid &elGuid, const UnicGuid &finclassguids, API_Guid &classguid) {
         GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
         if (ACAPI_Element_GetClassificationItems (elGuid, systemItemPairs) == NoError) {
@@ -5281,6 +5430,8 @@ namespace Roombook
         return false;
     }
 
+    // Добавляет GUID потомка в массив по типу и GUID родителя, создавая отсутствующие записи; нулевые GUID пропускает.
+    // Повторные GUID не проверяет и не удаляет.
     void Param_AddUnicElementByType (const API_Guid &parentguid,
                                      const API_Guid &guid,
                                      API_ElemTypeID elemtype,
@@ -5309,6 +5460,7 @@ namespace Roombook
         }
     }
 
+    // Добавляет ненулевой GUID в массив заданного типа, создавая массив при отсутствии; дубликаты не проверяет.
     void Param_AddUnicGUIDByType (const API_Guid &elGuid, API_ElemTypeID elemtype, UnicGUIDByType &guidselementToRead) {
         if (elGuid == APINULLGuid)
             return;
@@ -5321,6 +5473,8 @@ namespace Roombook
         }
     }
 
+    // Возвращает тип избранного по имени; для пустого имени, ошибки чтения или отсутствия ServerMainVers_2300
+    // возвращает API_ZombieElemID.
     API_ElemTypeID Favorite_GetType (const GS::UniString &favorite_name) {
         GSErrCode err = NoError;
     #ifndef ServerMainVers_2300
@@ -5336,6 +5490,9 @@ namespace Roombook
     #endif
     }
 
+    // Собирает избранное окон, дверей, стен, колонн, перекрытий, объектов и зон в словарь по обрезанным именам в нижнем
+    // регистре. Повторные имена пропускает и сообщает об отсутствии рекомендуемых имён; балки в перечень собираемых
+    // типов не входят.
     MatarialToFavoriteDict Favorite_GetDict () {
         // Словарь с избранным
         MatarialToFavoriteDict favdict;
@@ -5445,6 +5602,8 @@ namespace Roombook
         return favdict;
     }
 
+    // Помечает избранное как прочитанное до получения элемента и чтения материалов; при дальнейшей ошибке флаг не
+    // сбрасывает. При наличии требуемого параметра и состава материала заполняет composite через Param_SetComposite.
     void Favorite_ReadComposite (const ParamValue &param_composite,
                                  MatarialToFavoriteDict &favdict,
                                  ParamDictValue &paramToRead_favorite,
@@ -5482,6 +5641,8 @@ namespace Roombook
         Param_SetComposite (*base_composite, element.wall.flipped, favData->composite, fav_name_, true);
     }
 
+    // Подбирает избранное по имени материала и суффиксу, затем по текущему или рекомендуемому имени.
+    // Учитывает draw_type и допустимый объект-аксессуар; выбранную запись копирует вместе с прочитанным составом.
     void Favorite_FindName (MatarialToFavorite &favorite,
                             const OtdMaterial &material,
                             const TypeOtd &type,
@@ -5582,6 +5743,8 @@ namespace Roombook
         return;
     }
 
+    // При успешном чтении избранного копирует элемент, вызывает UnhideUnlockElementLayer и возвращает true.
+    // Для пустого имени, ошибки чтения или отсутствия ServerMainVers_2300 возвращает false.
     bool Favorite_GetByName (const GS::UniString &favorite_name, API_Element &element) {
         GSErrCode err = NoError;
     #ifndef ServerMainVers_2300
@@ -5600,6 +5763,8 @@ namespace Roombook
     #endif
     }
 
+    // Читает избранное с memo; при успехе копирует элемент и memo, вызывает UnhideUnlockElementLayer и возвращает true.
+    // При ошибке чтения освобождает memo избранного; пустое имя и отсутствие ServerMainVers_2300 также дают false.
     bool Favorite_GetByName (const GS::UniString &favorite_name, API_Element &element, API_ElementMemo &memo) {
         GSErrCode err = NoError;
     #ifndef ServerMainVers_2300
@@ -5622,6 +5787,8 @@ namespace Roombook
     #endif
     }
 
+    // Проверяет наличие классов отделки и доступность Sync_GUID zone для GUID в finclassguids.
+    // Уже установленные флаги не сбрасывает; проблемы Sync_GUID base element сообщает без отказа расчёта.
     bool Check (const ClassificationFunc::ClassificationDict &finclass, UnicGuid &finclassguids) {
         // Проверка наличия классов
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
