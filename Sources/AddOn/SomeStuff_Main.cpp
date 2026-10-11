@@ -15,7 +15,7 @@
 #include "json_commands/JsonCommandRegistrar.hpp"
 #include "pk/Revision.hpp"
 #include "Propertycache.hpp"
-#include "Roombook.hpp"
+#include "roombook/Roombook.hpp"
 #include "spec/Spec.hpp"
 #include "Summ.hpp"
 #include "Sync.hpp"

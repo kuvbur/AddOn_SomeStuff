@@ -6,7 +6,7 @@
 
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
-    #include "Roombook.hpp"
+    #include "roombook/Roombook.hpp"
     #include "tests/TestFunc.hpp"
     #include "tests/TestKit.hpp"
 

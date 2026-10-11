@@ -17,7 +17,7 @@ D:/SomeStuff_addon/
 │   ├── Summ.*                  # Property summation
 │   ├── ReNum.*                 # Renumbering
 │   ├── Dimensions.*            # Dimensions (pen_original: строки 49/184 — DO NOT FIX, AGENTS.md §16)
-│   ├── Roombook.*              # Finish schedule
+│   ├── roombook/               # Finish schedule: Roombook + RoomSurfaces/Candidates/Partition/Finish (.cpp/.hpp)
 │   ├── ClassificationFunction.*# Auto-classification
 │   ├── MEPv1.*                 # MEP
 │   ├── CommonFunction.*        # Utils

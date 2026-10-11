@@ -4,10 +4,9 @@
     #define ROOMBOOK_HPP
 
     #include "Helpers.hpp"
-    #ifdef ServerMainVers_2700
-        #define ACAPI_Element_Get3DInfo ACAPI_ModelAccess_Get3DInfo
-        #define ACAPI_3D_GetComponent ACAPI_ModelAccess_GetComponent
-    #endif
+    #include "RoomSurfaceCandidates.hpp"
+    #include "RoomSurfaces.hpp"
+
 namespace Roombook {
     #ifndef ServerMainVers_2400
     void RoomBook ();
@@ -107,6 +106,8 @@ namespace Roombook {
         TypeOtd type = NoSet;                          // В какую графу заносить элемент (пол, потолок, стены и т.д.)
         MatarialToFavorite favorite;                   // Избранное
         bool isValid = true;
+        bool surface_geometry = false;
+        API_AttributeIndex surface_layer = {};
     };
 
     // Представление отделочной стены, созданной для одной зоны.
@@ -133,6 +134,13 @@ namespace Roombook {
         TypeOtd type = NoSet;                        // В какую графу заносить элемент (пол, потолок, стены и т.д.)
         MatarialToFavorite favorite;                 // Избранное
         bool isValid = true;
+        // Ноль сохраняет прежние настройки; угол задаётся только адаптером 3D-грани.
+        double slant_angle = 0;
+        bool surface_geometry = false;
+        // Горизонтальный подъём плоскости на метр высоты для подрезки полос.
+        double rise_x = 0;
+        double rise_y = 0;
+        API_AttributeIndex surface_layer = {};
     }; // Структура со стенами для отделки
 
     struct RoomEdges {
@@ -159,18 +167,22 @@ namespace Roombook {
         GS::HashTable<API_Guid, GS::Array<Sector>> walledges; // Границы стен, не явяющихся границей зоны
         GS::Array<Sector> columnedges;                        // Границы колонн, не явяющихся границей зоны
         GS::Array<Sector> edges;                              // Границы зоны
-        GS::Array<API_WallPart> wallPart;                     // Участки стен в зоне
-        GS::Array<API_BeamPart> beamPart;                     // Участки балок в зоне
-        GS::Array<API_CWSegmentPart> cwSegmentPart;           // Навесные стены в зоне
-        GS::Array<API_Niche> niches;                          // Ниши в зоне
-        double height_down = 0;                               // Высота панелей
-        double height_main = 0;                               // Высота основной отделки
-        double height_up = 0;                                 // Высота верхней части отделки
-        OtdSlab poly;                                         // Полгон зоны для полов/потолков
-        GS::Array<API_Guid> floorslab;                        // Перекрытия в уровне пола
-        GS::Array<API_Guid> ceilslab;                         // Перекрытия в уровне потолка
-        GS::Array<OtdWall> otdwall;                           // Стены-отделки, созданные для расчётов и отрисовки
-        GS::Array<OtdSlab> otdslab;                           // Потолки/полы для построения
+        // Разбиение сохраняется до чтения правил и любых записей отделки в модель.
+        RoomSurfaceSnapshot surfaceSnapshot;
+        RoomSurfaceCandidates surfaceCandidates;
+        RoomSurfacePartition surfacePartition;
+        GS::Array<API_WallPart> wallPart;           // Участки стен в зоне
+        GS::Array<API_BeamPart> beamPart;           // Участки балок в зоне
+        GS::Array<API_CWSegmentPart> cwSegmentPart; // Навесные стены в зоне
+        GS::Array<API_Niche> niches;                // Ниши в зоне
+        double height_down = 0;                     // Высота панелей
+        double height_main = 0;                     // Высота основной отделки
+        double height_up = 0;                       // Высота верхней части отделки
+        OtdSlab poly;                               // Полгон зоны для полов/потолков
+        GS::Array<API_Guid> floorslab;              // Перекрытия в уровне пола
+        GS::Array<API_Guid> ceilslab;               // Перекрытия в уровне потолка
+        GS::Array<OtdWall> otdwall;                 // Стены-отделки, созданные для расчётов и отрисовки
+        GS::Array<OtdSlab> otdslab;                 // Потолки/полы для построения
         bool has_ceil = true;
         bool has_floor = true;
         bool ceil_by_slab = false;           // Создавать потолок только по перекрытиям

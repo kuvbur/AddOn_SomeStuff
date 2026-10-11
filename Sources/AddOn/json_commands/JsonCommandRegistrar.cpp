@@ -10,10 +10,25 @@
     #include "json_commands/SpecCommand.hpp"
     #include "json_commands/SyncAllCommand.hpp"
 
+    #if defined(TESTING) && defined(ServerMainVers_2500)
+        #include "tests/TestRoombookGeometry.hpp"
+    #endif
+
 // -----------------------------------------------------------------------------
 // Регистрирует доступные JSON-команды аддона в Archicad.
 // -----------------------------------------------------------------------------
 void RegisterJsonCommands () {
+    #if defined(TESTING) && defined(ServerMainVers_2500)
+    GS::Owner<RoomGeometryDiagnosticCommand> geometryCommand = GS::NewOwned<RoomGeometryDiagnosticCommand> ();
+        #ifdef ServerMainVers_2700
+    const GSErrCode geometryErr = ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler (geometryCommand.Pass ());
+        #else
+    const GSErrCode geometryErr = ACAPI_Install_AddOnCommandHandler (geometryCommand.Pass ());
+        #endif
+    if (geometryErr != NoError)
+        DBprnt ("Z0 registration error: " + GS::ValueToUniString (geometryErr));
+    #endif
+
     GS::Owner<RoomBookCommand> roomBookCommand = GS::NewOwned<RoomBookCommand> ();
     #ifdef ServerMainVers_2700
     const GSErrCode roomBookErr = ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler (roomBookCommand.Pass ());

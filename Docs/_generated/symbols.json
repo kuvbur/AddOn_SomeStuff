@@ -2314,42 +2314,42 @@
     "kind": "Function",
     "file": "Sources/AddOn/json_commands/JsonCommandRegistrar.cpp",
     "module": "json_commands",
-    "line": 16
+    "line": 20
   },
   {
     "name": "RoomBookCommand::RoomBookCommand",
     "kind": "Constructor",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 14
+    "line": 18
   },
   {
     "name": "RoomBookCommand::GetName",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 19
+    "line": 23
   },
   {
     "name": "RoomBookCommand::GetInputParametersSchema",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 24
+    "line": 28
   },
   {
     "name": "RoomBookCommand::GetResponseSchema",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 29
+    "line": 33
   },
   {
     "name": "RoomBookCommand::Execute",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 34
+    "line": 38
   },
   {
     "name": "SpecCommand::SpecCommand",
@@ -3936,919 +3936,940 @@
   {
     "name": "Roombook::typeinzone",
     "kind": "Variable",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 26
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 27
   },
   {
     "name": "Roombook::reducededges",
     "kind": "Variable",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 29
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 30
   },
   {
     "name": "Roombook::cls",
     "kind": "Variable",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 31
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 32
   },
   {
     "name": "Roombook::nPhase",
     "kind": "Variable",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 33
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 34
   },
   {
     "name": "Roombook::GetTargetZones",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 37
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 38
   },
   {
     "name": "Roombook::RoomProcessingContext.finclass",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 79
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 80
   },
   {
     "name": "Roombook::RoomProcessingContext.finclassguids",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 80
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 81
   },
   {
     "name": "Roombook::RoomProcessingContext.storyLevels",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 81
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 82
   },
   {
     "name": "Roombook::RoomProcessingContext.deletelist",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 82
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 83
   },
   {
     "name": "Roombook::RoomProcessingContext.exsistot_byzone",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 83
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 84
   },
   {
     "name": "Roombook::RoomProcessingContext.roomsinfo",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 84
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 85
   },
   {
     "name": "Roombook::RoomProcessingContext.elementToRead",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 85
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 86
   },
   {
     "name": "Roombook::RoomProcessingContext.paramToRead",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 86
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 87
   },
   {
     "name": "Roombook::RoomProcessingContext.param_composite",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 87
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 88
   },
   {
     "name": "Roombook::RoomProcessingContext.paramDict_favorite",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 88
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 89
   },
   {
     "name": "Roombook::RoomProcessingContext.guidselementToRead",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 89
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 90
   },
   {
     "name": "Roombook::RoomProcessingContext.openinginwall",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 90
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 91
   },
   {
     "name": "Roombook::RoomProcessingContext.slabsinzone",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 91
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 92
   },
   {
     "name": "Roombook::PrepareRoomProcessingContext",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 95
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 96
   },
   {
     "name": "Roombook::AdvanceProcessPhase",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 105
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 106
   },
   {
     "name": "Roombook::BuildElementReadIndex",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 118
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 119
   },
   {
     "name": "Roombook::ProcessElementsForRoomData",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 136
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 155
   },
   {
     "name": "Roombook::ReadParamsForRoomBook.windowParams",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 185
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 196
   },
   {
     "name": "Roombook::ReadParamsForRoomBook.roomParams",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 186
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 197
   },
   {
     "name": "Roombook::PrepareReadParams",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 190
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 201
   },
   {
     "name": "Roombook::ReadElementParameters",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 194
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 205
   },
   {
     "name": "Roombook::ProcessSlabFinishes",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 220
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 234
   },
   {
     "name": "Roombook::ApplyFavoriteAndMaterialData",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 285
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 299
   },
   {
     "name": "Roombook::ProcessWallFinishes",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 303
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 317
   },
   {
     "name": "Roombook::MaterialSummary.paramToWrite",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 388
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 402
   },
   {
     "name": "Roombook::MaterialSummary.columnFormat",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 389
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 403
   },
   {
     "name": "Roombook::MaterialSummary.dct_bytype",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 390
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 404
   },
   {
     "name": "Roombook::MaterialSummary.zones_bytype",
     "kind": "Field",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 391
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 405
   },
   {
     "name": "Roombook::BuildMaterialSummaryForRooms",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 396
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 410
   },
   {
     "name": "Roombook::WriteRoomMaterialData",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 490
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 504
+  },
+  {
+    "name": "Roombook::AddSurfaceFinishPiece",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 531
+  },
+  {
+    "name": "Roombook::BuildRoomSurfaceFinishes",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 571
   },
   {
     "name": "Roombook::ProcessRoomFinishes",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 518
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 695
   },
   {
     "name": "Roombook::RemoveUnusedFinishingElements",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 577
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 754
   },
   {
     "name": "Roombook::RoomBook",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 638
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 815
   },
   {
     "name": "Roombook::Otd_GetOtd_ByZone",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 718
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 895
   },
   {
     "name": "Roombook::BuildOtdByParent",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 838
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1015
   },
   {
     "name": "Roombook::Otd_GetOtd_Parent",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 881
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1058
   },
   {
     "name": "Roombook::OtdData_GetColumnfFormat",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 925
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1102
   },
   {
     "name": "Roombook::CollectMaterialAreasForRoom",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1019
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1196
   },
   {
     "name": "Roombook::OtdData_CalcForRoom",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1071
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1248
   },
   {
     "name": "Roombook::CollectAreasForFinishTypes",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1119
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1296
   },
   {
     "name": "Roombook::OtdData_WriteToRoom",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1153
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1330
   },
   {
     "name": "Roombook::OtdData_AddValueToDict",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1271
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1448
   },
   {
     "name": "Roombook::OtdWall_GetArea",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1300
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1477
   },
   {
     "name": "Roombook::CollectRoomInfo",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1336
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1515
   },
   {
     "name": "Roombook::Opening_Create_One",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1488
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1670
   },
   {
     "name": "Roombook::OtdWall_Create_FromWall",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1539
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1721
   },
   {
     "name": "Roombook::CalculateOpeningForWall",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1732
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1914
   },
   {
     "name": "Roombook::Opening_Add_One",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1768
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1950
   },
   {
     "name": "Roombook::OtdWall_Add_One",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1782
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1964
   },
   {
     "name": "Roombook::OtdWall_Create_FromColumn",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1811
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 1993
   },
   {
     "name": "Roombook::Floor_FindAll",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1907
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2089
   },
   {
     "name": "Roombook::Floor_FindInOneRoom",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1951
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2133
   },
   {
     "name": "Roombook::Floor_Create_All",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 1994
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2176
   },
   {
     "name": "Roombook::Floor_Create_One",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2049
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2231
   },
   {
     "name": "Roombook::Param_ToParamDict",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2209
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2391
   },
   {
     "name": "Roombook::Param_GetForWindowParams",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2224
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2406
   },
   {
     "name": "Roombook::Param_GetForBase",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2246
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2428
   },
   {
     "name": "Roombook::Param_GetForRooms",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2392
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2574
   },
   {
     "name": "Roombook::ResolveParameterRawNames",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2632
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2814
   },
   {
     "name": "Roombook::Param_Property_FindInParams",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2677
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2859
   },
   {
     "name": "Roombook::Param_Property_Read",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2688
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2870
   },
   {
     "name": "Roombook::Param_Material_Get",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2726
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2908
   },
   {
     "name": "Roombook::NormalizeRoomFinishHeights",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2754
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2936
   },
   {
     "name": "Roombook::ApplyRoomCreationFlags",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2776
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 2958
   },
   {
     "name": "Roombook::ApplyRoomMaterialRawNames",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2836
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3018
   },
   {
     "name": "Roombook::ApplyRoomHeightParameters",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2927
-  },
-  {
-    "name": "Roombook::Param_SetToRooms",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3093
-  },
-  {
-    "name": "Roombook::Param_SetToBase",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3116
-  },
-  {
-    "name": "Roombook::CollectBaseCompositeLayers",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3181
-  },
-  {
-    "name": "Roombook::Param_SetComposite",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3207
-  },
-  {
-    "name": "Roombook::Param_SetToWindows",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3306
-  },
-  {
-    "name": "Roombook::RoomRedProc",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3365
-  },
-  {
-    "name": "Roombook::Edges_GetFromRoom",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3423
-  },
-  {
-    "name": "Roombook::ClearZoneGUID",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3495
-  },
-  {
-    "name": "Roombook::InitializeOpeningRevealWall",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3535
-  },
-  {
-    "name": "Roombook::CalculateOpeningRevealHeight",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3561
-  },
-  {
-    "name": "Roombook::CalculateOpeningRevealCoordinates",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3577
-  },
-  {
-    "name": "Roombook::OpeningReveals_Create_One",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3605
-  },
-  {
-    "name": "Roombook::GetWallFinishBandType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3717
-  },
-  {
-    "name": "Roombook::GetFallbackWallFinishType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3754
-  },
-  {
-    "name": "Roombook::OtdWall_Delim_All",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3768
-  },
-  {
-    "name": "Roombook::TrimOpeningsToWallHeight",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3875
-  },
-  {
-    "name": "Roombook::CalculateWallHeightIntersection",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3904
-  },
-  {
-    "name": "Roombook::OtdWall_Delim_One",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3929
-  },
-  {
-    "name": "Roombook::SelectWallFinishMaterial",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3963
-  },
-  {
-    "name": "Roombook::SetMaterialByType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4072
-  },
-  {
-    "name": "Roombook::SetMaterialFinish_ByComposite",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4089
-  },
-  {
-    "name": "Roombook::SetMaterialFinish",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4102
-  },
-  {
-    "name": "Roombook::Edge_FindOnEdge",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4133
-  },
-  {
-    "name": "Roombook::Edge_FindEdge",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4164
-  },
-  {
-    "name": "Roombook::Draw_Elements",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4181
-  },
-  {
-    "name": "Roombook::OtdWall_Draw",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4309
-  },
-  {
-    "name": "Roombook::OtdBeam_Draw_Beam",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4340
-  },
-  {
-    "name": "Roombook::OtdBeam_GetDefult_Beam",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4398
-  },
-  {
-    "name": "Roombook::OtdBeam_Draw_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4418
-  },
-  {
-    "name": "Roombook::OtdBeam_GetDefult_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4432
-  },
-  {
-    "name": "Roombook::OtdWall_Draw_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4459
-  },
-  {
-    "name": "Roombook::OtdWall_GetDefult_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4590
-  },
-  {
-    "name": "Roombook::OtdWall_Draw_Wall",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4617
-  },
-  {
-    "name": "Roombook::OtdWall_GetDefult_Wall",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4675
-  },
-  {
-    "name": "Roombook::Opening_Draw",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4704
-  },
-  {
-    "name": "Roombook::Opening_GetDefult",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4763
-  },
-  {
-    "name": "Roombook::Floor_Draw",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4785
-  },
-  {
-    "name": "Roombook::Floor_Draw_Slab",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4819
-  },
-  {
-    "name": "Roombook::Floor_Draw_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 4921
-  },
-  {
-    "name": "Roombook::Floor_GetDefult_Object",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5069
-  },
-  {
-    "name": "Roombook::Floor_GetDefult_Slab",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5095
-  },
-  {
-    "name": "Roombook::Class_SetClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5122
-  },
-  {
-    "name": "Roombook::Class_SetClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5135
-  },
-  {
-    "name": "Roombook::Class_SetClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5148
-  },
-  {
-    "name": "Roombook::Class_GetClassGuid",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5158
-  },
-  {
-    "name": "Roombook::Class_GetOtdTypeByClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5207
-  },
-  {
-    "name": "Roombook::Class_FindFinClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5261
-  },
-  {
-    "name": "Roombook::SetSyncOtdWall",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5342
-  },
-  {
-    "name": "Roombook::Class_IsElementFinClass",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5418
-  },
-  {
-    "name": "Roombook::Param_AddUnicElementByType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5435
-  },
-  {
-    "name": "Roombook::Param_AddUnicGUIDByType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5464
-  },
-  {
-    "name": "Roombook::Favorite_GetType",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5478
-  },
-  {
-    "name": "Roombook::Favorite_GetDict",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5496
-  },
-  {
-    "name": "Roombook::Favorite_ReadComposite",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5607
-  },
-  {
-    "name": "Roombook::Favorite_FindName",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5646
-  },
-  {
-    "name": "Roombook::Favorite_GetByName",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5748
-  },
-  {
-    "name": "Roombook::Favorite_GetByName",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5768
-  },
-  {
-    "name": "Roombook::Check",
-    "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 5792
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3109
   },
   {
     "name": "Roombook::ApplyRoomFinishTypeParameters",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 2968
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3150
   },
   {
     "name": "Roombook::ApplyRoomMaterialParameters",
     "kind": "Function",
-    "file": "Sources/AddOn/Roombook.cpp",
-    "module": "Roombook",
-    "line": 3029
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3211
+  },
+  {
+    "name": "Roombook::Param_SetToRooms",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3275
+  },
+  {
+    "name": "Roombook::Param_SetToBase",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3298
+  },
+  {
+    "name": "Roombook::CollectBaseCompositeLayers",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3363
+  },
+  {
+    "name": "Roombook::Param_SetComposite",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3389
+  },
+  {
+    "name": "Roombook::Param_SetToWindows",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3488
+  },
+  {
+    "name": "Roombook::RoomRedProc",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3547
+  },
+  {
+    "name": "Roombook::Edges_GetFromRoom",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3605
+  },
+  {
+    "name": "Roombook::ClearZoneGUID",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3677
+  },
+  {
+    "name": "Roombook::InitializeOpeningRevealWall",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3717
+  },
+  {
+    "name": "Roombook::CalculateOpeningRevealHeight",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3743
+  },
+  {
+    "name": "Roombook::CalculateOpeningRevealCoordinates",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3759
+  },
+  {
+    "name": "Roombook::OpeningReveals_Create_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3787
+  },
+  {
+    "name": "Roombook::GetWallFinishBandType",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3899
+  },
+  {
+    "name": "Roombook::GetFallbackWallFinishType",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3936
+  },
+  {
+    "name": "Roombook::OtdWall_Delim_All",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 3950
+  },
+  {
+    "name": "Roombook::TrimOpeningsToWallHeight",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4057
+  },
+  {
+    "name": "Roombook::CalculateWallHeightIntersection",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4086
+  },
+  {
+    "name": "Roombook::OtdWall_Delim_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4111
+  },
+  {
+    "name": "Roombook::SelectWallFinishMaterial",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4152
+  },
+  {
+    "name": "Roombook::SetMaterialByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4261
+  },
+  {
+    "name": "Roombook::SetMaterialFinish_ByComposite",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4278
+  },
+  {
+    "name": "Roombook::SetMaterialFinish",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4291
+  },
+  {
+    "name": "Roombook::Edge_FindOnEdge",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4322
+  },
+  {
+    "name": "Roombook::Edge_FindEdge",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4353
+  },
+  {
+    "name": "Roombook::GetSurfaceFinishLayer",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4370
+  },
+  {
+    "name": "Roombook::Draw_Elements",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4389
+  },
+  {
+    "name": "Roombook::OtdWall_Draw",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4527
+  },
+  {
+    "name": "Roombook::OtdBeam_Draw_Beam",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4564
+  },
+  {
+    "name": "Roombook::OtdBeam_GetDefult_Beam",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4622
+  },
+  {
+    "name": "Roombook::OtdBeam_Draw_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4642
+  },
+  {
+    "name": "Roombook::OtdBeam_GetDefult_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4656
+  },
+  {
+    "name": "Roombook::OtdWall_Draw_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4683
+  },
+  {
+    "name": "Roombook::OtdWall_GetDefult_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4814
+  },
+  {
+    "name": "Roombook::OtdWall_Draw_Wall",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4841
+  },
+  {
+    "name": "Roombook::OtdWall_GetDefult_Wall",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4917
+  },
+  {
+    "name": "Roombook::Opening_Draw",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 4946
+  },
+  {
+    "name": "Roombook::Opening_GetDefult",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5005
+  },
+  {
+    "name": "Roombook::Floor_Draw",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5027
+  },
+  {
+    "name": "Roombook::Floor_Draw_Slab",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5067
+  },
+  {
+    "name": "Roombook::Floor_Draw_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5188
+  },
+  {
+    "name": "Roombook::Floor_GetDefult_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5336
+  },
+  {
+    "name": "Roombook::Floor_GetDefult_Slab",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5362
+  },
+  {
+    "name": "Roombook::Class_SetClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5389
+  },
+  {
+    "name": "Roombook::Class_SetClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5402
+  },
+  {
+    "name": "Roombook::Class_SetClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5415
+  },
+  {
+    "name": "Roombook::Class_GetClassGuid",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5425
+  },
+  {
+    "name": "Roombook::Class_GetOtdTypeByClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5474
+  },
+  {
+    "name": "Roombook::Class_FindFinClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5528
+  },
+  {
+    "name": "Roombook::SetSyncOtdWall",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5609
+  },
+  {
+    "name": "Roombook::Class_IsElementFinClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5685
+  },
+  {
+    "name": "Roombook::Param_AddUnicElementByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5702
+  },
+  {
+    "name": "Roombook::Param_AddUnicGUIDByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5731
+  },
+  {
+    "name": "Roombook::Favorite_GetType",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5745
+  },
+  {
+    "name": "Roombook::Favorite_GetDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5763
+  },
+  {
+    "name": "Roombook::Favorite_ReadComposite",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5874
+  },
+  {
+    "name": "Roombook::Favorite_FindName",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 5913
+  },
+  {
+    "name": "Roombook::Favorite_GetByName",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 6015
+  },
+  {
+    "name": "Roombook::Favorite_GetByName",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 6035
+  },
+  {
+    "name": "Roombook::Check",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 6059
   },
   {
     "name": "TableRenderer::kMinWidthMm",
@@ -7313,5 +7334,2959 @@
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
     "line": 260
+  },
+  {
+    "name": "Point",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 23
+  },
+  {
+    "name": "RunSurfaceTransformChecks",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 25
+  },
+  {
+    "name": "RunSurfacePartitionChecks",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 120
+  },
+  {
+    "name": "AddError",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 789
+  },
+  {
+    "name": "Override",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 794
+  },
+  {
+    "name": "BuildingMaterial",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 798
+  },
+  {
+    "name": "ReadModelMaterial",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 821
+  },
+  {
+    "name": "ReadProfile",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 858
+  },
+  {
+    "name": "AttributeProfile",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 912
+  },
+  {
+    "name": "Composite",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 922
+  },
+  {
+    "name": "ColumnSegment",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 957
+  },
+  {
+    "name": "ReadStructure",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 987
+  },
+  {
+    "name": "SurfaceStatusName",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 1109
+  },
+  {
+    "name": "GetZone3DPolygons_StrictAPI",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 1125
+  },
+  {
+    "name": "ReadZoneSurfacePartition",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 1206
+  },
+  {
+    "name": "Inventory",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 1452
+  },
+  {
+    "name": "DrawRoomSurfaceWalls",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 1531
+  },
+  {
+    "name": "RoomGeometryDiagnosticCommand::RoomGeometryDiagnosticCommand",
+    "kind": "Constructor",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 1678
+  },
+  {
+    "name": "RoomGeometryDiagnosticCommand::GetName",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 1680
+  },
+  {
+    "name": "RoomGeometryDiagnosticCommand::GetInputParametersSchema",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 1682
+  },
+  {
+    "name": "RoomGeometryDiagnosticCommand::GetResponseSchema",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 1687
+  },
+  {
+    "name": "RoomGeometryDiagnosticCommand::Execute",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestRoombookGeometry.cpp",
+    "module": "tests",
+    "line": 1689
+  },
+  {
+    "name": "Roombook::TransformRoomSurface",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.cpp",
+    "module": "roombook",
+    "line": 10
+  },
+  {
+    "name": "Roombook::AddSurfaceError",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.cpp",
+    "module": "roombook",
+    "line": 60
+  },
+  {
+    "name": "Roombook::ReadSurfaceComponent",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.cpp",
+    "module": "roombook",
+    "line": 71
+  },
+  {
+    "name": "Roombook::ReadSurfacePolygon",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.cpp",
+    "module": "roombook",
+    "line": 88
+  },
+  {
+    "name": "Roombook::ReadRoomSurfaces",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.cpp",
+    "module": "roombook",
+    "line": 188
+  },
+  {
+    "name": "Roombook::RoomSurfaceStatus",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::RoomSurfaceStatus::NotRead",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::RoomSurfaceStatus::Extracted",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::RoomSurfaceStatus::Empty",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::RoomSurfaceStatus::ReadError",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::RoomSurfaceStatus::UnsupportedVersion",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::RoomSurfaceVertex.local",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 16
+  },
+  {
+    "name": "Roombook::RoomSurfaceVertex.world",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 17
+  },
+  {
+    "name": "Roombook::RoomSurfaceVertex.index",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 18
+  },
+  {
+    "name": "Roombook::RoomSurfaceVertex.signedEdgeIndex",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 19
+  },
+  {
+    "name": "Roombook::RoomSurfaceContour.hole",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 23
+  },
+  {
+    "name": "Roombook::RoomSurfaceContour.vertices",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 24
+  },
+  {
+    "name": "Roombook::RoomSurface.bodyIndex",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 28
+  },
+  {
+    "name": "Roombook::RoomSurface.polygonIndex",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 29
+  },
+  {
+    "name": "Roombook::RoomSurface.modelMaterialIndex",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 30
+  },
+  {
+    "name": "Roombook::RoomSurface.flags",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 31
+  },
+  {
+    "name": "Roombook::RoomSurface.signedNormalIndex",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 32
+  },
+  {
+    "name": "Roombook::RoomSurface.normalLocal",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 33
+  },
+  {
+    "name": "Roombook::RoomSurface.normalWorld",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 34
+  },
+  {
+    "name": "Roombook::RoomSurface.planeOffset",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 35
+  },
+  {
+    "name": "Roombook::RoomSurface.contours",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 36
+  },
+  {
+    "name": "Roombook::RoomSurfaceBody.index",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 40
+  },
+  {
+    "name": "Roombook::RoomSurfaceBody.polygonCount",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 41
+  },
+  {
+    "name": "Roombook::RoomSurfaceBody.vertexCount",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 42
+  },
+  {
+    "name": "Roombook::RoomSurfaceBody.matrix",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 43
+  },
+  {
+    "name": "Roombook::RoomSurfaceBody.parentGuid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 44
+  },
+  {
+    "name": "Roombook::RoomSurfaceBody.parentType",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 45
+  },
+  {
+    "name": "Roombook::RoomSurfaceBody.surfaces",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 46
+  },
+  {
+    "name": "Roombook::RoomSurfaceReadError.stage",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 50
+  },
+  {
+    "name": "Roombook::RoomSurfaceReadError.code",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 51
+  },
+  {
+    "name": "Roombook::RoomSurfaceReadError.body",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 52
+  },
+  {
+    "name": "Roombook::RoomSurfaceReadError.polygon",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 53
+  },
+  {
+    "name": "Roombook::RoomSurfaceReadError.index",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 54
+  },
+  {
+    "name": "Roombook::RoomSurfaceSnapshot.guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 59
+  },
+  {
+    "name": "Roombook::RoomSurfaceSnapshot.status",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 60
+  },
+  {
+    "name": "Roombook::RoomSurfaceSnapshot.firstBody",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 61
+  },
+  {
+    "name": "Roombook::RoomSurfaceSnapshot.lastBody",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 62
+  },
+  {
+    "name": "Roombook::RoomSurfaceSnapshot.bodies",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 63
+  },
+  {
+    "name": "Roombook::RoomSurfaceSnapshot.deletedBodies",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 64
+  },
+  {
+    "name": "Roombook::RoomSurfaceSnapshot.errors",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 65
+  },
+  {
+    "name": "Roombook::RoomSurfaceSnapshot::IsComplete",
+    "kind": "Method",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 67
+  },
+  {
+    "name": "Roombook::TransformRoomSurface",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 73
+  },
+  {
+    "name": "Roombook::ReadRoomSurfaces",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaces.hpp",
+    "module": "roombook",
+    "line": 74
+  },
+  {
+    "name": "Roombook::TypeOtd",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 14
+  },
+  {
+    "name": "Roombook::TypeOtd::NoSet",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 15
+  },
+  {
+    "name": "Roombook::TypeOtd::Wall_Main",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 16
+  },
+  {
+    "name": "Roombook::TypeOtd::Wall_Up",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 17
+  },
+  {
+    "name": "Roombook::TypeOtd::Wall_Down",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 18
+  },
+  {
+    "name": "Roombook::TypeOtd::Reveal_Main",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 19
+  },
+  {
+    "name": "Roombook::TypeOtd::Reveal_Up",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 20
+  },
+  {
+    "name": "Roombook::TypeOtd::Reveal_Down",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 21
+  },
+  {
+    "name": "Roombook::TypeOtd::Column",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 22
+  },
+  {
+    "name": "Roombook::TypeOtd::Floor",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 23
+  },
+  {
+    "name": "Roombook::TypeOtd::Ceil",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 24
+  },
+  {
+    "name": "Roombook::TypeOtd::Sloped",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 25
+  },
+  {
+    "name": "Roombook::BuildOtdByParent",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 31
+  },
+  {
+    "name": "Roombook::min_dim",
+    "kind": "Variable",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 35
+  },
+  {
+    "name": "Roombook::otd_thickness",
+    "kind": "Variable",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 36
+  },
+  {
+    "name": "Roombook::IGNORENAME",
+    "kind": "Variable",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 38
+  },
+  {
+    "name": "Roombook::ClassOtd.otdwall_class",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 43
+  },
+  {
+    "name": "Roombook::ClassOtd.otdwall_down_class",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 44
+  },
+  {
+    "name": "Roombook::ClassOtd.reveal_class",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 45
+  },
+  {
+    "name": "Roombook::ClassOtd.reveal_windows_class",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 46
+  },
+  {
+    "name": "Roombook::ClassOtd.reveal_doors_class",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 47
+  },
+  {
+    "name": "Roombook::ClassOtd.column_class",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 48
+  },
+  {
+    "name": "Roombook::ClassOtd.floor_class",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 49
+  },
+  {
+    "name": "Roombook::ClassOtd.ceil_class",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 50
+  },
+  {
+    "name": "Roombook::ClassOtd.all_class",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 51
+  },
+  {
+    "name": "Roombook::OtdOpening.zBottom",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 57
+  },
+  {
+    "name": "Roombook::OtdOpening.height",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 58
+  },
+  {
+    "name": "Roombook::OtdOpening.width",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 59
+  },
+  {
+    "name": "Roombook::OtdOpening.objLoc",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 60
+  },
+  {
+    "name": "Roombook::OtdOpening.lower",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 61
+  },
+  {
+    "name": "Roombook::OtdOpening.reflected",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 62
+  },
+  {
+    "name": "Roombook::OtdOpening.ref_side",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 63
+  },
+  {
+    "name": "Roombook::OtdOpening.reveal_from_sill",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 64
+  },
+  {
+    "name": "Roombook::OtdOpening.has_reveal",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 65
+  },
+  {
+    "name": "Roombook::OtdOpening.base_reveal_width",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 66
+  },
+  {
+    "name": "Roombook::OtdOpening.base_guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 67
+  },
+  {
+    "name": "Roombook::OtdOpening.otd_guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 68
+  },
+  {
+    "name": "Roombook::OtdMaterial.material",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 72
+  },
+  {
+    "name": "Roombook::OtdMaterial.smaterial",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 73
+  },
+  {
+    "name": "Roombook::OtdMaterial.rawname",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 74
+  },
+  {
+    "name": "Roombook::OtdMaterial.rawname_bytype",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 75
+  },
+  {
+    "name": "Roombook::GuidByZ.r",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 79
+  },
+  {
+    "name": "Roombook::GuidByZ.zBottom",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 80
+  },
+  {
+    "name": "Roombook::GuidByZ.zUp",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 81
+  },
+  {
+    "name": "Roombook::GuidByZ.guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 82
+  },
+  {
+    "name": "Roombook::MatarialToFavorite.name",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 86
+  },
+  {
+    "name": "Roombook::MatarialToFavorite.type",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 87
+  },
+  {
+    "name": "Roombook::MatarialToFavorite.composite",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 88
+  },
+  {
+    "name": "Roombook::MatarialToFavorite.is_composite_read",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 89
+  },
+  {
+    "name": "Roombook::OtdSlab.poly",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 95
+  },
+  {
+    "name": "Roombook::OtdSlab.zBottom",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 96
+  },
+  {
+    "name": "Roombook::OtdSlab.floorInd",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 97
+  },
+  {
+    "name": "Roombook::OtdSlab.height",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 98
+  },
+  {
+    "name": "Roombook::OtdSlab.material",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 99
+  },
+  {
+    "name": "Roombook::OtdSlab.tip",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 100
+  },
+  {
+    "name": "Roombook::OtdSlab.base_type",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 101
+  },
+  {
+    "name": "Roombook::OtdSlab.draw_type",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 102
+  },
+  {
+    "name": "Roombook::OtdSlab.base_guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 103
+  },
+  {
+    "name": "Roombook::OtdSlab.base_composite",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 104
+  },
+  {
+    "name": "Roombook::OtdSlab.otd_guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 105
+  },
+  {
+    "name": "Roombook::OtdSlab.type",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 106
+  },
+  {
+    "name": "Roombook::OtdSlab.favorite",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 107
+  },
+  {
+    "name": "Roombook::OtdSlab.isValid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 108
+  },
+  {
+    "name": "Roombook::OtdSlab.surface_geometry",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 109
+  },
+  {
+    "name": "Roombook::OtdSlab.surface_layer",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 110
+  },
+  {
+    "name": "Roombook::OtdWall.ang_begC",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 116
+  },
+  {
+    "name": "Roombook::OtdWall.ang_endC",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 117
+  },
+  {
+    "name": "Roombook::OtdWall.height",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 118
+  },
+  {
+    "name": "Roombook::OtdWall.width",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 119
+  },
+  {
+    "name": "Roombook::OtdWall.length",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 120
+  },
+  {
+    "name": "Roombook::OtdWall.zBottom",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 121
+  },
+  {
+    "name": "Roombook::OtdWall.floorInd",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 122
+  },
+  {
+    "name": "Roombook::OtdWall.base_th",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 123
+  },
+  {
+    "name": "Roombook::OtdWall.begC",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 124
+  },
+  {
+    "name": "Roombook::OtdWall.endC",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 125
+  },
+  {
+    "name": "Roombook::OtdWall.base_guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 126
+  },
+  {
+    "name": "Roombook::OtdWall.otd_guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 127
+  },
+  {
+    "name": "Roombook::OtdWall.base_flipped",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 128
+  },
+  {
+    "name": "Roombook::OtdWall.base_composite",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 129
+  },
+  {
+    "name": "Roombook::OtdWall.openings",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 130
+  },
+  {
+    "name": "Roombook::OtdWall.material",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 131
+  },
+  {
+    "name": "Roombook::OtdWall.base_type",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 132
+  },
+  {
+    "name": "Roombook::OtdWall.draw_type",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 133
+  },
+  {
+    "name": "Roombook::OtdWall.type",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 134
+  },
+  {
+    "name": "Roombook::OtdWall.favorite",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 135
+  },
+  {
+    "name": "Roombook::OtdWall.isValid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 136
+  },
+  {
+    "name": "Roombook::OtdWall.slant_angle",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 138
+  },
+  {
+    "name": "Roombook::OtdWall.surface_geometry",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 139
+  },
+  {
+    "name": "Roombook::OtdWall.rise_x",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 141
+  },
+  {
+    "name": "Roombook::OtdWall.rise_y",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 142
+  },
+  {
+    "name": "Roombook::OtdWall.surface_layer",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 143
+  },
+  {
+    "name": "Roombook::RoomEdges.walledges",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 147
+  },
+  {
+    "name": "Roombook::RoomEdges.columnedges",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 148
+  },
+  {
+    "name": "Roombook::RoomEdges.restedges",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 149
+  },
+  {
+    "name": "Roombook::RoomEdges.gableedges",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 150
+  },
+  {
+    "name": "Roombook::OtdRoom.om_up",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 156
+  },
+  {
+    "name": "Roombook::OtdRoom.om_main",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 157
+  },
+  {
+    "name": "Roombook::OtdRoom.om_down",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 158
+  },
+  {
+    "name": "Roombook::OtdRoom.om_column",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 159
+  },
+  {
+    "name": "Roombook::OtdRoom.om_reveals",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 160
+  },
+  {
+    "name": "Roombook::OtdRoom.om_floor",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 161
+  },
+  {
+    "name": "Roombook::OtdRoom.om_ceil",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 162
+  },
+  {
+    "name": "Roombook::OtdRoom.om_zone",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 163
+  },
+  {
+    "name": "Roombook::OtdRoom.height",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 164
+  },
+  {
+    "name": "Roombook::OtdRoom.zBottom",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 165
+  },
+  {
+    "name": "Roombook::OtdRoom.floorInd",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 166
+  },
+  {
+    "name": "Roombook::OtdRoom.walledges",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 167
+  },
+  {
+    "name": "Roombook::OtdRoom.columnedges",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 168
+  },
+  {
+    "name": "Roombook::OtdRoom.edges",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 169
+  },
+  {
+    "name": "Roombook::OtdRoom.surfaceSnapshot",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 171
+  },
+  {
+    "name": "Roombook::OtdRoom.surfaceCandidates",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 172
+  },
+  {
+    "name": "Roombook::OtdRoom.surfacePartition",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 173
+  },
+  {
+    "name": "Roombook::OtdRoom.wallPart",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 174
+  },
+  {
+    "name": "Roombook::OtdRoom.beamPart",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 175
+  },
+  {
+    "name": "Roombook::OtdRoom.cwSegmentPart",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 176
+  },
+  {
+    "name": "Roombook::OtdRoom.niches",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 177
+  },
+  {
+    "name": "Roombook::OtdRoom.height_down",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 178
+  },
+  {
+    "name": "Roombook::OtdRoom.height_main",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 179
+  },
+  {
+    "name": "Roombook::OtdRoom.height_up",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 180
+  },
+  {
+    "name": "Roombook::OtdRoom.poly",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 181
+  },
+  {
+    "name": "Roombook::OtdRoom.floorslab",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 182
+  },
+  {
+    "name": "Roombook::OtdRoom.ceilslab",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 183
+  },
+  {
+    "name": "Roombook::OtdRoom.otdwall",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 184
+  },
+  {
+    "name": "Roombook::OtdRoom.otdslab",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 185
+  },
+  {
+    "name": "Roombook::OtdRoom.has_ceil",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 186
+  },
+  {
+    "name": "Roombook::OtdRoom.has_floor",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 187
+  },
+  {
+    "name": "Roombook::OtdRoom.ceil_by_slab",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 188
+  },
+  {
+    "name": "Roombook::OtdRoom.floor_by_slab",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 189
+  },
+  {
+    "name": "Roombook::OtdRoom.tip_pot",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 190
+  },
+  {
+    "name": "Roombook::OtdRoom.tip_pol",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 191
+  },
+  {
+    "name": "Roombook::OtdRoom.tip_otd",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 192
+  },
+  {
+    "name": "Roombook::OtdRoom.zone_guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 193
+  },
+  {
+    "name": "Roombook::OtdRoom.isValid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 194
+  },
+  {
+    "name": "Roombook::OtdRoom.create_all_elements",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 195
+  },
+  {
+    "name": "Roombook::OtdRoom.create_ceil_elements",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 196
+  },
+  {
+    "name": "Roombook::OtdRoom.create_floor_elements",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 197
+  },
+  {
+    "name": "Roombook::OtdRoom.create_wall_elements",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 198
+  },
+  {
+    "name": "Roombook::OtdRoom.create_column_elements",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 199
+  },
+  {
+    "name": "Roombook::OtdRoom.create_reveal_elements",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 200
+  },
+  {
+    "name": "Roombook::ReadParam.isValid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 214
+  },
+  {
+    "name": "Roombook::ReadParam.rawnames",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 215
+  },
+  {
+    "name": "Roombook::ReadParam.val",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 216
+  },
+  {
+    "name": "Roombook::ColumnFormat.font",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 222
+  },
+  {
+    "name": "Roombook::ColumnFormat.fontsize",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 223
+  },
+  {
+    "name": "Roombook::ColumnFormat.width_mat",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 224
+  },
+  {
+    "name": "Roombook::ColumnFormat.width_area",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 225
+  },
+  {
+    "name": "Roombook::ColumnFormat.width_no_breake_space",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 226
+  },
+  {
+    "name": "Roombook::ColumnFormat.width_narow_space",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 227
+  },
+  {
+    "name": "Roombook::ColumnFormat.no_breake_space",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 228
+  },
+  {
+    "name": "Roombook::ColumnFormat.narow_space",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 229
+  },
+  {
+    "name": "Roombook::ColumnFormat.space_line",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 230
+  },
+  {
+    "name": "Roombook::ColumnFormat.delim_line",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 231
+  },
+  {
+    "name": "Roombook::RoomBook",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 239
+  },
+  {
+    "name": "Roombook::Otd_GetOtd_ByZone",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 241
+  },
+  {
+    "name": "Roombook::Otd_GetOtd_Parent",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 247
+  },
+  {
+    "name": "Roombook::OtdData_GetColumnfFormat",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 249
+  },
+  {
+    "name": "Roombook::OtdData_CalcForRoom",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 253
+  },
+  {
+    "name": "Roombook::OtdData_WriteToRoom",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 259
+  },
+  {
+    "name": "Roombook::OtdData_AddValueToDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 266
+  },
+  {
+    "name": "Roombook::ClearZoneGUID",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 274
+  },
+  {
+    "name": "Roombook::OtdWall_GetArea",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 279
+  },
+  {
+    "name": "Roombook::CollectRoomInfo",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 284
+  },
+  {
+    "name": "Roombook::Floor_FindAll",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 293
+  },
+  {
+    "name": "Roombook::Opening_Create_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 300
+  },
+  {
+    "name": "Roombook::Opening_Add_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 305
+  },
+  {
+    "name": "Roombook::OtdWall_Add_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 313
+  },
+  {
+    "name": "Roombook::OtdWall_Create_FromWall",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 325
+  },
+  {
+    "name": "Roombook::OtdWall_Create_FromColumn",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 335
+  },
+  {
+    "name": "Roombook::Floor_FindInOneRoom",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 344
+  },
+  {
+    "name": "Roombook::Param_GetForBase",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 353
+  },
+  {
+    "name": "Roombook::Param_SetToRooms",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 355
+  },
+  {
+    "name": "Roombook::Param_SetToBase",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 360
+  },
+  {
+    "name": "Roombook::Param_SetComposite",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 368
+  },
+  {
+    "name": "Roombook::Param_SetToWindows",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 377
+  },
+  {
+    "name": "Roombook::OpeningReveals_Create_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 385
+  },
+  {
+    "name": "Roombook::SetMaterialByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 404
+  },
+  {
+    "name": "Roombook::SetMaterialFinish_ByComposite",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 414
+  },
+  {
+    "name": "Roombook::SetMaterialFinish",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 416
+  },
+  {
+    "name": "Roombook::OtdWall_Delim_All",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 421
+  },
+  {
+    "name": "Roombook::OtdWall_Delim_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 442
+  },
+  {
+    "name": "Roombook::Edges_GetFromRoom",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 459
+  },
+  {
+    "name": "Roombook::Floor_Create_All",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 466
+  },
+  {
+    "name": "Roombook::Floor_Create_One",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 468
+  },
+  {
+    "name": "Roombook::Edge_FindOnEdge",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 478
+  },
+  {
+    "name": "Roombook::Edge_FindEdge",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 484
+  },
+  {
+    "name": "Roombook::Draw_Elements",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 489
+  },
+  {
+    "name": "Roombook::OtdWall_Draw",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 498
+  },
+  {
+    "name": "Roombook::OtdBeam_Draw_Beam",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 500
+  },
+  {
+    "name": "Roombook::OtdBeam_GetDefult_Beam",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 502
+  },
+  {
+    "name": "Roombook::OtdBeam_Draw_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 506
+  },
+  {
+    "name": "Roombook::OtdBeam_GetDefult_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 508
+  },
+  {
+    "name": "Roombook::OtdWall_Draw_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 515
+  },
+  {
+    "name": "Roombook::OtdWall_GetDefult_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 520
+  },
+  {
+    "name": "Roombook::OtdWall_Draw_Wall",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 527
+  },
+  {
+    "name": "Roombook::OtdWall_GetDefult_Wall",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 535
+  },
+  {
+    "name": "Roombook::Opening_Draw",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 540
+  },
+  {
+    "name": "Roombook::Opening_GetDefult",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 545
+  },
+  {
+    "name": "Roombook::Floor_Draw",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 552
+  },
+  {
+    "name": "Roombook::Floor_Draw_Slab",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 554
+  },
+  {
+    "name": "Roombook::Floor_Draw_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 556
+  },
+  {
+    "name": "Roombook::Floor_GetDefult_Object",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 558
+  },
+  {
+    "name": "Roombook::Floor_GetDefult_Slab",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 562
+  },
+  {
+    "name": "Roombook::SetSyncOtdWall",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 567
+  },
+  {
+    "name": "Roombook::Class_SetClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 569
+  },
+  {
+    "name": "Roombook::Class_SetClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 571
+  },
+  {
+    "name": "Roombook::Class_SetClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 573
+  },
+  {
+    "name": "Roombook::Class_GetClassGuid",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 575
+  },
+  {
+    "name": "Roombook::Class_GetOtdTypeByClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 577
+  },
+  {
+    "name": "Roombook::Class_FindFinClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 582
+  },
+  {
+    "name": "Roombook::Class_IsElementFinClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 584
+  },
+  {
+    "name": "Roombook::Param_AddUnicElementByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 586
+  },
+  {
+    "name": "Roombook::Param_AddUnicGUIDByType",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 591
+  },
+  {
+    "name": "Roombook::Favorite_GetType",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 593
+  },
+  {
+    "name": "Roombook::Favorite_GetDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 594
+  },
+  {
+    "name": "Roombook::Favorite_ReadComposite",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 595
+  },
+  {
+    "name": "Roombook::Favorite_FindName",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 599
+  },
+  {
+    "name": "Roombook::Favorite_GetByName",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 606
+  },
+  {
+    "name": "Roombook::Favorite_GetByName",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 607
+  },
+  {
+    "name": "Roombook::Param_ToParamDict",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 609
+  },
+  {
+    "name": "Roombook::Param_Property_FindInParams",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 610
+  },
+  {
+    "name": "Roombook::Param_Property_Read",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 611
+  },
+  {
+    "name": "Roombook::Param_Material_Get",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 612
+  },
+  {
+    "name": "Roombook::Param_GetForWindowParams",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 613
+  },
+  {
+    "name": "Roombook::Param_GetForRooms",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 614
+  },
+  {
+    "name": "Roombook::Check",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.hpp",
+    "module": "roombook",
+    "line": 616
+  },
+  {
+    "name": "Roombook::CandidateError",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.cpp",
+    "module": "roombook",
+    "line": 8
+  },
+  {
+    "name": "Roombook::IsFinish",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.cpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::ReadCandidate",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.cpp",
+    "module": "roombook",
+    "line": 35
+  },
+  {
+    "name": "Roombook::ReadSegments",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.cpp",
+    "module": "roombook",
+    "line": 59
+  },
+  {
+    "name": "Roombook::ReadBase",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.cpp",
+    "module": "roombook",
+    "line": 86
+  },
+  {
+    "name": "Roombook::ReadRoomSurfaceCandidates",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.cpp",
+    "module": "roombook",
+    "line": 135
+  },
+  {
+    "name": "Roombook::RoomSurfaceCandidateError.guid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 10
+  },
+  {
+    "name": "Roombook::RoomSurfaceCandidateError.stage",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 11
+  },
+  {
+    "name": "Roombook::RoomSurfaceCandidateError.code",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 12
+  },
+  {
+    "name": "Roombook::RoomSurfaceCandidateError.index",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::RoomSurfaceCandidates.zoneGuid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 17
+  },
+  {
+    "name": "Roombook::RoomSurfaceCandidates.complete",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 18
+  },
+  {
+    "name": "Roombook::RoomSurfaceCandidates.sources",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 19
+  },
+  {
+    "name": "Roombook::RoomSurfaceCandidates.beamParts",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 21
+  },
+  {
+    "name": "Roombook::RoomSurfaceCandidates.excludedFinish",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 22
+  },
+  {
+    "name": "Roombook::RoomSurfaceCandidates.errors",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 23
+  },
+  {
+    "name": "Roombook::ReadRoomSurfaceCandidates",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceCandidates.hpp",
+    "module": "roombook",
+    "line": 27
+  },
+  {
+    "name": "Roombook::DistanceTolerance",
+    "kind": "Variable",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::AreaTolerance",
+    "kind": "Variable",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 14
+  },
+  {
+    "name": "Roombook::Subtract",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 18
+  },
+  {
+    "name": "Roombook::Dot",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 20
+  },
+  {
+    "name": "Roombook::Cross",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 22
+  },
+  {
+    "name": "Roombook::Finite",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 26
+  },
+  {
+    "name": "Roombook::Frame.origin",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 29
+  },
+  {
+    "name": "Roombook::Frame.normal",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 30
+  },
+  {
+    "name": "Roombook::Frame.u",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 31
+  },
+  {
+    "name": "Roombook::Frame.v",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 32
+  },
+  {
+    "name": "Roombook::Frame::Set",
+    "kind": "Method",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 34
+  },
+  {
+    "name": "Roombook::Frame::Project",
+    "kind": "Method",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 56
+  },
+  {
+    "name": "Roombook::Frame::Restore",
+    "kind": "Method",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 61
+  },
+  {
+    "name": "Roombook::OnPlane",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 68
+  },
+  {
+    "name": "Roombook::ProjectSurface",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 79
+  },
+  {
+    "name": "Roombook::Claim.face",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 112
+  },
+  {
+    "name": "Roombook::Claim.surface",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 113
+  },
+  {
+    "name": "Roombook::Claim.baseKey",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 114
+  },
+  {
+    "name": "Roombook::Claim.geometryKey",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 115
+  },
+  {
+    "name": "Roombook::SameFace",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 118
+  },
+  {
+    "name": "Roombook::SameClaim",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 138
+  },
+  {
+    "name": "Roombook::Cell.polygon",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 145
+  },
+  {
+    "name": "Roombook::Cell.claims",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 146
+  },
+  {
+    "name": "Roombook::PushCells",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 149
+  },
+  {
+    "name": "Roombook::Error",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 156
+  },
+  {
+    "name": "Roombook::MakePiece",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 171
+  },
+  {
+    "name": "Roombook::PartitionFace",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 215
+  },
+  {
+    "name": "Roombook::PartitionRoomSurfaces",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 279
+  },
+  {
+    "name": "Roombook::BeamAxis.origin",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 354
+  },
+  {
+    "name": "Roombook::BeamAxis.dir",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 355
+  },
+  {
+    "name": "Roombook::BeamAxis.length",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 356
+  },
+  {
+    "name": "Roombook::BeamAxis.perp",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 357
+  },
+  {
+    "name": "Roombook::BeamAxis::Set",
+    "kind": "Method",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 359
+  },
+  {
+    "name": "Roombook::BeamAxis::Along",
+    "kind": "Method",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 371
+  },
+  {
+    "name": "Roombook::BeamAxis::Offset",
+    "kind": "Method",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 373
+  },
+  {
+    "name": "Roombook::BeamAxis::Point",
+    "kind": "Method",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 375
+  },
+  {
+    "name": "Roombook::SectionEdge.beg",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 381
+  },
+  {
+    "name": "Roombook::SectionEdge.end",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 382
+  },
+  {
+    "name": "Roombook::SectionEdge.used",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 383
+  },
+  {
+    "name": "Roombook::SamePoint",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 386
+  },
+  {
+    "name": "Roombook::SectionZone",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 391
+  },
+  {
+    "name": "Roombook::ClipBeamFace",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 495
+  },
+  {
+    "name": "Roombook::PushQuad",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 569
+  },
+  {
+    "name": "Roombook::PushBottom",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 585
+  },
+  {
+    "name": "Roombook::BuildRoomBeamFinish",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.cpp",
+    "module": "roombook",
+    "line": 620
+  },
+  {
+    "name": "Roombook::RoomSurfaceSource.baseGuid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 10
+  },
+  {
+    "name": "Roombook::RoomSurfaceSource.baseType",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 11
+  },
+  {
+    "name": "Roombook::RoomSurfaceSource.geometryGuid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 12
+  },
+  {
+    "name": "Roombook::RoomSurfaceSource.snapshot",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::RoomSurfaceSourceFace.baseGuid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 17
+  },
+  {
+    "name": "Roombook::RoomSurfaceSourceFace.baseType",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 18
+  },
+  {
+    "name": "Roombook::RoomSurfaceSourceFace.geometryGuid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 19
+  },
+  {
+    "name": "Roombook::RoomSurfaceSourceFace.bodyIndex",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 20
+  },
+  {
+    "name": "Roombook::RoomSurfaceSourceFace.polygonIndex",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 21
+  },
+  {
+    "name": "Roombook::RoomSurfaceSourceFace.modelMaterialIndex",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 23
+  },
+  {
+    "name": "Roombook::RoomSurfacePieceStatus",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 26
+  },
+  {
+    "name": "Roombook::RoomSurfacePieceStatus::Matched",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 26
+  },
+  {
+    "name": "Roombook::RoomSurfacePieceStatus::Unmatched",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 26
+  },
+  {
+    "name": "Roombook::RoomSurfacePieceStatus::Ambiguous",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 26
+  },
+  {
+    "name": "Roombook::RoomSurfacePieceContour.hole",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 29
+  },
+  {
+    "name": "Roombook::RoomSurfacePieceContour.vertices",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 30
+  },
+  {
+    "name": "Roombook::RoomSurfacePiece.zoneBodyIndex",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 34
+  },
+  {
+    "name": "Roombook::RoomSurfacePiece.zonePolygonIndex",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 35
+  },
+  {
+    "name": "Roombook::RoomSurfacePiece.status",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 36
+  },
+  {
+    "name": "Roombook::RoomSurfacePiece.baseGuid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 37
+  },
+  {
+    "name": "Roombook::RoomSurfacePiece.baseType",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 38
+  },
+  {
+    "name": "Roombook::RoomSurfacePiece.normal",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 39
+  },
+  {
+    "name": "Roombook::RoomSurfacePiece.planeOffset",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 40
+  },
+  {
+    "name": "Roombook::RoomSurfacePiece.area",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 41
+  },
+  {
+    "name": "Roombook::RoomSurfacePiece.contours",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 42
+  },
+  {
+    "name": "Roombook::RoomSurfacePiece.sources",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 44
+  },
+  {
+    "name": "Roombook::RoomSurfacePartition.zoneGuid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 48
+  },
+  {
+    "name": "Roombook::RoomSurfacePartition.complete",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 49
+  },
+  {
+    "name": "Roombook::RoomSurfacePartition.pieces",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 50
+  },
+  {
+    "name": "Roombook::RoomSurfacePartition.errors",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 51
+  },
+  {
+    "name": "Roombook::PartitionRoomSurfaces",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 57
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamFace",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 60
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamFace::Bottom",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 60
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamFace::LeftSide",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 60
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamFace::RightSide",
+    "kind": "Enum",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 60
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamPiece.face",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 63
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamPiece.area",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 64
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamPiece.vertices",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 65
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamFinish.baseGuid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 69
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamFinish.geometryGuid",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 70
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamFinish.tBeg",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 71
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamFinish.tEnd",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 72
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamFinish.pieces",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 73
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamPartitions.complete",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 77
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamPartitions.beams",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 78
+  },
+  {
+    "name": "Roombook::RoomSurfaceBeamPartitions.errors",
+    "kind": "Field",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 79
+  },
+  {
+    "name": "Roombook::BuildRoomBeamFinish",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfacePartition.hpp",
+    "module": "roombook",
+    "line": 87
+  },
+  {
+    "name": "Roombook::DistanceTolerance",
+    "kind": "Variable",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 10
+  },
+  {
+    "name": "Roombook::AreaTolerance",
+    "kind": "Variable",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 11
+  },
+  {
+    "name": "Roombook::Subtract",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::Dot",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 15
+  },
+  {
+    "name": "Roombook::Cross",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 17
+  },
+  {
+    "name": "Roombook::Length",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 21
+  },
+  {
+    "name": "Roombook::Finite",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 23
+  },
+  {
+    "name": "Roombook::Near",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 25
+  },
+  {
+    "name": "Roombook::ValidPiece",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 27
+  },
+  {
+    "name": "Roombook::Corners",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 43
+  },
+  {
+    "name": "Roombook::BuildSurfaceWall",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 67
+  },
+  {
+    "name": "Roombook::BuildSurfaceWalls",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 129
+  },
+  {
+    "name": "Roombook::GroupSurfaceWallPieces",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 214
+  },
+  {
+    "name": "Roombook::BuildSurfaceSlabs",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.cpp",
+    "module": "roombook",
+    "line": 377
+  },
+  {
+    "name": "Roombook::BuildSurfaceWall",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.hpp",
+    "module": "roombook",
+    "line": 10
+  },
+  {
+    "name": "Roombook::BuildSurfaceWalls",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.hpp",
+    "module": "roombook",
+    "line": 13
+  },
+  {
+    "name": "Roombook::GroupSurfaceWallPieces",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.hpp",
+    "module": "roombook",
+    "line": 18
+  },
+  {
+    "name": "Roombook::BuildSurfaceSlabs",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoomSurfaceFinish.hpp",
+    "module": "roombook",
+    "line": 22
   }
 ]

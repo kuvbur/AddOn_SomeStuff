@@ -4,7 +4,11 @@
 
 #include "json_commands/RoomBookCommand.hpp"
 
-#include "Roombook.hpp"
+#include "roombook/Roombook.hpp"
+
+#if defined(TESTING) && defined(ServerMainVers_2500)
+    #include "tests/TestRoombookGeometry.hpp"
+#endif
 
 #if defined(ServerMainVers_2500)
 
@@ -31,8 +35,14 @@ GS::Optional<GS::UniString> RoomBookCommand::GetResponseSchema () const { return
 // -----------------------------------------------------------------------------
 // Запускает построение отделки и возвращает длительность вызова.
 // -----------------------------------------------------------------------------
-GS::ObjectState RoomBookCommand::Execute (const GS::ObjectState & /*parameters*/,
+GS::ObjectState RoomBookCommand::Execute (const GS::ObjectState &parameters,
                                           GS::ProcessControl & /*processControl*/) const {
+    #if defined(TESTING) && defined(ServerMainVers_2500)
+    if (parameters.Contains ("surfaceWalls"))
+        return DrawRoomSurfaceWalls (parameters);
+    #else
+    (void)parameters;
+    #endif
     const auto start = std::chrono::steady_clock::now ();
     Roombook::RoomBook ();
     const auto finish = std::chrono::steady_clock::now ();
