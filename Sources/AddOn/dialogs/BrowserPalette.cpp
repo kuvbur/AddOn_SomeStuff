@@ -16,9 +16,8 @@
     #include "Process.hpp"
 #endif
 
-#include "dialogs/BrowserPalette.hpp"
-
 #include "CommonFunction.hpp"
+#include "dialogs/BrowserPalette.hpp"
 #include "dialogs/CommandHelpers.hpp"
 #include "dialogs/SyncSettings.hpp"
 #include "Propertycache.hpp"
@@ -826,7 +825,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         }));
 
     // Подсветка и приближение элементов из HTML БЕЗ смены выделения
-    // (паттерн Spec.cpp: APIIo_HighlightElementsID).
     // Контракт: вход — JSON-массив GUID'ов в виде строки '["{...}","{...}"]';
     // выход — true. Элементы подсвечиваются цветом (HashTable GUID->API_RGBAColor),
     // камера зумится на них (APIDo_ZoomToElementsID, par1: const GS::Array<API_Guid>*).
@@ -871,32 +869,10 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             suppressSelectionRefresh = true;
             SuppressSelectionRefreshGuard suppressGuard{suppressSelectionRefresh};
             (void)suppressGuard;
-
-            // Подсветка цветом, выделение не трогаем. Версионные обёртки как в Spec.cpp.
-            GS::HashTable<API_Guid, API_RGBAColor> hlElems;
-            const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
-            for (const API_Guid &guid : guids)
-                hlElems.Put (guid, hlColor);
-            // С AC26 функции подсветки возвращают void, поэтому код ошибки от них
-            // не получить и hlErr остаётся NoError.
-            GSErrCode hlErr = NoError;
-#ifdef ServerMainVers_2700
-            ACAPI_UserInput_ClearElementHighlight ();
-            ACAPI_UserInput_SetElementHighlight (hlElems);
-#else
-    #ifdef ServerMainVers_2600
-            ACAPI_Interface_ClearElementHighlight ();
-            ACAPI_Interface_SetElementHighlight (hlElems);
-    #else
-            // Вызов без par1 снимает предыдущую подсветку
-            ACAPI_Interface (APIIo_HighlightElementsID);
-            hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
-    #endif
-#endif
+            GSErrCode hlErr = HighlightElements (guids);
             if (hlErr != NoError) {
                 DBprnt (GS::UniString ("HighlightElements: highlight error ") + GS::ValueToUniString (hlErr));
             }
-
 // Приближаем камеру к элементам без смены выделения.
 #ifdef ServerMainVers_2700
             const GSErrCode zoomErr =
@@ -1466,13 +1442,17 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
             DBprnt ("GetClassification: returning JSON: " + jsonStr);
             return new DG::JSValue (jsonStr);
-        } catch (const std::exception &e) {
+        }
+
+        catch (const std::exception &e) {
             DBprnt (GS::UniString ("GetClassification: std::exception: ") + e.what ());
             return new DG::JSValue (
                 GS::UniString ("{\"common\":true,\"commonPath\":[],\"differing\":[],\"options\":[],"
                                "\"status\":\"error\",\"debug_error\":\"std::exception\",\"debug_exception\":\"") +
                 EscapeJsonString (e.what ()).ToCStr ().Get () + "\"}");
-        } catch (...) {
+        }
+
+        catch (...) {
             DBprnt ("GetClassification: unknown exception caught");
             return new DG::JSValue (GS::UniString ("{\"common\":true,\"commonPath\":[],\"differing\":[],\"options\":[],"
                                                    "\"status\":\"error\",\"debug_error\":\"unknown exception\"}"));

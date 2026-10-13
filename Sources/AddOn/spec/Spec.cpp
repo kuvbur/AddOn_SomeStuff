@@ -16,6 +16,8 @@
 #include "Propertycache.hpp"
 
 namespace Spec {
+    GS::Int32 nPhase = 1;
+
     // --------------------------------------------------------------------
     // Получение правил из свойств элемента по умолчанию
     // Назначение: ищет правила спецификации в пользовательских свойствах объекта по умолчанию
@@ -645,15 +647,9 @@ namespace Spec {
         clock_t start, finish;
         double duration;
         start = clock ();
+        nPhase = 1;
         GS::UniString funcname = "SpecAll";
-        GS::Int32 nPhase = 4;
         GS::UniString subtitle;
-#ifdef ServerMainVers_2700
-        Int32 maxval = 1;
-        bool showPercent = true;
-#else
-        short i = 1;
-#endif
         // набор прочитанных словарей один на весь запуск. До чтения
         // заполняется только поле read (запросы), composite/listData — выход
         // ParamHelpers::ElementsRead.
@@ -682,13 +678,8 @@ namespace Spec {
         GSErrCode err = NoError;
         subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ());
         if (showUserInterface) {
-#ifdef ServerMainVers_2700
-            maxval = 2;
-            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-            i = 2;
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+            if (AdvanceProcessPhase (subtitle, nPhase))
+                return false;
         }
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         if (!guidArray.IsEmpty ()) {
@@ -765,13 +756,8 @@ namespace Spec {
         }
         subtitle = GS::UniString::Printf ("Reading parameters from %d elements", readContext.read.GetSize ());
         if (showUserInterface) {
-#ifdef ServerMainVers_2700
-            maxval = 2;
-            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-            i = 2;
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+            if (AdvanceProcessPhase (subtitle, nPhase))
+                return APIERR_GENERAL;
         }
         // Накопитель кандидатов на обновление: все элементы, найденные по
         // свойству-правилу, включая заблокированные. Разблокируются и
@@ -960,17 +946,7 @@ namespace Spec {
             // указание, где именно ошибка. Сообщение при этом копится и
             // показывается в общем окне результата.
             if (showUserInterface && error_element.GetSize () < 20) {
-    #ifdef ServerMainVers_2700
-                ACAPI_UserInput_ClearElementHighlight ();
-    #else
-        #ifdef ServerMainVers_2600
-                ACAPI_Interface_ClearElementHighlight ();
-        #else
-                ACAPI_Interface (APIIo_HighlightElementsID);
-        #endif
-    #endif
-                GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
-                API_RGBAColor hlColor = {1, 0.0, 0.0, 1};
+                HighlightElements (error_element);
                 GS::Array<API_Neig> error_elements = {};
                 for (const auto &cIt : error_element) {
     #ifdef ServerMainVers_2800
@@ -978,18 +954,8 @@ namespace Spec {
     #else
                     API_Guid el = *cIt.key;
     #endif
-                    hlElems.Add (el, hlColor);
                     error_elements.PushNew (el);
                 }
-    #ifdef ServerMainVers_2700
-                ACAPI_UserInput_SetElementHighlight (hlElems);
-    #else
-        #ifdef ServerMainVers_2600
-                ACAPI_Interface_SetElementHighlight (hlElems);
-        #else
-                ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
-        #endif
-    #endif
     #ifdef ServerMainVers_2700
                 err = ACAPI_Selection_Select (error_elements, true);
                 if (err == NoError)
@@ -1015,17 +981,8 @@ namespace Spec {
         }
 #endif
         if (!elements_mod.IsEmpty ()) {
-            if (showUserInterface) {
-#ifdef ServerMainVers_2700
-                ACAPI_UserInput_ClearElementHighlight ();
-#else
-    #ifdef ServerMainVers_2600
-                ACAPI_Interface_ClearElementHighlight ();
-    #else
-                ACAPI_Interface (APIIo_HighlightElementsID);
-    #endif
-#endif
-            }
+            if (showUserInterface)
+                ClearElementHighlight ();
             GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
             API_RGBAColor hlColor = {0.8, 0.0, 0.0, 0.5};
             for (const auto &eldict : elements_mod) {
@@ -1065,13 +1022,7 @@ namespace Spec {
         }
         subtitle = GS::UniString::Printf ("Create %d elements", n_elements);
         if (showUserInterface) {
-#ifdef ServerMainVers_2700
-            maxval = 3;
-            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-            i = 3;
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+            AdvanceProcessPhase (subtitle, nPhase);
         }
         // Какое-то действие требуется: создать, изменить или удалить.
         bool has_action = false;

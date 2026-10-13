@@ -376,15 +376,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
 #endif
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings, true);
-#ifdef ServerMainVers_2700
-    ACAPI_UserInput_ClearElementHighlight ();
-#else
-    #ifdef ServerMainVers_2600
-    ACAPI_Interface_ClearElementHighlight ();
-    #else
-    ACAPI_Interface (APIIo_HighlightElementsID);
-    #endif
-#endif
+    ClearElementHighlight ();
     const Int32 AddOnMenuID = ID_ADDON_MENU;
     // Переключатели флагов мониторинга к свойствам не обращаются — кэш не пересобираем
     const bool monitoringToggle =

@@ -818,20 +818,8 @@ void CallOnSelectedElemSettings (void (*function) (const API_Guid &, const SyncS
     long time_start = clock ();
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         function (guidArray[i], syncSettings);
-#ifdef ServerMainVers_2700
-        if (i % 10 == 0)
-            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-        if (i % 10 == 0)
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
-#ifdef ServerMainVers_2700
-        if (ACAPI_ProcessWindow_IsProcessCanceled ())
+        if (AdvanceProcessPhase (subtitle, nPhase))
             return;
-#else
-        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-            return;
-#endif
     }
     long time_end = clock ();
     GS::UniString time = GS::UniString::Printf (" %.3f s", (double)(time_end - time_start) / CLOCKS_PER_SEC);
@@ -853,27 +841,11 @@ void CallOnSelectedElem (void (*function) (const API_Guid &),
         long time_start = clock ();
         GS::UniString subtitle ("working...");
         GS::Int32 nPhase = 1;
-#ifdef ServerMainVers_2700
-        bool showPercent = true;
-        Int32 maxval = guidArray.GetSize ();
-#endif
         ProcessWindowGuard pwGuard (funcname, nPhase);
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-#ifdef ServerMainVers_2700
-            if (i % 10 == 0)
-                ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-            if (i % 10 == 0)
-                ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
             function (guidArray[i]);
-#ifdef ServerMainVers_2700
-            if (ACAPI_ProcessWindow_IsProcessCanceled ())
+            if (AdvanceProcessPhase (subtitle, nPhase))
                 return;
-#else
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                return;
-#endif
         }
         long time_end = clock ();
         GS::UniString time =

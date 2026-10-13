@@ -603,6 +603,14 @@ enum class PrepareElementsResult {
 //
 bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult &result);
 
+void ClearElementHighlight ();
+
+GSErrCode HighlightElements (const UnicGuid &guids);
+
+GSErrCode HighlightElements (const GS::Array<API_Guid> &guids);
+
+bool AdvanceProcessPhase (GS::UniString &funcname, GS::Int32 &nPhase);
+
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &type, API_AttributeIndex &attribinx);
 
 GSErrCode Favorite_GetNum (const API_ElemTypeID &type,

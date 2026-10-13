@@ -842,21 +842,9 @@ void CallOnSelectedElem2 (void (*function) (const API_Guid &),
 #endif
         ProcessWindowGuard pwGuard (funcname, nPhase);
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-#ifdef ServerMainVers_2700
-            if (i % 10 == 0)
-                ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-            if (i % 10 == 0)
-                ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+            if (AdvanceProcessPhase (subtitle, nPhase))
+                return;
             function (guidArray[i]);
-#ifdef ServerMainVers_2700
-            if (ACAPI_ProcessWindow_IsProcessCanceled ())
-                return;
-#else
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                return;
-#endif
         }
         long time_end = clock ();
         GS::UniString time =
@@ -2600,6 +2588,80 @@ bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult 
 
     result = PrepareElementsResult::Ok;
     return true;
+}
+
+void ClearElementHighlight () {
+#ifdef ServerMainVers_2700
+    ACAPI_UserInput_ClearElementHighlight ();
+#else
+    #ifdef ServerMainVers_2600
+    ACAPI_Interface_ClearElementHighlight ();
+    #else
+    ACAPI_Interface (APIIo_HighlightElementsID);
+    #endif
+#endif
+}
+
+GSErrCode HighlightElements (const UnicGuid &guids) {
+    GSErrCode hlErr = NoError;
+    GS::HashTable<API_Guid, API_RGBAColor> hlElems;
+    const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
+    for (const auto &cIt : guids) {
+#ifdef ServerMainVers_2800
+        API_Guid el = cIt.key;
+#else
+        API_Guid el = *cIt.key;
+#endif
+        hlElems.Add (el, hlColor);
+    }
+    ClearElementHighlight ();
+#ifdef ServerMainVers_2700
+    ACAPI_UserInput_SetElementHighlight (hlElems);
+#else
+    #ifdef ServerMainVers_2600
+    CAPI_Interface_SetElementHighlight (hlElems);
+    #else
+    hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+    #endif
+#endif
+    return hlErr;
+}
+
+GSErrCode HighlightElements (const GS::Array<API_Guid> &guids) {
+    GSErrCode hlErr = NoError;
+    GS::HashTable<API_Guid, API_RGBAColor> hlElems;
+    const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
+    for (const API_Guid &guid : guids)
+        hlElems.Put (guid, hlColor);
+    ClearElementHighlight ();
+#ifdef ServerMainVers_2700
+    ACAPI_UserInput_SetElementHighlight (hlElems);
+#else
+    #ifdef ServerMainVers_2600
+    CAPI_Interface_SetElementHighlight (hlElems);
+    #else
+    hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+    #endif
+#endif
+    return hlErr;
+}
+
+// -----------------------------------------------------------------------------
+// Переход к следующей фазе расчёта: увеличивает счётчик, сообщает прогресс и
+// проверяет отмену.
+// -----------------------------------------------------------------------------
+bool AdvanceProcessPhase (GS::UniString &funcname, GS::Int32 &nPhase) {
+    nPhase += 1;
+    bool showPercent = true;
+#ifdef ServerMainVers_2700
+    if (nPhase % 10 == 0 || nPhase < 10)
+        ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase, &showPercent);
+    return ACAPI_ProcessWindow_IsProcessCanceled ();
+#else
+    if (nPhase % 10 == 0 || nPhase < 10)
+        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase, &showPercent);
+    return ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr) != NoError;
+#endif
 }
 
 // -----------------------------------------------------------------------------
