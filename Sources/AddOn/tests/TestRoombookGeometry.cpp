@@ -590,31 +590,162 @@ namespace {
                 area += OtdWall_GetArea (wall);
             return area;
         };
-        check (BuildSurfaceWalls (notched, 0, notchedWalls) && notchedWalls.GetSize () == 3 &&
+        check (BuildSurfaceWalls (notched, 0, notchedWalls) && notchedWalls.GetSize () == 1 &&
                    closeArea (wallArea (notchedWalls), 11),
-               "notched contact decomposes completely into native walls");
-        bool preservesNotch = !notchedWalls.IsEmpty ();
-        for (const auto &wall : notchedWalls)
-            preservesNotch =
-                preservesNotch && wall.base_guid == baseA &&
-                (wall.zBottom + wall.height <= 2 + 1e-6 || std::max (wall.begC.x, wall.endC.x) <= 1.5 + 1e-6 ||
-                 std::min (wall.begC.x, wall.endC.x) >= 2.5 - 1e-6);
-        check (preservesNotch, "decomposition preserves notch and single base provenance");
+               "notched contact uses one wall with net area");
+        check (notchedWalls.GetSize () == 1 && notchedWalls[0].base_guid == baseA &&
+                   notchedWalls[0].openings.GetSize () == 1 && closeArea (notchedWalls[0].openings[0].objLoc, 2) &&
+                   closeArea (notchedWalls[0].openings[0].width, 1) &&
+                   closeArea (notchedWalls[0].openings[0].lower, 2) &&
+                   closeArea (notchedWalls[0].openings[0].height, 1) &&
+                   notchedWalls[0].openings[0].base_guid == APINULLGuid && !notchedWalls[0].openings[0].has_reveal,
+               "edge notch preserves one base and synthetic opening coordinates");
         notched.contours[0].vertices = {{0, 0, 0}, {4, 0, 0}, {4, 0, 3}, {0, 0, 3}};
         notchedContour.hole = true;
         notchedContour.vertices = {{1.5, 0, 1}, {2.5, 0, 1}, {2.5, 0, 2}, {1.5, 0, 2}};
         notched.contours.Push (notchedContour);
         notchedWalls.Clear ();
-        check (BuildSurfaceWalls (notched, 0, notchedWalls) && notchedWalls.GetSize () == 4 &&
+        check (BuildSurfaceWalls (notched, 0, notchedWalls) && notchedWalls.GetSize () == 1 &&
                    closeArea (wallArea (notchedWalls), 11),
-               "wall contact hole is decomposed without filling opening");
+               "wall contact hole is cut from a single envelope");
+        check (notchedWalls.GetSize () == 1 && notchedWalls[0].openings.GetSize () == 1 &&
+                   closeArea (notchedWalls[0].openings[0].lower, 1),
+               "interior opening has a relative sill before height trim");
+        OtdWall sourceOpeningWall = notchedWalls[0];
+        sourceOpeningWall.surface_geometry = false;
+        sourceOpeningWall.begC = {0, 0};
+        sourceOpeningWall.endC = {4, 0};
+        sourceOpeningWall.openings[0].base_guid = segment;
+        OtdWall linkedWall = notchedWalls[0];
+        check (LinkSurfaceOpenings (linkedWall, {sourceOpeningWall}) && linkedWall.openings.GetSize () == 1 &&
+                   linkedWall.openings[0].base_guid == segment && linkedWall.openings[0].surface_geometry &&
+                   !linkedWall.openings[0].has_reveal && closeArea (OtdWall_GetArea (linkedWall), 11),
+               "surface opening retains the real opening guid without duplicate reveals");
+        auto foreignOpeningWall = sourceOpeningWall;
+        foreignOpeningWall.base_guid = baseB;
+        linkedWall = notchedWalls[0];
+        check (LinkSurfaceOpenings (linkedWall, {foreignOpeningWall}) &&
+                   linkedWall.openings[0].base_guid == APINULLGuid,
+               "geometric cutout is not linked to an opening of another base");
+        auto overlappingOpeningWall = sourceOpeningWall;
+        overlappingOpeningWall.openings[0].base_guid = baseB;
+        linkedWall = notchedWalls[0];
+        check (!LinkSurfaceOpenings (linkedWall, {sourceOpeningWall, overlappingOpeningWall}) &&
+                   linkedWall.openings.GetSize () == 1 && linkedWall.openings[0].base_guid == APINULLGuid &&
+                   closeArea (OtdWall_GetArea (linkedWall), 11),
+               "ambiguous real opening ownership leaves cutouts unchanged");
+        linkedWall = notchedWalls[0];
+        check (LinkSurfaceOpenings (linkedWall, {sourceOpeningWall, sourceOpeningWall}) &&
+                   linkedWall.openings.GetSize () == 1 && linkedWall.openings[0].base_guid == segment,
+               "duplicate legacy records do not duplicate a real opening");
+        sourceOpeningWall.openings[0].width = 0.5;
+        linkedWall = notchedWalls[0];
+        bool mixedLinked = LinkSurfaceOpenings (linkedWall, {sourceOpeningWall});
+        double realCutoutArea = 0, geometricCutoutArea = 0;
+        for (const auto &opening : linkedWall.openings) {
+            if (opening.base_guid == segment)
+                realCutoutArea += opening.width * opening.height;
+            else if (opening.base_guid == APINULLGuid)
+                geometricCutoutArea += opening.width * opening.height;
+        }
+        check (mixedLinked && linkedWall.openings.GetSize () == 3 && closeArea (realCutoutArea, 0.5) &&
+                   closeArea (geometricCutoutArea, 0.5) && closeArea (OtdWall_GetArea (linkedWall), 11),
+               "mixed notch splits only openings to preserve real provenance and coverage");
+        sourceOpeningWall.begC = {4, 0};
+        sourceOpeningWall.endC = {0, 0};
+        sourceOpeningWall.openings[0].width = 0.6;
+        sourceOpeningWall.openings[0].objLoc = 1.8;
+        linkedWall = notchedWalls[0];
+        check (LinkSurfaceOpenings (linkedWall, {sourceOpeningWall}) && linkedWall.openings.GetSize () == 2 &&
+                   linkedWall.openings[0].base_guid == segment && closeArea (linkedWall.openings[0].objLoc, 1.8) &&
+                   closeArea (linkedWall.openings[0].width, 0.6) && closeArea (OtdWall_GetArea (linkedWall), 11),
+               "reversed legacy axis preserves the real opening center and guid");
+        GS::Array<OtdWall> holedBands;
+        check (notchedWalls.GetSize () == 1 &&
+                   OtdWall_Delim_One (notchedWalls[0],
+                                      holedBands,
+                                      0.5,
+                                      1.5,
+                                      bandType,
+                                      emptyMaterial,
+                                      emptyMaterial,
+                                      emptyMaterial,
+                                      emptyMaterial,
+                                      emptyMaterial,
+                                      emptyMaterial,
+                                      emptyMaterial,
+                                      emptyMaterial) &&
+                   holedBands.GetSize () == 1 && holedBands[0].openings.GetSize () == 1 &&
+                   closeArea (holedBands[0].openings[0].lower, 0) &&
+                   closeArea (holedBands[0].openings[0].height, 0.5) &&
+                   closeArea (OtdWall_GetArea (holedBands[0]), 1.5),
+               "height band clips opening and preserves net area");
+        OtdWall emptyBand = notchedWalls[0];
+        emptyBand.openings[0].width = 4;
+        holedBands.Clear ();
+        check (!OtdWall_Delim_One (emptyBand,
+                                   holedBands,
+                                   0.5,
+                                   1.5,
+                                   bandType,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial) &&
+                   holedBands.IsEmpty (),
+               "fully cut height band does not create an empty wall");
+        holedBands.Clear ();
+        check (!OtdWall_Delim_One (notchedWalls[0],
+                                   holedBands,
+                                   0.5,
+                                   2 - min_dim / 2,
+                                   bandType,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial,
+                                   emptyMaterial) &&
+                   holedBands.IsEmpty (),
+               "subthreshold clipped hole rejects band instead of filling void");
+        RoomSurfacePiece multiple = notched;
+        auto secondHole = notchedContour;
+        for (auto &vertex : secondHole.vertices)
+            vertex.x -= 1.25;
+        multiple.contours.Push (secondHole);
+        multiple.area = 10;
+        GS::Array<OtdWall> multipleWalls;
+        check (BuildSurfaceWalls (multiple, 0, multipleWalls) && multipleWalls.GetSize () == 1 &&
+                   multipleWalls[0].openings.GetSize () == 2 && closeArea (wallArea (multipleWalls), 10),
+               "two holes preserve one wall and subtract both areas");
+        for (auto &contour : multiple.contours)
+            for (auto &vertex : contour.vertices)
+                vertex.x = -vertex.x;
+        multipleWalls.Clear ();
+        check (BuildSurfaceWalls (multiple, 0, multipleWalls) && multipleWalls.GetSize () == 1 &&
+                   multipleWalls[0].openings.GetSize () == 2 && closeArea (multipleWalls[0].openings[0].objLoc, 0.75) &&
+                   closeArea (multipleWalls[0].openings[1].objLoc, 2) && closeArea (wallArea (multipleWalls), 10),
+               "mirrored contour uses final wall direction for openings");
+        RoomSurfacePiece tinyHole = notched;
+        for (auto &vertex : tinyHole.contours[1].vertices)
+            vertex.x = vertex.x > 2 ? 1.5 + min_dim / 2 : 1.5;
+        tinyHole.area = 12 - min_dim / 2;
+        GS::Array<OtdWall> rejectedWalls;
+        check (!BuildSurfaceWalls (tinyHole, 0, rejectedWalls) && rejectedWalls.IsEmpty (),
+               "unrepresentable small cutout does not fill the void");
         for (auto &contour : notched.contours)
             for (auto &vertex : contour.vertices)
                 vertex.y = 0.5 * vertex.z;
         notched.normal = {0, 1 / std::sqrt (1.25), -0.5 / std::sqrt (1.25)};
         notched.area = 11 * std::sqrt (1.25);
         notchedWalls.Clear ();
-        check (BuildSurfaceWalls (notched, 0, notchedWalls) && notchedWalls.GetSize () == 4 &&
+        check (BuildSurfaceWalls (notched, 0, notchedWalls) && notchedWalls.GetSize () == 1 &&
                    closeArea (wallArea (notchedWalls), notched.area) && closeArea (notchedWalls[0].rise_y, 0.5),
                "slanted holed contact preserves true area and source plane");
         notched.contours[0].vertices[2].x = 3;
@@ -655,6 +786,18 @@ namespace {
                         std::fabs (wall.zBottom - other.zBottom) < 1e-6 &&
                         std::fabs (wall.height - other.height) < 1e-6 &&
                         std::fabs (wall.slant_angle - other.slant_angle) < 1e-6) {
+                        if (wall.openings.GetSize () != other.openings.GetSize ())
+                            continue;
+                        bool sameOpenings = true;
+                        for (UIndex opening = 0; opening < wall.openings.GetSize (); ++opening) {
+                            const auto &first = wall.openings[opening], &second = other.openings[opening];
+                            sameOpenings = sameOpenings && std::fabs (first.objLoc - second.objLoc) < 1e-6 &&
+                                           std::fabs (first.width - second.width) < 1e-6 &&
+                                           std::fabs (first.zBottom - second.zBottom) < 1e-6 &&
+                                           std::fabs (first.height - second.height) < 1e-6;
+                        }
+                        if (!sameOpenings)
+                            continue;
                         used[i] = true;
                         found = true;
                         break;
@@ -724,6 +867,21 @@ namespace {
         GS::Array<OtdWall> subdividedWalls;
         check (groupWalls (split, subdividedWalls) && sameWalls (canonicalWalls, subdividedWalls),
                "internal additional splits do not survive canonical union");
+        auto diagonalTail = rectanglePiece (4, 4.5, 1, 3);
+        diagonalTail.area = 0.75;
+        diagonalTail.contours[0].vertices = {{4, 0, 1}, {4.5, 0, 2}, {4.5, 0, 3}, {4, 0, 3}};
+        GS::Array<RoomSurfacePiece> unsupportedGrouped;
+        GS::Array<OtdWall> unsupportedWalls;
+        const bool wholeContact =
+            GroupSurfaceWallPieces ({rectanglePiece (0, 4, 0, 3), diagonalTail}, 0, unsupportedGrouped);
+        check (wholeContact && unsupportedGrouped.GetSize () == 1 && closeArea (unsupportedGrouped[0].area, 12.75) &&
+                   !BuildSurfaceWalls (unsupportedGrouped[0], 0, unsupportedWalls) && unsupportedWalls.IsEmpty (),
+               "same source diagonal tail is not dropped before representation check");
+        GS::Array<RoomSurfacePiece> repeatedUnsupported;
+        check (wholeContact && GroupSurfaceWallPieces (unsupportedGrouped, 0, repeatedUnsupported) &&
+                   repeatedUnsupported.GetSize () == 1 &&
+                   !BuildSurfaceWalls (repeatedUnsupported[0], 0, unsupportedWalls) && unsupportedWalls.IsEmpty (),
+               "unsupported whole contour has the same outcome as its fragmented input");
         GS::Array<RoomSurfacePiece> pair = {rectanglePiece (0, 1, 0, 3), rectanglePiece (1, 2, 0, 3)};
         pair[1].planeOffset = -1.1e-7;
         for (auto &vertex : pair[1].contours[0].vertices)
@@ -783,6 +941,358 @@ namespace {
                    surfaceSlabs[0].base_type == API_BeamID,
                "horizontal adapter preserves ceiling hole and beam parent");
         check (!BuildSurfaceWall (contact, 0, surfaceWall), "holed horizontal surface is not a wall");
+        const auto atLevel = [] (RoomSurface face, double z) {
+            face.planeOffset = -face.normalWorld.z * z;
+            for (auto &contour : face.contours)
+                for (auto &point : contour.vertices)
+                    point.world.z = point.local.z = z;
+            return face;
+        };
+        const auto slabArea = [] (const GS::Array<OtdSlab> &slabs) {
+            double sum = 0;
+            for (const auto &slab : slabs)
+                sum += slab.poly.CalcArea ();
+            return sum;
+        };
+        auto floorZone = snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, -1), 0.4));
+        auto lower = source (baseA, atLevel (rectangle (0, 4, 0, 3, 1), -0.2), API_SlabID);
+        auto slabBottomFace = atLevel (rectangle (0, 4, 0, 3, -1), -0.5);
+        slabBottomFace.polygonIndex = 2;
+        lower.snapshot.bodies[0].surfaces.Push (slabBottomFace);
+        GS::Array<RoomSurfaceSource> slabSources = {lower};
+        GS::Array<API_Guid> roles = {baseA};
+        GS::Array<OtdSlab> projected;
+        double rejected = 0;
+        check (BuildProjectedSlabFinishes (floorZone, slabSources, roles, Floor, 0, projected, rejected) &&
+                   projected.GetSize () == 1 && closeArea (slabArea (projected), 12) &&
+                   closeArea (projected[0].zBottom, -0.2) && projected[0].base_guid == baseA &&
+                   projected[0].type == Floor && projected[0].surface_geometry && rejected == 0,
+               "discovered floor across gap uses actual upper slab face and original guid");
+        auto ceilingZone = snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, 1), 2.8));
+        slabSources = {source (baseB, atLevel (rectangle (0, 4, 0, 3, -1), 3.4), API_SlabID)};
+        auto slabTopFace = atLevel (rectangle (0, 4, 0, 3, 1), 3.8);
+        slabTopFace.polygonIndex = 2;
+        slabSources[0].snapshot.bodies[0].surfaces.Push (slabTopFace);
+        roles = {baseB};
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (ceilingZone, slabSources, roles, Ceil, 0, projected, rejected) &&
+                   projected.GetSize () == 1 && closeArea (projected[0].zBottom, 3.4) &&
+                   projected[0].base_guid == baseB && projected[0].type == Ceil,
+               "discovered ceiling across gap uses actual lower slab face");
+        roles = {baseA};
+        projected.Clear ();
+        check (!BuildProjectedSlabFinishes (ceilingZone, slabSources, roles, Ceil, 0, projected, rejected) &&
+                   projected.IsEmpty (),
+               "missing role snapshot fails atomically");
+        slabSources = {source (baseA, atLevel (rectangle (0, 2, 0, 3, 1), -0.2), API_SlabID),
+                       source (baseB, atLevel (rectangle (2, 4, 0, 3, 1), -0.4), API_SlabID)};
+        roles = {baseA, baseB, baseA};
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (floorZone, slabSources, roles, Floor, 0, projected, rejected) &&
+                   projected.GetSize () == 2 && closeArea (slabArea (projected), 12) && rejected == 0,
+               "adjacent different slab levels split room coverage without duplicate roles");
+        GS::Array<OtdSlab> reversedSlabs;
+        GS::Array<RoomSurfaceSource> reverseSources = {slabSources[1], slabSources[0]};
+        double reverseRejected = 0;
+        bool stable =
+            BuildProjectedSlabFinishes (floorZone, reverseSources, roles, Floor, 0, reversedSlabs, reverseRejected) &&
+            reversedSlabs.GetSize () == projected.GetSize ();
+        for (UIndex i = 0; stable && i < projected.GetSize (); ++i)
+            stable = projected[i].base_guid == reversedSlabs[i].base_guid &&
+                     closeArea (projected[i].zBottom, reversedSlabs[i].zBottom) &&
+                     closeArea (projected[i].poly.CalcArea (), reversedSlabs[i].poly.CalcArea ());
+        check (stable, "projected ownership is independent of candidate order");
+        slabSources[1] = source (baseB, atLevel (rectangle (1, 4, 0, 3, 1), -0.4), API_SlabID);
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (floorZone, slabSources, roles, Floor, 0, projected, rejected) &&
+                   closeArea (slabArea (projected), 12) && closeArea (rejected, 0) && projected.GetSize () == 2 &&
+                   projected[0].base_guid == baseA && closeArea (projected[0].poly.CalcArea (), 6),
+               "unequal floor elevations use descending priority then remaining coverage");
+        auto holed = atLevel (rectangle (0, 4, 0, 3, 1), -0.2);
+        holed.contours.Push (atLevel (rectangle (1, 2, 1, 2, 1), -0.2).contours[0]);
+        holed.contours[1].hole = true;
+        slabSources = {source (baseA, holed, API_SlabID)};
+        roles = {baseA};
+        projected.Clear ();
+        rejected = 0;
+        check (BuildProjectedSlabFinishes (floorZone, slabSources, roles, Floor, 0, projected, rejected) &&
+                   closeArea (slabArea (projected), 11) && rejected == 0,
+               "projected slab opening remains empty without zone fallback");
+        floorZone.bodies.Push (floorZone.bodies[0]);
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (floorZone, slabSources, roles, Floor, 0, projected, rejected) &&
+                   closeArea (slabArea (projected), 11),
+               "duplicate room bodies do not duplicate slab finishes");
+        auto conflictingFace = atLevel (rectangle (0, 4, 0, 3, 1), -0.6);
+        conflictingFace.polygonIndex = 2;
+        slabSources[0].snapshot.bodies[0].surfaces.Push (conflictingFace);
+        projected.Clear ();
+        rejected = 0;
+        check (BuildProjectedSlabFinishes (floorZone, slabSources, roles, Floor, 0, projected, rejected) &&
+                   closeArea (slabArea (projected), 11) && closeArea (rejected, 0) && projected.GetSize () == 1 &&
+                   closeArea (projected[0].zBottom, -0.2),
+               "same slab levels retain higher face and exclude its holes from lower coverage");
+        slabSources = {source (baseA, atLevel (rectangle (5, 6, 0, 3, 1), -0.2), API_SlabID)};
+        projected.Clear ();
+        rejected = 0;
+        check (BuildProjectedSlabFinishes (floorZone, slabSources, roles, Floor, 0, projected, rejected) &&
+                   projected.IsEmpty () && rejected == 0,
+               "discovered slab outside room projection creates no finish and no fallback");
+        OtdSlab nominal;
+        nominal.zBottom = 0;
+        GS::Array<OtdWall> steps;
+        slabSources.Clear ();
+        roles.Clear ();
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   floorZone, slabSources, roles, Floor, 2, projected, rejected, &nominal, false, &steps) &&
+                   projected.GetSize () == 1 && closeArea (slabArea (projected), 12) &&
+                   projected[0].base_guid == APINULLGuid && projected[0].floorInd == 2 && projected[0].zBottom == 0 &&
+                   projected[0].surface_geometry && steps.IsEmpty (),
+               "zero-source floor uses nominal residual when by-slab is disabled");
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   floorZone, slabSources, roles, Floor, 0, projected, rejected, &nominal, true, &steps) &&
+                   projected.IsEmpty (),
+               "zero-source floor by-slab suppresses residual");
+        nominal.zBottom = 3.1;
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominal, false, &steps) &&
+                   projected.GetSize () == 1 && closeArea (projected[0].zBottom, 3.1) && projected[0].type == Ceil,
+               "zero-source ceiling residual uses supplied main-plus-down nominal plane");
+        slabSources = {source (baseA, atLevel (rectangle (0, 2, 0, 3, -1), 3.2), API_SlabID),
+                       source (baseB, atLevel (rectangle (1, 4, 0, 3, -1), 3.4), API_SlabID)};
+        roles = {baseA, baseB};
+        projected.Clear ();
+        rejected = 0;
+        check (BuildProjectedSlabFinishes (ceilingZone, slabSources, roles, Ceil, 0, projected, rejected) &&
+                   projected.GetSize () == 2 && closeArea (slabArea (projected), 12) &&
+                   projected[0].base_guid == baseB && closeArea (projected[0].poly.CalcArea (), 9) &&
+                   closeArea (projected[1].poly.CalcArea (), 3) && rejected == 0,
+               "ceiling preserves descending actual level priority, not nearest/lowest");
+        slabSources[0] = source (baseA, atLevel (rectangle (0, 2, 0, 3, -1), 3.4), API_SlabID);
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominal, false, &steps) &&
+                   closeArea (slabArea (projected), 9) && closeArea (rejected, 3),
+               "equal-level owner overlap is excluded, never converted to nominal fallback");
+        slabSources = {source (baseA, atLevel (rectangle (0, 2, 0, 3, 1), 0.2), API_SlabID)};
+        slabSources[0].snapshot.bodies[0].surfaces.Push (atLevel (rectangle (0, 2, 0, 3, -1), -0.1));
+        roles = {baseA};
+        nominal.zBottom = 0;
+        projected.Clear ();
+        steps.Clear ();
+        rejected = 0;
+        check (BuildProjectedSlabFinishes (
+                   floorZone, slabSources, roles, Floor, 0, projected, rejected, &nominal, false, &steps) &&
+                   projected.GetSize () == 2 && closeArea (slabArea (projected), 12) &&
+                   projected[1].base_guid == APINULLGuid && closeArea (projected[1].zBottom, 0) &&
+                   steps.GetSize () == 1 && closeArea (steps[0].height, 0.2) && closeArea (steps[0].zBottom, 0) &&
+                   steps[0].base_guid == baseA && steps[0].type == Floor && steps[0].surface_geometry,
+               "partial floor keeps source plus nominal remainder and only internal step edge");
+        projected.Clear ();
+        steps.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   floorZone, slabSources, roles, Floor, 0, projected, rejected, &nominal, true, &steps) &&
+                   projected.GetSize () == 1 && closeArea (slabArea (projected), 6),
+               "partial floor by-slab flag suppresses nominal remainder only");
+        nominal.zBottom = -0.2;
+        projected.Clear ();
+        steps.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   floorZone, slabSources, roles, Floor, 0, projected, rejected, &nominal, false, &steps) &&
+                   steps.IsEmpty (),
+               "no side finish if nominal floor lies outside source body");
+        nominal.zBottom = 0.196;
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   floorZone, slabSources, roles, Floor, 0, projected, rejected, &nominal, false, &steps) &&
+                   steps.IsEmpty (),
+               "step below legacy five millimeter height threshold is rejected");
+        slabSources = {source (baseA, holed, API_SlabID)};
+        nominal.zBottom = 0;
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   floorZone, slabSources, roles, Floor, 0, projected, rejected, &nominal, false, &steps) &&
+                   projected.GetSize () == 1 && closeArea (slabArea (projected), 11),
+               "source holes are not backfilled even when nominal residual is enabled");
+        slabSources = {source (baseA, atLevel (rectangle (0, 2, 0, 3, -1), 3.2), API_SlabID)};
+        slabSources[0].snapshot.bodies[0].surfaces.Push (atLevel (rectangle (0, 2, 0, 3, 1), 3.6));
+        nominal.zBottom = 3.4;
+        projected.Clear ();
+        steps.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominal, false, &steps) &&
+                   projected.GetSize () == 2 && steps.GetSize () == 1 && steps[0].type == Ceil &&
+                   closeArea (steps[0].height, 0.2) && closeArea (steps[0].zBottom, 3.2),
+               "ceiling internal step spans source lower face to nominal plane");
+        // Проверяем принятые после правил стеновые участки, не исходные прямоугольники перепадов.
+        OtdWall side;
+        side.base_guid = baseA;
+        side.base_type = API_SlabID;
+        side.surface_geometry = true;
+        side.begC = {0, 0};
+        side.endC = {4, 0};
+        side.height = 3;
+        side.type = Wall_Main;
+        side.material.smaterial = "Контакт";
+        side.favorite.name = "Стеновое избранное";
+        side.favorite.type = API_WallID;
+        OtdWall step = side;
+        step.slab_step = true;
+        step.type = Floor;
+        step.material.smaterial = "Перепад";
+        const auto acceptedRoom = [&] (const OtdWall &contact, const OtdWall &acceptedStep) {
+            OtdRoom room;
+            room.create_wall_elements = true;
+            room.otdwall = {contact, acceptedStep};
+            return room;
+        };
+        const auto contactArea = [&] (const OtdRoom &room) {
+            double area = 0;
+            for (const auto &w : room.otdwall)
+                if (!w.slab_step)
+                    area += OtdWall_GetArea (w);
+            return area;
+        };
+        auto accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && accepted.otdwall.GetSize () == 1 &&
+                   accepted.otdwall[0].slab_step && closeArea (contactArea (accepted), 0),
+               "принятое полное покрытие перепада убирает только дубль контакта независимо от материала");
+        step.endC = {2, 0};
+        step.height = 1;
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 10) &&
+                   accepted.otdwall[0].material.smaterial == side.material.smaterial &&
+                   accepted.otdwall[0].favorite.name == side.favorite.name && accepted.otdwall[0].type == Wall_Main,
+               "частичное конечное покрытие сохраняет остаток и уже принятые правила контакта");
+        step.isValid = false;
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 12),
+               "отвергнутая правилами боковина не стирает контакт");
+        step.isValid = true;
+        step.slab_step_writer_eligible = false;
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 12),
+               "непредставимое избранное боковины не стирает контакт");
+        step.slab_step_writer_eligible = true;
+        step.base_guid = baseB;
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 12),
+               "другое основание не вычитается");
+        step.base_guid = baseA;
+        step.begC.y = step.endC.y = 1;
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 12),
+               "параллельная другая плоскость не вычитается");
+        step.begC.y = step.endC.y = 0;
+        step.type = Wall_Up;
+        accepted = acceptedRoom (side, step);
+        accepted.create_wall_elements = false;
+        accepted.create_reveal_elements = true;
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 12),
+               "отключённый writer боковины после смены типа не стирает контакт");
+        step.type = Ceil;
+        step.begC = {1, 0};
+        step.endC = {3, 0};
+        step.zBottom = 1;
+        step.height = 1;
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 10) &&
+                   accepted.otdwall[0].openings.GetSize () == 1,
+               "внутреннее конечное покрытие потолочной боковины становится точным отверстием");
+        OtdOpening acceptedHole;
+        acceptedHole.width = 1;
+        acceptedHole.height = 1;
+        acceptedHole.objLoc = 2;
+        acceptedHole.zBottom = 1;
+        acceptedHole.lower = 1;
+        acceptedHole.surface_geometry = true;
+        side.openings = {acceptedHole};
+        step.begC = {0, 0};
+        step.endC = {1, 0};
+        step.zBottom = 0;
+        step.height = 3;
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 8) &&
+                   accepted.otdwall[0].openings.GetSize () == 1,
+               "исходное отверстие контакта сохраняется при частичном вычитании");
+        side.openings.Clear ();
+        step = side;
+        step.slab_step = true;
+        step.openings = {acceptedHole};
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 1),
+               "отверстие принятой боковины не считается покрытием");
+        step.openings.Clear ();
+        step.endC = {0.00005, 0};
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 12),
+               "конечная боковина ниже порога writer не стирает контакт");
+        step.begC = {0.00005, 0};
+        step.endC = {4, 0};
+        step.zBottom = 0;
+        step.height = 3;
+        accepted = acceptedRoom (side, step);
+        check (!DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 12),
+               "непредставимый тонкий остаток сохраняется целиком и явно отвергается");
+        step = side;
+        step.slab_step = true;
+        step.begC = {6, 0};
+        step.endC = {8, 0};
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 12),
+               "конечное непересекающееся покрытие в той же плоскости не вычитается");
+        step.begC = {3, 0};
+        step.endC = {1, 0};
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 6),
+               "обратное направление линии не меняет конечное покрытие боковины");
+        side.rise_y = 0.5;
+        side.slant_angle = std::atan2 (1.0, 0.5);
+        step = side;
+        step.slab_step = true;
+        step.height = 1;
+        accepted = acceptedRoom (side, step);
+        check (DeduplicateAcceptedSlabContacts (accepted) && closeArea (contactArea (accepted), 8 * std::sqrt (1.25)) &&
+                   closeArea (accepted.otdwall[0].rise_y, 0.5) && closeArea (accepted.otdwall[0].begC.y, 0.5),
+               "наклонный остаток остаётся в исходной плоскости и сохраняет подъём");
+        // #267: native stepwalls retain Floor/Ceil classification; index them before obsolete deletion.
+        check (IsExistingFinishNativeType (Floor, API_WallID) && IsExistingFinishNativeType (Ceil, API_WallID),
+               "floor and ceiling native stepwalls enter existing finish index");
+        check (IsExistingFinishNativeType (Floor, API_SlabID) && IsExistingFinishNativeType (Floor, API_ObjectID) &&
+                   IsExistingFinishNativeType (Ceil, API_SlabID) && IsExistingFinishNativeType (Ceil, API_ObjectID),
+               "floor and ceiling legacy native types remain accepted");
+        check (!IsExistingFinishNativeType (Floor, API_BeamID) && !IsExistingFinishNativeType (Ceil, API_ColumnID) &&
+                   !IsExistingFinishNativeType (Wall_Main, API_SlabID) &&
+                   IsExistingFinishNativeType (Reveal_Main, API_BeamID),
+               "unrelated native type guards remain unchanged");
+        GS::HashTable<API_Guid, TypeOtd> existingStepwalls;
+        UnicGuidByGuid stepwallParents;
+        UnicGuid stepwallChildren;
+        const API_Guid stepwallGuids[] = {APIGuidFromString ("F08C2CD0-7232-4416-8D64-2DCE440E90DE"),
+                                          APIGuidFromString ("A3C9FE16-DDD9-4CA4-A00E-F4559D82C0AF"),
+                                          APIGuidFromString ("92ED1CC0-57FC-437A-8EE0-A61A6B8193A0"),
+                                          APIGuidFromString ("5E3ED48F-75CB-4146-A4F3-D76874F23728")};
+        for (Int32 i = 0; i < 4; ++i) {
+            const TypeOtd type = i < 2 ? Ceil : Floor;
+            if (IsExistingFinishNativeType (type, API_WallID))
+                existingStepwalls.Add (stepwallGuids[i], type);
+            stepwallChildren.Add (stepwallGuids[i], true);
+        }
+        stepwallParents.Add (baseA, stepwallChildren);
+        bool hasStepwallBase = false;
+        const UnicGuidByBase indexedStepwalls = BuildOtdByParent (existingStepwalls, stepwallParents, hasStepwallBase);
+        const UnicGuidByTypeOtd *stepwallTypes = indexedStepwalls.GetPtr (baseA);
+        const UnicGuid *floorStepwalls = stepwallTypes == nullptr ? nullptr : stepwallTypes->GetPtr (Floor);
+        const UnicGuid *ceilingStepwalls = stepwallTypes == nullptr ? nullptr : stepwallTypes->GetPtr (Ceil);
+        check (hasStepwallBase && floorStepwalls != nullptr && ceilingStepwalls != nullptr &&
+                   floorStepwalls->GetSize () == 2 && ceilingStepwalls->GetSize () == 2 &&
+                   ceilingStepwalls->ContainsKey (stepwallGuids[0]) &&
+                   ceilingStepwalls->ContainsKey (stepwallGuids[1]) && floorStepwalls->ContainsKey (stepwallGuids[2]) &&
+                   floorStepwalls->ContainsKey (stepwallGuids[3]),
+               "all four classified stepwalls survive parent indexing for obsolete deletion");
         return GS::ObjectState ("status", failed == 0 ? "Passed" : "Failed", "checks", checks, "failed", failed);
     }
 
@@ -1101,8 +1611,112 @@ namespace {
             out.Add ("profiles", profiles);
             out.Add ("schemes", schemes);
             out.Add ("cuts", cuts);
+        } else if (element.header.typeID == API_ObjectID || element.header.typeID == API_WindowID ||
+                   element.header.typeID == API_DoorID) {
+            const bool isObject = element.header.typeID == API_ObjectID;
+            const Int32 libInd = isObject ? element.object.libInd : element.window.openingBase.libInd;
+            out.Add ("libInd", libInd);
+            API_LibPart libpart = {};
+            libpart.index = libInd;
+    #ifdef ServerMainVers_2700
+            const GSErrCode libErr = ACAPI_LibraryPart_Get (&libpart);
+    #else
+            const GSErrCode libErr = ACAPI_LibPart_Get (&libpart);
+    #endif
+            out.Add ("libpartError", libErr);
+            if (libErr == NoError) {
+                out.Add ("libpartName", GS::UniString (libpart.docu_UName));
+                out.Add ("libpartUnID", GS::UniString (libpart.ownUnID));
+            }
+            delete libpart.location;
+            if (!isObject) {
+                out.Add ("owner", APIGuidToString (element.window.owner));
+                out.Add ("refSide", element.window.openingBase.refSide);
+                out.Add ("revealDepthFromSide", element.window.revealDepthFromSide);
+                out.Add ("revealDepthOffset", element.window.revealDepthOffset);
+            }
+            err = ACAPI_Element_GetMemo (guid, &memo, APIMemoMask_AddPars);
+            out.Add ("memoError", err);
+            GS::Array<GS::ObjectState> parameters;
+            if (err == NoError && memo.params != nullptr) {
+                const GSSize count =
+                    BMGetHandleSize (reinterpret_cast<GSHandle> (memo.params)) / sizeof (API_AddParType);
+                for (GSSize i = 0; i < count; ++i) {
+                    const API_AddParType &par = (*memo.params)[i];
+                    GS::ObjectState item ("name",
+                                          GS::UniString (par.name),
+                                          "type",
+                                          par.typeID,
+                                          "typeMod",
+                                          par.typeMod,
+                                          "dim1",
+                                          par.dim1,
+                                          "dim2",
+                                          par.dim2);
+                    if (par.typeMod == 0 && par.typeID != APIParT_CString)
+                        item.Add ("number", par.value.real);
+                    parameters.Push (item);
+                }
+            }
+            out.Add ("parameters", parameters);
         }
         ACAPI_DisposeElemMemoHdls (&memo);
+        return out;
+    }
+
+    GS::ObjectState ReadFavorite (const GS::UniString &name) {
+        API_Favorite favorite (name);
+        favorite.memo.New ();
+        BNZeroMemory (&favorite.memo.Get (), sizeof (API_ElementMemo));
+        const GSErrCode err = ACAPI_Favorite_Get (&favorite);
+        GS::ObjectState out ("favoriteName", name, "favoriteError", err);
+        GS::Array<GS::ObjectState> parameters;
+        if (err == NoError) {
+            const API_Element &element = favorite.element;
+            out.Add ("type", static_cast<Int32> (element.header.typeID));
+            if (element.header.typeID == API_ObjectID || element.header.typeID == API_WindowID ||
+                element.header.typeID == API_DoorID) {
+                const Int32 libInd =
+                    element.header.typeID == API_ObjectID ? element.object.libInd : element.window.openingBase.libInd;
+                out.Add ("libInd", libInd);
+                API_LibPart libpart = {};
+                libpart.index = libInd;
+    #ifdef ServerMainVers_2700
+                const GSErrCode libErr = ACAPI_LibraryPart_Get (&libpart);
+    #else
+                const GSErrCode libErr = ACAPI_LibPart_Get (&libpart);
+    #endif
+                out.Add ("libpartError", libErr);
+                if (libErr == NoError) {
+                    out.Add ("docu_UName", GS::UniString (libpart.docu_UName));
+                    out.Add ("ownUnID", GS::UniString (libpart.ownUnID));
+                }
+                delete libpart.location;
+            }
+            if (favorite.memo->params != nullptr) {
+                const GSSize count =
+                    BMGetHandleSize (reinterpret_cast<GSHandle> (favorite.memo->params)) / sizeof (API_AddParType);
+                for (GSSize i = 0; i < count; ++i) {
+                    const API_AddParType &par = (*favorite.memo->params)[i];
+                    GS::ObjectState item ("name",
+                                          GS::UniString (par.name),
+                                          "type",
+                                          par.typeID,
+                                          "typeMod",
+                                          par.typeMod,
+                                          "dim1",
+                                          par.dim1,
+                                          "dim2",
+                                          par.dim2);
+                    if (par.typeMod == 0 && par.typeID != APIParT_CString && par.typeID != APIParT_Separator &&
+                        par.typeID != APIParT_Title && par.typeID != APIParT_Dictionary)
+                        item.Add ("number", par.value.real);
+                    parameters.Push (item);
+                }
+            }
+        }
+        out.Add ("parameters", parameters);
+        ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
         return out;
     }
 
@@ -1681,7 +2295,7 @@ GS::String RoomGeometryDiagnosticCommand::GetName () const { return "RoomGeometr
 
 GS::Optional<GS::UniString> RoomGeometryDiagnosticCommand::GetInputParametersSchema () const {
     return GS::UniString (
-        R"({"type":"object","properties":{"guid":{"type":"string","pattern":"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"},"collectRoomInfo":{"type":"boolean"},"transformSelfTest":{"type":"boolean"},"partitionSelfTest":{"type":"boolean"},"partitionSurfaces":{"type":"boolean"}},"additionalProperties":false})");
+        R"({"type":"object","properties":{"favoriteName":{"type":"string"},"guid":{"type":"string","pattern":"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"},"collectRoomInfo":{"type":"boolean"},"transformSelfTest":{"type":"boolean"},"partitionSelfTest":{"type":"boolean"},"partitionSurfaces":{"type":"boolean"}},"additionalProperties":false})");
 }
 
 GS::Optional<GS::UniString> RoomGeometryDiagnosticCommand::GetResponseSchema () const { return GS::NoValue; }
@@ -1696,6 +2310,9 @@ GS::ObjectState RoomGeometryDiagnosticCommand::Execute (const GS::ObjectState &p
     parameters.Get ("transformSelfTest", transformSelfTest);
     if (transformSelfTest)
         return RunSurfaceTransformChecks ();
+    GS::UniString favoriteName;
+    if (parameters.Get ("favoriteName", favoriteName))
+        return ReadFavorite (favoriteName);
     bool partitionSurfaces = false;
     parameters.Get ("partitionSurfaces", partitionSurfaces);
     GS::UniString guidText;

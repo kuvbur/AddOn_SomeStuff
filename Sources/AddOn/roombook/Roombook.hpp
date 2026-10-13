@@ -28,6 +28,8 @@ namespace Roombook {
     typedef GS::HashTable<TypeOtd, UnicGuid> UnicGuidByTypeOtd;
     typedef GS::HashTable<API_Guid, UnicGuidByTypeOtd> UnicGuidByBase;
 
+    bool IsExistingFinishNativeType (TypeOtd type_otd, API_ElemTypeID type_subguid);
+
     UnicGuidByBase BuildOtdByParent (GS::HashTable<API_Guid, TypeOtd> &otd_elements,
                                      UnicGuidByGuid &parentdict,
                                      bool &has_base_element);
@@ -47,6 +49,7 @@ namespace Roombook {
         const GS::UniString reveal_doors_class = "some_stuff_fin_doors_reveals";
         const GS::UniString column_class = "some_stuff_fin_columns";
         const GS::UniString floor_class = "some_stuff_fin_floors";
+        const GS::UniString beam_class = "some_stuff_fin_beams";
         const GS::UniString ceil_class = "some_stuff_fin_ceils";
         const GS::UniString all_class = "some_stuff_fin_class";
     };
@@ -63,6 +66,7 @@ namespace Roombook {
         bool ref_side = false;            // Сторона четверти в системе координат базовой стены
         bool reveal_from_sill = false;    // Отделка находится со стороны подоконника, а не за коробкой
         bool has_reveal = false;          // Наличие откосов у родительского проёма
+        bool surface_geometry = false;    // Вырез контакта: геометрия не корректируется по откосам
         double base_reveal_width = 0;     // Глубина откоса базового проёма
         API_Guid base_guid = APINULLGuid; // GUID базового проёма
         API_Guid otd_guid = APINULLGuid;  // GUID созданного проёма
@@ -107,7 +111,6 @@ namespace Roombook {
         MatarialToFavorite favorite;                   // Избранное
         bool isValid = true;
         bool surface_geometry = false;
-        API_AttributeIndex surface_layer = {};
     };
 
     // Представление отделочной стены, созданной для одной зоны.
@@ -140,7 +143,9 @@ namespace Roombook {
         // Горизонтальный подъём плоскости на метр высоты для подрезки полос.
         double rise_x = 0;
         double rise_y = 0;
-        API_AttributeIndex surface_layer = {};
+        // Происхождение боковины перепада сохраняется при смене типа материальными правилами.
+        bool slab_step = false;
+        bool slab_step_writer_eligible = true;
     }; // Структура со стенами для отделки
 
     struct RoomEdges {
@@ -181,8 +186,10 @@ namespace Roombook {
         OtdSlab poly;                               // Полгон зоны для полов/потолков
         GS::Array<API_Guid> floorslab;              // Перекрытия в уровне пола
         GS::Array<API_Guid> ceilslab;               // Перекрытия в уровне потолка
-        GS::Array<OtdWall> otdwall;                 // Стены-отделки, созданные для расчётов и отрисовки
-        GS::Array<OtdSlab> otdslab;                 // Потолки/полы для построения
+        // Полные исходные снимки кандидатов; роли discovery не выводятся заново из отметки зоны.
+        GS::Array<RoomSurfaceSource> slabSources;
+        GS::Array<OtdWall> otdwall; // Стены-отделки, созданные для расчётов и отрисовки
+        GS::Array<OtdSlab> otdslab; // Потолки/полы для построения
         bool has_ceil = true;
         bool has_floor = true;
         bool ceil_by_slab = false;           // Создавать потолок только по перекрытиям
