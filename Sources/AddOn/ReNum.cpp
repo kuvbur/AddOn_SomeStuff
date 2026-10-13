@@ -103,7 +103,7 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     UInt32 qtywrite = paramToWriteelem.GetSize ();
     GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", qtywrite);
     if (AdvanceProcessPhase (subtitle, nPhase))
-        return;
+        return NoError;
     SuspendGroupsGuard suspGuard; // отключаем режим группировки на время записи.
     #if defined(TESTING)
     DBprnt ("Write start");
