@@ -116,5 +116,10 @@ bool LoadSyncSettingsFromPreferences (SyncSettings &syncSettings, bool forceRelo
 // Сохраняет настройки синхронизации в локальный файл (без записи в план).
 // --------------------------------------------------------------------
 bool WriteSyncSettingsToPreferences (const SyncSettings &syncSettings);
+// --------------------------------------------------------------------
+// Проверяет и очищает preferences текущего аддона. Пустое состояние
+// подтверждается чтением; ошибки SDK возвращаются вызывающему коду.
+// --------------------------------------------------------------------
+GSErrCode ClearLegacyProjectPreferences ();
 
 #endif

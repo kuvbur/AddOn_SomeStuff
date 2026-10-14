@@ -2205,6 +2205,13 @@
     "line": 450
   },
   {
+    "name": "ClearLegacyProjectPreferences",
+    "kind": "Function",
+    "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+    "module": "dialogs",
+    "line": 402
+  },
+  {
     "name": "CommandNamespace",
     "kind": "Function",
     "file": "Sources/AddOn/json_commands/CommandBase.cpp",

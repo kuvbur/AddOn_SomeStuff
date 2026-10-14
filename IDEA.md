@@ -96,6 +96,10 @@ Plan:
 
 ## Archive
 
+### #273 — только старые preferences (AC25 Windows, 2026-10-14)
+
+Scope: ClearLegacyProjectPreferences без user data/ElementSet/AddOnObject/обхода баз; JSON, модель, слои и права не меняются. [x] Scope сокращён по команде владельца; [x] probe/условная запись/read-back и возврат GSErrCode в callback; [x] format/diff-check, canonical AC25 Windows Debug build success, 8/8 SDK-double проверок текущего extracted helper. Стенд не является host-проверкой. Владелец сообщил о самостоятельном успешном runner и явно потребовал закрыть #273; повтор собственного runner отменён после защитного exit20/non_test_archicad_process. Независимый host/save-reopen not verified. Docs/card и scoped generated обновлены; stale MCP и унаследованные координаты отмечены. Status: ACCEPTED_BY_OWNER; закрытие issue разрешено владельцем. Next Step: отдельная работа по оставшимся активным задачам; #273 принят, push не запрошен. Last Checkpoint: текущий checkpoint [273-C2], hash определяется git log после commit; остальные активные задачи сохранены.
+
 ### Z9 direction — верхний откос Wall-fallback, AC25 Windows
 
 Status: COMPLETED для ошибки направления на24воспроизведённых окнах; общий Z9 PARTIAL. Native RED подтвердил противоположный боковым знак глубины. В OtdWall_Draw_Wall удалён дополнительный разворот begC/endC; shared OpeningReveals_Create_One и Beam/object writers не менялись. Минимальный diff относительно pre-edit снимка: две assignment-строки и русский комментарий.

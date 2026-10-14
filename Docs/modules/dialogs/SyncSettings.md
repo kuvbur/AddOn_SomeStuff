@@ -1,6 +1,6 @@
 # dialogs/SyncSettings — Настройки синхронизации
 
-> Хеш коммита: 493caf5 (2026-09-22).
+> База уточнения preferences: f4e0054; обновление #273 (2026-10-14). Остальные исторические координаты ниже не пересобирались.
 
 ## Назначение
 Хранение и сериализация настроек в ЛОКАЛЬНОМ файле (`…/GRAPHISOFT/SomeStuffAddonConfig.json`), НЕ в preferences проекта (ACAPI_SetPreferences ломает Teamwork). [из комментария, SyncSettings.hpp:5-11]
@@ -31,9 +31,19 @@
 - Побочные эффекты: глобальное состояние (singleton); чтение файла. [по коду]
 
 ## Инварианты
-- НЕ использовать `ACAPI_SetPreferences` (Teamwork) [из комментария, hpp:8-10]
+- Текущие настройки сохранять только в локальный JSON; `ACAPI_SetPreferences` используется исключительно для очистки непустого legacy payload, с проверкой результата чтением. Поведение на Teamwork не считать доказанным документацией. [по коду; runtime Teamwork не проверен]
 - Новые поля настроек → увеличить `PreferencesVersion` [из AGENTS.md §6]
 - AC25: `MemoryIChannel = GS::MemoryIChannel`; AC26+: `IO::MemoryIChannel` [по коду, hpp:106-112]
 - `#pragma clang diagnostic` вокруг rapidjson закрыты `#ifdef __clang__`: MSVC не знает прагм clang (C4068), при `/WX` это ошибка. До AC25 предупреждение глушил заголовок DevKit (`APIdefs_AnalyticalModel.h`), в AC26 такого глушения нет — без `#ifdef` файл не собирался под AC26 [по коду; сборка AC26, #170]
+## Очистка старых preferences
+
+### `ClearLegacyProjectPreferences() -> GSErrCode`
+- Расположение: `Sources/AddOn/dialogs/SyncSettings.cpp:402`; объявление в `SyncSettings.hpp`. [по текущему коду]
+- Контракт: `ACAPI_GetPreferences_Platform` проверяет размер без разбора blob. При размере 0 запись не выполняется; иначе `ACAPI_SetPreferences(0, 0, nullptr)` и повторное чтение. Ошибки SDK возвращаются; ненулевой остаточный размер даёт `APIERR_GENERAL`. Нулевая версия сама по себе не означает пустые данные. [по коду]
+- Вызывается из: `ProjectEventHandlerProc` при New/NewAndReset/Open; также при ChangeProjectDB/ChangeWindow/ChangeFloor только под TESTING. Обработчик возвращает `err`; основная ветка сообщает ошибку английским `msg_rep`. [по коду]
+- Побочные эффекты: только legacy preferences; локальный `SomeStuffAddonConfig.json`, user data, ElementSet, AddOnObject, модель, слои и права не меняются. Полная очистка файла от всех данных аддона не обещается. [по коду; уточнённый scope владельца]
+- Проверка: canonical AC25 Windows Debug build success; 8/8 SDK-double checks, извлечение сверено с текущим helper. Финальный runner выполнен владельцем по его сообщению; собственный повтор отменён по указанию владельца после защитного exit20. Host/read-back после save/reopen независимо не наблюдались. [build log + выполненный стенд + сообщение владельца; persisted runtime not verified]
+- Clangd callHierarchy не разрешил два точных положения; новая запись generated использует MCP имя/вид и координату текущего source. Полнота графа и остальные старые координаты не заявляются. [MCP + source fallback]
+
 ## Версии
 - AC27 (`#170`): `ACAPI_Environment (APIEnv_GetSpecFolderID, …)` → `ACAPI_ProjectSettings_GetSpecFolder` под `#ifdef ServerMainVers_2700`. [по коду DevKit + сборка AC27]

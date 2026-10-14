@@ -94,6 +94,12 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     case APINotify_NewAndReset:
     case APINotify_Open: {
         ClearSyncThrottleCache ();
+        // Удаляем только старые настройки preferences; данные элементов
+        // и локальный JSON не трогаем. Ошибка не мешает установке монитора
+        // и кэша, но возвращается из обработчика и попадает в отчёт.
+        err = ClearLegacyProjectPreferences ();
+        if (err != NoError)
+            msg_rep ("ProjectEventHandlerProc", "ClearLegacyProjectPreferences err", err, APINULLGuid);
         Do_ElementMonitor (syncSettings.GetSyncMon ());
         PROPERTYCACHE ().Update ();
 #if defined(TESTING)
@@ -129,6 +135,9 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     case APINotify_ChangeProjectDB:
     case APINotify_ChangeWindow:
     case APINotify_ChangeFloor:
+#if defined(TESTING)
+        err = ClearLegacyProjectPreferences ();
+#endif
         DimRoundAll (syncSettings, false);
         break;
     default:
@@ -136,7 +145,7 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     }
     (void)param;
     ACAPI_KeepInMemory (true);
-    return NoError;
+    return err;
 } // ProjectEventHandlerProc
 
 // -----------------------------------------------------------------------------

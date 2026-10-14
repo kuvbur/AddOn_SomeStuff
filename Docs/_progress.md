@@ -2,6 +2,11 @@
 
 ## Обновления по задачам
 
+### #273 — scoped preferences cleanup
+
+- Карточка dialogs/SyncSettings уточнена: очистка только непустых legacy preferences, read-back и ошибки до project callback; JSON и все user-data stores вне scope. Canonical AC25 Windows Debug build success, текущий extracted helper matches, SDK-double8/8 PASS; owner-reported финальный runner принят по явной команде закрыть issue. Собственный runner exit20 не принят за success, повтор отменён владельцем; независимый host/save-reopen not verified.
+- Добавлены только один Function и одно project edge (два sites: production и TESTING). MCP symbol snapshot содержит новую функцию, но координаты stale; две callHierarchy позиции не разрешены. Имя/вид взяты из MCP, координаты и вызовы сверены с live source. Все прежние records/order сохранены; их старые координаты и полный граф не заявляются актуальными. Whole-tree regex generator не запускался.
+
 ### Z7 #252 — scoped documentation checkpoint перед commit
 
 - Актуализированы Roombook/json_commands: production relocation roombook/, reader/candidates/partition/beamFinish, canonical same-source wall union, прежние native writers/material rules; runtime60/60 и63→63 с полными oriented contours ≤1e−6м/max6.5868125745221e−7м.31skip,4trapezoids2.375999498м² и3return fragments остаются ограничениями; #252 OPEN. [по коду + parent deterministic-final-summary]

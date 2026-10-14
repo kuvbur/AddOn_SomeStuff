@@ -392,3 +392,24 @@ bool WriteSyncSettingsToPreferences (const SyncSettings &syncSettings) {
     GetSyncSettingsCache (false) = syncSettings;
     return true;
 }
+
+// --------------------------------------------------------------------
+// Чистим только старые настройки preferences, не данные элементов.
+// Проверка размера через _Platform не требует разбора межплатформенного
+// блоба. Пустую запись проверяем чтением; сохранение и повторное
+// открытие PLN отдельно проверяются в Archicad.
+// --------------------------------------------------------------------
+GSErrCode ClearLegacyProjectPreferences () {
+    Int32 version = 0;
+    GSSize nByte = 0;
+    GSErrCode err = ACAPI_GetPreferences_Platform (&version, &nByte, nullptr, nullptr);
+    if (err != NoError || nByte == 0)
+        return err;
+    err = ACAPI_SetPreferences (0, 0, nullptr);
+    if (err != NoError)
+        return err;
+    err = ACAPI_GetPreferences_Platform (&version, &nByte, nullptr, nullptr);
+    if (err != NoError)
+        return err;
+    return nByte == 0 ? NoError : APIERR_GENERAL;
+}

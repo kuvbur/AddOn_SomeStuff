@@ -160,6 +160,10 @@
       ],
       "rejected_fresh_edges": 1,
       "unresolved": []
+    },
+    "legacy_preferences_scope": {
+      "source": "MCP symbol name/kind with live-source re-anchor; source-verified caller edge after two unresolved callHierarchy queries",
+      "coverage": "Only ClearLegacyProjectPreferences addition; inherited coordinates and hierarchy completeness not verified"
     }
   },
   "edges": [
@@ -13428,6 +13432,26 @@
           "column": 45
         }
       ]
+    },
+    {
+      "caller": {
+        "name": "ProjectEventHandlerProc",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 74
+      },
+      "callee": {
+        "name": "ClearLegacyProjectPreferences",
+        "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+        "line": 401
+      },
+      "call_sites": [
+        {
+          "line": 99
+        },
+        {
+          "line": 138
+        }
+      ]
     }
   ],
   "sdk_edges_summary": {
@@ -13467,7 +13491,7 @@
     }
   ],
   "stats": {
-    "project_edges": 695,
+    "project_edges": 696,
     "functions_queried": 102,
     "functions_resolved": 96,
     "spec_functions_collected": 70,
