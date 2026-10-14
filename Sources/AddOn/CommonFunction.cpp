@@ -2619,7 +2619,7 @@ GSErrCode HighlightElements (const UnicGuid &guids) {
     ACAPI_UserInput_SetElementHighlight (hlElems);
 #else
     #ifdef ServerMainVers_2600
-    CAPI_Interface_SetElementHighlight (hlElems);
+    ACAPI_Interface_SetElementHighlight (hlElems);
     #else
     hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
     #endif
@@ -2638,7 +2638,7 @@ GSErrCode HighlightElements (const GS::Array<API_Guid> &guids) {
     ACAPI_UserInput_SetElementHighlight (hlElems);
 #else
     #ifdef ServerMainVers_2600
-    CAPI_Interface_SetElementHighlight (hlElems);
+    ACAPI_Interface_SetElementHighlight (hlElems);
     #else
     hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
     #endif

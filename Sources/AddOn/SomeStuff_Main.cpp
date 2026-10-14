@@ -138,6 +138,7 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
 #if defined(TESTING)
         err = ClearLegacyProjectPreferences ();
 #endif
+        ClearSyncThrottleCache ();
         DimRoundAll (syncSettings, false);
         break;
     default:
@@ -162,15 +163,6 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
     int dummymode = DUMMY_MODE_UNDEF;
     if (!syncSettings.GetSyncMon ())
         return NoError;
-    if (elemType->notifID == APINotifyElement_BeginEvents) {
-        PROPERTYCACHE ().compositeCache.Clear ();
-        return NoError;
-    } else if (elemType->notifID == APINotifyElement_EndEvents) {
-        // EndEvents завершает каждое уведомление, а не весь каскад одного действия.
-        if (PROPERTYCACHE ().hasDimAutotext && !IsDimensionScanThrottled ())
-            DimRoundAll (syncSettings, true);
-        return NoError;
-    }
     // У граничных уведомлений нет обрабатываемого элемента.
     if (elemType->elemHead.hotlinkGuid != APINULLGuid)
         return NoError;
@@ -180,6 +172,11 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
         elemType->notifID == APINotifyElement_ClassificationChange;
     // Смотрим - что поменялось
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
+    // Для новых элементов с variationID == APIVarId_GridElement не выполняем синхронизацию - вылетает на разрезах
+    if (elemType->notifID == APINotifyElement_New && elementType == API_ObjectID) {
+        if (elemType->elemHead.variationID == APIVarId_GridElement)
+            return NoError;
+    }
     switch (elementType) {
     case API_DimensionID:
         if (isChangeEvent && PROPERTYCACHE ().hasDimAutotext) {
@@ -206,8 +203,21 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
 #endif
     if (!isChangeEvent)
         return NoError;
-    if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true, elementType))
+    if (!IsElementEditable (elemType->elemHead, syncSettings, true))
         return NoError;
+    // Для новых элементов с variationID == APIVarId_GridElement не выполняем синхронизацию - вылетает на разрезах
+    if (elementType == API_ObjectID && elemType->elemHead.variationID == APIVarId_GridElement) {
+        if (elemType->notifID == APINotifyElement_New) {
+            return NoError;
+
+        }
+#if defined(TESTING)
+        else {
+            DBprnt ("elemHead.variationID == APIVarId_GridElement start");
+        }
+#endif
+    }
+
     if (elemType->notifID == APINotifyElement_New)
         AttachObserver (elemType->elemHead.guid, syncSettings);
     if (IsElementThrottled (elemType->elemHead.guid))
