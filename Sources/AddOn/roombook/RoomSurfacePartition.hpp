@@ -11,6 +11,10 @@ namespace Roombook {
         API_ElemTypeID baseType = API_ZombieElemID;
         API_Guid geometryGuid = APINULLGuid;
         RoomSurfaceSnapshot snapshot;
+        // Параметрическая геометрия сознательно игнорирует SEO/подрезки (решение владельца).
+        RoomSurfaceOrigin origin = RoomSurfaceOrigin::Native3D;
+        // Диагностическая причина маршрута источника; записывается, не читается.
+        GS::UniString routeReason;
     };
 
     struct RoomSurfaceSourceFace {
@@ -21,6 +25,9 @@ namespace Roombook {
         Int32 polygonIndex = 0;
         // Материал модельной грани; сам по себе не устанавливает слой многослойного основания.
         API_AttributeIndex modelMaterialIndex = {};
+        RoomSurfaceOrigin origin = RoomSurfaceOrigin::Native3D;
+        Int32 analyticFaceId = 0;
+        Int32 preparedWallIndex = -1;
     };
 
     enum class RoomSurfacePieceStatus { Matched, Unmatched, Ambiguous };

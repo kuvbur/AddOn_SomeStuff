@@ -13,16 +13,16 @@ namespace Roombook {
         bool IsFinish (const API_Guid &guid,
                        const GS::Array<API_Guid> &finishClassGuids,
                        RoomSurfaceCandidates &result,
-                       bool &valid) {
-            GS::Array<GS::Pair<API_Guid, API_Guid>> classes;
-            const GSErrCode error = ACAPI_Element_GetClassificationItems (guid, classes);
-            valid = error == NoError;
+                       bool &valid,
+                       RoomSurfaceCache *cache) {
+            const ClassificationRead read = ReadClassificationItems (guid, cache);
+            valid = read.error == NoError;
             if (!valid) {
-                CandidateError (result, guid, "candidateClassification", error);
+                CandidateError (result, guid, "candidateClassification", read.error);
                 return false;
             }
             // Как Class_IsElementFinClass, но ошибка чтения не означает «не отделка».
-            for (const auto &item : classes) {
+            for (const auto &item : read.items) {
                 if (finishClassGuids.Contains (item.second)) {
                     if (!result.excludedFinish.Contains (guid))
                         result.excludedFinish.Push (guid);
@@ -35,10 +35,11 @@ namespace Roombook {
         void ReadCandidate (const API_Elem_Head &base,
                             const API_Elem_Head &geometry,
                             const GS::Array<API_Guid> &finishClassGuids,
-                            RoomSurfaceCandidates &result) {
+                            RoomSurfaceCandidates &result,
+                            RoomSurfaceCache *cache) {
             if (geometry.guid != base.guid) {
                 bool valid = false;
-                if (IsFinish (geometry.guid, finishClassGuids, result, valid) || !valid)
+                if (IsFinish (geometry.guid, finishClassGuids, result, valid, cache) || !valid)
                     return;
             }
             for (const auto &source : result.sources) {
@@ -49,7 +50,7 @@ namespace Roombook {
             source.baseGuid = base.guid;
             source.baseType = GetElemTypeID (base);
             source.geometryGuid = geometry.guid;
-            source.snapshot = ReadRoomSurfaces (geometry);
+            source.snapshot = ReadRoomSurfaces (geometry, cache);
             if (!source.snapshot.IsComplete ())
                 CandidateError (result, geometry.guid, "candidateSurfaceSnapshot", APIERR_GENERAL);
             result.sources.Push (std::move (source));
@@ -61,7 +62,8 @@ namespace Roombook {
                            UInt32 count,
                            API_ElemTypeID expectedType,
                            const GS::Array<API_Guid> &finishClassGuids,
-                           RoomSurfaceCandidates &result) {
+                           RoomSurfaceCandidates &result,
+                           RoomSurfaceCache *cache) {
             const GSSize bytes =
                 segments != nullptr ? BMGetPtrSize (reinterpret_cast<GSPtr> (const_cast<Segment *> (segments))) : 0;
             if (count == 0 || bytes <= 0 || bytes % static_cast<GSSize> (sizeof (Segment)) != 0 ||
@@ -79,26 +81,31 @@ namespace Roombook {
                     continue;
                 }
                 seen.Push (segment.head.guid);
-                ReadCandidate (base, segment.head, finishClassGuids, result);
+                ReadCandidate (base, segment.head, finishClassGuids, result, cache);
             }
         }
 
         void ReadBase (API_Guid guid,
                        API_ElemTypeID type,
                        const GS::Array<API_Guid> &finishClassGuids,
-                       RoomSurfaceCandidates &result) {
-            API_Element element = {};
-            element.header.guid = guid;
-            const GSErrCode error = ACAPI_Element_Get (&element);
-            if (error != NoError || GetElemTypeID (element.header) != type) {
-                CandidateError (result, guid, "candidateElement", error != NoError ? error : APIERR_BADID);
+                       RoomSurfaceCandidates &result,
+                       RoomSurfaceCache *cache) {
+            const ElementRead read = ReadElement (guid, cache);
+            if (read.error != NoError || GetElemTypeID (read.element.header) != type) {
+                CandidateError (result, guid, "candidateElement", read.error != NoError ? read.error : APIERR_BADID);
                 return;
             }
             bool valid = false;
-            if (IsFinish (guid, finishClassGuids, result, valid) || !valid)
+            if (IsFinish (guid, finishClassGuids, result, valid, cache) || !valid)
                 return;
             if (type == API_WallID || type == API_SlabID) {
-                ReadCandidate (element.header, element.header, finishClassGuids, result);
+                // Wall/Slab готовятся после проёмов и legacy-контактов; discovery не читает их 3D.
+                RoomSurfaceSource source;
+                source.baseGuid = guid;
+                source.baseType = type;
+                source.geometryGuid = guid;
+                source.routeReason = "PendingPreparedGeometry";
+                result.sources.Push (std::move (source));
                 return;
             }
             API_ElementMemo memo = {};
@@ -116,52 +123,48 @@ namespace Roombook {
                 return;
             }
             if (type == API_ColumnID)
-                ReadSegments (element.header,
+                ReadSegments (read.element.header,
                               memo.columnSegments,
-                              element.column.nSegments,
+                              read.element.column.nSegments,
                               API_ColumnSegmentID,
                               finishClassGuids,
-                              result);
+                              result,
+                              cache);
             else
-                ReadSegments (element.header,
+                ReadSegments (read.element.header,
                               memo.beamSegments,
-                              element.beam.nSegments,
+                              read.element.beam.nSegments,
                               API_BeamSegmentID,
                               finishClassGuids,
-                              result);
+                              result,
+                              cache);
         }
     } // namespace
 
     RoomSurfaceCandidates ReadRoomSurfaceCandidates (const API_Elem_Head &zone,
-                                                     const GS::Array<API_Guid> &finishClassGuids) {
+                                                     const GS::Array<API_Guid> &finishClassGuids,
+                                                     RoomSurfaceCache *cache) {
         RoomSurfaceCandidates result;
         result.zoneGuid = zone.guid;
         if (zone.guid == APINULLGuid || GetElemTypeID (zone) != API_ZoneID) {
             CandidateError (result, zone.guid, "candidateZoneHeader", APIERR_BADID);
             return result;
         }
-        API_RoomRelation relations = {};
-
-        struct RelationGuard {
-            API_RoomRelation *relations;
-
-            ~RelationGuard () { ACAPI_DisposeRoomRelationHdls (relations); }
-        } guard{&relations};
-
-        const GSErrCode error = ACAPI_Element_GetRelations (zone.guid, API_ZombieElemID, &relations);
+        RoomRelationValues relData;
+        const GSErrCode error = ReadZoneRelations (zone.guid, cache, relData);
         if (error != NoError) {
             CandidateError (result, zone.guid, "candidateRoomRelations", error);
             return result;
         }
-        for (const API_BeamPart &part : relations.beamPart)
+        for (const API_BeamPart &part : relData.beamPart)
             result.beamParts.Push (part);
         GS::Array<API_Guid> seen;
         for (API_ElemTypeID type : {API_WallID, API_ColumnID, API_SlabID, API_BeamID}) {
             GS::Array<API_Guid> guids;
-            if (const auto *group = relations.elementsGroupedByType.GetPtr (type))
+            if (const auto *group = relData.elementsGroupedByType.GetPtr (type))
                 guids = *group;
             if (type == API_BeamID) {
-                for (const auto &part : relations.beamPart)
+                for (const auto &part : relData.beamPart)
                     if (!guids.Contains (part.guid))
                         guids.Push (part.guid);
             }
@@ -173,7 +176,7 @@ namespace Roombook {
                 if (seen.Contains (guid))
                     continue;
                 seen.Push (guid);
-                ReadBase (guid, type, finishClassGuids, result);
+                ReadBase (guid, type, finishClassGuids, result, cache);
             }
         }
         result.complete = result.errors.IsEmpty ();

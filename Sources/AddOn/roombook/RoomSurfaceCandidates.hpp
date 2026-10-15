@@ -25,7 +25,8 @@ namespace Roombook {
 
     // Набор SDK relations, не доказательство полноты произвольных касаний в 3D.
     RoomSurfaceCandidates ReadRoomSurfaceCandidates (const API_Elem_Head &zone,
-                                                     const GS::Array<API_Guid> &finishClassGuids);
+                                                     const GS::Array<API_Guid> &finishClassGuids,
+                                                     RoomSurfaceCache *cache = nullptr);
 
 } // namespace Roombook
     #endif

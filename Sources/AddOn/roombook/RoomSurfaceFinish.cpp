@@ -1,4 +1,8 @@
+#include "ACAPinc.h"
+
 #include "roombook/RoomSurfaceFinish.hpp"
+
+#include "roombook/FloorCoreGeometry.hpp"
 
 #ifdef ServerMainVers_2400
     #include <algorithm>
@@ -7,6 +11,118 @@
     #include <vector>
 
 namespace Roombook {
+    USize CleanCollinearPolygonVertices (Geometry::Polygon2D &polygon) {
+        if (polygon.IsEmpty ())
+            return 0;
+        const USize before = polygon.GetVertexNum ();
+        Geometry::Polygon2D::RemoveSameDirEdgesWithSameEdgeUserData (polygon);
+        return before - polygon.GetVertexNum ();
+    }
+
+    bool ExtendFloorContoursToCore (OtdRoom &room) {
+        using namespace FloorCoreGeometry;
+        GS::Array<OtdSlab> result;
+        bool complete = true;
+        for (const auto &floor : room.otdslab) {
+            if (!floor.isValid || floor.type != Floor || floor.poly.IsEmpty ()) {
+                result.Push (floor);
+                continue;
+            }
+            std::vector<Contact> contacts;
+            std::vector<API_Guid> owners;
+            for (const auto &wall : room.otdwall) {
+                if (!wall.isValid || wall.base_guid == APINULLGuid || !wall.surface_geometry ||
+                    wall.type == Reveal_Main || wall.type == Reveal_Up || wall.type == Reveal_Down ||
+                    floor.zBottom < wall.zBottom - Tolerance || floor.zBottom >= wall.zBottom + wall.height - Tolerance)
+                    continue;
+                auto owner = std::find (owners.begin (), owners.end (), wall.base_guid);
+                if (owner == owners.end ()) {
+                    owners.push_back (wall.base_guid);
+                    owner = owners.end () - 1;
+                }
+                const std::size_t ownerIndex = static_cast<std::size_t> (owner - owners.begin ());
+                const double dz = floor.zBottom - wall.zBottom;
+                const Point begin = {wall.begC.x + dz * wall.rise_x, wall.begC.y + dz * wall.rise_y};
+                const Point end = {wall.endC.x + dz * wall.rise_x, wall.endC.y + dz * wall.rise_y};
+                const double length = Length (end - begin);
+                if (length <= Tolerance)
+                    continue;
+                const Point dir = (end - begin) * (1 / length);
+                // Не расширяем под открытым проёмом на отметке пола.
+                std::vector<std::pair<double, double>> ranges = {{0, length}};
+                for (const auto &opening : wall.openings) {
+                    if (opening.zBottom > floor.zBottom + Tolerance ||
+                        opening.zBottom + opening.height <= floor.zBottom + Tolerance)
+                        continue;
+                    const double a = std::max (0.0, opening.objLoc - opening.width / 2);
+                    const double b = std::min (length, opening.objLoc + opening.width / 2);
+                    if (b <= a)
+                        continue;
+                    std::vector<std::pair<double, double>> next;
+                    for (const auto &range : ranges) {
+                        if (b <= range.first || a >= range.second) {
+                            next.push_back (range);
+                            continue;
+                        }
+                        if (a > range.first)
+                            next.push_back ({range.first, a});
+                        if (b < range.second)
+                            next.push_back ({b, range.second});
+                    }
+                    ranges = std::move (next);
+                }
+                const double offset = wall.base_type == API_WallID && !wall.slab_step && wall.floor_core_offset_valid
+                                          ? wall.floor_core_offset
+                                          : 0;
+                for (const auto &range : ranges)
+                    contacts.push_back ({begin + dir * range.first, begin + dir * range.second, offset, ownerIndex});
+            }
+            Geometry::MultiPolygon2D polygons;
+            polygons.Push (floor.poly);
+            bool changed = false;
+            for (auto contour = floor.poly.BeginContour (); contour != floor.poly.EndContour (); ++contour) {
+                std::vector<Edge> edges;
+                for (auto edge = contour->BeginEdge (); edge != contour->EndEdge (); ++edge) {
+                    Point2D begin, end;
+                    double angle = 0;
+                    floor.poly.GetSector (edge, begin, end, angle);
+                    edges.push_back ({{begin.x, begin.y}, {end.x, end.y}, std::fabs (angle) <= Tolerance});
+                }
+                for (const auto &patch : Extensions (edges, contacts)) {
+                    GS::Array<Point2D> coords;
+                    for (const auto &point : patch)
+                        coords.Push ({point.x, point.y});
+                    const auto strips = Geometry::Polygon2D::Create (coords, 0);
+                    for (const auto &strip : strips)
+                        polygons.Push (strip);
+                    changed = changed || !strips.IsEmpty ();
+                }
+            }
+            if (!changed) {
+                result.Push (floor);
+                continue;
+            }
+            polygons.Unify ();
+            // Расширение не может удалить старое покрытие или разделить один owner на острова.
+            Geometry::MultiPolygon2D original;
+            original.Push (floor.poly);
+            if (polygons.GetSize () != 1 || polygons[0].GetContourNum () != floor.poly.GetContourNum () ||
+                Geometry::MultiPolygon2D::Substract (original, polygons).CalcArea () > Tolerance) {
+                result.Push (floor);
+                complete = false;
+                continue;
+            }
+            OtdSlab extended = floor; // Все links/материальные правила/избранное/отметка сохраняются.
+            extended.poly = polygons[0];
+            result.Push (std::move (extended));
+        }
+        for (auto &slab : result)
+            if (slab.isValid && (slab.type == Floor || slab.type == Ceil))
+                CleanCollinearPolygonVertices (slab.poly);
+        room.otdslab = std::move (result);
+        return complete;
+    }
+
     namespace {
         constexpr double DistanceTolerance = 1.e-6;
         constexpr double AreaTolerance = 1.e-6;
@@ -125,6 +241,129 @@ namespace Roombook {
         result.rise_y = riseY;
         wall = result;
         return true;
+    }
+
+    // Участок задаёт конечные границы только на своём roomEdge; внутренние разрывы не заполняем.
+    GS::Array<OtdWall> ClampSurfaceWallToParts (const OtdWall &wall,
+                                                const API_Coord &wallBeg,
+                                                const API_Coord &wallEnd,
+                                                const GS::Array<API_WallPart> &parts,
+                                                const GS::Array<Sector> &roomEdges,
+                                                double roomBottom,
+                                                const GS::Array<OtdWall> &contacts) {
+        GS::Array<OtdWall> result;
+        const double dx = wallEnd.x - wallBeg.x, dy = wallEnd.y - wallBeg.y;
+        const double length = std::hypot (dx, dy);
+        const double ex = wall.endC.x - wall.begC.x, ey = wall.endC.y - wall.begC.y;
+        const double span = std::hypot (ex, ey);
+        if (!std::isfinite (length) || !std::isfinite (span) || !std::isfinite (roomBottom) ||
+            !std::isfinite (wall.zBottom) || !std::isfinite (wall.height) || !std::isfinite (wall.rise_x) ||
+            !std::isfinite (wall.rise_y) || length < min_dim || span < min_dim || wall.height < min_dim)
+            return result;
+        const double ux = dx / length, uy = dy / length, vx = ex / span, vy = ey / span;
+        if (std::fabs (ux * vy - uy * vx) > DistanceTolerance)
+            return result;
+        const auto along = [&] (double x, double y) { return (x - wall.begC.x) * vx + (y - wall.begC.y) * vy; };
+        const auto onLine = [&] (double x, double y) {
+            return std::fabs ((x - wall.begC.x) * vy - (y - wall.begC.y) * vx) <= DistanceTolerance;
+        };
+
+        std::vector<std::pair<double, double>> intervals;
+        bool hasParts = false;
+        for (const auto &part : parts) {
+            if (part.guid != wall.base_guid)
+                continue;
+            hasParts = true;
+            if (part.roomEdge <= 0 || static_cast<USize> (part.roomEdge) > roomEdges.GetSize () ||
+                !std::isfinite (part.tBeg) || !std::isfinite (part.tEnd))
+                return {};
+            const auto &edge = roomEdges[part.roomEdge - 1];
+            // Ребро зоны переносим с отметки пола на низ наклонного контакта.
+            const double dz = wall.zBottom - roomBottom;
+            const double ax = edge.c1.x + wall.rise_x * dz, ay = edge.c1.y + wall.rise_y * dz;
+            const double bx = edge.c2.x + wall.rise_x * dz, by = edge.c2.y + wall.rise_y * dz;
+            if (!onLine (ax, ay) || !onLine (bx, by))
+                continue;
+            // Sentinel-границы обрабатываем так же, как OtdWall_Create_FromWall.
+            const double tBeg =
+                std::fabs (part.tBeg) <= DistanceTolerance || std::fabs (part.tBeg - length) <= DistanceTolerance
+                    ? 0
+                    : part.tBeg;
+            const double tEnd =
+                std::fabs (part.tEnd) <= DistanceTolerance || std::fabs (part.tEnd - length) <= DistanceTolerance
+                    ? length
+                    : part.tEnd;
+            const double a = along (wallBeg.x + ux * tBeg, wallBeg.y + uy * tBeg);
+            const double b = along (wallBeg.x + ux * tEnd, wallBeg.y + uy * tEnd);
+            const double begin = std::max (std::min (along (ax, ay), along (bx, by)), std::min (a, b));
+            const double end = std::min (std::max (along (ax, ay), along (bx, by)), std::max (a, b));
+            if (end - begin > DistanceTolerance)
+                intervals.push_back ({begin, end});
+        }
+        if (!hasParts) {
+            result.Push (wall);
+            return result;
+        }
+        std::sort (intervals.begin (), intervals.end ());
+        std::vector<std::pair<double, double>> merged;
+        for (const auto &interval : intervals) {
+            if (!merged.empty () && interval.first <= merged.back ().second + DistanceTolerance)
+                merged.back ().second = std::max (merged.back ().second, interval.second);
+            else
+                merged.push_back (interval);
+        }
+        for (const auto &interval : merged) {
+            double firstContact = 0, lastContact = span;
+            for (const auto &other : contacts) {
+                if (!other.surface_geometry || other.base_guid != wall.base_guid || other.base_type != API_WallID ||
+                    other.slab_step ||
+                    std::min (wall.zBottom + wall.height, other.zBottom + other.height) -
+                            std::max (wall.zBottom, other.zBottom) <=
+                        DistanceTolerance ||
+                    std::fabs (wall.rise_x - other.rise_x) > DistanceTolerance ||
+                    std::fabs (wall.rise_y - other.rise_y) > DistanceTolerance)
+                    continue;
+                const double dz = wall.zBottom - other.zBottom;
+                const double ax = other.begC.x + other.rise_x * dz, ay = other.begC.y + other.rise_y * dz;
+                const double bx = other.endC.x + other.rise_x * dz, by = other.endC.y + other.rise_y * dz;
+                if (!onLine (ax, ay) || !onLine (bx, by) || (bx - ax) * vx + (by - ay) * vy <= DistanceTolerance)
+                    continue;
+                if (std::min (std::max (along (ax, ay), along (bx, by)), interval.second) -
+                        std::max (std::min (along (ax, ay), along (bx, by)), interval.first) <=
+                    DistanceTolerance)
+                    continue;
+                firstContact = std::min (firstContact, along (ax, ay));
+                lastContact = std::max (lastContact, along (bx, by));
+            }
+            if (std::min (span, interval.second) - std::max (0.0, interval.first) <= DistanceTolerance)
+                continue;
+            const double begin = firstContact >= -DistanceTolerance ? interval.first : std::max (0.0, interval.first);
+            const double end =
+                lastContact <= span + DistanceTolerance ? interval.second : std::min (span, interval.second);
+            if (end - begin < min_dim)
+                return {};
+            OtdWall trimmed = wall;
+            trimmed.begC = {wall.begC.x + vx * begin, wall.begC.y + vy * begin};
+            trimmed.endC = {wall.begC.x + vx * end, wall.begC.y + vy * end};
+            trimmed.length = end - begin;
+            trimmed.openings.Clear ();
+            for (const auto &op : wall.openings) {
+                const double a = op.objLoc - op.width / 2, b = op.objLoc + op.width / 2;
+                // Краевой вырез не закрываем при удлинении оболочки.
+                const double left = std::max (a <= DistanceTolerance ? std::min (a, begin) : a, begin);
+                const double right = std::min (b >= span - DistanceTolerance ? std::max (b, end) : b, end);
+                if (right - left <= DistanceTolerance)
+                    continue;
+                if (right - left < min_dim)
+                    return {};
+                OtdOpening clipped = op;
+                clipped.width = right - left;
+                clipped.objLoc = (left + right) / 2 - begin;
+                trimmed.openings.Push (std::move (clipped));
+            }
+            result.Push (std::move (trimmed));
+        }
+        return result;
     }
 
     bool BuildSurfaceWalls (const RoomSurfacePiece &piece, short floorInd, GS::Array<OtdWall> &walls) {
@@ -257,7 +496,7 @@ namespace Roombook {
         return true;
     }
 
-    bool LinkSurfaceOpenings (OtdWall &wall, const GS::Array<OtdWall> &openingWalls) {
+    bool LinkSurfaceOpenings (OtdWall &wall, const GS::Array<OtdWall> &openingWalls, bool analyticOverlap) {
         if (!wall.surface_geometry || wall.openings.IsEmpty ())
             return true;
         const double length = std::hypot (wall.endC.x - wall.begC.x, wall.endC.y - wall.begC.y);
@@ -322,12 +561,16 @@ namespace Roombook {
                         return false;
                     const double centerX = (xs[x] + xs[x - 1]) / 2, centerZ = (zs[z] + zs[z - 1]) / 2;
                     const SourceOpening *owner = nullptr;
+                    GS::Array<API_Guid> sourceGuids;
                     for (const auto &source : sources) {
                         if (centerX < source.left - DistanceTolerance || centerX > source.right + DistanceTolerance ||
                             centerZ < source.bottom - DistanceTolerance || centerZ > source.top + DistanceTolerance)
                             continue;
-                        if (owner != nullptr && owner->opening.base_guid != source.opening.base_guid)
+                        if (owner != nullptr && owner->opening.base_guid != source.opening.base_guid &&
+                            !analyticOverlap)
                             return false;
+                        if (!sourceGuids.Contains (source.opening.base_guid))
+                            sourceGuids.Push (source.opening.base_guid);
                         owner = &source;
                     }
                     OtdOpening opening = cutout;
@@ -336,7 +579,8 @@ namespace Roombook {
                     opening.zBottom = zs[z - 1];
                     opening.height = zs[z] - zs[z - 1];
                     opening.lower = opening.zBottom - wall.zBottom;
-                    opening.base_guid = owner != nullptr ? owner->opening.base_guid : APINULLGuid;
+                    opening.source_opening_guids = sourceGuids;
+                    opening.base_guid = sourceGuids.GetSize () == 1 ? sourceGuids[0] : APINULLGuid;
                     // Только привязка к реальному проёму; откосы создаются отдельным legacy-путём.
                     opening.has_reveal = false;
                     opening.surface_geometry = true;
@@ -364,7 +608,8 @@ namespace Roombook {
         const auto sameFace = [] (const RoomSurfaceSourceFace &a, const RoomSurfaceSourceFace &b) {
             return a.baseGuid == b.baseGuid && a.baseType == b.baseType && a.geometryGuid == b.geometryGuid &&
                    a.bodyIndex == b.bodyIndex && a.polygonIndex == b.polygonIndex &&
-                   a.modelMaterialIndex == b.modelMaterialIndex;
+                   a.modelMaterialIndex == b.modelMaterialIndex && a.origin == b.origin &&
+                   a.analyticFaceId == b.analyticFaceId && a.preparedWallIndex == b.preparedWallIndex;
         };
         // Сравниваем полный набор граней взаимно однозначно: одинакового GUID основания недостаточно.
         const auto sameSource = [&] (const RoomSurfacePiece &a, const RoomSurfacePiece &b) {
@@ -755,7 +1000,8 @@ namespace Roombook {
                                      double &rejectedArea,
                                      const OtdSlab *nominal,
                                      bool onlyOnSlab,
-                                     GS::Array<OtdWall> *walls) {
+                                     GS::Array<OtdWall> *walls,
+                                     const GS::Array<OtdSlab> *prepared) {
         if (!zone.IsComplete () || (type != Floor && type != Ceil))
             return false;
         const double normal = type == Floor ? -1 : 1;
@@ -829,6 +1075,24 @@ namespace Roombook {
                 found = true;
                 if (!source.snapshot.IsComplete ())
                     return false;
+                if (source.origin == RoomSurfaceOrigin::PreparedAnalytic && prepared != nullptr) {
+                    bool hasBase = false;
+                    for (const auto &base : *prepared) {
+                        if (base.base_guid != guid)
+                            continue;
+                        hasBase = true;
+                        OtdSlab slab = base;
+                        slab.type = type;
+                        slab.floorInd = floorInd;
+                        slab.surface_geometry = true;
+                        const double bottom = base.zBottom, top = bottom + base.height;
+                        slab.zBottom = type == Floor ? top : bottom;
+                        candidates.push_back ({slab, bottom, top});
+                    }
+                    if (!hasBase)
+                        return false;
+                    continue;
+                }
                 for (const auto &body : source.snapshot.bodies) {
                     double bottom = std::numeric_limits<double>::infinity ();
                     double top = -bottom;
@@ -877,9 +1141,9 @@ namespace Roombook {
             if (!found)
                 return false;
         }
-        // Floor_Create_One сортирует ОБЕ роли по УБЫВАНИЮ отметки, не по расстоянию до зоны.
-        std::sort (candidates.begin (), candidates.end (), [] (const Candidate &a, const Candidate &b) {
-            return a.slab.zBottom > b.slab.zBottom;
+        // Изнутри зоны: верхние грани пола по убыванию, нижние грани потолка по возрастанию.
+        std::sort (candidates.begin (), candidates.end (), [type] (const Candidate &a, const Candidate &b) {
+            return type == Floor ? a.slab.zBottom > b.slab.zBottom : a.slab.zBottom < b.slab.zBottom;
         });
         Geometry::MultiPolygon2D remainder = footprint;
         GS::Array<OtdSlab> results;
@@ -930,7 +1194,10 @@ namespace Roombook {
                         GS::Array<PolyArcRec> arcs;
                         GS::Array<UIndex> ends;
                         GS::Array<Geometry::Polygon2D::ConstContourIterator> reversed;
-                        sidePolygon.CopyPolygonData (
+                        const auto segmentedSides = sidePolygon.SegmentUp (ArcDivParams (0.00001));
+                        if (segmentedSides.GetSize () != 1)
+                            return false;
+                        segmentedSides[0].CopyPolygonData (
                             coords, arcs, ends, reversed, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
                         if (!arcs.IsEmpty () || ends.IsEmpty ())
                             return false;

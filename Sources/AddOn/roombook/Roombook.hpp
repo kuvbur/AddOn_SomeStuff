@@ -3,11 +3,20 @@
 #if !defined(ROOMBOOK_HPP)
     #define ROOMBOOK_HPP
 
+    #include "ACAPinc.h"
+
+    #include "CoordinateSearchCache.hpp"
     #include "Helpers.hpp"
     #include "RoomSurfaceCandidates.hpp"
     #include "RoomSurfaces.hpp"
 
 namespace Roombook {
+    struct CoordinateSearchResult {
+        GSErrCode error;
+        API_Guid guid;
+    };
+
+    using CoordinateSearchCache = ExactCoordinateSearchCache<CoordinateSearchResult>;
     #ifndef ServerMainVers_2400
     void RoomBook ();
     #else
@@ -69,7 +78,9 @@ namespace Roombook {
         bool surface_geometry = false;    // Вырез контакта: геометрия не корректируется по откосам
         double base_reveal_width = 0;     // Глубина откоса базового проёма
         API_Guid base_guid = APINULLGuid; // GUID базового проёма
-        API_Guid otd_guid = APINULLGuid;  // GUID созданного проёма
+        // Перекрывающийся аналитический вырез хранит все реальные IDs без выбора одного владельца.
+        GS::Array<API_Guid> source_opening_guids;
+        API_Guid otd_guid = APINULLGuid; // GUID созданного проёма
     }; // Проём в стене
 
     struct OtdMaterial {
@@ -100,6 +111,7 @@ namespace Roombook {
         double zBottom = 0; // Аболютная координата z низа
         short floorInd = 0; // Этаж
         double height = 0;
+        double reference_z = 0; // Исходная абсолютная отметка reference plane основания
         OtdMaterial material;
         GS::UniString tip = EMPTYSTRING;               // Тип потолка/пола из зоны
         API_ElemTypeID base_type = API_ZombieElemID;   // Тип базового элемента
@@ -116,13 +128,15 @@ namespace Roombook {
     // Представление отделочной стены, созданной для одной зоны.
     // Помимо геометрии хранит состав, тип отделки и связанные с ней проёмы.
     struct OtdWall {
-        double ang_begC = 90 * DEGRAD;                 // Угол подрезки начала
-        double ang_endC = 90 * DEGRAD;                 // Угол подрезки конца
-        double height = 0;                             // Высота стены-отделки
-        double width = 0;                              // Ширина (для откоса)
-        double length = 0;                             // Длина (для откоса)
-        double zBottom = 0;                            // Аболютная координата z низа
-        short floorInd = 0;                            // Этаж
+        double ang_begC = 90 * DEGRAD; // Угол подрезки начала
+        double ang_endC = 90 * DEGRAD; // Угол подрезки конца
+        double height = 0;             // Высота стены-отделки
+        double width = 0;              // Ширина (для откоса)
+        double length = 0;             // Длина (для откоса)
+        double zBottom = 0;            // Аболютная координата z низа
+        short floorInd = 0;            // Этаж
+        double floor_core_offset = 0;  // Глубина до ядра/первой отделки из ПОЛНОГО состава основания
+        bool floor_core_offset_valid = false;
         double base_th = 0;                            // Толщина базовой стены (для расчёта откосов)
         API_Coord begC = {0, 0};                       // Координата начала
         API_Coord endC = {0, 0};                       // Координата конца
@@ -188,6 +202,9 @@ namespace Roombook {
         GS::Array<API_Guid> ceilslab;               // Перекрытия в уровне потолка
         // Полные исходные снимки кандидатов; роли discovery не выводятся заново из отметки зоны.
         GS::Array<RoomSurfaceSource> slabSources;
+        // Неизменяемые основания/проёмы отделены от очищаемых и разбиваемых результатов ниже.
+        GS::Array<OtdWall> preparedWalls;
+        GS::Array<OtdSlab> preparedSlabs;
         GS::Array<OtdWall> otdwall; // Стены-отделки, созданные для расчётов и отрисовки
         GS::Array<OtdSlab> otdslab; // Потолки/полы для построения
         bool has_ceil = true;
@@ -249,7 +266,8 @@ namespace Roombook {
                                                                const UnicGuid &finclassguids,
                                                                const ClassificationFunc::ClassificationDict &finclass,
                                                                bool &has_base_element,
-                                                               UnicGuid &reserv_elements);
+                                                               UnicGuid &reserv_elements,
+                                                               RoomSurfaceCache *cache = nullptr);
 
     UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd> &otd_elements, bool &has_base_element);
 
@@ -292,14 +310,17 @@ namespace Roombook {
                           const API_Guid &zoneGuid,
                           OtdRoom &roominfo,
                           UnicElementByType &elementToRead,
-                          GS::HashTable<API_Guid, GS::Array<API_Guid>> &slabsinzone);
+                          GS::HashTable<API_Guid, GS::Array<API_Guid>> &slabsinzone,
+                          RoomSurfaceCache *cache = nullptr,
+                          CoordinateSearchCache *coordinateCache = nullptr);
 
     // -----------------------------------------------------------------------------
     // Находит все перекрытия, котрые пересекают зону и не являются элементами отделки
     // -----------------------------------------------------------------------------
     void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>> &slabsinzone,
                         const UnicGuid &finclassguids,
-                        const GS::Array<API_Guid> &zones);
+                        const GS::Array<API_Guid> &zones,
+                        RoomSurfaceCache *cache = nullptr);
 
     // -----------------------------------------------------------------------------
     // Чтение данных об одном проёме
@@ -327,6 +348,18 @@ namespace Roombook {
                           OtdWall &wallotd);
 
     // -----------------------------------------------------------------------------
+    // Чистая подготовка конечных оснований без чтения native 3D; отказ оставляет bases неизменными.
+    bool BuildPreparedWallSource (const API_Element &element,
+                                  double bottom,
+                                  const GS::Array<OtdOpening> &openings,
+                                  GS::Array<OtdWall> &bases,
+                                  RoomSurfaceSource &source);
+    bool BuildPreparedSlabSource (const API_Element &element,
+                                  double reference,
+                                  const Geometry::Polygon2D &polygon,
+                                  GS::Array<OtdSlab> &bases,
+                                  RoomSurfaceSource &source);
+
     // Создание стен-отделок для стен
     // -----------------------------------------------------------------------------
     void OtdWall_Create_FromWall (const Stories &storyLevels,
@@ -334,7 +367,8 @@ namespace Roombook {
                                   const GS::Array<API_Guid> &zoneGuids,
                                   OtdRooms &roomsinfo,
                                   const GS::HashTable<API_Guid, GS::Array<OtdOpening>> &openinginwall,
-                                  UnicGUIDByType &guidselementToRead);
+                                  UnicGUIDByType &guidselementToRead,
+                                  RoomSurfaceCache *cache = nullptr);
 
     // -----------------------------------------------------------------------------
     // Создание стен-отделок для колонны
@@ -352,7 +386,8 @@ namespace Roombook {
                               API_Guid &elGuid,
                               const GS::Array<API_Guid> &zoneGuids,
                               OtdRooms &roomsinfo,
-                              UnicGUIDByType &guidselementToRead);
+                              UnicGUIDByType &guidselementToRead,
+                              RoomSurfaceCache *cache = nullptr);
 
     // -----------------------------------------------------------------------------
     // Подготовка словаря с параметрами для чтения из стен/колонн/балок
@@ -370,7 +405,8 @@ namespace Roombook {
                           ParamDictElement &paramToRead,
                           ParamDictCompositeElement &paramCompositeToRead,
                           const ParamValue &param_composite,
-                          GS::UniString &fav_name);
+                          GS::UniString &fav_name,
+                          OtdWall *floorWall = nullptr);
 
     void Param_SetComposite (const ParamComposite &base_composite,
                              bool base_flipped,
@@ -588,7 +624,10 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     void Class_FindFinClass (ClassificationFunc::ClassificationDict &findict, UnicGuid &finclassguids);
 
-    bool Class_IsElementFinClass (const API_Guid &elGuid, const UnicGuid &finclassguids, API_Guid &classguid);
+    bool Class_IsElementFinClass (const API_Guid &elGuid,
+                                  const UnicGuid &finclassguids,
+                                  API_Guid &classguid,
+                                  RoomSurfaceCache *cache = nullptr);
 
     void Param_AddUnicElementByType (const API_Guid &parentguid,
                                      const API_Guid &guid,

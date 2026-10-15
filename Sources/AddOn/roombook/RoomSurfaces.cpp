@@ -1,8 +1,13 @@
+#include "ACAPinc.h"
+
 #include "roombook/RoomSurfaces.hpp"
+
+#include "Helpers.hpp"
 
 #ifdef ServerMainVers_2400
     #include <cmath>
     #include <limits>
+    #include <map>
     #include <utility>
 
 namespace Roombook {
@@ -68,7 +73,18 @@ namespace Roombook {
             snapshot.errors.Push (error);
         }
 
-        bool ReadSurfaceComponent (API_3DTypeID type,
+        struct ComponentEntry {
+            API_Component3D component = {};
+            GSErrCode error = NoError;
+        };
+
+        struct BodyComponentCache {
+            std::map<std::pair<API_3DTypeID, Int32>, ComponentEntry> entries;
+            RoomSurfaceReadCounters *counters = nullptr;
+        };
+
+        bool ReadSurfaceComponent (BodyComponentCache &cache,
+                                   API_3DTypeID type,
                                    Int32 index,
                                    Int32 count,
                                    API_Component3D &component,
@@ -79,20 +95,44 @@ namespace Roombook {
             component = {};
             component.header.typeID = type;
             component.header.index = index;
-            const GSErrCode err = index < 1 || index > count ? APIERR_BADINDEX : ACAPI_3D_GetComponent (&component);
+            GSErrCode err = APIERR_BADINDEX;
+            if (index >= 1 && index <= count) {
+                const auto key = std::make_pair (type, index);
+                const auto found = cache.entries.find (key);
+                if (found != cache.entries.end ()) {
+                    component = found->second.component;
+                    err = found->second.error;
+                    if (cache.counters != nullptr)
+                        ++cache.counters->componentHits;
+                } else {
+                    err = ACAPI_3D_GetComponent (&component);
+                    if (cache.counters != nullptr)
+                        ++cache.counters->componentReads;
+                    cache.entries.emplace (key, ComponentEntry{component, err});
+                }
+            }
+            // Ошибка повторяется с исходным контекстом каждого полигона, даже при попадании в кэш.
             if (err != NoError)
                 AddSurfaceError (snapshot, stage, err, body, polygon, index);
             return err == NoError;
         }
 
-        bool ReadSurfacePolygon (const API_BodyType &body,
+        bool ReadSurfacePolygon (BodyComponentCache &cache,
+                                 const API_BodyType &body,
                                  Int32 bodyIndex,
                                  Int32 polygonIndex,
                                  RoomSurface &out,
                                  RoomSurfaceSnapshot &snapshot) {
             API_Component3D component = {};
-            if (!ReadSurfaceComponent (
-                    API_PgonID, polygonIndex, body.nPgon, component, snapshot, bodyIndex, polygonIndex, "polygon"))
+            if (!ReadSurfaceComponent (cache,
+                                       API_PgonID,
+                                       polygonIndex,
+                                       body.nPgon,
+                                       component,
+                                       snapshot,
+                                       bodyIndex,
+                                       polygonIndex,
+                                       "polygon"))
                 return false;
             const API_PgonType polygon = component.pgon;
             out.bodyIndex = bodyIndex;
@@ -104,7 +144,8 @@ namespace Roombook {
                 AddSurfaceError (snapshot, "normal", APIERR_BADINDEX, bodyIndex, polygonIndex, polygon.ivect);
                 return false;
             }
-            if (!ReadSurfaceComponent (API_VectID,
+            if (!ReadSurfaceComponent (cache,
+                                       API_VectID,
                                        std::abs (polygon.ivect),
                                        body.nVect,
                                        component,
@@ -136,7 +177,7 @@ namespace Roombook {
             // Индексы примитивов локальны выбранному телу; нулевой PEDG разделяет контуры отверстий.
             for (Int32 pe = polygon.fpedg; pe <= polygon.lpedg; ++pe) {
                 if (!ReadSurfaceComponent (
-                        API_PedgID, pe, body.nPedg, component, snapshot, bodyIndex, polygonIndex, "pedg"))
+                        cache, API_PedgID, pe, body.nPedg, component, snapshot, bodyIndex, polygonIndex, "pedg"))
                     return false;
                 const Int32 signedEdge = component.pedg.pedg;
                 if (signedEdge == 0) {
@@ -148,7 +189,8 @@ namespace Roombook {
                     AddSurfaceError (snapshot, "edge", APIERR_BADINDEX, bodyIndex, polygonIndex, signedEdge);
                     return false;
                 }
-                if (!ReadSurfaceComponent (API_EdgeID,
+                if (!ReadSurfaceComponent (cache,
+                                           API_EdgeID,
                                            std::abs (signedEdge),
                                            body.nEdge,
                                            component,
@@ -167,7 +209,7 @@ namespace Roombook {
                     firstVertex = start;
                 previousEnd = end;
                 if (!ReadSurfaceComponent (
-                        API_VertID, start, body.nVert, component, snapshot, bodyIndex, polygonIndex, "vertex"))
+                        cache, API_VertID, start, body.nVert, component, snapshot, bodyIndex, polygonIndex, "vertex"))
                     return false;
                 RoomSurfaceVertex vertex;
                 vertex.local = {component.vert.x, component.vert.y, component.vert.z};
@@ -185,7 +227,23 @@ namespace Roombook {
         }
     } // namespace
 
-    RoomSurfaceSnapshot ReadRoomSurfaces (const API_Elem_Head &head) {
+    RoomSurfaceSnapshot ReadRoomSurfaces (const API_Elem_Head &head, RoomSurfaceCache *cache) {
+        if (cache != nullptr) {
+            if (const auto *existing = cache->snapshots.GetPtr (head.guid)) {
+                ++cache->counters.snapshotHits;
+                return *existing;
+            }
+            ++cache->counters.snapshotReads;
+    #ifdef ServerMainVers_2600
+            const auto type = head.type.typeID;
+    #else
+            const auto type = head.typeID;
+    #endif
+            if (type == API_WallID)
+                ++cache->counters.wallSnapshotReads;
+            if (type == API_SlabID)
+                ++cache->counters.slabSnapshotReads;
+        }
         RoomSurfaceSnapshot snapshot;
         snapshot.guid = head.guid;
         API_ElemInfo3D info = {};
@@ -200,6 +258,8 @@ namespace Roombook {
                 component.header.typeID = API_BodyID;
                 component.header.index = bi;
                 const GSErrCode bodyErr = ACAPI_3D_GetComponent (&component);
+                if (cache != nullptr)
+                    ++cache->counters.componentReads;
                 if (bodyErr == APIERR_DELETED) {
                     snapshot.deletedBodies.Push (bi);
                     continue;
@@ -216,9 +276,11 @@ namespace Roombook {
                 bodyOut.matrix = body.tranmat;
                 bodyOut.parentGuid = body.parent.guid;
                 bodyOut.parentType = body.parent.typeID;
+                BodyComponentCache components;
+                components.counters = cache != nullptr ? &cache->counters : nullptr;
                 for (Int32 pi = 1; pi <= body.nPgon; ++pi) {
                     RoomSurface surface;
-                    if (ReadSurfacePolygon (body, bi, pi, surface, snapshot))
+                    if (ReadSurfacePolygon (components, body, bi, pi, surface, snapshot))
                         bodyOut.surfaces.Push (std::move (surface));
                 }
                 snapshot.bodies.Push (std::move (bodyOut));
@@ -227,7 +289,143 @@ namespace Roombook {
         snapshot.status = !snapshot.errors.IsEmpty ()  ? RoomSurfaceStatus::ReadError
                           : snapshot.bodies.IsEmpty () ? RoomSurfaceStatus::Empty
                                                        : RoomSurfaceStatus::Extracted;
+        if (cache != nullptr)
+            cache->snapshots.Add (head.guid, snapshot);
         return snapshot;
+    }
+
+    RoomSurfaceZBounds ReadRoomSurfaceZBounds (const API_Elem_Head &head, RoomSurfaceCache *cache) {
+        RoomSurfaceZBounds bounds;
+        double bottom = std::numeric_limits<double>::infinity ();
+        double top = -bottom;
+        bool valid = true;
+        if (cache != nullptr) {
+            if (const auto *snapshot = cache->snapshots.GetPtr (head.guid)) {
+                ++cache->counters.boundsHits;
+                valid = snapshot->IsComplete ();
+                for (const auto &body : snapshot->bodies)
+                    for (const auto &face : body.surfaces)
+                        for (const auto &contour : face.contours)
+                            for (const auto &vertex : contour.vertices) {
+                                bottom = std::min (bottom, vertex.world.z);
+                                top = std::max (top, vertex.world.z);
+                            }
+                bounds = {valid && std::isfinite (bottom) && std::isfinite (top), bottom, top};
+                return bounds;
+            }
+            if (const auto *existing = cache->bounds.GetPtr (head.guid)) {
+                ++cache->counters.boundsHits;
+                return *existing;
+            }
+            ++cache->counters.boundsReads;
+        }
+        // SDK25 не определяет систему координат bbox; безопасно читаем только вершины, без полигонов.
+        API_ElemInfo3D info = {};
+        valid = ACAPI_Element_Get3DInfo (head, &info) == NoError;
+        for (Int32 bi = info.fbody; valid && bi > 0 && bi <= info.lbody; ++bi) {
+            API_Component3D component = {};
+            component.header.typeID = API_BodyID;
+            component.header.index = bi;
+            const GSErrCode err = ACAPI_3D_GetComponent (&component);
+            if (cache != nullptr)
+                ++cache->counters.componentReads;
+            if (err == APIERR_DELETED)
+                continue;
+            if (err != NoError) {
+                valid = false;
+                break;
+            }
+            const API_BodyType body = component.body;
+            const double *m = body.tranmat.tmx;
+            for (double value : body.tranmat.tmx)
+                valid = valid && std::isfinite (value);
+            for (Int32 vi = 1; valid && vi <= body.nVert; ++vi) {
+                component = {};
+                component.header.typeID = API_VertID;
+                component.header.index = vi;
+                valid = ACAPI_3D_GetComponent (&component) == NoError;
+                if (cache != nullptr)
+                    ++cache->counters.componentReads;
+                if (!valid)
+                    break;
+                const double z = m[8] * component.vert.x + m[9] * component.vert.y + m[10] * component.vert.z + m[11];
+                valid = std::isfinite (z);
+                bottom = std::min (bottom, z);
+                top = std::max (top, z);
+            }
+        }
+        bounds = {valid && std::isfinite (bottom) && std::isfinite (top), bottom, top};
+        if (cache != nullptr)
+            cache->bounds.Add (head.guid, bounds);
+        return bounds;
+    }
+
+    ElementRead ReadElement (const API_Guid &guid, RoomSurfaceCache *cache) {
+        if (cache != nullptr) {
+            if (const auto *found = cache->elements.GetPtr (guid)) {
+                ++cache->counters.elementHits;
+                return *found;
+            }
+            ++cache->counters.elementReads;
+        }
+        ElementRead read;
+        read.element.header.guid = guid;
+        read.error = ACAPI_Element_Get (&read.element);
+        if (cache != nullptr)
+            cache->elements.Add (guid, read);
+        return read;
+    }
+
+    ClassificationRead ReadClassificationItems (const API_Guid &guid, RoomSurfaceCache *cache) {
+        if (cache != nullptr) {
+            if (const auto *found = cache->classifications.GetPtr (guid)) {
+                ++cache->counters.classificationHits;
+                return *found;
+            }
+            ++cache->counters.classificationReads;
+        }
+        ClassificationRead read;
+        read.error = ACAPI_Element_GetClassificationItems (guid, read.items);
+        if (cache != nullptr)
+            cache->classifications.Add (guid, read);
+        return read;
+    }
+
+    GSErrCode ReadZoneRelations (const API_Guid &zoneGuid, RoomSurfaceCache *cache, RoomRelationValues &values) {
+        if (cache != nullptr) {
+            if (const auto *found = cache->relations.GetPtr (zoneGuid)) {
+                ++cache->counters.relationHits;
+                values = *found;
+                return NoError;
+            }
+            ++cache->counters.relationReads;
+        }
+        API_RoomRelation relations = {};
+        const GSErrCode error = ACAPI_Element_GetRelations (zoneGuid, API_ZombieElemID, &relations);
+        if (error != NoError) {
+            ACAPI_DisposeRoomRelationHdls (&relations);
+            return error;
+        }
+        // Только value-поля: владеющие хендлы API_RoomRelation живут в niches, которые не читаем.
+        values.elementsGroupedByType = relations.elementsGroupedByType;
+        values.wallPart = relations.wallPart;
+        values.beamPart = relations.beamPart;
+        ACAPI_DisposeRoomRelationHdls (&relations);
+        if (cache != nullptr)
+            cache->relations.Add (zoneGuid, values);
+        return NoError;
+    }
+
+    ConnectedElementsRead ReadConnectedElements (const API_Guid &guid,
+                                                 API_ElemTypeID type,
+                                                 API_ElemFilterFlags filter,
+                                                 RoomSurfaceCache *cache,
+                                                 API_ElemVariationID variation,
+                                                 const API_Guid &renovationFilterGuid) {
+        return ReadConnectedElementsCached (
+            guid, type, filter, variation, renovationFilterGuid, cache, [&] (GS::Array<API_Guid> &items) {
+                return ACAPI_Element_GetConnectedElements (guid, type, &items, filter, variation, renovationFilterGuid);
+            });
     }
 
 } // namespace Roombook

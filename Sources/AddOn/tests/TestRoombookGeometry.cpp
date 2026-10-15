@@ -1,4 +1,10 @@
+#include "ACAPinc.h"
+
 #include "tests/TestRoombookGeometry.hpp"
+
+#include "tests/ConnectedElementsCacheChecks.hpp"
+#include "tests/FloorCoreChecks.hpp"
+#include "tests/RoomAnalyticChecks.hpp"
 
 #if defined(TESTING) && defined(ServerMainVers_2500)
 
@@ -127,6 +133,289 @@ namespace {
                 ++failed;
             DBtest (passed, "surface partition " + GS::UniString (name));
         };
+
+        CheckRoomAnalyticGeometry (check);
+        CheckConnectedElementsCache (check);
+        {
+            API_Element element = {};
+            element.header.typeID = API_WallID;
+            element.header.guid = APIGuidFromString ("00000000-0000-0000-0000-000000000272");
+            element.wall.type = APIWtyp_Normal;
+            element.wall.profileType = APISect_Normal;
+            element.wall.begC = {0, 0};
+            element.wall.endC = {4, 0};
+            element.wall.height = 3;
+            element.wall.thickness = .3;
+            element.wall.offsetFromOutside = .1;
+            GS::Array<OtdWall> bases;
+            RoomSurfaceSource prepared;
+            check (BuildPreparedWallSource (element, 10, {}, bases, prepared) && bases.GetSize () == 4 &&
+                       prepared.origin == RoomSurfaceOrigin::PreparedAnalytic &&
+                       prepared.snapshot.bodies[0].surfaces.GetSize () == 6,
+                   "272 production ordinary wall preparation");
+            bool ownIndices = true;
+            for (const auto &face : prepared.snapshot.bodies[0].surfaces)
+                ownIndices = ownIndices && face.bodyIndex == 0 && face.polygonIndex == 0 &&
+                             face.origin == RoomSurfaceOrigin::PreparedAnalytic && face.analyticFaceId > 0;
+            check (ownIndices, "272 analytic provenance has no invented native indices");
+            OtdOpening opening;
+            opening.base_guid = APIGuidFromString ("00000000-0000-0000-0000-000000000273");
+            opening.objLoc = 2;
+            opening.width = 2;
+            opening.height = 1;
+            opening.lower = 1;
+            bases.Clear ();
+            check (BuildPreparedWallSource (element, 10, {opening}, bases, prepared) &&
+                       bases[0].openings.GetSize () == 1 && bases[0].openings[0].base_guid == opening.base_guid &&
+                       bases[1].openings[0].base_guid == opening.base_guid,
+                   "272 opening GUID retained on both prepared sides");
+            // Прямоугольная native-зона на исходной боковой плоскости проверяет активный matcher без изменения его
+            // допуска.
+            RoomSurface zoneFace;
+            zoneFace.bodyIndex = zoneFace.polygonIndex = 1;
+            zoneFace.normalWorld = {0, -1, 0};
+            zoneFace.planeOffset = .1;
+            RoomSurfaceContour contour;
+            for (const auto &p :
+                 {API_Coord3D{0, .1, 10}, API_Coord3D{4, .1, 10}, API_Coord3D{4, .1, 13}, API_Coord3D{0, .1, 13}}) {
+                RoomSurfaceVertex v;
+                v.world = p;
+                contour.vertices.Push (v);
+            }
+            zoneFace.contours.Push (contour);
+            RoomSurfaceSnapshot zoneSnapshot;
+            zoneSnapshot.guid = APIGuidFromString ("00000000-0000-0000-0000-000000000274");
+            zoneSnapshot.status = RoomSurfaceStatus::Extracted;
+            RoomSurfaceBody zoneBody;
+            zoneBody.surfaces.Push (zoneFace);
+            zoneSnapshot.bodies.Push (zoneBody);
+            const auto partition = PartitionRoomSurfaces (zoneSnapshot, {prepared});
+            double matchedArea = 0, unmatchedArea = 0;
+            for (const auto &piece : partition.pieces) {
+                if (piece.status == RoomSurfacePieceStatus::Matched)
+                    matchedArea += piece.area;
+                if (piece.status == RoomSurfacePieceStatus::Unmatched)
+                    unmatchedArea += piece.area;
+            }
+            check (partition.complete && std::abs (matchedArea - 10) < 1e-6 && std::abs (unmatchedArea - 2) < 1e-6,
+                   "272 native zone partitions against finite prepared wall minus opening");
+            GS::Array<RoomSurfacePiece> grouped;
+            GS::Array<OtdWall> finishes;
+            bool adapted = GroupSurfaceWallPieces (partition.pieces, 0, grouped);
+            for (const auto &piece : grouped)
+                if (piece.status == RoomSurfacePieceStatus::Matched)
+                    adapted = BuildSurfaceWalls (piece, 0, finishes) && adapted;
+            bool realOpening = false;
+            for (auto &finish : finishes) {
+                adapted = LinkSurfaceOpenings (finish, bases) && adapted;
+                for (const auto &op : finish.openings)
+                    realOpening = realOpening || op.base_guid == opening.base_guid;
+            }
+            check (adapted && realOpening, "272 prepared wall reaches writer adapter with real opening ID");
+
+            const auto checkCut = [&] (const GS::Array<OtdOpening> &cuts, double expected, const char *name) {
+                GS::Array<OtdWall> cutBases;
+                RoomSurfaceSource cutSource;
+                bool ok = BuildPreparedWallSource (element, 10, cuts, cutBases, cutSource);
+                const auto cutPartition = PartitionRoomSurfaces (zoneSnapshot, {cutSource});
+                double area = 0;
+                for (const auto &piece : cutPartition.pieces)
+                    if (piece.status == RoomSurfacePieceStatus::Matched)
+                        area += piece.area;
+                check (ok && cutPartition.complete && std::abs (area - expected) < 1e-6, name);
+            };
+            OtdOpening boundary = opening;
+            boundary.lower = 0;
+            boundary.height = 2;
+            checkCut ({boundary}, 8, "272 production boundary opening");
+            OtdOpening completeCut = opening;
+            completeCut.width = 4;
+            completeCut.height = 3;
+            completeCut.lower = 0;
+            checkCut ({completeCut}, 0, "272 production full opening cut");
+            OtdOpening overlap = opening;
+            overlap.base_guid = APIGuidFromString ("00000000-0000-0000-0000-000000000276");
+            overlap.objLoc = 3;
+            overlap.lower = .5;
+            overlap.height = 2;
+            checkCut ({opening, overlap}, 7, "272 production overlapping opening union");
+            OtdWall overlapCut;
+            overlapCut.surface_geometry = true;
+            overlapCut.base_guid = element.header.guid;
+            overlapCut.begC = {0, .1};
+            overlapCut.endC = {4, .1};
+            overlapCut.height = 3;
+            overlapCut.zBottom = 10;
+            OtdOpening combined;
+            combined.objLoc = 2.5;
+            combined.width = 3;
+            combined.zBottom = 11;
+            combined.height = 1;
+            overlapCut.openings.Push (combined);
+            GS::Array<OtdWall> overlapBases;
+            RoomSurfaceSource overlapSource;
+            check (BuildPreparedWallSource (element, 10, {opening, overlap}, overlapBases, overlapSource) &&
+                       LinkSurfaceOpenings (overlapCut, overlapBases, true),
+                   "272 overlap links without choosing fake owner");
+            bool bothIds = false;
+            for (const auto &cut : overlapCut.openings)
+                bothIds =
+                    bothIds || (cut.base_guid == APINULLGuid && cut.source_opening_guids.Contains (opening.base_guid) &&
+                                cut.source_opening_guids.Contains (overlap.base_guid));
+            check (bothIds, "272 overlap cell retains both real opening IDs");
+            std::swap (element.wall.begC, element.wall.endC);
+            bases.Clear ();
+            check (BuildPreparedWallSource (element, 10, {}, bases, prepared) &&
+                       std::abs (bases[0].begC.y + .1) < 1e-12,
+                   "272 production reversed axis side");
+            std::swap (element.wall.begC, element.wall.endC);
+            element.wall.flipped = true;
+            bases.Clear ();
+            check (BuildPreparedWallSource (element, 10, {opening}, bases, prepared) &&
+                       std::abs (bases[0].begC.y + .1) < 1e-12,
+                   "272 production flipped wall side");
+            element.wall.relativeTopStory = 1;
+            bases.Clear ();
+            check (BuildPreparedWallSource (element, 10, {opening}, bases, prepared) && bases.GetSize () == 4 &&
+                       std::abs (bases[0].height - element.wall.height) < 1e-12,
+                   "272 top-linked wall retains resolved API height without native fallback");
+            element.wall.relativeTopStory = 0;
+            element.wall.modelElemStructureType = API_ProfileStructure;
+            bases.Clear ();
+            check (!BuildPreparedWallSource (element, 10, {}, bases, prepared) && bases.IsEmpty () &&
+                       prepared.routeReason == "ProfileWall" && !prepared.snapshot.IsComplete (),
+                   "272 profile explicitly requests cached native fallback");
+
+            element = {};
+            element.header.typeID = API_SlabID;
+            element.header.guid = APIGuidFromString ("00000000-0000-0000-0000-000000000275");
+            element.slab.thickness = .3;
+            element.slab.offsetFromTop = .2;
+            const GS::Array<Point2D> coords = {{0, 0}, {4, 0}, {4, 3}, {0, 3}, {1, 1}, {1, 2}, {2, 2}, {2, 1}};
+            GS::Array<PolyArcRec> arcs;
+            const GS::Array<UIndex> ends = {3, 7};
+            const auto polygons =
+                Geometry::Polygon2D::Create (coords, arcs, ends, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
+            GS::Array<OtdSlab> slabBases;
+            check (polygons.GetSize () == 1 &&
+                       BuildPreparedSlabSource (element, 10, polygons[0], slabBases, prepared) &&
+                       slabBases.GetSize () == 1 && std::abs (slabBases[0].zBottom - 9.9) < 1e-12 &&
+                       std::abs (slabBases[0].reference_z - 10) < 1e-12 &&
+                       std::abs (slabBases[0].poly.CalcArea () - 11) < 1e-6,
+                   "272 production slab reference levels and original hole");
+            bool hole = false;
+            for (const auto &face : prepared.snapshot.bodies[0].surfaces)
+                hole = hole || (face.normalWorld.z != 0 && face.contours.GetSize () == 2 && face.contours[1].hole);
+            check (hole, "272 slab hole survives analytic contact surfaces");
+
+            RoomSurface floorFace;
+            floorFace.bodyIndex = floorFace.polygonIndex = 1;
+            floorFace.normalWorld = {0, 0, -1};
+            floorFace.planeOffset = 10;
+            RoomSurfaceContour floorContour;
+            for (const auto &point :
+                 {API_Coord3D{-1, -1, 10}, API_Coord3D{5, -1, 10}, API_Coord3D{5, 4, 10}, API_Coord3D{-1, 4, 10}}) {
+                RoomSurfaceVertex vertex;
+                vertex.world = point;
+                floorContour.vertices.Push (vertex);
+            }
+            floorFace.contours.Push (floorContour);
+            RoomSurfaceSnapshot floorSnapshot;
+            floorSnapshot.guid = zoneSnapshot.guid;
+            floorSnapshot.status = RoomSurfaceStatus::Extracted;
+            RoomSurfaceBody floorBody;
+            floorBody.surfaces.Push (floorFace);
+            floorSnapshot.bodies.Push (floorBody);
+            OtdSlab nominal;
+            nominal.zBottom = 10;
+            nominal.material.smaterial = "272 material";
+            GS::Array<OtdSlab> projectedBases;
+            double rejected = 0;
+            check (BuildProjectedSlabFinishes (floorSnapshot,
+                                               {prepared},
+                                               {element.header.guid},
+                                               Floor,
+                                               0,
+                                               projectedBases,
+                                               rejected,
+                                               &nominal,
+                                               true,
+                                               nullptr,
+                                               &slabBases) &&
+                       projectedBases.GetSize () == 1 && std::abs (projectedBases[0].poly.CalcArea () - 11) < 1e-6 &&
+                       std::abs (projectedBases[0].zBottom - 10.2) < 1e-12 &&
+                       projectedBases[0].material.smaterial == nominal.material.smaterial,
+                   "272 active prepared slab route preserves hole elevation material and by_slab");
+            // Два полностью перекрывающихся основания: приоритет должен зависеть от отметки, не порядка GUID.
+            const auto full = Geometry::Polygon2D::Create (GS::Array<Point2D>{{-1, -1}, {5, -1}, {5, 4}, {-1, 4}}, 0);
+            if (!full.IsEmpty ()) {
+                for (const auto type : {Floor, Ceil}) {
+                    GS::Array<OtdSlab> bases;
+                    GS::Array<RoomSurfaceSource> sources;
+                    GS::Array<API_Guid> roles;
+                    for (int i = 0; i < 2; ++i) {
+                        API_Element candidate = element;
+                        candidate.header.guid = APIGuidFromString (i == 0 ? "00000000-0000-0000-0000-000000000276"
+                                                                          : "00000000-0000-0000-0000-000000000277");
+                        candidate.slab.offsetFromTop = 0;
+                        candidate.slab.thickness = type == Floor ? .5545 : .3;
+                        RoomSurfaceSource source;
+                        const double top = type == Floor ? (i == 0 ? 0 : -.5545) : (i == 0 ? 3.6 : 7.2);
+                        check (BuildPreparedSlabSource (candidate, top, full[0], bases, source),
+                               "272 ordering regression prepared candidate");
+                        sources.Push (source);
+                        roles.Push (candidate.header.guid);
+                    }
+                    auto footprint = floorSnapshot;
+                    footprint.bodies[0].surfaces[0].normalWorld.z = type == Floor ? -1 : 1;
+                    for (bool reverse : {false, true}) {
+                        const GS::Array<API_Guid> ordered = reverse ? GS::Array<API_Guid>{roles[1], roles[0]} : roles;
+                        GS::Array<OtdSlab> finishes;
+                        double rejectedArea = 0;
+                        check (BuildProjectedSlabFinishes (footprint,
+                                                           sources,
+                                                           ordered,
+                                                           type,
+                                                           0,
+                                                           finishes,
+                                                           rejectedArea,
+                                                           &nominal,
+                                                           true,
+                                                           nullptr,
+                                                           &bases) &&
+                                   finishes.GetSize () == 1 && finishes[0].base_guid == roles[0] &&
+                                   std::abs (finishes[0].poly.CalcArea () - 30) < 1e-6 &&
+                                   std::abs (finishes[0].zBottom - (type == Floor ? 0 : 3.3)) < 1e-6,
+                               type == Floor
+                                   ? "272 highest floor wins in both candidate orders"
+                                   : "272 nearest ceiling above floor wins independent of zone top and order");
+                    }
+                }
+            }
+            GS::Array<Point2D> curvedCoords = {{0, 0}, {4, 0}, {4, 3}, {0, 3}};
+            PolyArcRec arc;
+            arc.begIndex = 0;
+            arc.endIndex = 1;
+            arc.arcAngle = .4;
+            arcs.Push (arc);
+            const auto curved = Geometry::Polygon2D::Create (curvedCoords,
+                                                             arcs,
+                                                             GS::Array<UIndex>{3},
+                                                             Geometry::PolyCreateFlags_IdxRefInContourEndFromZero |
+                                                                 Geometry::PolyCreateFlags_IdxRefInArcFromZero);
+            slabBases.Clear ();
+            check (curved.GetSize () == 1 && BuildPreparedSlabSource (element, 10, curved[0], slabBases, prepared),
+                   "272 curved slab analytic preparation");
+            if (!slabBases.IsEmpty ()) {
+                GS::Array<Point2D> copied;
+                GS::Array<PolyArcRec> copiedArcs;
+                GS::Array<UIndex> copiedEnds;
+                GS::Array<Geometry::Polygon2D::ConstContourIterator> reversed;
+                slabBases[0].poly.CopyPolygonData (
+                    copied, copiedArcs, copiedEnds, reversed, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
+                check (!copiedArcs.IsEmpty (), "272 immutable slab base retains arcs for projection and writer");
+            }
+        }
         const API_Guid zoneGuid = APIGuidFromString ("00000000-0000-0000-0000-000000000001");
         const API_Guid baseA = APIGuidFromString ("00000000-0000-0000-0000-000000000002");
         const API_Guid baseB = APIGuidFromString ("00000000-0000-0000-0000-000000000003");
@@ -232,10 +521,10 @@ namespace {
                "coplanar same-normal face inside the room covers the finish");
         auto distant = rectangle (0, 4, 0, 3, -1);
         for (auto &vertex : distant.contours[0].vertices) {
-            vertex.world.z = 2e-6;
-            vertex.local.z = 2e-6;
+            vertex.world.z = 2e-4;
+            vertex.local.z = 2e-4;
         }
-        distant.planeOffset = 2e-6;
+        distant.planeOffset = 2e-4;
         sources[0] = source (baseA, distant);
         result = PartitionRoomSurfaces (zone, sources);
         check (result.complete && closeArea (area (result, RoomSurfacePieceStatus::Unmatched), 12),
@@ -302,6 +591,51 @@ namespace {
         result = PartitionRoomSurfaces (snapshot (zoneGuid, slantedZone), sources);
         check (result.complete && closeArea (area (result, RoomSurfacePieceStatus::Matched), 12 * std::sqrt (2.0)),
                "inclined translated plane is matched in world space");
+        // AC25: stored-нормаль SDK-грани может отклоняться от фактической плоскости вершин (~0.18°);
+        // планарная грань тогда не проходит копланарность и даёт PartitionInvalidSourcePlane.
+        // Newell-нормаль из вершин такую грань принимает.
+        auto skewed = rectangle (0, 4, 0, 3, -1);
+        const double tilt = 1.0e-4; // На дальнем углу отклонение больше допуска плоскости.
+        const double skewLength = std::sqrt (1.0 + tilt * tilt);
+        skewed.normalWorld = {tilt / skewLength, 0, -1.0 / skewLength};
+        skewed.normalLocal = skewed.normalWorld;
+        sources[0] = source (baseA, skewed);
+        result = PartitionRoomSurfaces (zone, sources);
+        check (result.complete && result.pieces.GetSize () == 1 &&
+                   closeArea (area (result, RoomSurfacePieceStatus::Matched), 12),
+               "skewed stored normal of a planar face is accepted");
+        auto nearPlane = rectangle (0, 4, 0, 3, -1);
+        nearPlane.contours[0].vertices[2].world.z = 2.0e-5;
+        nearPlane.contours[0].vertices[2].local.z = 2.0e-5;
+        sources[0] = source (baseA, nearPlane);
+        result = PartitionRoomSurfaces (zone, sources);
+        check (result.complete && result.errors.IsEmpty () &&
+                   closeArea (area (result, RoomSurfacePieceStatus::Matched), 12),
+               "twenty micron source-plane noise is accepted within 0.1 mm");
+        // По-настоящему неплоская грань остаётся ошибкой: подъём вершины за допуск не принимается.
+        auto warped = rectangle (0, 4, 0, 3, -1);
+        warped.contours[0].vertices[2].world.z = 1.0e-3;
+        warped.contours[0].vertices[2].local.z = 1.0e-3;
+        sources[0] = source (baseA, warped);
+        result = PartitionRoomSurfaces (zone, sources);
+        bool invalidPlane = false;
+        for (const auto &error : result.errors)
+            invalidPlane = invalidPlane || error.stage == GS::UniString ("PartitionInvalidSourcePlane");
+        check (!result.complete && invalidPlane, "warped face still fails the source-plane check");
+        // Малая плоская грань основания не должна останавливать разбиение всей зоны.
+        auto tiny = rectangle (20.740000000001132, 20.740500000001131, 2.6792999999999947, 2.6799999999999962, -1);
+        for (auto &vertex : tiny.contours[0].vertices) {
+            vertex.world = {vertex.world.x, 15.519300000000007, vertex.world.y};
+            vertex.local = vertex.world;
+        }
+        tiny.normalWorld = {0, -1, 0};
+        tiny.normalLocal = tiny.normalWorld;
+        tiny.planeOffset = 15.519300000000007;
+        sources[0] = source (baseA, tiny);
+        result = PartitionRoomSurfaces (zone, sources);
+        check (result.complete && result.errors.IsEmpty () &&
+                   closeArea (area (result, RoomSurfacePieceStatus::Unmatched), 12),
+               "tiny planar source does not abort unrelated zone partition");
         sources[0].snapshot.status = RoomSurfaceStatus::ReadError;
         result = PartitionRoomSurfaces (zone, sources);
         check (!result.complete && !result.errors.IsEmpty (), "incomplete source cannot produce a complete partition");
@@ -941,6 +1275,120 @@ namespace {
                    surfaceSlabs[0].base_type == API_BeamID,
                "horizontal adapter preserves ceiling hole and beam parent");
         check (!BuildSurfaceWall (contact, 0, surfaceWall), "holed horizontal surface is not a wall");
+        // API_WallPart: направление, углы, сторона, sentinel-границы и сохранение разрывов.
+        {
+            const auto wallPart = [&] (double a, double b, Int32 edge = 1) {
+                API_WallPart part = {};
+                part.guid = baseA;
+                part.roomEdge = edge;
+                part.tBeg = a;
+                part.tEnd = b;
+                return part;
+            };
+            const auto contactWall = [&] (double a, double b) {
+                OtdWall wall;
+                wall.base_guid = baseA;
+                wall.base_type = API_WallID;
+                wall.surface_geometry = true;
+                wall.begC = {a, 0};
+                wall.endC = {b, 0};
+                wall.length = std::fabs (b - a);
+                wall.height = 3;
+                return wall;
+            };
+            const GS::Array<Sector> edges = {{{0, 0}, {4, 0}}, {{4, 1}, {0, 1}}};
+            const auto clamp = [&] (const OtdWall &wall,
+                                    const GS::Array<API_WallPart> &parts,
+                                    const GS::Array<OtdWall> &peers = GS::Array<OtdWall> ()) {
+                return ClampSurfaceWallToParts (wall, {0, 0}, {4, 0}, parts, edges, 0, peers);
+            };
+            auto wall = contactWall (4, 0);
+            auto result = clamp (wall, {wallPart (1, 3)});
+            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 3) && closeArea (result[0].endC.x, 1) &&
+                       closeArea (result[0].length, 2),
+                   "wallPart preserves reversed surface direction");
+            OtdOpening opening;
+            opening.objLoc = 1.5;
+            opening.width = 2;
+            opening.height = 1;
+            opening.zBottom = .5;
+            wall.openings.Push (opening);
+            result = clamp (wall, {wallPart (1, 3)});
+            check (result.GetSize () == 1 && result[0].openings.GetSize () == 1 &&
+                       closeArea (result[0].openings[0].objLoc, .75) && closeArea (result[0].openings[0].width, 1.5),
+                   "wallPart clips opening in final direction");
+            result = clamp (wall, {wallPart (0, 1), wallPart (3, 4)});
+            check (result.GetSize () == 2 && closeArea (result[0].length, 1) && closeArea (result[1].length, 1),
+                   "wallPart keeps disconnected intervals");
+            result = clamp (wall, {wallPart (0, 3), wallPart (2, 4), wallPart (0, 3)});
+            check (result.GetSize () == 1 && closeArea (result[0].length, 4),
+                   "wallPart merges overlapping and duplicate intervals");
+            result = clamp (wall, {wallPart (0, 0)});
+            check (result.GetSize () == 1 && closeArea (result[0].length, 4), "wallPart preserves legacy zero bounds");
+            result = clamp (wall, {});
+            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 4) && result[0].openings.GetSize () == 1,
+                   "wallPart absent keeps wall and openings");
+            result = clamp (wall, {wallPart (0, 4, 2)});
+            check (result.IsEmpty (), "wallPart opposite room edge cannot trim this side");
+            result = clamp (wall, {wallPart (0, 4, 2), wallPart (1, 3)});
+            check (result.GetSize () == 1 && closeArea (result[0].length, 2),
+                   "wallPart chooses matching roomEdge rather than guid alone");
+            check (clamp (wall, {wallPart (0, 4, 0)}).IsEmpty () && clamp (wall, {wallPart (0, 4, 3)}).IsEmpty (),
+                   "wallPart invalid edge index rejects without partial output");
+            check (clamp (wall, {wallPart (5, 6)}).IsEmpty (), "wallPart nonoverlapping finite edge rejects");
+            wall = contactWall (3.8, .2);
+            result = clamp (wall, {wallPart (0, 4)});
+            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 4) && closeArea (result[0].endC.x, 0),
+                   "wallPart extends short outer contact to both room corners");
+            auto left = contactWall (1.5, .2), right = contactWall (3.8, 2.5);
+            const GS::Array<OtdWall> peers = {left, right};
+            result = clamp (left, {wallPart (0, 4)}, peers);
+            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 1.5) && closeArea (result[0].endC.x, 0),
+                   "wallPart left contact preserves inner gap");
+            result = clamp (right, {wallPart (0, 4)}, peers);
+            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 4) && closeArea (result[0].endC.x, 2.5),
+                   "wallPart right contact preserves inner gap");
+            opening.objLoc = .5;
+            opening.width = 1;
+            wall.openings.Push (opening);
+            result = clamp (wall, {wallPart (0, 4)});
+            check (result.GetSize () == 1 && result[0].openings.GetSize () == 1 &&
+                       closeArea (result[0].openings[0].objLoc, .6) && closeArea (result[0].openings[0].width, 1.2),
+                   "wallPart extension keeps edge notch open");
+            wall = contactWall (0, 4);
+            result = clamp (wall, {wallPart (1, 3)});
+            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 1) && closeArea (result[0].endC.x, 3),
+                   "wallPart preserves forward surface direction");
+            wall.rise_y = .5;
+            wall.zBottom = 1;
+            wall.begC.y = wall.endC.y = .5;
+            result = clamp (wall, {wallPart (1, 3)});
+            check (result.GetSize () == 1 && closeArea (result[0].begC.y, .5) && closeArea (result[0].rise_y, .5) &&
+                       closeArea (result[0].zBottom, 1),
+                   "wallPart translates room edge to slanted contact elevation");
+            wall = contactWall (3.8, .2);
+            const auto vertical = ClampSurfaceWallToParts (wall, {4, 0}, {0, 0}, {wallPart (.5, 2)}, edges, 0, {});
+            check (vertical.GetSize () == 1 && closeArea (vertical[0].begC.x, 3.5) && closeArea (vertical[0].endC.x, 2),
+                   "wallPart measures distances from reversed base start");
+            wall.begC = {4, 2.8};
+            wall.endC = {4, .2};
+            const GS::Array<Sector> cornerEdges = {{{4, 0}, {4, 3}}};
+            result = ClampSurfaceWallToParts (wall, {4, 0}, {4, 3}, {wallPart (0, 3)}, cornerEdges, 0, {});
+            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 4) && closeArea (result[0].endC.x, 4) &&
+                       closeArea (result[0].endC.y, 0) && closeArea (result[0].begC.y, 3),
+                   "wallPart perpendicular wall reaches shared room corner");
+            auto foreign = wallPart (1, 3);
+            foreign.guid = baseB;
+            wall = contactWall (4, 0);
+            result = clamp (wall, {foreign});
+            check (result.GetSize () == 1 && closeArea (result[0].length, 4),
+                   "wallPart foreign guid does not change wall");
+            auto invalid = wallPart (0, 4);
+            invalid.tBeg = std::numeric_limits<double>::quiet_NaN ();
+            check (clamp (wall, {wallPart (1, 3), invalid}).IsEmpty (),
+                   "wallPart nonfinite bounds reject without partial output");
+            check (clamp (wall, {wallPart (1, 1 + min_dim / 2)}).IsEmpty (), "wallPart subthreshold fragment rejects");
+        }
         const auto atLevel = [] (RoomSurface face, double z) {
             face.planeOffset = -face.normalWorld.z * z;
             for (auto &contour : face.contours)
@@ -1008,6 +1456,25 @@ namespace {
                    closeArea (slabArea (projected), 12) && closeArea (rejected, 0) && projected.GetSize () == 2 &&
                    projected[0].base_guid == baseA && closeArea (projected[0].poly.CalcArea (), 6),
                "unequal floor elevations use descending priority then remaining coverage");
+        const auto fullUpper = source (baseA, atLevel (rectangle (0, 4, 0, 3, 1), -0.2), API_SlabID);
+        const auto fullLower = source (baseB, atLevel (rectangle (0, 4, 0, 3, 1), -0.6), API_SlabID);
+        for (bool reverseSourceOrder : {false, true}) {
+            for (bool reverseRoleOrder : {false, true}) {
+                const GS::Array<RoomSurfaceSource> fullSources =
+                    reverseSourceOrder ? GS::Array<RoomSurfaceSource>{fullLower, fullUpper}
+                                       : GS::Array<RoomSurfaceSource>{fullUpper, fullLower};
+                const GS::Array<API_Guid> fullRoles =
+                    reverseRoleOrder ? GS::Array<API_Guid>{baseB, baseA} : GS::Array<API_Guid>{baseA, baseB};
+                GS::Array<OtdSlab> fullProjected;
+                double fullRejected = 0;
+                check (BuildProjectedSlabFinishes (
+                           floorZone, fullSources, fullRoles, Floor, 0, fullProjected, fullRejected) &&
+                           fullProjected.GetSize () == 1 && fullProjected[0].base_guid == baseA &&
+                           fullProjected[0].type == Floor && closeArea (fullProjected[0].zBottom, -0.2) &&
+                           closeArea (fullProjected[0].poly.CalcArea (), 12) && closeArea (fullRejected, 0),
+                       "complete upper floor covers strict lower floor in either source and role order");
+            }
+        }
         auto holed = atLevel (rectangle (0, 4, 0, 3, 1), -0.2);
         holed.contours.Push (atLevel (rectangle (1, 2, 1, 2, 1), -0.2).contours[0]);
         holed.contours[1].hole = true;
@@ -1068,9 +1535,11 @@ namespace {
         rejected = 0;
         check (BuildProjectedSlabFinishes (ceilingZone, slabSources, roles, Ceil, 0, projected, rejected) &&
                    projected.GetSize () == 2 && closeArea (slabArea (projected), 12) &&
-                   projected[0].base_guid == baseB && closeArea (projected[0].poly.CalcArea (), 9) &&
-                   closeArea (projected[1].poly.CalcArea (), 3) && rejected == 0,
-               "ceiling preserves descending actual level priority, not nearest/lowest");
+                   projected[0].base_guid == baseA && closeArea (projected[0].zBottom, 3.2) &&
+                   closeArea (projected[0].poly.CalcArea (), 6) && projected[1].base_guid == baseB &&
+                   closeArea (projected[1].zBottom, 3.4) && closeArea (projected[1].poly.CalcArea (), 6) &&
+                   rejected == 0,
+               "ceiling uses ascending lower-face priority then remaining coverage");
         slabSources[0] = source (baseA, atLevel (rectangle (0, 2, 0, 3, -1), 3.4), API_SlabID);
         projected.Clear ();
         check (BuildProjectedSlabFinishes (
@@ -1293,6 +1762,220 @@ namespace {
                    ceilingStepwalls->ContainsKey (stepwallGuids[1]) && floorStepwalls->ContainsKey (stepwallGuids[2]) &&
                    floorStepwalls->ContainsKey (stepwallGuids[3]),
                "all four classified stepwalls survive parent indexing for obsolete deletion");
+        {
+            const auto makeCleanupPolygon = [] (const GS::Array<Point2D> &coords,
+                                                const GS::Array<UIndex> &ends,
+                                                const GS::Array<PolyArcRec> &arcs) {
+                return Geometry::Polygon2D::Create (Geometry::PolyFlags_IsSameDirEdgeLegal,
+                                                    coords,
+                                                    arcs,
+                                                    ends,
+                                                    Geometry::PolyCreateFlags_IdxRefInContourEndFromZero |
+                                                        Geometry::PolyCreateFlags_IdxRefInArcFromZero)[0];
+            };
+            Geometry::Polygon2D empty;
+            check (CleanCollinearPolygonVertices (empty) == 0 && empty.IsEmpty (), "polygon cleanup empty input");
+            auto polygon = makeCleanupPolygon ({{2, 0}, {3, 0}, {4, 0}, {4, 3}, {0, 3}, {0, 0}, {1, 0}}, {6}, {});
+            check (polygon.GetVertexNum () == 7 && CleanCollinearPolygonVertices (polygon) == 3 &&
+                       polygon.GetVertexNum () == 4 && closeArea (polygon.CalcArea (), 12),
+                   "polygon cleanup collinear chain and closed seam");
+            check (CleanCollinearPolygonVertices (polygon) == 0 && polygon.GetVertexNum () == 4,
+                   "polygon cleanup rectangle and repeated call unchanged");
+            auto holed = makeCleanupPolygon (
+                {{0, 0}, {4, 0}, {4, 3}, {0, 3}, {1, 1}, {1, 1.5}, {1, 2}, {2, 2}, {2, 1}}, {3, 8}, {});
+            check (CleanCollinearPolygonVertices (holed) == 1 && holed.GetContourNum () == 2 &&
+                       holed.GetVertexNum () == 8 && closeArea (holed.CalcArea (), 11),
+                   "polygon cleanup preserves hole and orientation");
+            PolyArcRec arc;
+            arc.begIndex = 3;
+            arc.endIndex = 4;
+            arc.arcAngle = .5;
+            auto curved = makeCleanupPolygon ({{0, 0}, {2, 0}, {4, 0}, {4, 3}, {0, 3}}, {4}, {arc});
+            const double curvedArea = curved.CalcArea ();
+            check (CleanCollinearPolygonVertices (curved) == 1 && curved.GetVertexNum () == 4 &&
+                       closeArea (curved.CalcArea (), curvedArea),
+                   "polygon cleanup preserves curved coverage");
+        }
+        TestFunc::FloorCoreChecks (check);
+        ParamValue coreParam;
+        coreParam.rawName = "{@material:floor_core_test}";
+        ParamDictElement coreRead;
+        ParamDictValue coreBase;
+        coreBase.Add (coreParam.rawName, coreParam);
+        coreRead.Add (baseA, coreBase);
+        ParamComposite coreComposite;
+        // Штатная читалка заполняет слои, не выставляя общий флаг isValid.
+        coreComposite.isValid = false;
+        coreComposite.composite_type = API_CompositeStructure;
+        ParamValueComposite coreLayer;
+        coreLayer.fillThick = .02;
+        coreLayer.structype = APICWallComp_Finish;
+        coreLayer.val = "l[1:paint]";
+        coreComposite.composite.Push (coreLayer);
+        coreLayer.fillThick = .03;
+        coreLayer.structype = 0;
+        coreLayer.val = "ignored";
+        coreComposite.composite.Push (coreLayer);
+        coreLayer.fillThick = .25;
+        coreLayer.structype = APICWallComp_Core;
+        coreComposite.composite.Push (coreLayer);
+        coreLayer.fillThick = .04;
+        coreLayer.structype = APICWallComp_Finish;
+        coreLayer.val = "l[1:tile]";
+        coreComposite.composite.Push (coreLayer);
+        ParamDictComposite coreMap;
+        coreMap.Add (coreParam.rawName, coreComposite);
+        ParamDictCompositeElement coreComposites;
+        coreComposites.Add (baseA, coreMap);
+        GS::Array<ParamValueComposite> coreFiltered;
+        GS::UniString coreFavorite;
+        OtdWall coreSource;
+        coreSource.base_type = API_WallID;
+        check (Param_SetToBase (
+                   baseA, false, coreFiltered, coreRead, coreComposites, coreParam, coreFavorite, &coreSource) &&
+                   coreSource.floor_core_offset_valid && closeArea (coreSource.floor_core_offset, .05) &&
+                   coreFiltered.GetSize () == 1 && closeArea (coreFiltered[0].fillThick, .02),
+               "268 cached full composition depth independent of layer filtering");
+        coreFiltered.Clear ();
+        check (Param_SetToBase (
+                   baseA, true, coreFiltered, coreRead, coreComposites, coreParam, coreFavorite, &coreSource) &&
+                   coreSource.floor_core_offset_valid && closeArea (coreSource.floor_core_offset, .04) &&
+                   coreFiltered.GetSize () == 1,
+               "268 cached flipped composition depth read before filtering");
+        const auto corePolygon = [] (bool hole) {
+            GS::Array<Point2D> coords;
+            for (const Point2D &p : {Point2D{0, 0}, Point2D{4, 0}, Point2D{4, 3}, Point2D{0, 3}})
+                coords.Push (p);
+            GS::Array<UIndex> ends;
+            ends.Push (3);
+            if (hole) {
+                for (const Point2D &p : {Point2D{1, 1}, Point2D{1, 2}, Point2D{2, 2}, Point2D{2, 1}})
+                    coords.Push (p);
+                ends.Push (7);
+            }
+            GS::Array<PolyArcRec> arcs;
+            return Geometry::Polygon2D::Create (
+                coords, arcs, ends, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero)[0];
+        };
+        const auto coreRoom = [&] (bool hole) {
+            OtdRoom room;
+            OtdSlab floor;
+            floor.poly = corePolygon (hole);
+            floor.type = Floor;
+            floor.base_guid = baseB;
+            floor.floorInd = 7;
+            floor.favorite.name = "preserved";
+            floor.otd_guid = segment;
+            room.otdslab.Push (floor);
+            floor.type = Ceil;
+            room.otdslab.Push (floor);
+            OtdWall wall;
+            wall.begC = {0, 0};
+            wall.endC = {4, 0};
+            wall.height = 3;
+            wall.type = Wall_Main;
+            wall.base_guid = baseA;
+            wall.base_type = API_WallID;
+            wall.surface_geometry = true;
+            wall.floor_core_offset_valid = true;
+            wall.floor_core_offset = .1;
+            room.otdwall.Push (wall);
+            return room;
+        };
+        auto core = coreRoom (false);
+        {
+            GS::Array<Point2D> coords = {{0, 0}, {2, 0}, {4, 0}, {4, 3}, {0, 3}};
+            GS::Array<PolyArcRec> arcs;
+            GS::Array<UIndex> ends = {4};
+            core.otdslab[1].poly =
+                Geometry::Polygon2D::Create (Geometry::PolyFlags_IsSameDirEdgeLegal,
+                                             coords,
+                                             arcs,
+                                             ends,
+                                             Geometry::PolyCreateFlags_IdxRefInContourEndFromZero)[0];
+            check (core.otdslab[1].poly.GetVertexNum () == 5 && ExtendFloorContoursToCore (core) &&
+                       core.otdslab[1].poly.GetVertexNum () == 4 && closeArea (core.otdslab[1].poly.CalcArea (), 12) &&
+                       core.otdslab[1].base_guid == baseB && core.otdslab[1].otd_guid == segment &&
+                       core.otdslab[1].floorInd == 7 && core.otdslab[1].favorite.name == "preserved",
+                   "polygon cleanup ceiling removes redundant vertex without floor extension or link changes");
+            check (ExtendFloorContoursToCore (core) && core.otdslab[1].poly.GetVertexNum () == 4 &&
+                       closeArea (core.otdslab[1].poly.CalcArea (), 12),
+                   "polygon cleanup ceiling repeated call unchanged");
+        }
+        core = coreRoom (false);
+        check (ExtendFloorContoursToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12.4),
+               "268 SDK finite floor union moves outward");
+        check (closeArea (core.otdslab[1].poly.CalcArea (), 12) && core.otdwall[0].begC.x == 0 &&
+                   core.otdwall[0].begC.y == 0 && core.otdwall[0].endC.x == 4 && core.otdwall[0].endC.y == 0 &&
+                   core.otdwall[0].height == 3,
+               "268 SDK ceiling and wall geometry unchanged");
+        check (core.otdslab[0].base_guid == baseB && core.otdslab[0].otd_guid == segment &&
+                   core.otdslab[0].floorInd == 7 && core.otdslab[0].favorite.name == "preserved",
+               "268 SDK floor ownership favorite and existing link retained");
+        check (ExtendFloorContoursToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12.4),
+               "268 SDK repeated correction is stable");
+        core = coreRoom (false);
+        core.otdwall[0].begC.x = 1;
+        core.otdwall[0].endC.x = 3;
+        check (ExtendFloorContoursToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12.2),
+               "268 SDK unmatched finite edge portions retained");
+        core = coreRoom (false);
+        auto cornerWall = core.otdwall[0];
+        cornerWall.begC = {4, 0};
+        cornerWall.endC = {4, 3};
+        cornerWall.base_guid = segment;
+        cornerWall.floor_core_offset = .2;
+        core.otdwall.Push (cornerWall);
+        check (ExtendFloorContoursToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 13.02),
+               "268 SDK unequal adjacent depths preserve exact corner");
+        core = coreRoom (true);
+        core.otdwall[0].begC = {1, 1};
+        core.otdwall[0].endC = {1, 2};
+        check (ExtendFloorContoursToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 11.1) &&
+                   core.otdslab[0].poly.GetContourNum () == 2,
+               "268 SDK hole extends only matched side and remains a hole");
+        core = coreRoom (false);
+        core.otdwall[0].zBottom = .5;
+        check (ExtendFloorContoursToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12),
+               "268 SDK wall above floor excluded");
+        core = coreRoom (false);
+        core.otdwall[0].floor_core_offset_valid = false;
+        check (ExtendFloorContoursToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12),
+               "268 SDK undefined offset unchanged");
+        core = coreRoom (false);
+        auto coreConflict = core.otdwall[0];
+        coreConflict.base_guid = segment;
+        core.otdwall.Push (coreConflict);
+        check (ExtendFloorContoursToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12),
+               "268 SDK ambiguous base contact unchanged");
+        core = coreRoom (false);
+        OtdOpening door;
+        door.objLoc = 2;
+        door.width = 1;
+        door.height = 2;
+        core.otdwall[0].openings.Push (door);
+        check (ExtendFloorContoursToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12.3),
+               "268 SDK opening on floor excludes only its finite span");
+        GS::Array<OtdWall> coreBands;
+        OtdMaterial coreMaterial;
+        coreMaterial.smaterial = "test";
+        TypeOtd coreType = Wall_Main;
+        check (OtdWall_Delim_One (core.otdwall[0],
+                                  coreBands,
+                                  1,
+                                  0,
+                                  coreType,
+                                  coreMaterial,
+                                  coreMaterial,
+                                  coreMaterial,
+                                  coreMaterial,
+                                  coreMaterial,
+                                  coreMaterial,
+                                  coreMaterial,
+                                  coreMaterial) &&
+                   coreBands.GetSize () == 1 && coreBands[0].floor_core_offset_valid &&
+                   closeArea (coreBands[0].floor_core_offset, .1),
+               "268 height split carries independent offset");
         return GS::ObjectState ("status", failed == 0 ? "Passed" : "Failed", "checks", checks, "failed", failed);
     }
 
@@ -1513,7 +2196,47 @@ namespace {
         out.Add ("elementGuid", APIGuidToString (element.header.guid));
         out.Add ("elementType", static_cast<Int32> (element.header.typeID));
         API_ElementMemo memo = {};
-        if (element.header.typeID == API_WallID) {
+        if (element.header.typeID == API_SlabID) {
+            out.Add ("floorIndex", element.header.floorInd);
+            out.Add ("level", element.slab.level);
+            out.Add ("offsetFromTop", element.slab.offsetFromTop);
+            out.Add ("thickness", element.slab.thickness);
+            out.Add ("polygonCoordCount", element.slab.poly.nCoords);
+            out.Add ("polygonContourCount", element.slab.poly.nSubPolys);
+            out.Add ("polygonArcCount", element.slab.poly.nArcs);
+            err = ACAPI_Element_GetMemo (guid, &memo, APIMemoMask_Polygon);
+            out.Add ("memoError", err);
+            // Исходный memo отделяет реальные контуры от SEO и приоритетных подрезок native-тела.
+            GS::Array<GS::ObjectState> coords;
+            GS::Array<Int32> ends;
+            GS::Array<GS::ObjectState> arcs;
+            if (err == NoError) {
+                if (memo.coords != nullptr) {
+                    const GSSize count =
+                        BMGetHandleSize (reinterpret_cast<GSHandle> (memo.coords)) / sizeof (API_Coord);
+                    for (GSSize i = 1; i < count && i <= element.slab.poly.nCoords; ++i)
+                        coords.Push (Point ((*memo.coords)[i].x, (*memo.coords)[i].y, 0));
+                }
+                if (memo.pends != nullptr) {
+                    const GSSize count = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.pends)) / sizeof (Int32);
+                    for (GSSize i = 1; i < count && i <= element.slab.poly.nSubPolys; ++i)
+                        ends.Push ((*memo.pends)[i]);
+                }
+                if (memo.parcs != nullptr) {
+                    const GSSize count =
+                        BMGetHandleSize (reinterpret_cast<GSHandle> (memo.parcs)) / sizeof (API_PolyArc);
+                    for (GSSize i = 0; i < count && i < element.slab.poly.nArcs; ++i) {
+                        const auto &arc = (*memo.parcs)[i];
+                        arcs.Push (GS::ObjectState (
+                            "begIndex", arc.begIndex, "endIndex", arc.endIndex, "angle", arc.arcAngle));
+                    }
+                }
+            }
+            out.Add ("memoCoordinates", coords);
+            out.Add ("memoContourEnds", ends);
+            out.Add ("memoArcs", arcs);
+
+        } else if (element.header.typeID == API_WallID) {
             const API_WallType &wall = element.wall;
             out.Add ("structureType", static_cast<Int32> (wall.modelElemStructureType));
             out.Add ("beg", Point (wall.begC.x, wall.begC.y, 0));
@@ -1830,7 +2553,22 @@ namespace {
         GS::Array<API_Guid> finishGuids;
         finclassguids.EnumerateKeys ([&] (const API_Guid &guid) { finishGuids.Push (guid); });
         const auto zoneSnapshot = ReadRoomSurfaces (zone);
-        const auto candidates = ReadRoomSurfaceCandidates (zone, finishGuids);
+        auto candidates = ReadRoomSurfaceCandidates (zone, finishGuids);
+        // Диагностика сохраняет native-контакты; production отдельно готовит аналитические основания.
+        for (auto &source : candidates.sources) {
+            if (source.routeReason != "PendingPreparedGeometry")
+                continue;
+            API_Elem_Head geometry = {};
+            geometry.guid = source.geometryGuid;
+            geometry.typeID = source.baseType;
+            source.snapshot = ReadRoomSurfaces (geometry);
+            source.origin = RoomSurfaceOrigin::Native3D;
+            source.routeReason = "DiagnosticNative3D";
+            if (!source.snapshot.IsComplete ()) {
+                candidates.errors.Push ({source.geometryGuid, "candidateSurfaceSnapshot", APIERR_GENERAL, 0});
+                candidates.complete = false;
+            }
+        }
         RoomSurfacePartition partition;
         if (candidates.complete)
             partition = PartitionRoomSurfaces (zoneSnapshot, candidates.sources);
@@ -1840,6 +2578,8 @@ namespace {
                                 APIGuidToString (zone.guid),
                                 "candidateSet",
                                 "RoomRelations",
+                                "geometryRoute",
+                                "DiagnosticNative3D",
                                 "candidateSetComplete",
                                 candidates.complete,
                                 "zoneSnapshotComplete",
@@ -1874,18 +2614,23 @@ namespace {
                                                   error.polygon,
                                                   "index",
                                                   error.index));
-            sources.Push (GS::ObjectState ("baseGuid",
-                                           APIGuidToString (source.baseGuid),
-                                           "baseType",
-                                           static_cast<Int32> (source.baseType),
-                                           "geometryGuid",
-                                           APIGuidToString (source.geometryGuid),
-                                           "snapshotStatus",
-                                           SurfaceStatusName (source.snapshot.status),
-                                           "snapshotComplete",
-                                           source.snapshot.IsComplete (),
-                                           "errors",
-                                           readErrors));
+            sources.Push (GS::ObjectState (
+                "baseGuid",
+                APIGuidToString (source.baseGuid),
+                "baseType",
+                static_cast<Int32> (source.baseType),
+                "geometryGuid",
+                APIGuidToString (source.geometryGuid),
+                "origin",
+                source.origin == Roombook::RoomSurfaceOrigin::PreparedAnalytic ? "PreparedAnalytic" : "Native3D",
+                "routeReason",
+                source.routeReason,
+                "snapshotStatus",
+                SurfaceStatusName (source.snapshot.status),
+                "snapshotComplete",
+                source.snapshot.IsComplete (),
+                "errors",
+                readErrors));
         }
         for (const auto &guid : candidates.excludedFinish)
             excluded.Push (GS::ObjectState ("guid", APIGuidToString (guid)));
@@ -1908,18 +2653,25 @@ namespace {
                 contours.Push (GS::ObjectState ("hole", contour.hole, "vertices", vertices));
             }
             for (const auto &face : piece.sources)
-                faces.Push (GS::ObjectState ("baseGuid",
-                                             APIGuidToString (face.baseGuid),
-                                             "baseType",
-                                             static_cast<Int32> (face.baseType),
-                                             "geometryGuid",
-                                             APIGuidToString (face.geometryGuid),
-                                             "body",
-                                             face.bodyIndex,
-                                             "polygon",
-                                             face.polygonIndex,
-                                             "modelMaterialIndex",
-                                             face.modelMaterialIndex));
+                faces.Push (GS::ObjectState (
+                    "baseGuid",
+                    APIGuidToString (face.baseGuid),
+                    "baseType",
+                    static_cast<Int32> (face.baseType),
+                    "geometryGuid",
+                    APIGuidToString (face.geometryGuid),
+                    "body",
+                    face.bodyIndex,
+                    "polygon",
+                    face.polygonIndex,
+                    "origin",
+                    face.origin == Roombook::RoomSurfaceOrigin::PreparedAnalytic ? "PreparedAnalytic" : "Native3D",
+                    "analyticFaceId",
+                    face.analyticFaceId,
+                    "preparedWallIndex",
+                    face.preparedWallIndex,
+                    "modelMaterialIndex",
+                    face.modelMaterialIndex));
             pieces.Push (GS::ObjectState ("zoneBody",
                                           piece.zoneBodyIndex,
                                           "zonePolygon",
@@ -2295,7 +3047,7 @@ GS::String RoomGeometryDiagnosticCommand::GetName () const { return "RoomGeometr
 
 GS::Optional<GS::UniString> RoomGeometryDiagnosticCommand::GetInputParametersSchema () const {
     return GS::UniString (
-        R"({"type":"object","properties":{"favoriteName":{"type":"string"},"guid":{"type":"string","pattern":"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"},"collectRoomInfo":{"type":"boolean"},"transformSelfTest":{"type":"boolean"},"partitionSelfTest":{"type":"boolean"},"partitionSurfaces":{"type":"boolean"}},"additionalProperties":false})");
+        R"({"type":"object","properties":{"favoriteName":{"type":"string"},"guid":{"type":"string","pattern":"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"},"memoOnly":{"type":"boolean"},"collectRoomInfo":{"type":"boolean"},"transformSelfTest":{"type":"boolean"},"partitionSelfTest":{"type":"boolean"},"partitionSurfaces":{"type":"boolean"}},"additionalProperties":false})");
 }
 
 GS::Optional<GS::UniString> RoomGeometryDiagnosticCommand::GetResponseSchema () const { return GS::NoValue; }
@@ -2326,6 +3078,10 @@ GS::ObjectState RoomGeometryDiagnosticCommand::Execute (const GS::ObjectState &p
     const GSErrCode err = ACAPI_Element_GetHeader (&head);
     if (err != NoError)
         return GS::ObjectState ("status", "ReadError", "readComplete", false, "headerError", err);
+    bool memoOnly = false;
+    parameters.Get ("memoOnly", memoOnly);
+    if (memoOnly)
+        return GS::ObjectState ("geometryRoute", "MemoOnly", "structure", ReadStructure (head.guid));
     if (partitionSurfaces)
         return ReadZoneSurfacePartition (head);
     bool collectRoomInfo = false;

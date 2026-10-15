@@ -1,7 +1,12 @@
 //------------ kuvbur 2022 ------------
-#include <limits>
-
+// SDK подключается раньше стандартных заголовков независимо от категорий сортировки проекта.
+// clang-format off
 #include "ACAPinc.h"
+// clang-format on
+
+#include <limits>
+#include <map>
+#include <string>
 
 #include "api_headers/APIEnvir.h"
 
@@ -14,6 +19,8 @@
 #include "ProfileVectorImage.hpp"
 #include "ProfileVectorImageOperations.hpp"
 #include "Propertycache.hpp"
+#include "roombook/FloorCoreGeometry.hpp"
+#include "roombook/RoomAnalyticGeometry.hpp"
 #include "roombook/RoomSurfaceFinish.hpp"
 #include "Sync.hpp"
 #include "third_party/alphanum.h"
@@ -78,10 +85,46 @@ namespace Roombook
         return true;
     }
 
+    // AC25 has only typeID/filterBits/loc/z (no variation or additional request fields).
+    // Both callers zero-initialize the SDK request, then set every one of these fields.
+    static GSErrCode SearchCoordinate (API_ElemSearchPars &request, API_Guid &guid, CoordinateSearchCache *cache) {
+        const auto search = [&] () {
+            API_Guid found = APINULLGuid;
+    #ifdef ServerMainVers_2700
+            const GSErrCode error = ACAPI_Element_SearchElementByCoord (&request, &found);
+    #else
+            const GSErrCode error = ACAPI_Goodies (APIAny_SearchElementByCoordID, &request, &found);
+    #endif
+            return CoordinateSearchResult{error, found};
+        };
+        CoordinateSearchResult result;
+    #if defined(_WIN32) && defined(ServerMainVers_2500) && !defined(ServerMainVers_2600)
+        if (cache != nullptr) {
+            const CoordinateSearchRequest key = {request.loc.x,
+                                                 request.loc.y,
+                                                 request.z,
+                                                 static_cast<std::uint64_t> (request.typeID),
+                                                 0,
+                                                 static_cast<std::uint64_t> (request.filterBits)};
+            result = cache->SearchOrRead (key, search);
+        } else
+    #else
+        (void)cache;
+    #endif
+        {
+            result = search ();
+        }
+        guid = result.guid;
+        return result.error;
+    }
+
     struct RoomProcessingContext {
         ClassificationFunc::ClassificationDict finclass;
         UnicGuid finclassguids;
         Stories storyLevels;
+        CoordinateSearchStats coordinateSearchStats;
+        CoordinateSearchCache coordinateCache;
+        RoomSurfaceCache surfaceCache;
         GS::Array<API_Guid> deletelist;
         GS::HashTable<API_Guid, UnicGuidByBase> exsistot_byzone;
         OtdRooms roomsinfo;
@@ -94,214 +137,399 @@ namespace Roombook
         GS::HashTable<API_Guid, GS::Array<API_Guid>> slabsinzone;
     };
 
-    struct WallSlabCandidates {
-        GS::Array<API_Guid> bottom;
-        GS::Array<API_Guid> top;
-    };
-
-    // Только discovery: ближайшее перекрытие с каждой стороны горизонтальной грани стены.
-    // Зазор не объявляется контактом; наклонные торцы и полнота конечных проб не поддержаны.
-    static void Floor_FindAllFromWalls (RoomProcessingContext &context) {
-        const auto *walls = context.elementToRead.GetPtr (API_WallID);
-        if (walls == nullptr)
-            return;
-
-        struct SlabProbeLevel {
-            API_Guid guid;
-            double reference;
-            double bottom;
-            double top;
-        };
-
-        GS::Array<API_Guid> slabGuids;
-        if (ACAPI_Element_GetElemList (API_SlabID, &slabGuids, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation) !=
-            NoError)
-            return;
-        GS::Array<SlabProbeLevel> levels;
-        for (const auto &guid : slabGuids) {
-            API_Guid classGuid = APINULLGuid;
-            if (Class_IsElementFinClass (guid, context.finclassguids, classGuid))
-                continue;
-            API_Element slab = {};
-            slab.header.guid = guid;
-            if (ACAPI_Element_Get (&slab) != NoError)
-                continue;
-            // Реальные world-отметки учитывают положение reference plane и состав перекрытия.
-            const auto snapshot = ReadRoomSurfaces (slab.header);
-            if (!snapshot.IsComplete () || snapshot.bodies.IsEmpty ())
-                continue;
-            double bottom = std::numeric_limits<double>::infinity ();
-            double top = -bottom;
-            for (const auto &body : snapshot.bodies)
-                for (const auto &face : body.surfaces)
-                    for (const auto &contour : face.contours)
-                        for (const auto &vertex : contour.vertices) {
-                            bottom = std::min (bottom, vertex.world.z);
-                            top = std::max (top, vertex.world.z);
-                        }
-            const double reference = GetzPos (slab.slab.level, slab.header.floorInd, context.storyLevels);
-            if (std::isfinite (bottom) && std::isfinite (top) && std::isfinite (reference))
-                levels.Push ({guid, reference, bottom, top});
+    // Собственные конечные грани: нулевые native-индексы не обозначают SDK-тело/полигон.
+    static RoomSurface AnalyticFace (const GS::Array<API_Coord3D> &points,
+                                     const API_Coord3D &normal,
+                                     Int32 id,
+                                     Int32 wallIndex = -1) {
+        RoomSurface face;
+        face.origin = RoomSurfaceOrigin::PreparedAnalytic;
+        face.analyticFaceId = id;
+        face.preparedWallIndex = wallIndex;
+        face.normalWorld = normal;
+        face.normalLocal = normal;
+        const auto &p = points[0];
+        face.planeOffset = -(normal.x * p.x + normal.y * p.y + normal.z * p.z);
+        RoomSurfaceContour contour;
+        for (const auto &point : points) {
+            RoomSurfaceVertex vertex;
+            vertex.world = vertex.local = point;
+            contour.vertices.Push (vertex);
         }
-        // Проба строго внутри фактического XY-контура, а не на reference line/середине дуги.
-        const auto insideContour = [] (const RoomSurfaceContour &contour, const API_Coord &point) {
-            bool inside = false;
-            const USize count = contour.vertices.GetSize ();
-            if (count < 3)
+        face.contours.Push (contour);
+        return face;
+    }
+
+    // Один ключ источника соответствует одному конечному контуру, включая отверстия, а не отдельной полосе.
+    static bool AppendAnalyticRectangles (const std::vector<AnalyticGeometry::Rect> &rectangles,
+                                          const API_Coord3D &origin,
+                                          const API_Coord3D &u,
+                                          const API_Coord3D &v,
+                                          const API_Coord3D &normal,
+                                          Int32 &faceId,
+                                          RoomSurfaceBody &body,
+                                          Int32 wallIndex = -1) {
+        Geometry::MultiPolygon2D polygons;
+        for (const auto &r : rectangles) {
+            const GS::Array<Point2D> points = {
+                {r.left, r.bottom}, {r.right, r.bottom}, {r.right, r.top}, {r.left, r.top}};
+            const GS::Array<PolyArcRec> arcs;
+            const GS::Array<UIndex> ends = {3};
+            polygons.Append (
+                Geometry::Polygon2D::Create (points, arcs, ends, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero));
+        }
+        polygons.Unify ();
+        for (const auto &polygon : polygons) {
+            GS::Array<Point2D> coords;
+            GS::Array<PolyArcRec> arcs;
+            GS::Array<UIndex> ends;
+            GS::Array<Geometry::Polygon2D::ConstContourIterator> reversed;
+            polygon.CopyPolygonData (
+                coords, arcs, ends, reversed, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
+            if (ends.IsEmpty () || !arcs.IsEmpty ())
                 return false;
-            for (USize i = 0, j = count - 1; i < count; j = i++) {
-                const auto &a = contour.vertices[i].world;
-                const auto &b = contour.vertices[j].world;
-                const double cross = (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x);
-                if (std::abs (cross) <= 1e-12 && point.x >= std::min (a.x, b.x) && point.x <= std::max (a.x, b.x) &&
-                    point.y >= std::min (a.y, b.y) && point.y <= std::max (a.y, b.y))
-                    return contour.hole;
-                if ((a.y > point.y) != (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x)
-                    inside = !inside;
+            RoomSurface face;
+            face.origin = RoomSurfaceOrigin::PreparedAnalytic;
+            face.analyticFaceId = ++faceId;
+            face.preparedWallIndex = wallIndex;
+            face.normalWorld = face.normalLocal = normal;
+            UIndex start = 0;
+            for (UIndex contourIndex = 0; contourIndex < ends.GetSize (); ++contourIndex) {
+                RoomSurfaceContour contour;
+                contour.hole = contourIndex != 0;
+                for (UIndex i = start; i <= ends[contourIndex]; ++i) {
+                    RoomSurfaceVertex vertex;
+                    vertex.world = vertex.local = {origin.x + u.x * coords[i].x + v.x * coords[i].y,
+                                                   origin.y + u.y * coords[i].x + v.y * coords[i].y,
+                                                   origin.z + u.z * coords[i].x + v.z * coords[i].y};
+                    contour.vertices.Push (vertex);
+                }
+                start = ends[contourIndex] + 1;
+                face.contours.Push (contour);
             }
-            return inside;
-        };
-        const auto pushUnique = [] (GS::Array<API_Guid> &guids, const API_Guid &guid) {
-            for (const auto &existing : guids)
-                if (existing == guid)
-                    return;
-            guids.Push (guid);
-        };
-        GS::HashTable<API_Guid, WallSlabCandidates> cache;
-        // Не модифицируем elementToRead, пока живут указатель/итератор его wall-индекса.
-        UnicElement wallZones = *walls;
-        for (auto it = wallZones.EnumeratePairs (); it != nullptr; ++it) {
-    #ifdef ServerMainVers_2800
-            const API_Guid &wallGuid = it->key;
-            const GS::Array<API_Guid> &zoneGuids = it->value;
-    #else
-            const API_Guid &wallGuid = *it->key;
-            const GS::Array<API_Guid> &zoneGuids = *it->value;
+            const auto &point = face.contours[0].vertices[0].world;
+            face.planeOffset = -(normal.x * point.x + normal.y * point.y + normal.z * point.z);
+            body.surfaces.Push (face);
+        }
+        return true;
+    }
+
+    bool BuildPreparedWallSource (const API_Element &element,
+                                  double bottom,
+                                  const GS::Array<OtdOpening> &openings,
+                                  GS::Array<OtdWall> &bases,
+                                  RoomSurfaceSource &source) {
+        source = RoomSurfaceSource ();
+        const auto &wall = element.wall;
+        source.baseGuid = source.geometryGuid = element.header.guid;
+        source.baseType = API_WallID;
+        if (!AnalyticGeometry::OrdinaryWall (wall.modelElemStructureType == API_ProfileStructure,
+                                             wall.angle == 0,
+                                             wall.profileType == APISect_Normal,
+                                             wall.type == APIWtyp_Normal,
+                                             wall.logHeight != 0,
+                                             wall.relativeTopStory != 0)) {
+            // Номинальная прямоугольная модель не доказывает дугу, уклон, профиль/брёвна или связанную высоту.
+    #if defined(TESTING)
+            if (wall.modelElemStructureType == API_ProfileStructure)
+                DBprnt ("    source.routeReason = ProfileWall");
+            else if (wall.angle != 0)
+                DBprnt ("    source.routeReason = CurvedWall");
+            else if (wall.profileType != APISect_Normal)
+                DBprnt ("    source.routeReason = SlantedOrTrapezoidSection");
+            else if (wall.type != APIWtyp_Normal)
+                DBprnt ("    source.routeReason = PolygonOrTrapezoidWall");
+            else if (wall.logHeight != 0)
+                DBprnt ("    source.routeReason = LogWall");
+            else
+                DBprnt ("    source.routeReason = TopLinkedWall");
     #endif
-            if (!cache.ContainsKey (wallGuid)) {
-                WallSlabCandidates candidates;
-                API_Element wall = {};
-                wall.header.guid = wallGuid;
-                API_Guid classGuid = APINULLGuid;
-                if (!Class_IsElementFinClass (wallGuid, context.finclassguids, classGuid) &&
-                    ACAPI_Element_Get (&wall) == NoError) {
-                    const auto snapshot = ReadRoomSurfaces (wall.header);
-                    if (snapshot.IsComplete ()) {
-                        for (const auto &body : snapshot.bodies) {
-                            double wallBottom = std::numeric_limits<double>::infinity ();
-                            double wallTop = -wallBottom;
-                            for (const auto &surface : body.surfaces)
-                                for (const auto &outline : surface.contours)
-                                    for (const auto &vertex : outline.vertices) {
-                                        wallBottom = std::min (wallBottom, vertex.world.z);
-                                        wallTop = std::max (wallTop, vertex.world.z);
-                                    }
-                            for (const auto &face : body.surfaces) {
-                                if (std::abs (std::abs (face.normalWorld.z) - 1.0) > 1e-6)
-                                    continue;
-                                const bool lower = face.normalWorld.z < 0;
-                                for (const auto &contour : face.contours) {
-                                    if (contour.hole || contour.vertices.GetSize () < 3)
-                                        continue;
-                                    const auto &a = contour.vertices[0].world;
-                                    for (USize i = 1; i + 1 < contour.vertices.GetSize (); ++i) {
-                                        const auto &b = contour.vertices[i].world;
-                                        const auto &c = contour.vertices[i + 1].world;
-                                        API_Coord point = {(a.x + b.x + c.x) / 3, (a.y + b.y + c.y) / 3};
-                                        if (!insideContour (contour, point))
-                                            continue;
-                                        bool hole = false;
-                                        for (const auto &other : face.contours)
-                                            if (other.hole && insideContour (other, point))
-                                                hole = true;
-                                        if (hole)
-                                            continue;
-                                        const double wallZ = (a.z + b.z + c.z) / 3;
-                                        // Грани проёмов и уступов внутри высоты тела не являются его низом/верхом.
-                                        if (std::abs (wallZ - (lower ? wallBottom : wallTop)) > 1e-6)
-                                            continue;
-                                        double nearest = std::numeric_limits<double>::infinity ();
-                                        GS::Array<API_Guid> hits;
-                                        for (const auto &level : levels) {
-                                            if ((lower && level.top > wallZ + 1e-6) ||
-                                                (!lower && level.bottom < wallZ - 1e-6))
-                                                continue;
-                                            API_ElemSearchPars search = {};
-    #ifdef ServerMainVers_2600
-                                            search.type.typeID = API_SlabID;
-    #else
-                                            search.typeID = API_SlabID;
+            return false;
+        }
+        if ((wall.hasWindow || wall.hasDoor) && openings.IsEmpty ()) {
+    #if defined(TESTING)
+            DBprnt ("    source.routeReason = UnresolvedWallOpeningIds");
     #endif
-                                            search.filterBits = APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation;
-                                            search.loc = point;
-                                            // Верхняя граница взята из существующего перекрытия, не из запаса метров.
-                                            search.z = std::nextafter (std::max (level.reference, level.top),
-                                                                       std::numeric_limits<double>::infinity ());
-                                            API_Guid found = APINULLGuid;
-    #ifdef ServerMainVers_2700
-                                            const GSErrCode err = ACAPI_Element_SearchElementByCoord (&search, &found);
-    #else
-                                            const GSErrCode err =
-                                                ACAPI_Goodies (APIAny_SearchElementByCoordID, &search, &found);
+            return false;
+        }
+        AnalyticGeometry::Point ob, oe, ib, ie;
+        if (!AnalyticGeometry::WallSides ({wall.begC.x, wall.begC.y},
+                                          {wall.endC.x, wall.endC.y},
+                                          wall.thickness,
+                                          wall.offsetFromOutside,
+                                          wall.flipped,
+                                          ob,
+                                          oe,
+                                          ib,
+                                          ie) ||
+            !std::isfinite (bottom) || !std::isfinite (wall.height) || wall.height <= 0) {
+    #if defined(TESTING)
+            DBprnt ("    source.routeReason = InvalidWallDimensions");
     #endif
-                                            if (err != NoError || found != level.guid)
-                                                continue;
-                                            const double gap = lower ? wallZ - level.top : level.bottom - wallZ;
-                                            if (gap < nearest - 1e-6) {
-                                                hits.Clear ();
-                                                nearest = gap;
-                                            }
-                                            if (std::abs (gap - nearest) <= 1e-6)
-                                                pushUnique (hits, found);
-                                        }
-                                        for (const auto &hit : hits)
-                                            pushUnique (lower ? candidates.bottom : candidates.top, hit);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                // Пустой/неподдержанный результат также живёт до конца этого запуска.
-                cache.Add (wallGuid, std::move (candidates));
+            return false;
+        }
+        const double length = std::hypot (wall.endC.x - wall.begC.x, wall.endC.y - wall.begC.y);
+        std::vector<AnalyticGeometry::Rect> cuts;
+        for (const auto &op : openings)
+            cuts.push_back (
+                {op.objLoc - op.width / 2, bottom + op.lower, op.objLoc + op.width / 2, bottom + op.lower + op.height});
+        std::vector<AnalyticGeometry::Rect> rectangles;
+        if (!AnalyticGeometry::SubtractOpenings ({0, bottom, length, bottom + wall.height}, cuts, rectangles)) {
+    #if defined(TESTING)
+            DBprnt ("    source.routeReason = UnsupportedOpeningDimensions");
+    #endif
+            return false;
+        }
+        RoomSurfaceBody body;
+        body.parentGuid = source.baseGuid;
+        body.parentType = API_WallID;
+        GS::Array<OtdWall> prepared;
+        Int32 faceId = 0;
+        const AnalyticGeometry::Point starts[] = {ob, ie, oe, ib};
+        const AnalyticGeometry::Point ends[] = {oe, ib, ie, ob};
+        for (Int32 side = 0; side < 4; ++side) {
+            const auto &beg = starts[side];
+            const auto &end = ends[side];
+            const double sideLength = std::hypot (end.x - beg.x, end.y - beg.y);
+            if (sideLength <= 0 || !std::isfinite (sideLength)) {
+    #if defined(TESTING)
+                DBprnt ("    source.routeReason = InvalidWallSide");
+    #endif
+                return false;
             }
-            const auto &candidates = cache[wallGuid];
-            for (const auto &zoneGuid : zoneGuids) {
-                if (auto *room = context.roomsinfo.GetPtr (zoneGuid)) {
-                    for (const auto &guid : candidates.bottom)
-                        pushUnique (room->floorslab, guid);
-                    for (const auto &guid : candidates.top)
-                        pushUnique (room->ceilslab, guid);
+            // Ориентация контура согласована с наружной нормалью и flipped сечения.
+            const double sign = wall.flipped ? -1 : 1;
+            const API_Coord3D normal = {-(end.y - beg.y) / sideLength * sign, (end.x - beg.x) / sideLength * sign, 0};
+            OtdWall base;
+            base.begC = {beg.x, beg.y};
+            base.endC = {end.x, end.y};
+            base.height = wall.height;
+            base.zBottom = bottom;
+            base.floorInd = element.header.floorInd;
+            base.base_th = wall.thickness;
+            base.base_guid = source.baseGuid;
+            base.base_type = API_WallID;
+            base.type = Wall_Main;
+            base.base_flipped = side == 1;
+            if (side < 2)
+                for (const auto &op : openings)
+                    Opening_Add_One (op, side == 1, bottom, 0, length, length, base);
+            const Int32 baseIndex = static_cast<Int32> (bases.GetSize () + prepared.GetSize ());
+            prepared.Push (base);
+            std::vector<AnalyticGeometry::Rect> endRectangles;
+            std::vector<AnalyticGeometry::Rect> endCuts;
+            if (side >= 2)
+                for (const auto &cut : cuts) {
+                    const double axial = side == 2 ? length : 0;
+                    if (cut.left <= axial && cut.right >= axial)
+                        endCuts.push_back ({0, cut.bottom, sideLength, cut.top});
                 }
-                if (!context.slabsinzone.ContainsKey (zoneGuid))
-                    context.slabsinzone.Add (zoneGuid, GS::Array<API_Guid> ());
-                auto &merged = context.slabsinzone[zoneGuid];
-                GS::Array<API_Guid> uniqueSlabs;
-                for (const auto &guid : merged)
-                    pushUnique (uniqueSlabs, guid);
-                merged = std::move (uniqueSlabs);
-                for (const auto *hits : {&candidates.bottom, &candidates.top}) {
-                    for (const auto &guid : *hits) {
-                        pushUnique (merged, guid);
-                        bool alreadyIndexed = false;
-                        if (const auto *slabs = context.elementToRead.GetPtr (API_SlabID))
-                            if (const auto *indexedZones = slabs->GetPtr (guid))
-                                for (const auto &indexedZone : *indexedZones)
-                                    if (indexedZone == zoneGuid)
-                                        alreadyIndexed = true;
-                        if (!alreadyIndexed)
-                            Param_AddUnicElementByType (guid, zoneGuid, API_SlabID, context.elementToRead);
-                    }
+            AnalyticGeometry::SubtractOpenings ({0, bottom, sideLength, bottom + wall.height}, endCuts, endRectangles);
+            std::vector<AnalyticGeometry::Rect> sideRectangles;
+            for (const auto &r : side < 2 ? rectangles : endRectangles) {
+                // Для обратной стороны осевой интервал зеркалится, IDs проёмов остаются исходными.
+                sideRectangles.push_back (
+                    {side == 1 ? length - r.right : r.left, r.bottom, side == 1 ? length - r.left : r.right, r.top});
+            }
+            if (!AppendAnalyticRectangles (sideRectangles,
+                                           {beg.x, beg.y, 0},
+                                           {(end.x - beg.x) / sideLength, (end.y - beg.y) / sideLength, 0},
+                                           {0, 0, 1},
+                                           normal,
+                                           faceId,
+                                           body,
+                                           baseIndex))
+                return false;
+        }
+        const double top = bottom + wall.height;
+        for (const double z : {bottom, top}) {
+            std::vector<AnalyticGeometry::Rect> capCuts;
+            for (const auto &cut : cuts)
+                if (cut.bottom <= z && cut.top >= z)
+                    capCuts.push_back ({cut.left, 0, cut.right, 1});
+            std::vector<AnalyticGeometry::Rect> caps;
+            AnalyticGeometry::SubtractOpenings ({0, 0, length, 1}, capCuts, caps);
+            if (!AppendAnalyticRectangles (caps,
+                                           {ob.x, ob.y, z},
+                                           {(oe.x - ob.x) / length, (oe.y - ob.y) / length, 0},
+                                           {ib.x - ob.x, ib.y - ob.y, 0},
+                                           {0, 0, z == bottom ? -1.0 : 1.0},
+                                           faceId,
+                                           body))
+                return false;
+        }
+        source.origin = RoomSurfaceOrigin::PreparedAnalytic;
+    #if defined(TESTING)
+        DBprnt ("    source.routeReason = OrdinaryWallSEOTrimsIgnored");
+    #endif
+        source.snapshot.guid = source.baseGuid;
+        source.snapshot.status = RoomSurfaceStatus::Extracted;
+        source.snapshot.bodies.Push (body);
+        bases.Append (prepared);
+        return true;
+    }
+
+    bool BuildPreparedSlabSource (const API_Element &element,
+                                  double reference,
+                                  const Geometry::Polygon2D &polygon,
+                                  GS::Array<OtdSlab> &bases,
+                                  RoomSurfaceSource &source) {
+        source = RoomSurfaceSource ();
+        source.baseGuid = source.geometryGuid = element.header.guid;
+        source.baseType = API_SlabID;
+        double bottom, top;
+        if (!AnalyticGeometry::SlabLevels (
+                reference, element.slab.offsetFromTop, element.slab.thickness, bottom, top) ||
+            polygon.IsEmpty () || !std::isfinite (polygon.CalcArea ()) || polygon.CalcArea () <= 0) {
+    #if defined(TESTING)
+            DBprnt ("    source.routeReason = UnsupportedSlabGeometry");
+    #endif
+            return false;
+        }
+        // Оригинальные дуги остаются в OtdSlab для пересечений и writer; хорды нужны только partition.
+        const auto segmented = polygon.SegmentUp (ArcDivParams (0.00001));
+        if (segmented.IsEmpty ()) {
+    #if defined(TESTING)
+            DBprnt ("    source.routeReason = UnsupportedSlabContours");
+    #endif
+            return false;
+        }
+        RoomSurfaceBody body;
+        body.parentGuid = source.baseGuid;
+        body.parentType = API_SlabID;
+        Int32 faceId = 0;
+        for (const auto &part : segmented) {
+            GS::Array<Point2D> coords;
+            GS::Array<PolyArcRec> arcs;
+            GS::Array<UIndex> ends;
+            GS::Array<Geometry::Polygon2D::ConstContourIterator> reversed;
+            part.CopyPolygonData (coords, arcs, ends, reversed, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
+            if (!arcs.IsEmpty () || ends.IsEmpty ()) {
+    #if defined(TESTING)
+                DBprnt ("    source.routeReason = UnsupportedSlabContours");
+    #endif
+                return false;
+            }
+            RoomSurface lower, upper;
+            lower.origin = upper.origin = RoomSurfaceOrigin::PreparedAnalytic;
+            lower.analyticFaceId = ++faceId;
+            upper.analyticFaceId = ++faceId;
+            lower.normalWorld = lower.normalLocal = {0, 0, -1};
+            upper.normalWorld = upper.normalLocal = {0, 0, 1};
+            lower.planeOffset = bottom;
+            upper.planeOffset = -top;
+            UIndex start = 0;
+            for (UIndex contourIndex = 0; contourIndex < ends.GetSize (); ++contourIndex) {
+                RoomSurfaceContour low, high;
+                low.hole = high.hole = contourIndex != 0;
+                for (UIndex i = start; i <= ends[contourIndex]; ++i) {
+                    RoomSurfaceVertex a, b;
+                    a.local = a.world = {coords[i].x, coords[i].y, bottom};
+                    b.local = b.world = {coords[i].x, coords[i].y, top};
+                    low.vertices.Push (a);
+                    high.vertices.Push (b);
+                    const auto next = coords[i == ends[contourIndex] ? start : i + 1];
+                    const auto curr = coords[i];
+                    const double length = std::hypot (next.x - curr.x, next.y - curr.y);
+                    if (length <= 0)
+                        continue;
+                    body.surfaces.Push (AnalyticFace ({{curr.x, curr.y, bottom},
+                                                       {next.x, next.y, bottom},
+                                                       {next.x, next.y, top},
+                                                       {curr.x, curr.y, top}},
+                                                      {(next.y - curr.y) / length, -(next.x - curr.x) / length, 0},
+                                                      ++faceId));
                 }
+                start = ends[contourIndex] + 1;
+                lower.contours.Push (low);
+                upper.contours.Push (high);
+            }
+            body.surfaces.Push (lower);
+            body.surfaces.Push (upper);
+        }
+        OtdSlab slab;
+        slab.poly = polygon;
+        slab.zBottom = bottom;
+        slab.height = top - bottom;
+        slab.reference_z = reference;
+        slab.base_guid = source.baseGuid;
+        slab.base_type = API_SlabID;
+        slab.floorInd = element.header.floorInd;
+        bases.Push (slab);
+        source.origin = RoomSurfaceOrigin::PreparedAnalytic;
+    #if defined(TESTING)
+        DBprnt ("    source.routeReason = OrdinarySlabSEOTrimsIgnored");
+    #endif
+        source.snapshot.guid = source.baseGuid;
+        source.snapshot.status = RoomSurfaceStatus::Extracted;
+        source.snapshot.bodies.Push (body);
+        return true;
+    }
+
+    // Перекрытия читаются только из polygon memo; native fallback допустим лишь для стен.
+    static RoomSurfaceSource PrepareSource (const API_Element &element,
+                                            const Stories &stories,
+                                            const GS::Array<OtdOpening> &openings,
+                                            GS::Array<OtdWall> &walls,
+                                            GS::Array<OtdSlab> &slabs,
+                                            RoomSurfaceCache *cache) {
+        RoomSurfaceSource source;
+        bool analytic = false;
+        if (GetElemTypeID (element.header) == API_WallID) {
+            const auto genericOpenings =
+                ReadConnectedElements (element.header.guid, API_OpeningID, APIFilt_IsVisibleByRenovation, cache);
+            if (genericOpenings.error != NoError || !genericOpenings.items.IsEmpty ()) {
+                source.baseGuid = source.geometryGuid = element.header.guid;
+                source.baseType = API_WallID;
+                if (cache != nullptr)
+                    ++cache->counters.nativeFallbackSources;
+                source.snapshot = ReadRoomSurfaces (element.header, cache);
+                return source;
+            }
+            analytic = BuildPreparedWallSource (element,
+                                                GetzPos (element.wall.bottomOffset, element.header.floorInd, stories),
+                                                openings,
+                                                walls,
+                                                source);
+        } else {
+            API_ElementMemo memo = {};
+            Geometry::Polygon2D polygon;
+            const GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_Polygon);
+            const GSErrCode polygonError = err == NoError ? ConstructPolygon2DFromElementMemo (memo, polygon) : err;
+            ACAPI_DisposeElemMemoHdls (&memo);
+            if (polygonError == NoError)
+                analytic = BuildPreparedSlabSource (
+                    element, GetzPos (element.slab.level, element.header.floorInd, stories), polygon, slabs, source);
+            else {
+                source.baseGuid = source.geometryGuid = element.header.guid;
+                source.baseType = API_SlabID;
+    #if defined(TESTING)
+                DBprnt ("    source.routeReason = SlabPolygonMemoError");
+    #endif
             }
         }
+        if (analytic) {
+            if (cache != nullptr) {
+                if (source.baseType == API_WallID)
+                    ++cache->counters.analyticWallSources;
+                else
+                    ++cache->counters.analyticSlabSources;
+                for (const auto &body : source.snapshot.bodies)
+                    cache->counters.analyticFaces += body.surfaces.GetSize ();
+            }
+        } else if (GetElemTypeID (element.header) == API_WallID) {
+            if (cache != nullptr)
+                ++cache->counters.nativeFallbackSources;
+            source.snapshot = ReadRoomSurfaces (element.header, cache);
+        }
+        return source;
     }
 
     // Находит классификации отделки, читает уровни этажей и собирает перекрытия, пересекающие заданные зоны.
     static void PrepareRoomProcessingContext (RoomProcessingContext &context, const GS::Array<API_Guid> &zones) {
         Class_FindFinClass (context.finclass, context.finclassguids);
         context.storyLevels = GetStories ();
-        Floor_FindAll (context.slabsinzone, context.finclassguids, zones);
+        Floor_FindAll (context.slabsinzone, context.finclassguids, zones, &context.surfaceCache);
     }
 
     // Собирает данные комнат и связи с базовыми элементами, добавляет зоны в список чтения и очищает временные GUID
@@ -309,33 +537,65 @@ namespace Roombook
     static bool BuildElementReadIndex (const GS::Array<API_Guid> &zones,
                                        RoomProcessingContext &context,
                                        GS::UniString &funcname) {
+        // Один точный кэш на read-фазу запуска; discovery продолжается после чтения проёмов.
+        auto &coordinateCache = context.coordinateCache;
         for (const API_Guid &zoneGuid : zones) {
             if (AdvanceProcessPhase (funcname, nPhase))
                 return false;
             OtdRoom roominfo;
-            if (CollectRoomInfo (context.storyLevels, zoneGuid, roominfo, context.elementToRead, context.slabsinzone)) {
+            if (CollectRoomInfo (context.storyLevels,
+                                 zoneGuid,
+                                 roominfo,
+                                 context.elementToRead,
+                                 context.slabsinzone,
+                                 &context.surfaceCache,
+                                 &coordinateCache)) {
                 API_Elem_Head zone = {};
                 zone.guid = zoneGuid;
                 zone.typeID = API_ZoneID;
                 GS::Array<API_Guid> finishClasses;
                 context.finclassguids.EnumerateKeys (
                     [&] (const API_Guid &classGuid) { finishClasses.Push (classGuid); });
-                roominfo.surfaceCandidates = ReadRoomSurfaceCandidates (zone, finishClasses);
-                roominfo.surfacePartition =
-                    PartitionRoomSurfaces (roominfo.surfaceSnapshot, roominfo.surfaceCandidates.sources);
-                if (!roominfo.surfaceCandidates.complete || !roominfo.surfacePartition.complete) {
+                roominfo.surfaceCandidates = ReadRoomSurfaceCandidates (zone, finishClasses, &context.surfaceCache);
+                // Partition ждёт подготовки оснований и реальных проёмов.
+                if (!roominfo.surfaceCandidates.complete) {
                     msg_rep ("Surface finish",
                              "Incomplete source/zone geometry; RoomBook stopped before writing",
                              APIERR_BADPARS,
                              zoneGuid);
                     return false;
                 }
-                for (const auto &source : roominfo.surfaceCandidates.sources)
+                for (const auto &source : roominfo.surfaceCandidates.sources) {
                     Param_AddUnicGUIDByType (source.baseGuid, source.baseType, context.guidselementToRead);
+                    if (source.baseType == API_WallID || source.baseType == API_SlabID)
+                        Param_AddUnicElementByType (source.baseGuid, zoneGuid, source.baseType, context.elementToRead);
+                }
                 context.roomsinfo.Add (zoneGuid, std::move (roominfo));
             }
         }
-        Floor_FindAllFromWalls (context);
+        // Полная стена сравнивается вместе со всеми видимыми окнами/дверями, не только roomPart-проёмами.
+        if (const auto *wallIndex = context.elementToRead.GetPtr (API_WallID)) {
+            const UnicElement walls = *wallIndex;
+            for (auto it = walls.EnumeratePairs (); it != nullptr; ++it) {
+    #ifdef ServerMainVers_2800
+                const API_Guid wallGuid = it->key;
+                const auto &roomGuids = it->value;
+    #else
+                const API_Guid wallGuid = *it->key;
+                const auto &roomGuids = *it->value;
+    #endif
+                for (const auto type : {API_WindowID, API_DoorID}) {
+                    const auto openings =
+                        ReadConnectedElements (wallGuid, type, APIFilt_IsVisibleByRenovation, &context.surfaceCache);
+                    if (openings.error != NoError)
+                        return false;
+                    for (const auto &openingGuid : openings.items)
+                        for (const auto &roomGuid : roomGuids)
+                            Param_AddUnicElementByType (openingGuid, roomGuid, type, context.elementToRead);
+                }
+            }
+        }
+        context.coordinateSearchStats = coordinateCache.GetStats ();
         context.guidselementToRead.Add (API_ZoneID, zones);
         ClearZoneGUID (context.elementToRead);
         return true;
@@ -345,6 +605,7 @@ namespace Roombook
     // Заполняет данные комнат и списки чтения; при отмене возвращает false.
     static bool ProcessElementsForRoomData (RoomProcessingContext &context, GS::UniString &funcname) {
         for (const API_ElemTypeID &typeelem : typeinzone) {
+
             if (auto *elems = context.elementToRead.GetPtr (typeelem)) {
                 for (UnicElement::PairIterator cIt = (*elems).EnumeratePairs (); cIt != NULL; ++cIt) {
                     if (AdvanceProcessPhase (funcname, nPhase))
@@ -358,7 +619,7 @@ namespace Roombook
     #endif
                     // Проверяем классификацию, исключаем отделочные элементы
                     API_Guid classguid;
-                    if (Class_IsElementFinClass (guid, context.finclassguids, classguid))
+                    if (Class_IsElementFinClass (guid, context.finclassguids, classguid, &context.surfaceCache))
                         continue;
                     switch (typeelem) {
                     case API_WindowID:
@@ -367,21 +628,25 @@ namespace Roombook
                             context.storyLevels, guid, context.openinginwall, context.guidselementToRead);
                         break;
                     case API_WallID:
-                        // Legacy-участки нужны только для привязки проёмов и откосов, не для основной отделки.
-                        if (context.openinginwall.ContainsKey (guid))
-                            OtdWall_Create_FromWall (context.storyLevels,
-                                                     guid,
-                                                     zoneGuids,
-                                                     context.roomsinfo,
-                                                     context.openinginwall,
-                                                     context.guidselementToRead);
+                        // Legacy-участки задают сторону состава для пола и привязку откосов; не рисуются.
+                        OtdWall_Create_FromWall (context.storyLevels,
+                                                 guid,
+                                                 zoneGuids,
+                                                 context.roomsinfo,
+                                                 context.openinginwall,
+                                                 context.guidselementToRead,
+                                                 &context.surfaceCache);
                         break;
                     case API_ColumnID:
                         // Основная геометрия берётся из общего разбиения, а не из номинальных осей/размеров.
                         break;
                     case API_SlabID:
-                        Floor_FindInOneRoom (
-                            context.storyLevels, guid, zoneGuids, context.roomsinfo, context.guidselementToRead);
+                        Floor_FindInOneRoom (context.storyLevels,
+                                             guid,
+                                             zoneGuids,
+                                             context.roomsinfo,
+                                             context.guidselementToRead,
+                                             &context.surfaceCache);
                         break;
                     default:
                         break;
@@ -389,7 +654,104 @@ namespace Roombook
                 }
             }
         }
+        context.coordinateSearchStats = context.coordinateCache.GetStats ();
         return true;
+    }
+
+    // До очистки writer-результатов сохраняем неизменяемые основания и legacy-связи откосов.
+    static bool PrepareRoomPartitions (RoomProcessingContext &context) {
+        for (auto it = context.roomsinfo.EnumeratePairs (); it != nullptr; ++it) {
+    #ifdef ServerMainVers_2800
+            auto &room = it->value;
+    #else
+            auto &room = *it->value;
+    #endif
+            for (auto &source : room.surfaceCandidates.sources) {
+                if (source.baseType != API_WallID && source.baseType != API_SlabID)
+                    continue;
+                if (source.baseType == API_SlabID) {
+                    bool found = false;
+                    for (const auto &slabSource : room.slabSources)
+                        if (slabSource.baseGuid == source.baseGuid) {
+                            source = slabSource;
+                            found = true;
+                            break;
+                        }
+                    if (found)
+                        continue;
+                }
+                const ElementRead elementRead = ReadElement (source.baseGuid, &context.surfaceCache);
+                if (elementRead.error != NoError)
+                    return false;
+                const API_Element &element = elementRead.element;
+                const auto *openings = context.openinginwall.GetPtr (source.baseGuid);
+                source = PrepareSource (element,
+                                        context.storyLevels,
+                                        openings != nullptr ? *openings : GS::Array<OtdOpening> (),
+                                        room.preparedWalls,
+                                        room.preparedSlabs,
+                                        &context.surfaceCache);
+            }
+            // Discovery-перекрытия тоже участвуют в контактах, не только в проекции пола.
+            for (const auto &slabSource : room.slabSources) {
+                bool present = false;
+                for (const auto &source : room.surfaceCandidates.sources)
+                    present = present || source.baseGuid == slabSource.baseGuid;
+                if (!present)
+                    room.surfaceCandidates.sources.Push (slabSource);
+            }
+            room.surfacePartition = PartitionRoomSurfaces (room.surfaceSnapshot, room.surfaceCandidates.sources);
+            if (!room.surfacePartition.complete) {
+                msg_rep ("Surface finish",
+                         "Incomplete prepared geometry; stopped before writing",
+                         APIERR_BADPARS,
+                         room.zone_guid);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Итог после последнего cached consumer, до записи модели; reads — фактические SDK-вызовы.
+    static void ReportRoomReadCounters (const RoomProcessingContext &context) {
+        const auto &search = context.coordinateSearchStats;
+        msg_rep ("RoomBook coordinate cache",
+                 GS::UniString::Printf ("calls=%llu hits=%llu refused=%llu",
+                                        static_cast<unsigned long long> (search.calls),
+                                        static_cast<unsigned long long> (search.hits),
+                                        static_cast<unsigned long long> (search.refused)),
+                 NoError,
+                 APINULLGuid);
+        const auto &c = context.surfaceCache.counters;
+        msg_rep ("RoomBook source route",
+                 GS::UniString::Printf ("analyticWall=%llu analyticSlab=%llu analyticFaces=%llu nativeFallback=%llu "
+                                        "snapshotReads=%llu snapshotHits=%llu boundsReads=%llu boundsHits=%llu "
+                                        "componentReads=%llu componentHits=%llu wall3DReads=%llu slab3DReads=%llu "
+                                        "elementReads=%llu elementHits=%llu classificationReads=%llu "
+                                        "classificationHits=%llu relationReads=%llu relationHits=%llu "
+                                        "connectedReads=%llu connectedHits=%llu",
+                                        c.analyticWallSources,
+                                        c.analyticSlabSources,
+                                        c.analyticFaces,
+                                        c.nativeFallbackSources,
+                                        c.snapshotReads,
+                                        c.snapshotHits,
+                                        c.boundsReads,
+                                        c.boundsHits,
+                                        c.componentReads,
+                                        c.componentHits,
+                                        c.wallSnapshotReads,
+                                        c.slabSnapshotReads,
+                                        c.elementReads,
+                                        c.elementHits,
+                                        c.classificationReads,
+                                        c.classificationHits,
+                                        c.relationReads,
+                                        c.relationHits,
+                                        c.connectedReads,
+                                        c.connectedHits),
+                 NoError,
+                 APINULLGuid);
     }
 
     struct ReadParamsForRoomBook {
@@ -524,6 +886,8 @@ namespace Roombook
                                      MatarialToFavoriteDict &favdict) {
 
         GS::Array<OtdWall> opw; // Массив созданных стен
+        GS::Array<OtdWall> openingOwners = openingWalls;
+        openingOwners.Append (otd.preparedWalls);
         // Legacy-участки нужны только для откосов; отверстия surface-стен уже вырезаны.
         GS::Array<OtdWall> wallsForRules = otd.otdwall;
         wallsForRules.Append (openingWalls);
@@ -536,7 +900,8 @@ namespace Roombook
                                   paramToRead,
                                   paramCompositeToRead,
                                   param_composite,
-                                  fav_name))
+                                  fav_name,
+                                  otdw.surface_geometry ? nullptr : &otdw))
                 otdw.isValid = false;
             if (!otdw.isValid)
                 continue;
@@ -582,11 +947,40 @@ namespace Roombook
                                            otd.om_zone);
             }
         } // Обработка стен
+        // Surface-адаптер не знает сторону многослойки; берём только отдельно
+        // рассчитанную глубину legacy-стены того же основания/направления.
+        // Материальные правила и геометрию surface-стены не меняем.
+        for (auto &target : wallsForRules) {
+            if (!target.surface_geometry || target.base_type != API_WallID || target.slab_step)
+                continue;
+            bool found = false, ambiguous = false;
+            double offset = 0;
+            const double tx = target.endC.x - target.begC.x, ty = target.endC.y - target.begC.y;
+            for (const auto &source : wallsForRules) {
+                if (source.surface_geometry || !source.isValid || !source.floor_core_offset_valid ||
+                    source.base_guid != target.base_guid)
+                    continue;
+                const double sx = source.endC.x - source.begC.x, sy = source.endC.y - source.begC.y;
+                const double norm = std::hypot (tx, ty) * std::hypot (sx, sy);
+                if (norm <= 1.e-12 || tx * sx + ty * sy <= 0 || std::fabs (tx * sy - ty * sx) > 1.e-6 * norm)
+                    continue;
+                if (found && std::fabs (offset - source.floor_core_offset) > 1.e-6)
+                    ambiguous = true;
+                found = true;
+                offset = source.floor_core_offset;
+            }
+            target.floor_core_offset_valid = found && !ambiguous;
+            target.floor_core_offset = target.floor_core_offset_valid ? offset : 0;
+        }
         for (OtdWall &otdw : wallsForRules) {
             // Основную отделку строим только по поверхностям, не по legacy-границам.
             if (!otdw.isValid || !otdw.surface_geometry)
                 continue;
-            if (!LinkSurfaceOpenings (otdw, openingWalls)) {
+            bool analytic = false;
+            for (const auto &source : otd.surfaceCandidates.sources)
+                analytic = analytic ||
+                           (source.baseGuid == otdw.base_guid && source.origin == RoomSurfaceOrigin::PreparedAnalytic);
+            if (!LinkSurfaceOpenings (otdw, openingOwners, analytic)) {
                 otdw.isValid = false;
                 msg_rep ("Surface finish",
                          "Opening ownership is ambiguous or unrepresentable",
@@ -752,24 +1146,25 @@ namespace Roombook
     }
 
     // Вырезы контакта представлены проёмами; legacy-проёмы повторно не добавляются.
-    static bool AddSurfaceFinishPiece (OtdRoom &room, const RoomSurfacePiece &piece) {
+    static bool AddSurfaceFinishPiece (OtdRoom &room, const RoomSurfacePiece &piece, RoomSurfaceCache *cache) {
         if (piece.status != RoomSurfacePieceStatus::Matched || piece.baseGuid == APINULLGuid)
             return false;
         GS::Array<OtdWall> walls;
         if (BuildSurfaceWalls (piece, room.floorInd, walls)) {
-            API_Element base = {};
+            ElementRead baseRead;
             if (piece.baseType == API_WallID) {
-                base.header.guid = piece.baseGuid;
-                if (ACAPI_Element_Get (&base) != NoError)
+                baseRead = ReadElement (piece.baseGuid, cache);
+                if (baseRead.error != NoError)
                     return false;
             }
+            const API_Element &base = baseRead.element;
             for (auto &wall : walls) {
                 if (piece.baseType == API_WallID) {
                     const double dx = base.wall.endC.x - base.wall.begC.x;
                     const double dy = base.wall.endC.y - base.wall.begC.y;
                     const double wx = wall.endC.x - wall.begC.x;
                     const double wy = wall.endC.y - wall.begC.y;
-                    // Сторона состава определяется осью основания, не покрытием грани.
+                    // Торец не имеет стороны многослойки; боковая грань использует исходное направление.
                     if (std::fabs (dx * wy - dy * wx) > 1e-6 * std::hypot (dx, dy) * std::hypot (wx, wy))
                         return false;
                     wall.base_flipped = (dx * wx + dy * wy < 0) != base.wall.flipped;
@@ -792,7 +1187,7 @@ namespace Roombook
     }
 
     // Подготавливает геометрию для прежних материальных правил и writers; элементы здесь не создаются.
-    static bool BuildRoomSurfaceFinishes (OtdRoom &room) {
+    static bool BuildRoomSurfaceFinishes (OtdRoom &room, RoomSurfaceCache *cache) {
         room.otdwall.Clear ();
         room.otdslab.Clear ();
         Int32 skipped = 0;
@@ -836,7 +1231,8 @@ namespace Roombook
                                                             rejectedSlabArea,
                                                             &nominalFloor,
                                                             room.floor_by_slab,
-                                                            &room.otdwall)) ||
+                                                            &room.otdwall,
+                                                            &room.preparedSlabs)) ||
             (room.has_ceil && !BuildProjectedSlabFinishes (room.surfaceSnapshot,
                                                            slabSources,
                                                            ceilings,
@@ -846,7 +1242,8 @@ namespace Roombook
                                                            rejectedSlabArea,
                                                            &nominalCeiling,
                                                            room.ceil_by_slab,
-                                                           &room.otdwall))) {
+                                                           &room.otdwall,
+                                                           &room.preparedSlabs))) {
             msg_rep ("Surface finish", "Invalid original slab projection", APIERR_BADPARS, room.zone_guid);
             return false;
         }
@@ -869,11 +1266,42 @@ namespace Roombook
             // Только горизонтальные slab-контакты заменены проекционным маршрутом.
             if (piece.baseType == API_SlabID && std::hypot (piece.normal.x, piece.normal.y) <= 1e-6)
                 continue;
-            if (!AddSurfaceFinishPiece (room, piece)) {
+            if (!AddSurfaceFinishPiece (room, piece, cache)) {
                 ++skipped;
                 skippedArea += piece.area;
             }
         }
+        // Сверка выполняется после сбора всех граней: соседние куски задают внутренние разрывы.
+        GS::Array<OtdWall> correctedWalls;
+        for (const auto &wall : room.otdwall) {
+            if (wall.base_type != API_WallID || !wall.surface_geometry || wall.slab_step) {
+                correctedWalls.Push (wall);
+                continue;
+            }
+            const auto base = ReadElement (wall.base_guid, cache);
+            if (base.error != NoError)
+                return false;
+            // Для дуги tBeg/tEnd нельзя интерпретировать как расстояния по хорде.
+            if (base.element.wall.zoneRel == APIZRel_None || base.element.wall.angle != 0) {
+                correctedWalls.Push (wall);
+                continue;
+            }
+            const auto corrected = ClampSurfaceWallToParts (wall,
+                                                            base.element.wall.begC,
+                                                            base.element.wall.endC,
+                                                            room.wallPart,
+                                                            room.edges,
+                                                            room.zBottom,
+                                                            room.otdwall);
+            if (corrected.IsEmpty ()) {
+                ++skipped;
+                skippedArea +=
+                    wall.length * wall.height * std::sqrt (1 + wall.rise_x * wall.rise_x + wall.rise_y * wall.rise_y);
+                msg_rep ("Surface finish", "WallPart contact rejected", APIERR_BADPARS, wall.base_guid);
+            }
+            correctedWalls.Append (corrected);
+        }
+        room.otdwall = std::move (correctedWalls);
         for (const auto &part : room.surfaceCandidates.beamParts) {
             const RoomSurfaceSource *source = nullptr;
             Int32 sourceCount = 0;
@@ -888,11 +1316,10 @@ namespace Roombook
                 msg_rep ("Surface finish", "Unsupported beam segment ownership", APIERR_BADPARS, part.guid);
                 return false;
             }
-            API_Element beam = {};
-            beam.header.guid = part.guid;
-            const GSErrCode err = ACAPI_Element_Get (&beam);
-            if (err != NoError)
+            const ElementRead beamRead = ReadElement (part.guid, cache);
+            if (beamRead.error != NoError)
                 return false;
+            const API_Element &beam = beamRead.element;
             RoomSurfaceBeamPartitions result;
             const auto finish = BuildRoomBeamFinish (*source,
                                                      beam.beam.begC,
@@ -957,7 +1384,7 @@ namespace Roombook
                     if (found)
                         break;
                 }
-                if (!found || !AddSurfaceFinishPiece (room, piece)) {
+                if (!found || !AddSurfaceFinishPiece (room, piece, cache)) {
                     ++skipped;
                     skippedArea += piece.area;
                 }
@@ -1012,10 +1439,9 @@ namespace Roombook
             // Сохраняем исходную привязку проёмов до замены стен поверхностными.
             GS::Array<OtdWall> openingWalls;
             for (const auto &wall : otd.otdwall) {
-                if (!wall.openings.IsEmpty ())
-                    openingWalls.Push (wall);
+                openingWalls.Push (wall); // Все legacy-участки нужны также для стороны полного состава #268.
             }
-            if (!BuildRoomSurfaceFinishes (otd))
+            if (!BuildRoomSurfaceFinishes (otd, &context.surfaceCache))
                 return false;
             if (otd.otdwall.IsEmpty () && otd.otdslab.IsEmpty () && openingWalls.IsEmpty ())
                 continue;
@@ -1039,6 +1465,11 @@ namespace Roombook
                                  readParams.windowParams,
                                  paramCompositeToRead,
                                  favdict);
+            if (!ExtendFloorContoursToCore (otd))
+                msg_rep ("Floor core extension",
+                         "Contour topology changed; original floor retained",
+                         APIERR_BADPARS,
+                         zoneGuid);
             if (!DeduplicateAcceptedSlabContacts (otd))
                 msg_rep ("Surface finish",
                          "Accepted slab side remainder is ambiguous or unrepresentable",
@@ -1130,7 +1561,7 @@ namespace Roombook
         // После сбора связей временные GUID зон очищаются перед обработкой базовых элементов.
         if (!BuildElementReadIndex (zones, context, funcname))
             return;
-        if (!ProcessElementsForRoomData (context, funcname))
+        if (!ProcessElementsForRoomData (context, funcname) || !PrepareRoomPartitions (context))
             return;
         // Необходимые для чтения параметры и свойства
         ReadParamsForRoomBook readParams = PrepareReadParams ();
@@ -1148,10 +1579,11 @@ namespace Roombook
         // Это нужно, чтобы не создавать дубли и правильно обновлять существующие элементы.
         bool has_base_element = false;
         UnicGuid reserv_elements; // Словарь незарезервированных или скрытых элементов
-        context.exsistot_byzone =
-            Otd_GetOtd_ByZone (zones, context.finclassguids, context.finclass, has_base_element, reserv_elements);
+        context.exsistot_byzone = Otd_GetOtd_ByZone (
+            zones, context.finclassguids, context.finclass, has_base_element, reserv_elements, &context.surfaceCache);
         if (!ProcessRoomFinishes (context, readParams, paramCompositeToRead, favdict, has_base_element, funcname))
             return;
+        ReportRoomReadCounters (context);
         // Получаем список уже существующих отделочных элементов для обработанных зон.
         // Он понадобится для последующего удаления устаревших объектов.
         zones.Clear ();
@@ -1222,7 +1654,8 @@ namespace Roombook
                                                                const UnicGuid &finclassguids,
                                                                const ClassificationFunc::ClassificationDict &finclass,
                                                                bool &has_base_element,
-                                                               UnicGuid &reserv_elements) {
+                                                               UnicGuid &reserv_elements,
+                                                               RoomSurfaceCache *cache) {
         // Существующие элементы храним в словаре двойной вложенности
         //  Первый уровень - ключ API_Guid зоны
         //  Второй ключ - GUID базового элемента (к которому привязана отделка)
@@ -1277,7 +1710,7 @@ namespace Roombook
                 diag_guids += 1;
     #endif
                 API_Guid classguid;
-                if (Class_IsElementFinClass (guid, finclassguids, classguid)) {
+                if (Class_IsElementFinClass (guid, finclassguids, classguid, cache)) {
     #if defined(TESTING)
                     diag_class_ok += 1;
     #endif
@@ -1823,15 +2256,10 @@ namespace Roombook
                           const API_Guid &zoneGuid,
                           OtdRoom &roominfo,
                           UnicElementByType &elementToRead,
-                          GS::HashTable<API_Guid, GS::Array<API_Guid>> &slabsinzone) {
+                          GS::HashTable<API_Guid, GS::Array<API_Guid>> &slabsinzone,
+                          RoomSurfaceCache *cache,
+                          CoordinateSearchCache *coordinateCache) {
         roominfo.surfaceSnapshot = RoomSurfaceSnapshot ();
-        SyncSettings syncSettings;
-        syncSettings.SetWallS (true);
-        syncSettings.SetSyncAll (true);
-        syncSettings.SetSyncMon (true);
-        syncSettings.SetWidoS (true);
-        syncSettings.SetObjS (true);
-        syncSettings.SetCwallS (true);
         API_Element zoneelement = {};
         zoneelement.header.guid = zoneGuid;
 
@@ -1863,11 +2291,10 @@ namespace Roombook
         Edges_GetFromRoom (zonememo, zoneelement, walledges, columnedges, restedges, gableedges);
         roominfo.edges = restedges;
         roominfo.columnedges = columnedges;
-        API_RoomRelation relData = {};
-        err = ACAPI_Element_GetRelations (zoneGuid, API_ZombieElemID, &relData);
+        RoomRelationValues relData;
+        err = ReadZoneRelations (zoneGuid, cache, relData);
         if (err != NoError) {
             ACAPI_DisposeElemMemoHdls (&zonememo);
-            ACAPI_DisposeRoomRelationHdls (&relData);
             msg_rep ("CollectRoomInfo err", "ACAPI_Element_GetRelations zone", err, zoneGuid);
             return false;
         }
@@ -1903,7 +2330,6 @@ namespace Roombook
             API_Guid elGuid;
             API_ElemSearchPars searchPars = {};
             API_ElemTypeID typeelem = API_WallID;
-            GS::Array<API_Guid> subelemGuid;
             for (UInt32 j = 0; j < walledges.GetSize (); j++) {
                 Sector tedge = walledges[j];
                 BNZeroMemory (&searchPars, sizeof (API_ElemSearchPars));
@@ -1917,18 +2343,24 @@ namespace Roombook
     #else
                 searchPars.typeID = typeelem;
     #endif
-    #ifdef ServerMainVers_2700
-                err = ACAPI_Element_SearchElementByCoord (&searchPars, &elGuid);
-    #else
                 elGuid = APINULLGuid;
-                err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &searchPars, &elGuid);
-    #endif
+                err = SearchCoordinate (searchPars, elGuid, coordinateCache);
                 if (err == NoError && elGuid != APINULLGuid) {
                     flag = true;
-                    subelemGuid.Clear ();
-                    GetRelationsElement (elGuid, syncSettings, subelemGuid);
-                    for (const API_Guid &elGuid_ : subelemGuid) {
-                        Param_AddUnicElementByType (elGuid_, zoneGuid, API_WindowID, elementToRead);
+                    for (const auto connectedType : {API_WindowID, API_DoorID}) {
+                        const auto connected =
+                            ReadConnectedElements (elGuid,
+                                                   connectedType,
+                                                   APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace,
+                                                   cache);
+                        if (connected.error != NoError) {
+                            ACAPI_DisposeElemMemoHdls (&zonememo);
+                            msg_rep (
+                                "CollectRoomInfo err", "ACAPI_Element_GetConnectedElements", connected.error, elGuid);
+                            return false;
+                        }
+                        for (const API_Guid &openingGuid : connected.items)
+                            Param_AddUnicElementByType (openingGuid, zoneGuid, API_WindowID, elementToRead);
                     }
                     if (GS::Array<Sector> *sectorsPtr = roominfo.walledges.GetPtr (elGuid)) {
                         sectorsPtr->Push (tedge); // Если нашли, пушим напрямую в оригинальный массив
@@ -1964,10 +2396,9 @@ namespace Roombook
     #else
         roominfo.om_zone.material = zoneelement.zone.material;
     #endif
-        ACAPI_DisposeRoomRelationHdls (&relData);
         ACAPI_DisposeElemMemoHdls (&zonememo);
         // Пока только снимок: ошибка 3D не меняет прежний результат сбора и создания отделки.
-        roominfo.surfaceSnapshot = ReadRoomSurfaces (zoneelement.header);
+        roominfo.surfaceSnapshot = ReadRoomSurfaces (zoneelement.header, cache);
         return flag;
     }
 
@@ -2030,15 +2461,14 @@ namespace Roombook
                                   const GS::Array<API_Guid> &zoneGuids,
                                   OtdRooms &roomsinfo,
                                   const GS::HashTable<API_Guid, GS::Array<OtdOpening>> &openinginwall,
-                                  UnicGUIDByType &guidselementToRead) {
-        GSErrCode err = NoError;
-        API_Element element = {};
-        element.header.guid = elGuid;
-        err = ACAPI_Element_Get (&element);
-        if (err != NoError) {
-            msg_rep ("OtdWall_Create_FromWall err", "ACAPI_Element_Get", err, elGuid);
+                                  UnicGUIDByType &guidselementToRead,
+                                  RoomSurfaceCache *cache) {
+        const ElementRead elementRead = ReadElement (elGuid, cache);
+        if (elementRead.error != NoError) {
+            msg_rep ("OtdWall_Create_FromWall err", "ACAPI_Element_Get", elementRead.error, elGuid);
             return;
         }
+        const API_Element &element = elementRead.element;
         double w_bottomOffset = element.wall.bottomOffset;
         double w_height = element.wall.height;
         Point2D wbegC = {element.wall.begC.x, element.wall.begC.y};
@@ -2395,7 +2825,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>> &slabsinzone,
                         const UnicGuid &finclassguids,
-                        const GS::Array<API_Guid> &zones) {
+                        const GS::Array<API_Guid> &zones,
+                        RoomSurfaceCache *cache) {
         GS::Array<API_Guid> allslabs_;
         GS::Array<API_Guid> allslabs;
         GSErrCode err = NoError;
@@ -2407,27 +2838,45 @@ namespace Roombook
             return;
         for (const auto &guid : allslabs_) {
             API_Guid classguid = APINULLGuid;
-            if (!Class_IsElementFinClass (guid, finclassguids, classguid))
+            if (!Class_IsElementFinClass (guid, finclassguids, classguid, cache))
                 allslabs.Push (std::move (guid));
         }
         if (allslabs.IsEmpty ())
             return;
-        GS::Array<GS::Pair<API_CollisionElem, API_CollisionElem>> collisions;
-        API_CollisionDetectionSettings colDetSettings;
-        colDetSettings.volumeTolerance = 0.000000000001;
-        colDetSettings.performSurfaceCheck = true;
-        colDetSettings.surfaceTolerance = 0.000000000001;
-        err = ACAPI_Element_GetCollisions (zones, allslabs, collisions, colDetSettings);
-        if (err != NoError) {
-            return;
+        // Конечное XY-пересечение независимо от высоты зоны и стен; исходные отверстия сохранены.
+        GS::HashTable<API_Guid, Geometry::Polygon2D> zonePolygons;
+        for (const auto &zoneGuid : zones) {
+            API_ElementMemo memo = {};
+            Geometry::Polygon2D polygon;
+            const GSErrCode memoError = ACAPI_Element_GetMemo (zoneGuid, &memo, APIMemoMask_Polygon);
+            if (memoError == NoError && ConstructPolygon2DFromElementMemo (memo, polygon) == NoError)
+                zonePolygons.Add (zoneGuid, polygon);
+            ACAPI_DisposeElemMemoHdls (&memo);
         }
-        for (const auto &pair : collisions.AsConst ()) {
-            const API_Guid &zoneGuid = pair.first.collidedElemGuid;
-            const API_Guid &slabGuid = pair.second.collidedElemGuid;
-            if (GS::Array<API_Guid> *slabsPtr = slabsinzone.GetPtr (zoneGuid)) {
-                slabsPtr->Push (slabGuid);
-            } else {
-                slabsinzone.Add (zoneGuid, {slabGuid});
+        for (const auto &slabGuid : allslabs) {
+            API_ElementMemo memo = {};
+            Geometry::Polygon2D polygon;
+            const GSErrCode memoError = ACAPI_Element_GetMemo (slabGuid, &memo, APIMemoMask_Polygon);
+            const GSErrCode polygonError =
+                memoError == NoError ? ConstructPolygon2DFromElementMemo (memo, polygon) : memoError;
+            ACAPI_DisposeElemMemoHdls (&memo);
+            if (polygonError != NoError)
+                continue;
+            for (const auto &zoneGuid : zones) {
+                const auto *zonePolygon = zonePolygons.GetPtr (zoneGuid);
+                if (zonePolygon == nullptr)
+                    continue;
+                const auto overlap = polygon.Intersect (*zonePolygon);
+                double area = 0;
+                for (const auto &part : overlap)
+                    area += std::abs (part.CalcArea ());
+                if (!std::isfinite (area) || area <= 1e-12)
+                    continue;
+                if (!slabsinzone.ContainsKey (zoneGuid))
+                    slabsinzone.Add (zoneGuid, GS::Array<API_Guid> ());
+                auto &indexed = slabsinzone[zoneGuid];
+                if (!indexed.Contains (slabGuid))
+                    indexed.Push (slabGuid);
             }
         }
     }
@@ -2435,23 +2884,23 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Обработка полов и потолков
     // -----------------------------------------------------------------------------
-    // По отметкам относит перекрытие к полу или потолку валидных зон; при совпадении приоритет у пола.
+    // Опоры ниже/на полу и пересекающие пол; потолки строго выше пола независимо от верха зоны.
     // Добавляет перекрытие в список чтения параметров, если обработана хотя бы одна валидная зона.
     void Floor_FindInOneRoom (const Stories &storyLevels,
                               API_Guid &elGuid,
                               const GS::Array<API_Guid> &zoneGuids,
                               OtdRooms &roomsinfo,
-                              UnicGUIDByType &guidselementToRead) {
-        GSErrCode err = NoError;
-        API_Element element = {};
-        API_ElementMemo memo = {};
-        element.header.guid = elGuid;
-        err = ACAPI_Element_Get (&element);
-        if (err != NoError || !element.header.hasMemo) {
-            msg_rep ("Floor_FindInOneRoom err", "ACAPI_Element_Get", err, elGuid);
+                              UnicGUIDByType &guidselementToRead,
+                              RoomSurfaceCache *cache) {
+        const ElementRead elementRead = ReadElement (elGuid, cache);
+        if (elementRead.error != NoError || !elementRead.element.header.hasMemo) {
+            msg_rep ("Floor_FindInOneRoom err", "ACAPI_Element_Get", elementRead.error, elGuid);
             return;
         }
-        const auto slabSnapshot = ReadRoomSurfaces (element.header);
+        const API_Element &element = elementRead.element;
+        GS::Array<OtdWall> walls;
+        GS::Array<OtdSlab> bases;
+        const auto preparedSource = PrepareSource (element, storyLevels, {}, walls, bases, cache);
         bool flag_find = false;
         double zBottom = GetzPos (element.slab.level + element.slab.offsetFromTop - element.slab.thickness,
                                   element.header.floorInd,
@@ -2461,30 +2910,19 @@ namespace Roombook
             OtdRoom *roominfoPtr = roomsinfo.GetPtr (zoneGuid);
             if (roominfoPtr == nullptr || !roominfoPtr->isValid)
                 continue;
-            // Discovery уже установил роль; collision-кандидаты сохраняют прежний отбор по высоте.
-            const auto contains = [&] (const GS::Array<API_Guid> &guids) {
-                for (const auto &guid : guids)
-                    if (guid == elGuid)
-                        return true;
-                return false;
-            };
-            const bool discovered = contains (roominfoPtr->floorslab) || contains (roominfoPtr->ceilslab);
-            bool is_floor = (zBottom <= roominfoPtr->zBottom && zUp >= roominfoPtr->zBottom);
-            bool is_ceil = (zBottom <= roominfoPtr->zBottom + roominfoPtr->height &&
-                            zUp >= roominfoPtr->zBottom + roominfoPtr->height);
-            if (!discovered) {
-                if (is_floor)
-                    roominfoPtr->floorslab.Push (elGuid);
-                else if (is_ceil)
-                    roominfoPtr->ceilslab.Push (elGuid);
-            }
-            if (discovered || is_floor || is_ceil) {
-                RoomSurfaceSource source;
-                source.baseGuid = elGuid;
-                source.geometryGuid = elGuid;
-                source.baseType = API_SlabID;
-                source.snapshot = slabSnapshot;
-                roominfoPtr->slabSources.Push (std::move (source));
+            const auto role = AnalyticGeometry::SlabRole (zBottom, zUp, roominfoPtr->zBottom);
+            if (role == AnalyticGeometry::SlabCandidateRole::None)
+                continue;
+            auto &roles =
+                role == AnalyticGeometry::SlabCandidateRole::Floor ? roominfoPtr->floorslab : roominfoPtr->ceilslab;
+            if (!roles.Contains (elGuid))
+                roles.Push (elGuid);
+            bool prepared = false;
+            for (const auto &source : roominfoPtr->slabSources)
+                prepared = prepared || source.baseGuid == elGuid;
+            if (!prepared) {
+                roominfoPtr->slabSources.Push (preparedSource);
+                roominfoPtr->preparedSlabs.Append (bases);
             }
             flag_find = true;
         }
@@ -3625,7 +4063,12 @@ namespace Roombook
                           ParamDictElement &paramToRead,
                           ParamDictCompositeElement &paramCompositeToRead,
                           const ParamValue &param_composite,
-                          GS::UniString &fav_name) {
+                          GS::UniString &fav_name,
+                          OtdWall *floorWall) {
+        if (floorWall != nullptr) {
+            floorWall->floor_core_offset = 0;
+            floorWall->floor_core_offset_valid = false;
+        }
         ParamDictValue *baseparamPtr = paramToRead.GetPtr (base_guid);
         if (baseparamPtr == nullptr) {
     #if defined(TESTING)
@@ -3674,6 +4117,17 @@ namespace Roombook
                     has_fin = false;
                 }
             }
+        }
+        // Отдельная глубина до фильтрации h/l и до добавления состава избранного.
+        if (floorWall != nullptr && !base_composite_ptr->composite.IsEmpty () &&
+            base_composite_ptr->composite_type == API_CompositeStructure && floorWall->base_type == API_WallID &&
+            !floorWall->slab_step) {
+            floorWall->floor_core_offset_valid = FloorCoreGeometry::Offset (base_composite_ptr->composite,
+                                                                            base_composite_ptr->composite.GetSize (),
+                                                                            base_flipped,
+                                                                            APICWallComp_Core,
+                                                                            APICWallComp_Finish,
+                                                                            floorWall->floor_core_offset);
         }
         Param_SetComposite (*base_composite_ptr, base_flipped, otdComposite, fav_name, has_fin);
         return true;
@@ -4185,7 +4639,7 @@ namespace Roombook
                                om_ceil,
                                om_zone);
         }
-        walledge = {left_begin, right_begin};
+        walledge = {right_begin, left_begin};
         if (!walledge.IsZeroLength () && !is_upper_wall) {
             OtdWall wallotd;
             InitializeOpeningRevealWall (otdw,
@@ -6003,17 +6457,18 @@ namespace Roombook
 
     // Ищет среди классификаций элемента первый GUID, присутствующий в finclassguids, записывает его в classguid и
     // возвращает true. При ошибке чтения или отсутствии совпадения возвращает false, не меняя classguid.
-    bool Class_IsElementFinClass (const API_Guid &elGuid, const UnicGuid &finclassguids, API_Guid &classguid) {
-        GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
-        if (ACAPI_Element_GetClassificationItems (elGuid, systemItemPairs) == NoError) {
-            if (systemItemPairs.IsEmpty ())
-                return false;
-            for (const auto &cl : systemItemPairs) {
-                if (!finclassguids.ContainsKey (cl.second))
-                    continue;
-                classguid = cl.second;
-                return true;
-            }
+    bool Class_IsElementFinClass (const API_Guid &elGuid,
+                                  const UnicGuid &finclassguids,
+                                  API_Guid &classguid,
+                                  RoomSurfaceCache *cache) {
+        const ClassificationRead read = ReadClassificationItems (elGuid, cache);
+        if (read.error != NoError || read.items.IsEmpty ())
+            return false;
+        for (const auto &cl : read.items) {
+            if (!finclassguids.ContainsKey (cl.second))
+                continue;
+            classguid = cl.second;
+            return true;
         }
         return false;
     }

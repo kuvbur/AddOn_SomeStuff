@@ -11,6 +11,8 @@
 namespace Roombook {
     namespace {
         constexpr double DistanceTolerance = 1.0e-6;
+        // Допуск плоскости 0,1 мм равен минимальному размеру отделочного элемента.
+        constexpr double PlaneTolerance = 1.0e-4;
         constexpr double AreaTolerance = 1.0e-6;
 
         using Polygons = Geometry::MultiPolygon2D;
@@ -50,7 +52,51 @@ namespace Roombook {
                 u = {u.x / uLength, u.y / uLength, u.z / uLength};
                 v = Cross (normal, u);
                 return Finite (origin) && Finite (u) && Finite (v) &&
-                       std::fabs (Dot (surface.normalWorld, origin) + surface.planeOffset) <= DistanceTolerance;
+                       std::fabs (Dot (surface.normalWorld, origin) + surface.planeOffset) <= PlaneTolerance;
+            }
+
+            bool SetFromVertices (const RoomSurface &surface) {
+                if (!Set (surface))
+                    return false;
+                // Согласованную исходную плоскость сохраняем, включая малые грани.
+                bool onStoredPlane = true;
+                for (const auto &contour : surface.contours)
+                    for (const auto &vertex : contour.vertices) {
+                        if (!Finite (vertex.world))
+                            return false;
+                        onStoredPlane = onStoredPlane &&
+                                        std::fabs (Dot (normal, Subtract (vertex.world, origin))) <= PlaneTolerance;
+                    }
+                if (onStoredPlane)
+                    return true;
+                // При расхождении нормали с плоским контуром считаем вектор площади относительно
+                // первой вершины: абсолютные координаты не должны ухудшать точность малых граней.
+                API_Coord3D newell = {};
+                const auto &outer = surface.contours[0].vertices;
+                const USize count = outer.GetSize ();
+                for (UIndex i = 0; i < count; ++i) {
+                    const API_Coord3D a = Subtract (outer[i].world, origin);
+                    const API_Coord3D b = Subtract (outer[(i + 1) % count].world, origin);
+                    if (!Finite (a) || !Finite (b))
+                        return false;
+                    newell.x += a.y * b.z - a.z * b.y;
+                    newell.y += a.z * b.x - a.x * b.z;
+                    newell.z += a.x * b.y - a.y * b.x;
+                }
+                const double length = std::sqrt (Dot (newell, newell));
+                if (!Finite (newell) || !std::isfinite (length) || length == 0)
+                    return false;
+                normal = {newell.x / length, newell.y / length, newell.z / length};
+                API_Coord3D axis = {1, 0, 0};
+                if (std::fabs (normal.y) < std::fabs (normal.x))
+                    axis = {0, 1, 0};
+                if (std::fabs (normal.z) < std::fabs (Dot (normal, axis)))
+                    axis = {0, 0, 1};
+                u = Cross (axis, normal);
+                const double uLength = std::sqrt (Dot (u, u));
+                u = {u.x / uLength, u.y / uLength, u.z / uLength};
+                v = Cross (normal, u);
+                return Finite (u) && Finite (v);
             }
 
             Point2D Project (const API_Coord3D &point) const {
@@ -69,7 +115,7 @@ namespace Roombook {
             for (const auto &contour : surface.contours) {
                 for (const auto &vertex : contour.vertices) {
                     if (!Finite (vertex.world) ||
-                        std::fabs (Dot (frame.normal, Subtract (vertex.world, frame.origin))) > DistanceTolerance)
+                        std::fabs (Dot (frame.normal, Subtract (vertex.world, frame.origin))) > PlaneTolerance)
                         return false;
                 }
             }
@@ -138,7 +184,9 @@ namespace Roombook {
         bool SameClaim (const Claim &a, const Claim &b) {
             return a.face.baseGuid == b.face.baseGuid && a.face.baseType == b.face.baseType &&
                    a.face.geometryGuid == b.face.geometryGuid && a.face.bodyIndex == b.face.bodyIndex &&
-                   a.face.polygonIndex == b.face.polygonIndex;
+                   a.face.polygonIndex == b.face.polygonIndex && a.face.origin == b.face.origin &&
+                   a.face.analyticFaceId == b.face.analyticFaceId &&
+                   a.face.preparedWallIndex == b.face.preparedWallIndex;
         }
 
         struct Cell {
@@ -231,7 +279,7 @@ namespace Roombook {
                 if (!OnPlane (surface, frame))
                     continue;
                 Frame sourceFrame;
-                if (!sourceFrame.Set (surface) || !OnPlane (zoneFace, sourceFrame))
+                if (!sourceFrame.SetFromVertices (surface) || !OnPlane (zoneFace, sourceFrame))
                     continue;
                 Polygons sourcePolygon;
                 if (!ProjectSurface (surface, frame, sourcePolygon)) {
@@ -297,7 +345,7 @@ namespace Roombook {
             for (const auto &body : source.snapshot.bodies) {
                 for (const auto &surface : body.surfaces) {
                     Frame sourceFrame;
-                    if (!sourceFrame.Set (surface) || !OnPlane (surface, sourceFrame)) {
+                    if (!sourceFrame.SetFromVertices (surface) || !OnPlane (surface, sourceFrame)) {
                         Error (result, "PartitionInvalidSourcePlane", &surface, static_cast<Int32> (i));
                         return result;
                     }
@@ -308,6 +356,9 @@ namespace Roombook {
                                   body.index,
                                   surface.polygonIndex,
                                   surface.modelMaterialIndex};
+                    claim.face.origin = surface.origin;
+                    claim.face.analyticFaceId = surface.analyticFaceId;
+                    claim.face.preparedWallIndex = surface.preparedWallIndex;
                     claim.surface = &surface;
                     claim.baseKey = baseKey;
                     claim.geometryKey = geometryKey;
@@ -322,6 +373,12 @@ namespace Roombook {
                 return a.face.baseType < b.face.baseType;
             if (a.geometryKey != b.geometryKey)
                 return a.geometryKey < b.geometryKey;
+            if (a.face.origin != b.face.origin)
+                return a.face.origin < b.face.origin;
+            if (a.face.analyticFaceId != b.face.analyticFaceId)
+                return a.face.analyticFaceId < b.face.analyticFaceId;
+            if (a.face.preparedWallIndex != b.face.preparedWallIndex)
+                return a.face.preparedWallIndex < b.face.preparedWallIndex;
             if (a.face.bodyIndex != b.face.bodyIndex)
                 return a.face.bodyIndex < b.face.bodyIndex;
             return a.face.polygonIndex < b.face.polygonIndex;
