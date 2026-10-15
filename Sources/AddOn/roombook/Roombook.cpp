@@ -1498,6 +1498,7 @@ namespace Roombook
     // 7. Extract RemoveUnusedFinishingElements() and PrepareElementsForUpdate() from the cleanup block.
     // 8. After each extraction, keep behavior identical and verify the build.
     //    The goal is to make RoomBook() a thin orchestrator with small single-purpose helpers.
+
     // Ищет комбинацию слоёв с именем, заканчивающимся на smstf_fin, и применяет её при наличии.
     bool ApplyFinishLayerCombinationIfExists () {
         GS::Array<API_Attribute> layerCombinations;
@@ -1511,7 +1512,8 @@ namespace Roombook
 
         for (const API_Attribute &attr : layerCombinations) {
             GS::UniString name (attr.header.name);
-            if (name.ToLowerCase ().EndsWith ("smstf_fin")) {
+            name.SetToLowerCase ();
+            if (name.EndsWith ("smstf_fin")) {
                 API_AttributeIndex targetComb = attr.header.index;
     #ifdef ServerMainVers_2700
                 if (targetComb.IsPositive ()) {
