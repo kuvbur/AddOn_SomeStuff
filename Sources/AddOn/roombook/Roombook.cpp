@@ -734,7 +734,7 @@ namespace Roombook
             if (typeelem == API_ZoneID) {
                 Param_ToParamDict (paramDict, readParams.roomParams);
             }
-            if (typeelem == API_WindowID) {
+            if (typeelem == API_WindowID || typeelem == API_DoorID) {
                 Param_ToParamDict (paramDict, readParams.windowParams);
             }
             if (typeelem == API_WallID || typeelem == API_ColumnID || typeelem == API_SlabID ||
@@ -886,6 +886,8 @@ namespace Roombook
                 // общая копия тянула бы флаги первого проёма во все остальные.
                 ReadParams windowParamsWork = windowParams;
                 Param_SetToWindows (op, paramToRead, windowParamsWork, otdw);
+                if (!otd.create_reveal_elements || !op.create_reveal)
+                    continue;
                 OpeningReveals_Create_One (otd.otdslab,
                                            otdw,
                                            op,
@@ -2951,6 +2953,12 @@ namespace Roombook
         zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
+        // Включение/отключение создания откосов для проёма
+        zoneparam_name = "reveal_onoff";
+        zoneparam.rawnames.Push ("some_stuff_reveal_onoff");
+        zoneparams.Add (zoneparam_name, zoneparam);
+        zoneparam.rawnames.Clear ();
+
         Param_Property_FindInParams (zoneparams);
         return zoneparams;
     }
@@ -4084,6 +4092,15 @@ namespace Roombook
 
         // Коробка разделяет откосы двух помещений: глубины зависят от стороны отделки.
         op.base_reveal_width = op.reveal_from_sill ? sill : otdw.base_th - sill - frame;
+
+        // Включение/отключение создания откосов по свойству элемента.
+        // Если свойства нет или оно не валидно — откосы создаются (create_reveal остаётся true).
+        op.create_reveal = true;
+        if (const auto *p = readparams.GetPtr ("reveal_onoff")) {
+            if (p->isValid && !p->val.boolValue) {
+                op.create_reveal = false;
+            }
+        }
     }
 
     // -----------------------------------------------------------------------------
@@ -4354,6 +4371,8 @@ namespace Roombook
                                     OtdMaterial &om_floor,
                                     OtdMaterial &om_ceil,
                                     OtdMaterial &om_zone) {
+        if (!op.create_reveal)
+            return;
         if (op.base_reveal_width < min_dim)
             return;
         bool is_upper_wall = false;

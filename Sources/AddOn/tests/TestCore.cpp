@@ -2520,6 +2520,122 @@ namespace TestFunc {
                         "Opening params cached values survive aggregate false");
             unchangedTemplate ();
         }
+        // Проверка свойства some_stuff_reveal_onoff для включения/отключения откосов проёма
+        {
+            const char *rawName = "{@property:reveal_flag}";
+            Roombook::ReadParams work;
+            Roombook::ReadParam frameReq;
+            frameReq.rawnames.Push ("{@gdl:gs_frame_thk}");
+            work.Add ("frame", frameReq);
+            Roombook::ReadParam sillReq;
+            sillReq.rawnames.Push ("{@gdl:gs_wido_sill}");
+            work.Add ("sill", sillReq);
+            Roombook::ReadParam revealReq;
+            revealReq.rawnames.Push (rawName);
+            work.Add ("reveal_onoff", revealReq);
+
+            const Roombook::OtdWall wall = wallFor (0.6, 0);
+
+            // 1. Свойства нет в элементе
+            {
+                ParamDictElement read;
+                ParamDictValue data;
+                ParamValue frameVal;
+                frameVal.rawName = "{@gdl:gs_frame_thk}";
+                frameVal.isValid = true;
+                frameVal.val.doubleValue = 0.1;
+                data.Add (frameVal.rawName, frameVal);
+                ParamValue sillVal;
+                sillVal.rawName = "{@gdl:gs_wido_sill}";
+                sillVal.isValid = true;
+                sillVal.val.doubleValue = 0.05;
+                data.Add (sillVal.rawName, sillVal);
+                read.Add (guids[0], data);
+
+                Roombook::OtdOpening op = openingFor (0);
+                Roombook::ReadParams pWork = work;
+                Roombook::Param_SetToWindows (op, read, pWork, wall);
+                DBtest (op.create_reveal, "Opening params absent reveal_onoff defaults to creating reveals");
+            }
+            // 2. Свойство есть, но не валидно
+            {
+                ParamDictElement read;
+                ParamDictValue data;
+                ParamValue frameVal;
+                frameVal.rawName = "{@gdl:gs_frame_thk}";
+                frameVal.isValid = true;
+                frameVal.val.doubleValue = 0.1;
+                data.Add (frameVal.rawName, frameVal);
+                ParamValue sillVal;
+                sillVal.rawName = "{@gdl:gs_wido_sill}";
+                sillVal.isValid = true;
+                sillVal.val.doubleValue = 0.05;
+                data.Add (sillVal.rawName, sillVal);
+                ParamValue revVal;
+                revVal.rawName = rawName;
+                revVal.isValid = false;
+                revVal.val.boolValue = false;
+                data.Add (revVal.rawName, revVal);
+                read.Add (guids[0], data);
+
+                Roombook::OtdOpening op = openingFor (0);
+                Roombook::ReadParams pWork = work;
+                Roombook::Param_SetToWindows (op, read, pWork, wall);
+                DBtest (op.create_reveal, "Opening params invalid reveal_onoff defaults to creating reveals");
+            }
+            // 3. Свойство валидно и true
+            {
+                ParamDictElement read;
+                ParamDictValue data;
+                ParamValue frameVal;
+                frameVal.rawName = "{@gdl:gs_frame_thk}";
+                frameVal.isValid = true;
+                frameVal.val.doubleValue = 0.1;
+                data.Add (frameVal.rawName, frameVal);
+                ParamValue sillVal;
+                sillVal.rawName = "{@gdl:gs_wido_sill}";
+                sillVal.isValid = true;
+                sillVal.val.doubleValue = 0.05;
+                data.Add (sillVal.rawName, sillVal);
+                ParamValue revVal;
+                revVal.rawName = rawName;
+                revVal.isValid = true;
+                revVal.val.boolValue = true;
+                data.Add (revVal.rawName, revVal);
+                read.Add (guids[0], data);
+
+                Roombook::OtdOpening op = openingFor (0);
+                Roombook::ReadParams pWork = work;
+                Roombook::Param_SetToWindows (op, read, pWork, wall);
+                DBtest (op.create_reveal, "Opening params true reveal_onoff keeps creating reveals");
+            }
+            // 4. Свойство валидно и false
+            {
+                ParamDictElement read;
+                ParamDictValue data;
+                ParamValue frameVal;
+                frameVal.rawName = "{@gdl:gs_frame_thk}";
+                frameVal.isValid = true;
+                frameVal.val.doubleValue = 0.1;
+                data.Add (frameVal.rawName, frameVal);
+                ParamValue sillVal;
+                sillVal.rawName = "{@gdl:gs_wido_sill}";
+                sillVal.isValid = true;
+                sillVal.val.doubleValue = 0.05;
+                data.Add (sillVal.rawName, sillVal);
+                ParamValue revVal;
+                revVal.rawName = rawName;
+                revVal.isValid = true;
+                revVal.val.boolValue = false;
+                data.Add (revVal.rawName, revVal);
+                read.Add (guids[0], data);
+
+                Roombook::OtdOpening op = openingFor (0);
+                Roombook::ReadParams pWork = work;
+                Roombook::Param_SetToWindows (op, read, pWork, wall);
+                DBtest (!op.create_reveal, "Opening params false reveal_onoff disables creating reveals");
+            }
+        }
     }
 
     void TestRoomParameterResolution () {
@@ -2727,15 +2843,39 @@ namespace TestFunc {
             for (UInt32 available = 0; available < 2; ++available) {
                 cache.isPropertyDefinition_OK = available != 0;
                 Roombook::ReadParams windows = Roombook::Param_GetForWindowParams ();
-                DBtest (windows.GetSize () == 2, "Window request template size");
+                DBtest (windows.GetSize () == 3, "Window request template size");
                 for (UInt32 i = 0; i < 2; ++i) {
                     const auto *request = windows.GetPtr (keys[i]);
                     DBtest (request != nullptr && !request->isValid && request->rawnames.GetSize () == 1 &&
                                 request->rawnames.Get (0) == names[i] && request->val.uniStringValue.IsEmpty (),
                             "Window request exact key/GDL name and default validity");
                 }
+                const auto *revealReq = windows.GetPtr ("reveal_onoff");
+                DBtest (revealReq != nullptr && !revealReq->isValid, "Window request reveal_onoff default validity");
+                if (available == 0) {
+                    DBtest (revealReq->rawnames.GetSize () == 1 &&
+                                revealReq->rawnames.Get (0) == "some_stuff_reveal_onoff",
+                            "Window request reveal_onoff unread description");
+                } else {
+                    DBtest (revealReq->rawnames.IsEmpty (),
+                            "Window request reveal_onoff resolved empty without definition");
+                }
                 for (const char *key : removedKeys)
                     DBtest (windows.GetPtr (key) == nullptr, "Window request omits obsolete finish parameters");
+            }
+            // Проверка успешного разрешения свойства some_stuff_reveal_onoff при наличии в кэше
+            {
+                cache.isPropertyDefinition_OK = true;
+                ParamValue revProp;
+                revProp.rawName = "{@property:reveal_flag_resolved}";
+                revProp.definition.description = "some_stuff_reveal_onoff";
+                cache.property.Add ("reveal_flag_def", revProp);
+                Roombook::ReadParams windows = Roombook::Param_GetForWindowParams ();
+                const auto *revealReq = windows.GetPtr ("reveal_onoff");
+                DBtest (revealReq != nullptr && revealReq->rawnames.GetSize () == 1 &&
+                            revealReq->rawnames.Get (0) == "{@property:reveal_flag_resolved}",
+                        "Window request reveal_onoff resolved through property definition cache");
+                cache.property.Delete ("reveal_flag_def");
             }
         }
         DBtest (cache.isPropertyDefinitionRead_full == originalFull && cache.isPropertyDefinition_OK == originalOK &&

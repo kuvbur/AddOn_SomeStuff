@@ -75,6 +75,7 @@ namespace Roombook {
         bool ref_side = false;            // Сторона четверти в системе координат базовой стены
         bool reveal_from_sill = false;    // Отделка находится со стороны подоконника, а не за коробкой
         bool has_reveal = false;          // Наличие откосов у родительского проёма
+        bool create_reveal = true;        // Создавать элементы отделки откосов для данного проёма
         bool surface_geometry = false;    // Вырез контакта: геометрия не корректируется по откосам
         double base_reveal_width = 0;     // Глубина откоса базового проёма
         API_Guid base_guid = APINULLGuid; // GUID базового проёма
