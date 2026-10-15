@@ -138,7 +138,7 @@ namespace {
         CheckConnectedElementsCache (check);
         {
             API_Element element = {};
-            element.header.typeID = API_WallID;
+            SetElemTypeID (element, API_WallID);
             element.header.guid = APIGuidFromString ("00000000-0000-0000-0000-000000000272");
             element.wall.type = APIWtyp_Normal;
             element.wall.profileType = APISect_Normal;
@@ -287,7 +287,7 @@ namespace {
                    "272 profile explicitly requests cached native fallback");
 
             element = {};
-            element.header.typeID = API_SlabID;
+            SetElemTypeID (element, API_SlabID);
             element.header.guid = APIGuidFromString ("00000000-0000-0000-0000-000000000275");
             element.slab.thickness = .3;
             element.slab.offsetFromTop = .2;
@@ -1235,8 +1235,13 @@ namespace {
                 pair[1].sources[0].bodyIndex = 2;
             if (change == 3)
                 pair[1].sources[0].polygonIndex = 5;
-            if (change == 4)
+            if (change == 4) {
+    #ifdef ServerMainVers_2700
+                pair[1].sources[0].modelMaterialIndex = ACAPI_CreateAttributeIndex (7);
+    #else
                 pair[1].sources[0].modelMaterialIndex = 7;
+    #endif
+            }
             if (change == 5)
                 pair[1].zoneBodyIndex = 2;
             if (change == 6)
@@ -1984,12 +1989,25 @@ namespace {
         errors.Push (GS::ObjectState ("stage", stage, "code", code, "body", body, "polygon", polygon, "index", index));
     }
 
+    Int32 AttributeIndexValue (API_AttributeIndex index) {
+    #ifdef ServerMainVers_2700
+        return index.ToInt32_Deprecated ();
+    #else
+        return index;
+    #endif
+    }
+
     GS::ObjectState Override (const API_OverriddenAttribute &value) {
+    #ifdef ServerMainVers_2700
+        return GS::ObjectState (
+            "attributeIndex", value.hasValue ? AttributeIndexValue (value.value) : 0, "active", value.hasValue);
+    #else
         return GS::ObjectState ("attributeIndex", value.attributeIndex, "active", value.overridden);
+    #endif
     }
 
     GS::ObjectState BuildingMaterial (API_AttributeIndex index) {
-        GS::ObjectState out ("index", index);
+        GS::ObjectState out ("index", AttributeIndexValue (index));
         API_Attribute attribute = {};
         GS::UniString name;
         GS::UniString id;
@@ -2005,24 +2023,33 @@ namespace {
         out.Add ("error", err);
         if (err == NoError) {
             out.Add ("name", name);
-            out.Add ("defaultSurfaceAttributeIndex", attribute.buildingMaterial.cutMaterial);
+            out.Add ("defaultSurfaceAttributeIndex", AttributeIndexValue (attribute.buildingMaterial.cutMaterial));
             out.Add ("connectionPriority", attribute.buildingMaterial.connPriority);
         }
         return out;
     }
 
     GS::ObjectState ReadModelMaterial (API_AttributeIndex index) {
-        GS::ObjectState out ("modelMaterialIndex", index);
+        GS::ObjectState out ("modelMaterialIndex", AttributeIndexValue (index));
         API_Component3D component = {};
         component.header.typeID = API_UmatID;
+    #ifdef ServerMainVers_2700
+        component.header.index = index.ToInt32_Deprecated ();
+    #else
         component.header.index = index;
+    #endif
         const GSErrCode err = ACAPI_3D_GetComponent (&component);
         out.Add ("error", err);
         out.Add ("status", err == NoError ? "Resolved" : "ReadError");
         if (err == NoError) {
             const API_MaterialType &material = component.umat.mater;
-            out.Add ("surfaceAttributeIndex", material.head.index);
-            out.Add ("generated", material.head.index == 0);
+            out.Add ("surfaceAttributeIndex", AttributeIndexValue (material.head.index));
+    #ifdef ServerMainVers_2700
+            const bool generated = material.head.index.ToInt32_Deprecated () == 0;
+    #else
+            const bool generated = material.head.index == 0;
+    #endif
+            out.Add ("generated", generated);
             out.Add ("modelName", GS::UniString (material.head.name));
             out.Add (
                 "rgb",
@@ -2030,7 +2057,7 @@ namespace {
                     "r", material.surfaceRGB.f_red, "g", material.surfaceRGB.f_green, "b", material.surfaceRGB.f_blue));
             out.Add ("transparency", material.transpPc);
             out.Add ("textureName", GS::UniString (material.texture.texName));
-            if (material.head.index != 0) {
+            if (!generated) {
                 API_Attribute attribute = {};
                 GS::UniString name;
                 attribute.header.typeID = API_MaterialID;
@@ -2061,9 +2088,22 @@ namespace {
                         hatch.GetUniqueId ().ToUniString (),
                         "structureComponentId",
                         profile->GetStructureComponentId (hatch.GetUniqueId ()).ValueStringForDump ());
-                    item.Add ("buildingMaterial",
-                              BuildingMaterial (static_cast<API_AttributeIndex> (hatch.GetBuildMatIdx ())));
+    #ifdef ServerMainVers_2800
+                    const API_AttributeIndex buildingMaterial =
+                        ACAPI_CreateAttributeIndex (hatch.GetBuildMatIdx ().ToGSAttributeIndex_Deprecated ());
+    #elif defined(ServerMainVers_2700)
+                    const API_AttributeIndex buildingMaterial =
+                        ACAPI_CreateAttributeIndex (hatch.GetBuildMatIdx ().ToGSAttributeIndex ());
+    #else
+                    const API_AttributeIndex buildingMaterial =
+                        static_cast<API_AttributeIndex> (hatch.GetBuildMatIdx ());
+    #endif
+                    item.Add ("buildingMaterial", BuildingMaterial (buildingMaterial));
+    #ifdef ServerMainVers_2700
+                    const ProfileItem *info = hatch.HasProfileInfo () ? &hatch.GetProfileItem () : nullptr;
+    #else
                     const ProfileItem *info = hatch.GetProfileItemPtr ();
+    #endif
                     item.Add ("hasProfileInfo", info != nullptr);
                     if (info != nullptr) {
                         item.Add ("core", info->IsCore ());
@@ -2075,8 +2115,14 @@ namespace {
                         const Coord &coord = hatch.GetCoords ()[i];
                         coords.Push (GS::ObjectState ("index", i, "x", coord.x, "y", coord.y));
                         // Индексы сырых coords/addInfo — как в Attribute_Test AC25, без преобразования vertex→edge.
+    #ifdef ServerMainVers_2700
+                        const ProfileEdgeData *edge = info != nullptr && i < hatch.GetProfileEdgeData ().size ()
+                                                          ? &hatch.GetProfileEdgeData ()[i]
+                                                          : nullptr;
+    #else
                         const ProfileEdgeData *edgeData = info != nullptr ? hatch.GetProfileEdgeDataPtr () : nullptr;
                         const ProfileEdgeData *edge = edgeData != nullptr ? edgeData + i : nullptr;
+    #endif
                         if (edge != nullptr)
                             edges.Push (GS::ObjectState ("index",
                                                          i,
@@ -2105,7 +2151,7 @@ namespace {
     GS::ObjectState AttributeProfile (API_AttributeIndex index) {
         API_AttributeDefExt defs = {};
         const GSErrCode err = ACAPI_Attribute_GetDefExt (API_ProfileID, index, &defs);
-        GS::ObjectState out ("attributeIndex", index, "error", err);
+        GS::ObjectState out ("attributeIndex", AttributeIndexValue (index), "error", err);
         if (err == NoError)
             out.Add ("profile", ReadProfile (defs.profile_vectorImageItems));
         ACAPI_DisposeAttrDefsHdlsExt (&defs);
@@ -2113,7 +2159,7 @@ namespace {
     }
 
     GS::ObjectState Composite (API_AttributeIndex index) {
-        GS::ObjectState out ("attributeIndex", index);
+        GS::ObjectState out ("attributeIndex", AttributeIndexValue (index));
         API_Attribute attribute = {};
         GS::UniString name;
         attribute.header.typeID = API_CompWallID;
@@ -2156,7 +2202,7 @@ namespace {
                              "structureType",
                              static_cast<Int32> (data.modelElemStructureType),
                              "profileAttributeIndex",
-                             data.profileAttr);
+                             AttributeIndexValue (data.profileAttr));
         out.Add ("homogeneous", data.isHomogeneous);
         out.Add ("circleBased", data.circleBased);
         out.Add ("width", data.nominalWidth);
@@ -2185,7 +2231,7 @@ namespace {
         out.Add ("elementError", err);
         if (err != NoError)
             return out;
-        if (element.header.typeID == API_ColumnSegmentID) {
+        if (GetElemTypeID (element) == API_ColumnSegmentID) {
             out.Add ("selectedSegment", ColumnSegment (element.columnSegment));
             element.header.guid = element.columnSegment.owner;
             err = ACAPI_Element_Get (&element);
@@ -2194,9 +2240,9 @@ namespace {
                 return out;
         }
         out.Add ("elementGuid", APIGuidToString (element.header.guid));
-        out.Add ("elementType", static_cast<Int32> (element.header.typeID));
+        out.Add ("elementType", static_cast<Int32> (GetElemTypeID (element)));
         API_ElementMemo memo = {};
-        if (element.header.typeID == API_SlabID) {
+        if (GetElemTypeID (element) == API_SlabID) {
             out.Add ("floorIndex", element.header.floorInd);
             out.Add ("level", element.slab.level);
             out.Add ("offsetFromTop", element.slab.offsetFromTop);
@@ -2236,7 +2282,7 @@ namespace {
             out.Add ("memoContourEnds", ends);
             out.Add ("memoArcs", arcs);
 
-        } else if (element.header.typeID == API_WallID) {
+        } else if (GetElemTypeID (element) == API_WallID) {
             const API_WallType &wall = element.wall;
             out.Add ("structureType", static_cast<Int32> (wall.modelElemStructureType));
             out.Add ("beg", Point (wall.begC.x, wall.begC.y, 0));
@@ -2264,7 +2310,7 @@ namespace {
                     out.Add ("stretchedProfile", ReadProfile (memo.stretchedProfile));
                 out.Add ("attributeProfile", AttributeProfile (wall.profileAttr));
             }
-        } else if (element.header.typeID == API_ColumnID) {
+        } else if (GetElemTypeID (element) == API_ColumnID) {
             const API_ColumnType &column = element.column;
             out.Add ("origin", Point (column.origoPos.x, column.origoPos.y, 0));
             out.Add ("rotation", column.axisRotationAngle);
@@ -2334,9 +2380,9 @@ namespace {
             out.Add ("profiles", profiles);
             out.Add ("schemes", schemes);
             out.Add ("cuts", cuts);
-        } else if (element.header.typeID == API_ObjectID || element.header.typeID == API_WindowID ||
-                   element.header.typeID == API_DoorID) {
-            const bool isObject = element.header.typeID == API_ObjectID;
+        } else if (GetElemTypeID (element) == API_ObjectID || GetElemTypeID (element) == API_WindowID ||
+                   GetElemTypeID (element) == API_DoorID) {
+            const bool isObject = GetElemTypeID (element) == API_ObjectID;
             const Int32 libInd = isObject ? element.object.libInd : element.window.openingBase.libInd;
             out.Add ("libInd", libInd);
             API_LibPart libpart = {};
@@ -2396,11 +2442,11 @@ namespace {
         GS::Array<GS::ObjectState> parameters;
         if (err == NoError) {
             const API_Element &element = favorite.element;
-            out.Add ("type", static_cast<Int32> (element.header.typeID));
-            if (element.header.typeID == API_ObjectID || element.header.typeID == API_WindowID ||
-                element.header.typeID == API_DoorID) {
+            out.Add ("type", static_cast<Int32> (GetElemTypeID (element)));
+            if (GetElemTypeID (element) == API_ObjectID || GetElemTypeID (element) == API_WindowID ||
+                GetElemTypeID (element) == API_DoorID) {
                 const Int32 libInd =
-                    element.header.typeID == API_ObjectID ? element.object.libInd : element.window.openingBase.libInd;
+                    GetElemTypeID (element) == API_ObjectID ? element.object.libInd : element.window.openingBase.libInd;
                 out.Add ("libInd", libInd);
                 API_LibPart libpart = {};
                 libpart.index = libInd;
@@ -2461,7 +2507,7 @@ namespace {
 
     GS::ObjectState GetZone3DPolygons_StrictAPI (const API_Elem_Head &head,
                                                  const Roombook::RoomSurfaceSnapshot &snapshot) {
-        GS::ObjectState result ("guid", APIGuidToString (head.guid), "type", static_cast<Int32> (head.typeID));
+        GS::ObjectState result ("guid", APIGuidToString (head.guid), "type", static_cast<Int32> (GetElemTypeID (head)));
         GS::Array<GS::ObjectState> errors;
         for (const Roombook::RoomSurfaceReadError &error : snapshot.errors)
             errors.Push (GS::ObjectState ("stage",
@@ -2496,7 +2542,7 @@ namespace {
                 GS::ObjectState polygon ("index",
                                          surface.polygonIndex,
                                          "material",
-                                         surface.modelMaterialIndex,
+                                         AttributeIndexValue (surface.modelMaterialIndex),
                                          "flags",
                                          surface.flags,
                                          "signedNormalIndex",
@@ -2542,7 +2588,7 @@ namespace {
 
     GS::ObjectState ReadZoneSurfacePartition (const API_Elem_Head &zone) {
         using namespace Roombook;
-        if (zone.typeID != API_ZoneID)
+        if (GetElemTypeID (zone) != API_ZoneID)
             return GS::ObjectState ("status", "InvalidInput", "partitionComplete", false, "error", APIERR_BADID);
         if (!ClassificationFunc::ReadSystemDict ())
             return GS::ObjectState (
@@ -2560,7 +2606,7 @@ namespace {
                 continue;
             API_Elem_Head geometry = {};
             geometry.guid = source.geometryGuid;
-            geometry.typeID = source.baseType;
+            SetElemTypeID (geometry, source.baseType);
             source.snapshot = ReadRoomSurfaces (geometry);
             source.origin = RoomSurfaceOrigin::Native3D;
             if (!source.snapshot.IsComplete ()) {
@@ -2668,7 +2714,7 @@ namespace {
                     "preparedWallIndex",
                     face.preparedWallIndex,
                     "modelMaterialIndex",
-                    face.modelMaterialIndex));
+                    AttributeIndexValue (face.modelMaterialIndex)));
             pieces.Push (GS::ObjectState ("zoneBody",
                                           piece.zoneBodyIndex,
                                           "zonePolygon",
@@ -2841,7 +2887,7 @@ namespace {
                                       "floor",
                                       element.header.floorInd,
                                       "layer",
-                                      element.header.layer);
+                                      AttributeIndexValue (element.header.layer));
                 if (type == API_ZoneID) {
                     item.Add ("name", GS::UniString (element.zone.roomName));
                     item.Add ("number", GS::UniString (element.zone.roomNoStr));
@@ -2849,7 +2895,7 @@ namespace {
                     item.Add ("referenceLine", element.zone.refLineFlag);
                     item.Add ("height", element.zone.roomHeight);
                 } else if (type == API_WallID) {
-                    item.Add ("profile", element.wall.profileAttr);
+                    item.Add ("profile", AttributeIndexValue (element.wall.profileAttr));
                     item.Add ("zoneRelation", static_cast<Int32> (element.wall.zoneRel));
                     item.Add ("beg", Point (element.wall.begC.x, element.wall.begC.y, 0));
                     item.Add ("end", Point (element.wall.endC.x, element.wall.endC.y, 0));
@@ -2873,9 +2919,9 @@ namespace {
                                                             "structure",
                                                             static_cast<Int32> (data.modelElemStructureType),
                                                             "material",
-                                                            data.buildingMaterial,
+                                                            AttributeIndexValue (data.buildingMaterial),
                                                             "profile",
-                                                            data.profileAttr));
+                                                            AttributeIndexValue (data.profileAttr)));
                         }
                     }
                     item.Add ("memoError", memoErr);
@@ -2899,7 +2945,7 @@ GS::ObjectState DrawRoomSurfaceWalls (const GS::ObjectState &parameters) {
     API_Elem_Head zone = {};
     zone.guid = APIGuidFromString (zoneText.ToCStr ().Get ());
     const GSErrCode zoneErr = ACAPI_Element_GetHeader (&zone);
-    if (zoneErr != NoError || zone.typeID != API_ZoneID)
+    if (zoneErr != NoError || GetElemTypeID (zone) != API_ZoneID)
         return GS::ObjectState ("status", "ZoneReadError", "error", zoneErr, "createdCount", 0);
     const Stories stories = GetStories ();
     if (stories.IsEmpty ())
@@ -2926,8 +2972,8 @@ GS::ObjectState DrawRoomSurfaceWalls (const GS::ObjectState &parameters) {
         const Sector edge = {{bx, by}, {ex, ey}};
         if (!Roombook::OtdWall_Add_One (parent.guid, edge, false, height, bottom, zone.floorInd, 0, wall))
             return GS::ObjectState ("status", "InvalidEdge", "inputIndex", walls.GetSize (), "createdCount", 0);
-        wall.base_type = parent.typeID;
-        wall.type = parent.typeID == API_ColumnID ? Roombook::Column : Roombook::Wall_Main;
+        wall.base_type = GetElemTypeID (parent);
+        wall.type = GetElemTypeID (parent) == API_ColumnID ? Roombook::Column : Roombook::Wall_Main;
         wall.slant_angle = angle;
         wall.material.material = static_cast<short> (surface);
         wall.favorite.type = API_WallID;
@@ -3026,9 +3072,9 @@ GS::ObjectState DrawRoomSurfaceWalls (const GS::ObjectState &parameters) {
                                        "readError",
                                        readErr,
                                        "type",
-                                       static_cast<Int32> (head.typeID),
+                                       static_cast<Int32> (GetElemTypeID (head)),
                                        "layerIndex",
-                                       head.layer));
+                                       AttributeIndexValue (head.layer)));
     }
     DBprnt (static_cast<double> (created.GetSize ()), "Z4 created surface walls");
     GS::ObjectState response ("status", "Created", "createdCount", created.GetSize ());
@@ -3084,7 +3130,7 @@ GS::ObjectState RoomGeometryDiagnosticCommand::Execute (const GS::ObjectState &p
     bool collectRoomInfo = false;
     parameters.Get ("collectRoomInfo", collectRoomInfo);
     if (collectRoomInfo) {
-        if (head.typeID != API_ZoneID)
+        if (GetElemTypeID (head) != API_ZoneID)
             return GS::ObjectState ("status", "InvalidInput", "readComplete", false, "error", APIERR_BADID);
         Roombook::OtdRoom room;
         Roombook::UnicElementByType elements;

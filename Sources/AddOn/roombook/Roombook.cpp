@@ -552,7 +552,7 @@ namespace Roombook
                                  &coordinateCache)) {
                 API_Elem_Head zone = {};
                 zone.guid = zoneGuid;
-                zone.typeID = API_ZoneID;
+                SetElemTypeID (zone, API_ZoneID);
                 GS::Array<API_Guid> finishClasses;
                 context.finclassguids.EnumerateKeys (
                     [&] (const API_Guid &classGuid) { finishClasses.Push (classGuid); });

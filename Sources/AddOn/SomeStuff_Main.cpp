@@ -163,7 +163,6 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
     int dummymode = DUMMY_MODE_UNDEF;
     if (!syncSettings.GetSyncMon ())
         return NoError;
-    // У граничных уведомлений нет обрабатываемого элемента.
     if (elemType->elemHead.hotlinkGuid != APINULLGuid)
         return NoError;
     const bool isChangeEvent =
@@ -172,9 +171,14 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
         elemType->notifID == APINotifyElement_ClassificationChange;
     // Смотрим - что поменялось
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
+#ifdef ServerMainVers_2600
+    const API_ElemVariationID elementVariation = elemType->elemHead.type.variationID;
+#else
+    const API_ElemVariationID elementVariation = elemType->elemHead.variationID;
+#endif
     // Для новых элементов с variationID == APIVarId_GridElement не выполняем синхронизацию - вылетает на разрезах
     if (elemType->notifID == APINotifyElement_New && elementType == API_ObjectID) {
-        if (elemType->elemHead.variationID == APIVarId_GridElement)
+        if (elementVariation == APIVarId_GridElement)
             return NoError;
     }
     switch (elementType) {
@@ -206,7 +210,7 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
     if (!IsElementEditable (elemType->elemHead, syncSettings, true))
         return NoError;
     // Для новых элементов с variationID == APIVarId_GridElement не выполняем синхронизацию - вылетает на разрезах
-    if (elementType == API_ObjectID && elemType->elemHead.variationID == APIVarId_GridElement) {
+    if (elementType == API_ObjectID && elementVariation == APIVarId_GridElement) {
         if (elemType->notifID == APINotifyElement_New) {
             return NoError;
 

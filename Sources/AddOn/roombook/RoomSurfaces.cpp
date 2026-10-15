@@ -137,7 +137,11 @@ namespace Roombook {
             const API_PgonType polygon = component.pgon;
             out.bodyIndex = bodyIndex;
             out.polygonIndex = polygonIndex;
+    #ifdef ServerMainVers_2700
+            out.modelMaterialIndex = ACAPI_CreateAttributeIndex (polygon.iumat);
+    #else
             out.modelMaterialIndex = polygon.iumat;
+    #endif
             out.flags = polygon.status;
             out.signedNormalIndex = polygon.ivect;
             if (polygon.ivect == std::numeric_limits<Int32>::min ()) {
@@ -275,7 +279,7 @@ namespace Roombook {
                 bodyOut.vertexCount = body.nVert;
                 bodyOut.matrix = body.tranmat;
                 bodyOut.parentGuid = body.parent.guid;
-                bodyOut.parentType = body.parent.typeID;
+                bodyOut.parentType = GetElemTypeID (body.parent);
                 BodyComponentCache components;
                 components.counters = cache != nullptr ? &cache->counters : nullptr;
                 for (Int32 pi = 1; pi <= body.nPgon; ++pi) {
@@ -424,7 +428,15 @@ namespace Roombook {
                                                  const API_Guid &renovationFilterGuid) {
         return ReadConnectedElementsCached (
             guid, type, filter, variation, renovationFilterGuid, cache, [&] (GS::Array<API_Guid> &items) {
+    #ifdef ServerMainVers_2700
+                return ACAPI_Grouping_GetConnectedElements (
+                    guid, API_ElemType (type, variation), &items, filter, renovationFilterGuid);
+    #elif defined(ServerMainVers_2600)
+                return ACAPI_Element_GetConnectedElements (
+                    guid, API_ElemType (type, variation), &items, filter, renovationFilterGuid);
+    #else
                 return ACAPI_Element_GetConnectedElements (guid, type, &items, filter, variation, renovationFilterGuid);
+    #endif
             });
     }
 

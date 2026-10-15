@@ -400,15 +400,20 @@ bool WriteSyncSettingsToPreferences (const SyncSettings &syncSettings) {
 // открытие PLN отдельно проверяются в Archicad.
 // --------------------------------------------------------------------
 GSErrCode ClearLegacyProjectPreferences () {
+#ifdef ServerMainVers_2700
+    const auto readPreferences = ACAPI_Preferences_Platform;
+#else
+    const auto readPreferences = ACAPI_GetPreferences_Platform;
+#endif
     Int32 version = 0;
     GSSize nByte = 0;
-    GSErrCode err = ACAPI_GetPreferences_Platform (&version, &nByte, nullptr, nullptr);
+    GSErrCode err = readPreferences (&version, &nByte, nullptr, nullptr);
     if (err != NoError || nByte == 0)
         return err;
     err = ACAPI_SetPreferences (0, 0, nullptr);
     if (err != NoError)
         return err;
-    err = ACAPI_GetPreferences_Platform (&version, &nByte, nullptr, nullptr);
+    err = readPreferences (&version, &nByte, nullptr, nullptr);
     if (err != NoError)
         return err;
     return nByte == 0 ? NoError : APIERR_GENERAL;

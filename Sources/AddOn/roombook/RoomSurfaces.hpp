@@ -122,7 +122,11 @@ namespace Roombook {
 
     // Value-снимок API_RoomRelation: перечисления и части не владеют хендлами, niches не читаем.
     struct RoomRelationValues {
+        #ifdef ServerMainVers_2600
+        GS::HashTable<API_ElemType, GS::Array<API_Guid>> elementsGroupedByType;
+        #else
         GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>> elementsGroupedByType;
+        #endif
         GS::Array<API_WallPart> wallPart;
         GS::Array<API_BeamPart> beamPart;
     };
