@@ -283,7 +283,7 @@ namespace {
             element.wall.modelElemStructureType = API_ProfileStructure;
             bases.Clear ();
             check (!BuildPreparedWallSource (element, 10, {}, bases, prepared) && bases.IsEmpty () &&
-                       prepared.routeReason == "ProfileWall" && !prepared.snapshot.IsComplete (),
+                       !prepared.snapshot.IsComplete (),
                    "272 profile explicitly requests cached native fallback");
 
             element = {};
@@ -2556,14 +2556,13 @@ namespace {
         auto candidates = ReadRoomSurfaceCandidates (zone, finishGuids);
         // Диагностика сохраняет native-контакты; production отдельно готовит аналитические основания.
         for (auto &source : candidates.sources) {
-            if (source.routeReason != "PendingPreparedGeometry")
+            if (source.baseType != API_WallID && source.baseType != API_SlabID)
                 continue;
             API_Elem_Head geometry = {};
             geometry.guid = source.geometryGuid;
             geometry.typeID = source.baseType;
             source.snapshot = ReadRoomSurfaces (geometry);
             source.origin = RoomSurfaceOrigin::Native3D;
-            source.routeReason = "DiagnosticNative3D";
             if (!source.snapshot.IsComplete ()) {
                 candidates.errors.Push ({source.geometryGuid, "candidateSurfaceSnapshot", APIERR_GENERAL, 0});
                 candidates.complete = false;
@@ -2623,8 +2622,6 @@ namespace {
                 APIGuidToString (source.geometryGuid),
                 "origin",
                 source.origin == Roombook::RoomSurfaceOrigin::PreparedAnalytic ? "PreparedAnalytic" : "Native3D",
-                "routeReason",
-                source.routeReason,
                 "snapshotStatus",
                 SurfaceStatusName (source.snapshot.status),
                 "snapshotComplete",

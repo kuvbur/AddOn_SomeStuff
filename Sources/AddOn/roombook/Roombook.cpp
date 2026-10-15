@@ -232,23 +232,23 @@ namespace Roombook
             // Номинальная прямоугольная модель не доказывает дугу, уклон, профиль/брёвна или связанную высоту.
     #if defined(TESTING)
             if (wall.modelElemStructureType == API_ProfileStructure)
-                DBprnt ("    source.routeReason = ProfileWall");
+                DBprnt ("    source: ProfileWall");
             else if (wall.angle != 0)
-                DBprnt ("    source.routeReason = CurvedWall");
+                DBprnt ("    source: CurvedWall");
             else if (wall.profileType != APISect_Normal)
-                DBprnt ("    source.routeReason = SlantedOrTrapezoidSection");
+                DBprnt ("    source: SlantedOrTrapezoidSection");
             else if (wall.type != APIWtyp_Normal)
-                DBprnt ("    source.routeReason = PolygonOrTrapezoidWall");
+                DBprnt ("    source: PolygonOrTrapezoidWall");
             else if (wall.logHeight != 0)
-                DBprnt ("    source.routeReason = LogWall");
+                DBprnt ("    source: LogWall");
             else
-                DBprnt ("    source.routeReason = TopLinkedWall");
+                DBprnt ("    source: TopLinkedWall");
     #endif
             return false;
         }
         if ((wall.hasWindow || wall.hasDoor) && openings.IsEmpty ()) {
     #if defined(TESTING)
-            DBprnt ("    source.routeReason = UnresolvedWallOpeningIds");
+            DBprnt ("    source: UnresolvedWallOpeningIds");
     #endif
             return false;
         }
@@ -264,7 +264,7 @@ namespace Roombook
                                           ie) ||
             !std::isfinite (bottom) || !std::isfinite (wall.height) || wall.height <= 0) {
     #if defined(TESTING)
-            DBprnt ("    source.routeReason = InvalidWallDimensions");
+            DBprnt ("    source: InvalidWallDimensions");
     #endif
             return false;
         }
@@ -276,7 +276,7 @@ namespace Roombook
         std::vector<AnalyticGeometry::Rect> rectangles;
         if (!AnalyticGeometry::SubtractOpenings ({0, bottom, length, bottom + wall.height}, cuts, rectangles)) {
     #if defined(TESTING)
-            DBprnt ("    source.routeReason = UnsupportedOpeningDimensions");
+            DBprnt ("    source: UnsupportedOpeningDimensions");
     #endif
             return false;
         }
@@ -293,7 +293,7 @@ namespace Roombook
             const double sideLength = std::hypot (end.x - beg.x, end.y - beg.y);
             if (sideLength <= 0 || !std::isfinite (sideLength)) {
     #if defined(TESTING)
-                DBprnt ("    source.routeReason = InvalidWallSide");
+                DBprnt ("    source: InvalidWallSide");
     #endif
                 return false;
             }
@@ -360,7 +360,7 @@ namespace Roombook
         }
         source.origin = RoomSurfaceOrigin::PreparedAnalytic;
     #if defined(TESTING)
-        DBprnt ("    source.routeReason = OrdinaryWallSEOTrimsIgnored");
+        DBprnt ("    source: OrdinaryWallSEOTrimsIgnored");
     #endif
         source.snapshot.guid = source.baseGuid;
         source.snapshot.status = RoomSurfaceStatus::Extracted;
@@ -382,7 +382,7 @@ namespace Roombook
                 reference, element.slab.offsetFromTop, element.slab.thickness, bottom, top) ||
             polygon.IsEmpty () || !std::isfinite (polygon.CalcArea ()) || polygon.CalcArea () <= 0) {
     #if defined(TESTING)
-            DBprnt ("    source.routeReason = UnsupportedSlabGeometry");
+            DBprnt ("    source: UnsupportedSlabGeometry");
     #endif
             return false;
         }
@@ -390,7 +390,7 @@ namespace Roombook
         const auto segmented = polygon.SegmentUp (ArcDivParams (0.00001));
         if (segmented.IsEmpty ()) {
     #if defined(TESTING)
-            DBprnt ("    source.routeReason = UnsupportedSlabContours");
+            DBprnt ("    source: UnsupportedSlabContours");
     #endif
             return false;
         }
@@ -406,7 +406,7 @@ namespace Roombook
             part.CopyPolygonData (coords, arcs, ends, reversed, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
             if (!arcs.IsEmpty () || ends.IsEmpty ()) {
     #if defined(TESTING)
-                DBprnt ("    source.routeReason = UnsupportedSlabContours");
+                DBprnt ("    source: UnsupportedSlabContours");
     #endif
                 return false;
             }
@@ -458,7 +458,7 @@ namespace Roombook
         bases.Push (slab);
         source.origin = RoomSurfaceOrigin::PreparedAnalytic;
     #if defined(TESTING)
-        DBprnt ("    source.routeReason = OrdinarySlabSEOTrimsIgnored");
+        DBprnt ("    source: OrdinarySlabSEOTrimsIgnored");
     #endif
         source.snapshot.guid = source.baseGuid;
         source.snapshot.status = RoomSurfaceStatus::Extracted;
@@ -504,7 +504,7 @@ namespace Roombook
                 source.baseGuid = source.geometryGuid = element.header.guid;
                 source.baseType = API_SlabID;
     #if defined(TESTING)
-                DBprnt ("    source.routeReason = SlabPolygonMemoError");
+                DBprnt ("    source: SlabPolygonMemoError");
     #endif
             }
         }

@@ -13,8 +13,6 @@ namespace Roombook {
         RoomSurfaceSnapshot snapshot;
         // Параметрическая геометрия сознательно игнорирует SEO/подрезки (решение владельца).
         RoomSurfaceOrigin origin = RoomSurfaceOrigin::Native3D;
-        // Диагностическая причина маршрута источника; записывается, не читается.
-        GS::UniString routeReason;
     };
 
     struct RoomSurfaceSourceFace {

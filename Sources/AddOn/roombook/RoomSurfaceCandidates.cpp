@@ -104,7 +104,6 @@ namespace Roombook {
                 source.baseGuid = guid;
                 source.baseType = type;
                 source.geometryGuid = guid;
-                source.routeReason = "PendingPreparedGeometry";
                 result.sources.Push (std::move (source));
                 return;
             }
