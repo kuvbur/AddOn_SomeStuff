@@ -5344,7 +5344,11 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     void Floor_Draw (const Stories &storyLevels, OtdSlab &otdslab, UnicElementByType &subelementByparent) {
         if (otdslab.surface_geometry) {
-            Floor_Draw_Slab (otdslab.favorite.name, storyLevels, otdslab);
+            if (otdslab.favorite.type == API_ObjectID) {
+                Floor_Draw_Object (otdslab.favorite.name, storyLevels, otdslab);
+            } else {
+                Floor_Draw_Slab (otdslab.favorite.name, storyLevels, otdslab);
+            }
             if (otdslab.otd_guid != APINULLGuid)
                 Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent);
             return;
