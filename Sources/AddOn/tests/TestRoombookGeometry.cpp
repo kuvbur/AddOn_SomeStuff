@@ -1432,6 +1432,21 @@ namespace {
                    projected.GetSize () == 1 && closeArea (projected[0].zBottom, 3.4) &&
                    projected[0].base_guid == baseB && projected[0].type == Ceil,
                "discovered ceiling across gap uses actual lower slab face");
+        OtdSlab nominalCeiling;
+        nominalCeiling.poly = projected[0].poly;
+        nominalCeiling.zBottom = 2.8;
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominalCeiling, false) &&
+                   projected.GetSize () == 1 && closeArea (projected[0].zBottom, 2.8) &&
+                   closeArea (slabArea (projected), 12),
+               "ceiling above zone height falls back to nominal zone ceiling candidate");
+        projected.Clear ();
+        check (BuildProjectedSlabFinishes (
+                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominalCeiling, true) &&
+                   projected.GetSize () == 1 && closeArea (projected[0].zBottom, 3.4) &&
+                   projected[0].base_guid == baseB,
+               "ceil_by_slab ignores nominal zone ceiling candidate");
         roles = {baseA};
         projected.Clear ();
         check (!BuildProjectedSlabFinishes (ceilingZone, slabSources, roles, Ceil, 0, projected, rejected) &&

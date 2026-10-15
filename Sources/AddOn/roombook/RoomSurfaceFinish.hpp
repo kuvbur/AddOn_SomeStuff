@@ -44,6 +44,7 @@ namespace Roombook {
     bool BuildSurfaceSlabs (const RoomSurfacePiece &piece, short floorInd, GS::Array<OtdSlab> &slabs);
     // XY-покрытие комнаты пересекается с реальными гранями оснований; Z остаётся исходным.
     // Прежние приоритет по убыванию, наибольшие части, исключение отверстий и опциональные остаток/перепады.
+    // Для потолка номинальная отметка зоны участвует в выборе наравне с перекрытиями.
     // Владелец при равных отметках неоднозначен; фактическая Z грани не округляется.
     bool BuildProjectedSlabFinishes (const RoomSurfaceSnapshot &zone,
                                      const GS::Array<RoomSurfaceSource> &sources,

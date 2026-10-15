@@ -1141,6 +1141,21 @@ namespace Roombook {
             if (!found)
                 return false;
         }
+        // Потолок зоны — такой же кандидат: ближние перекрытия обрабатываются раньше,
+        // а остаток покрывается отметкой height_ceil прежним алгоритмом остатка.
+        const bool zoneCeilingCandidate = type == Ceil && nominal != nullptr && !onlyOnSlab;
+        if (zoneCeilingCandidate) {
+            Candidate zoneCeiling;
+            zoneCeiling.slab = *nominal;
+            zoneCeiling.slab.type = type;
+            zoneCeiling.slab.floorInd = floorInd;
+            zoneCeiling.slab.surface_geometry = true;
+            zoneCeiling.slab.zBottom = nominal->zBottom;
+            // Перепад до номинальной отметки не строим: собственных границ у кандидата нет.
+            zoneCeiling.bottom = std::numeric_limits<double>::infinity ();
+            zoneCeiling.top = -zoneCeiling.bottom;
+            candidates.push_back (zoneCeiling);
+        }
         // Изнутри зоны: верхние грани пола по убыванию, нижние грани потолка по возрастанию.
         std::sort (candidates.begin (), candidates.end (), [type] (const Candidate &a, const Candidate &b) {
             return type == Floor ? a.slab.zBottom > b.slab.zBottom : a.slab.zBottom < b.slab.zBottom;
@@ -1244,7 +1259,8 @@ namespace Roombook {
             if (!next.IsEmpty ())
                 remainder.Push (next.PopLargest ());
         }
-        if (!onlyOnSlab && nominal != nullptr && remainder.CalcArea () > 0.0001) {
+        // Номинальный потолок уже был кандидатом: второй остаток на той же отметке не нужен.
+        if (!onlyOnSlab && nominal != nullptr && !zoneCeilingCandidate && remainder.CalcArea () > 0.0001) {
             OtdSlab residual = *nominal;
             residual.poly = remainder.PopLargest ();
             residual.floorInd = floorInd;
