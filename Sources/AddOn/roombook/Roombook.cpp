@@ -5989,9 +5989,10 @@ namespace Roombook
         GDLHelpers::ParamDict accsessoryparams;
         GDLHelpers::Param p;
         if (otdslab.type == Ceil) {
-            p.num = otdslab.zBottom;
+            // Высота уже задана положением объекта; GDL дополнительно прибавляет ac_ref_height.
+            p.num = 0;
             accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
-            slabobjelement.object.level = GetzPos (0, otdslab.floorInd, storyLevels);
+            slabobjelement.object.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
         }
         if (otdslab.type == Floor) {
             p.num = otdslab.zBottom;
