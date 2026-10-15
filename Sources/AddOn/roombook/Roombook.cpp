@@ -1498,6 +1498,37 @@ namespace Roombook
     // 7. Extract RemoveUnusedFinishingElements() and PrepareElementsForUpdate() from the cleanup block.
     // 8. After each extraction, keep behavior identical and verify the build.
     //    The goal is to make RoomBook() a thin orchestrator with small single-purpose helpers.
+    // Ищет комбинацию слоёв с именем, заканчивающимся на smstf_fin, и применяет её при наличии.
+    bool ApplyFinishLayerCombinationIfExists () {
+        GS::Array<API_Attribute> layerCombinations;
+    #ifdef ServerMainVers_2700
+        if (ACAPI_Attribute_GetAttributesByType (API_LayerCombID, layerCombinations) != NoError)
+            return false;
+    #else
+        if (ParamHelpers::ACAPI_Attribute_GetAttributesByType (API_LayerCombID, layerCombinations) != NoError)
+            return false;
+    #endif
+
+        for (const API_Attribute &attr : layerCombinations) {
+            GS::UniString name (attr.header.name);
+            if (name.ToLowerCase ().EndsWith ("smstf_fin")) {
+                API_AttributeIndex targetComb = attr.header.index;
+    #ifdef ServerMainVers_2700
+                if (targetComb.IsPositive ()) {
+                    GSErrCode err = ACAPI_Navigator_ChangeCurrLayerComb (&targetComb);
+                    return (err == NoError);
+                }
+    #else
+                if (targetComb != 0) {
+                    GSErrCode err = ACAPI_Environment (APIEnv_ChangeCurrLayerCombID, &targetComb);
+                    return (err == NoError);
+                }
+    #endif
+            }
+        }
+        return false;
+    }
+
     // Собирает данные зон и конструкций, рассчитывает отделку и подготавливает результаты по материалам.
     // Проверяет классификации и доступность существующей отделки, затем вызывает отрисовку и запись связей; при ошибках
     // или отмене выходит.
@@ -1509,6 +1540,9 @@ namespace Roombook
         nPhase = 1;
         // Окно прогресса помогает видеть, на каком этапе выполняется расчёт отделки.
         ProcessWindowGuard pwGuard (funcname, nPhase);
+
+        ApplyFinishLayerCombinationIfExists ();
+
         GS::Array<API_Guid> zones;
         if (!GetTargetZones (zones))
             return;

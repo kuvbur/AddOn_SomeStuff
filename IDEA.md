@@ -1,4 +1,4 @@
-﻿﻿﻿# Current Task Roombook: отделка по поверхностям (#252)
+﻿﻿# Current Task Roombook: отделка по поверхностям (#252)
 
 ## Task
 
@@ -248,6 +248,10 @@ b55d12f [278] IDEA.md: состояние задачи отписки наблю
 - [x] По команде владельца добавлены русские комментарии, доказан comment-only характер правок, актуализированы и независимо проверены scoped Docs/generated, выполнены final AC25 build/load и свежие live self-tests60/60. Результат — текущий checkpoint Z7, подробности в Archive; без ReNum.cpp, push и закрытия #252.
 
 ## Decisions
+
+- #281 https://github.com/kuvbur/AddOn_SomeStuff/issues/281 — CLOSED. При запуске RoomBook (Roombook.cpp) вызывается ApplyFinishLayerCombinationIfExists(), перечисляющая комбинации слоёв (API_LayerCombID) через ACAPI_Attribute_GetAttributesByType (ParamHelpers::ACAPI_Attribute_GetAttributesByType в AC22–26 / ::ACAPI_Attribute_GetAttributesByType в AC27+). Первая комбинация с ToLowerCase().EndsWith("smstf_fin") применяется через ACAPI_Navigator_ChangeCurrLayerComb (AC27+) / APIEnv_ChangeCurrLayerCombID (AC22–26). Если не найдена — работа продолжается без изменений. Clang-format PASS, LSP 0 новых ошибок, canonical BuildAddOn.py AC25 Debug compile/link success. Проверено в Archicad владельцем.
+
+- #280 https://github.com/kuvbur/AddOn_SomeStuff/issues/280 — OPEN, тело/метки прочитаны обратно. Поэлементное свойство с описанием `some_stuff_reveal_onoff` (семейство `some_stuff_*_onoff`) для включения/отключения создания откосов окна/двери; свойство отсутствует или невалидно — откосы создаются. Точка применения — `OpeningReveals_Create_One` (Roombook.cpp:889), приоритет над флагом помещения `create_reveal_elements` — открытый вопрос. Issue создана без production-правок/build/runtime; реализация по отдельной команде.
 
 - #271 https://github.com/kuvbur/AddOn_SomeStuff/issues/271 — OPEN, тело/метки прочитаны обратно; поиск Mesh под стенами и многослойный наклонный пол, Roof рекомендована для прототипа. Issue создана без production-правок/build/runtime; следующий шаг — прототип по отдельной команде. 2026-10-13 Mesh→наклонный пол, AC25 Windows: владелец согласовал несколько элементов, по одному плоскому элементу на плоскость сетки, и предложил рассмотреть Roof вместо Shell. SDK25 подтверждает coordinate search для API_MeshID, composite Shell/Roof и API_PlaneRoofID с XY-полигоном, angle/baseLine/posSign. Рекомендован прототип односкатной Roof как более прямое представление плоской грани; окончательная замена Shell и production-реализация ещё не выполнялись. Native Mesh reader, нижняя контактная поверхность Roof/порядок слоёв/стыки/отверстия/учёт и повтор пока not verified; build/runtime не выполнялись. Next Step: native-прототип односкатной многослойной Roof по реальной mesh-грани после согласования запуска; issue до production-правок. Подробности: skill lightrag/references/somestuff-mesh-shell-ac25.md. Production/модель/активные задачи/Scope сохранены; нового checkpoint/commit/push нет.
 

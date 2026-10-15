@@ -262,6 +262,8 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     void RoomBook ();
 
+    bool ApplyFinishLayerCombinationIfExists ();
+
     GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_Guid> &zones,
                                                                const UnicGuid &finclassguids,
                                                                const ClassificationFunc::ClassificationDict &finclass,
