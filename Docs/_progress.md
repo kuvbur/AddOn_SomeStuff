@@ -7,6 +7,15 @@
 - Карточка dialogs/SyncSettings уточнена: очистка только непустых legacy preferences, read-back и ошибки до project callback; JSON и все user-data stores вне scope. Canonical AC25 Windows Debug build success, текущий extracted helper matches, SDK-double8/8 PASS; owner-reported финальный runner принят по явной команде закрыть issue. Собственный runner exit20 не принят за success, повтор отменён владельцем; независимый host/save-reopen not verified.
 - Добавлены только один Function и одно project edge (два sites: production и TESTING). MCP symbol snapshot содержит новую функцию, но координаты stale; две callHierarchy позиции не разрешены. Имя/вид взяты из MCP, координаты и вызовы сверены с live source. Все прежние records/order сохранены; их старые координаты и полный граф не заявляются актуальными. Whole-tree regex generator не запускался.
 
+
+### 2026-10-15 — roombook-срез документации (коммиты 18d05b7..68efad7)
+
+- Обновлены `modules/Roombook.md`, обзорные `ARCHITECTURE.md`/`REPOMAP.md`/`SEQUENCES.md` (новая 11-я диаграмма — спецификация отделки), `_generated/symbols.json` (1471→1578) и `_generated/callgraph.json` (696→699) по roombook-срезу: 10 файлов `roombook/*` + `json_commands/RoomBookCommand.cpp`. Координаты сверены с исходником и symbols.json (clangd MCP); в Roombook.md исправлен систематический сдвиг +1 (~160 координат в секциях 2026-10-15, «Функции по подсистемам», «Точка входа», «Актуальные границы», контракты заголовков).
+- callgraph: 378 координат обновлено, 3 ребра перенаправлены на `CommonFunction.cpp:2653` (`AdvanceProcessPhase`), 21 метод разрешён суффиксным матчингом, 7 неоднозначных рёбер (в т.ч. `Set` у `Frame` и `BeamAxis`) оставлены со старыми координатами; `call_sites` переведены в 1-based, но НЕ пересобирались — метка `roombook_scoped_2026_10_15` в `meta`. Рёбра `GetSurfaceFinishLayer` удалены (функция удалена).
+- Ключевые факты окна: `roombook/` — каталог (13 файлов); `AdvanceProcessPhase` → `CommonFunction.cpp:2653`; `PrepareElementsForUpdate` → `CommonFunction.cpp:2531`; `SearchCoordinate` — новая обёртка с `CoordinateSearchCache` (AC25 Windows); `routeReason` удалён (#272); SDK AC26–30 (#275).
+- REPOMAP: статистика compile_commands.json (AC25) 46→51 записей (roombook/ 5, tests/ 9→10, корень 11→10); modules/ 25→28 карточек.
+- Build/debugger/коммиты не выполнялись; незакоммиченные правки параллельной сессии (callgraph meta `legacy_preferences_scope`, #273-запись) сохранены. [clangd MCP + source + git]
+
 ### Z7 #252 — scoped documentation checkpoint перед commit
 
 - Актуализированы Roombook/json_commands: production relocation roombook/, reader/candidates/partition/beamFinish, canonical same-source wall union, прежние native writers/material rules; runtime60/60 и63→63 с полными oriented contours ≤1e−6м/max6.5868125745221e−7м.31skip,4trapezoids2.375999498м² и3return fragments остаются ограничениями; #252 OPEN. [по коду + parent deterministic-final-summary]

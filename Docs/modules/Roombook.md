@@ -1,5 +1,61 @@
 # Roombook — Спецификация отделки
 
+## #275/#272/#274/#267 — актуализация 2026-10-15 (68efad7)
+
+Покрывает коммиты после Z7 (`18d05b7`): `f49015d` (вынос функций), `b96f5d3` (#267), `ef5c6e7` (#192), `9963693` (#274/#252/#267/#268/#272), `7c7010a` (#272), `68efad7` (#275); промежуточные `27d759e`, `f2a5e91` (#273-C2), `0647f14`, `8a863af` — вне roombook-среза. Generated пересобраны: symbols 1471→1578, callgraph 696→699 рёбер (roombook endpoints сверены с symbols.json; call_sites не пересобирались — см. meta `roombook_scoped_2026_10_15`).
+
+### Геометрия отделки, кэши и очистка контуров (#274, 9963693)
+
+- Аналитический маршрут для обычных стен/перекрытий: `AnalyticFace` (`Roombook.cpp:141`), `AppendAnalyticRectangles` (:164), `BuildPreparedWallSource` (:217), `BuildPreparedSlabSource` (:372), `PrepareSource` (:470), `PrepareRoomPartitions` (:662). Источники помечаются `RoomSurfaceOrigin` Native3D/PreparedAnalytic (`RoomSurfaces.hpp:29`); native 3D остаётся для сложных профилей. `PrepareRoomPartitions` переводит кандидатов Wall/Slab в подготовленные источники (`PrepareSource`), добавляет discovery-перекрытия в контакты и разбивает поверхности; неполный partition останавливает `RoomBook` до записи модели.
+- Кэши read-only стадии: `RoomSurfaceCache` (`RoomSurfaces.hpp:144`) — snapshots/bounds/elements/classifications/relations/connectedElements + counters, действительны до первой записи модели. `ReadElement` (`RoomSurfaces.cpp:367` / `.hpp:157`), `ReadClassificationItems` (:383/:158), `ReadZoneRelations` (:398/:159), `ReadConnectedElementsCached` (`.hpp:163`, template с callback — regression проверяет настоящий storage-путь без вызовов SDK), `ReadConnectedElements` (:423/:196). `RoomProcessingContext` (`Roombook.cpp:121`–138) — новые поля `coordinateSearchStats`, `coordinateCache`, `surfaceCache`.
+- `SearchCoordinate` (`Roombook.cpp:90`) — обёртка координатного поиска с `CoordinateSearchCache` (`CoordinateSearchCache.hpp`; кэш только AC25 Windows; AC27+ `ACAPI_Element_SearchElementByCoord`, иначе `ACAPI_Goodies(APIAny_SearchElementByCoordID)`).
+- `ReportRoomReadCounters` (`Roombook.cpp:716`) — итоговый отчёт после последнего cached consumer, до записи модели.
+- Кэшируются `ACAPI_Element_Get` (кандидаты `ReadCandidate` `RoomSurfaceCandidates.cpp:35`, подготовка `PrepareSource` :470, `AddSurfaceFinishPiece` :1149, балки в `BuildRoomSurfaceFinishes` :1190+, `OtdWall_Create_FromWall` :2459, `Floor_FindInOneRoom` :2889), `ACAPI_Element_GetClassificationItems`, `ACAPI_Element_GetRelations`. Владелец исключил из кэша `ACAPI_Favorite_Get` и `ACAPI_Attribute_Get`.
+- `Otd_GetOtd_ByZone` (:1653), `Class_IsElementFinClass` (:6456), `OtdWall_Create_FromWall` (:2459) получили `RoomSurfaceCache*` (default nullptr). `CollectRoomInfo` (:2255) читает relations зоны через `ReadZoneRelations`; RelationGuard удалён.
+- Очистка контуров: `CleanCollinearPolygonVertices` (`RoomSurfaceFinish.cpp:14`) — удаление коллинеарных вершин конечных Floor-полигонов после `ExtendFloorContoursToCore` (:22) через SDK `RemoveSameDirEdgesWithSameEdgeUserData`; сохраняет разрывы edge user data и дуги.
+- Стеновые контакты: `ClampSurfaceWallToParts` (`RoomSurfaceFinish.cpp:247`) — привязка к guid+roomEdge, legacy zero bounds, union интервалов, доведение внешних концов после сбора всех контактов, сохранение внутренних разрывов/вырезов/координат проёмов; `LinkSurfaceOpenings` (:499).
+- `DeduplicateAcceptedSlabContacts` (`RoomSurfaceFinish.cpp:767`) — дедупликация фактически дублирующего покрытия боковин перепадов после `ProcessWallFinishes`; остальные surface-контакты сохраняются.
+- Новые заголовки: `CoordinateSearchCache.hpp`, `FloorCoreGeometry.hpp`, `RoomAnalyticGeometry.hpp`. Новые тесты: `ConnectedElementsCacheChecks.hpp`, `CoordinateSearchCacheRegression.cpp`, `FloorCoreChecks.hpp`, `RoomAnalyticChecks.hpp`, `RoomAnalyticRegression.cpp`.
+
+### Поиск перекрытий и отделка разноуровневых полов и потолков (#267, b96f5d3)
+
+- `Floor_FindAll` (`Roombook.cpp:2827`) — конечное XY-пересечение конечных горизонтальных граней видимых неотделочных перекрытий и зон (finite 2D-полигоны, площадь > 1e-12) с сохранением отверстий; native collisions и wall-tip discovery удалены; `RoomSurfaceCache*` опционален.
+- `Floor_FindInOneRoom` (`Roombook.cpp:2890`) — роли по аналитическим высотам: bottom <= room floor — пол (включая нижележащие опоры), иначе потолок независимо от верха зоны.
+- Comparator Floor descending / Ceil ascending в `BuildProjectedSlabFinishes` (`RoomSurfaceFinish.cpp:995`).
+
+### routeReason удалён (#272, 7c7010a)
+
+- `RoomSurfaceSource::routeReason` удалено из `RoomSurfacePartition.hpp`; присваивания и JSON-member удалены; DBprnt сохраняет причины как сообщения `source:`. Диагностический Wall/Slab fallback выбирается по `baseType`.
+
+### Совместимость SDK AC26–30 (#275, 68efad7)
+
+- `GetElemTypeID`/`SetElemTypeID` вместо прямого typeID; variation через `type` (AC26+); relation-snapshot хранит SDK-тип ключей; connected query сохраняет type+variation/filter/renovation при новом AC26 parameter shape и имени Grouping с AC27; preferences Platform переименован с AC27 (`dialogs/SyncSettings.cpp` — вне roombook-среза, см. карточку `dialogs/SyncSettings.md`).
+- Диагностика не отключена: APIOptional override, integer JSON для AttributeIndex, новые profile/hatch accessors с проверкой bounds и ADB-конверсии AC27/28+.
+
+### Прочее из окна коммитов
+
+- `f49015d`: `AdvanceProcessPhase` вынесен в `CommonFunction.cpp:2653` (был `Roombook.cpp:106`).
+- `ef5c6e7` (#192): восстановлено Object-избранное полов и потолков.
+- `27d759e` (обработка сетки на разрезах), `f2a5e91` (#273-C2 очистка legacy preferences), `0647f14` (Dimensions.cpp), `8a863af` (config.json) — вне roombook-среза.
+
+### Актуальные границы (2026-10-15) [по свежим symbols.json + grep]
+
+| Функция | Определение (1-based) |
+|---|---|
+| `ReadRoomSurfaces` | `Sources/AddOn/roombook/RoomSurfaces.cpp:234` |
+| `ReadRoomSurfaceCandidates` | `Sources/AddOn/roombook/RoomSurfaceCandidates.cpp:144` |
+| `PartitionRoomSurfaces` | `Sources/AddOn/roombook/RoomSurfacePartition.cpp:328` |
+| `BuildRoomBeamFinish` | `Sources/AddOn/roombook/RoomSurfacePartition.cpp:678` |
+| `BuildSurfaceWall` | `Sources/AddOn/roombook/RoomSurfaceFinish.cpp:185` |
+| `BuildSurfaceWalls` | `Sources/AddOn/roombook/RoomSurfaceFinish.cpp:370` |
+| `GroupSurfaceWallPieces` | `Sources/AddOn/roombook/RoomSurfaceFinish.cpp:604` |
+| `BuildSurfaceSlabs` | `Sources/AddOn/roombook/RoomSurfaceFinish.cpp:935` |
+| `BuildProjectedSlabFinishes` | `Sources/AddOn/roombook/RoomSurfaceFinish.cpp:995` |
+| `PrepareRoomPartitions` | `Sources/AddOn/roombook/Roombook.cpp:662` |
+| `AddSurfaceFinishPiece` | `Sources/AddOn/roombook/Roombook.cpp:1150` |
+| `BuildRoomSurfaceFinishes` | `Sources/AddOn/roombook/Roombook.cpp:1191` |
+| `CollectRoomInfo` | `Sources/AddOn/roombook/Roombook.cpp:2256` |
+
 ## Z7 #252 — reader, partition, beamFinish и каноническая отделка (2026-10-11)
 
 - Рабочее дерево поверх `c323a2f`; production перемещён в `Sources/AddOn/roombook/`: Roombook, RoomSurfaces, RoomSurfaceCandidates, RoomSurfacePartition, RoomSurfaceFinish (`.cpp/.hpp`). Исторические пути/координаты секций Z3–Z5 ниже относятся к прежним снимкам; актуальный scoped набор — в generated и в evidence Z7. [по коду + MCP]
@@ -81,53 +137,69 @@
 Спецификация отделки: генерация ведомостей отделочных материалов и работ из модели. [по коду]
 
 ## Точка входа
-- `RoomBook` (Roombook.cpp:612; AC22–23 — заглушка :23) ← `MenuCommandHandler` (SomeStuff_Main.cpp:370/site461; endpoints MCP, site по коду) и `SomeStuffCommand.RoomBook` (JSON API AC25–29; вызывающий выбирает экземпляр Archicad по HTTP-порту). JSON-команда возвращает время до выхода из `RoomBook`; успех расчёта отдельно не подтверждается. [по коду / DevKit-25 API_AddOnCommand]
-- `GetTargetZones` (Roombook.cpp:34) — выбор выделенных редактируемых зон или fallback на все доступные; возвращает false при ошибке/пустом списке [по коду]
-- `PrepareRoomProcessingContext` (:92) — заполняет контекст: `Class_FindFinClass` → `GetStories` → `Floor_FindAll`; контейнеры живут до выхода из `RoomBook`. [по коду]
-- `AdvanceProcessPhase` (:101) — единственная точка обновления прогресса: увеличивает `nPhase`, сообщает фазу и возвращает признак отмены; на AC27+ `ACAPI_ProcessWindow_SetNextProcessPhase`/`IsProcessCanceled`, иначе `ACAPI_Interface` с `APIIo_SetNextProcessPhaseID`/`APIIo_IsProcessCanceledID`. Раньше эти блоки были скопированы в девяти местах. `nPhase = 1` сбрасывается в `RoomBook` перед `ProcessWindowGuard`. [по коду]
-- `BuildElementReadIndex` (:112), `ProcessElementsForRoomData` (:126) — индекс, прогресс/отмена, `ClearZoneGUID`, классификация и dispatch. [по коду]
-- `PrepareReadParams` (:183), `ReadElementParameters` (:185) — подготовка и чтение параметров; `ReadParamsForRoomBook` хранит параметры окон и комнат. Временный `paramDict` создаётся в `ReadElementParameters`, очищается между типами и не хранится в `RoomProcessingContext`; `paramDict_favorite` остаётся в контексте. Порядок чтения не менялся. [по коду]
-- `ProcessRoomFinishes` (:496) обходит комнаты; `ProcessSlabFinishes` (:207), `ProcessWallFinishes` (:286), `ApplyFavoriteAndMaterialData` (:270) сохраняют порядок создания/настройки отделки. [по коду и fresh MCP]
-- `BuildMaterialSummaryForRooms` (:377, P3j) принимает roomsinfo/paramToRead напрямую; `WriteRoomMaterialData` (:470) использует общий `MaterialSummary`; `paramToWrite` затем передаётся `SetSyncOtdWall`. [по коду и fresh MCP]
-- `RemoveUnusedFinishingElements` (:571), `PrepareElementsForUpdate` (:609) — сбор GUID на удаление и разблокировка/резервирование; отказ в резервировании завершает `RoomBook` до отрисовки. [по коду]
-- Комментарий `REFACTOR PLAN` в Roombook.cpp:654-673 описывает этот рефакторинг. [из комментария]
-- P3e #260 (рабочее дерево после b3cc8c2, AC25 Windows): в `ApplyFavoriteAndMaterialData` (:270), `WriteRoomMaterialData` (:475) и `RemoveUnusedFinishingElements` (:548) сняты десять локальных алиасов; используются прямые обращения `context.*`/`summary.*`. Список аргументов, порядок обходов и вызовов сохранены. Собран AC25, TestKit 69/2567/0; один запуск через VS подтвердил частичный read-back 1778 элементов без различий. Продолжение A/B отменено владельцем: замеры производительности только для крупных изменений. Полные контуры/материалы — not verified. [по коду + runtime]
+- `RoomBook` (Roombook.cpp:1545; AC22–23 — заглушка :34) ← `MenuCommandHandler` (SomeStuff_Main.cpp:395, вызов :478 по grep; callgraph-site stale) и `SomeStuffCommand.RoomBook` (JSON API AC25–29; вызывающий выбирает экземпляр Archicad по HTTP-порту). JSON-команда возвращает время до выхода из `RoomBook`; успех расчёта отдельно не подтверждается. [по коду / DevKit-25 API_AddOnCommand]
+- `GetTargetZones` (:47) — выбор выделенных редактируемых зон или fallback на все доступные; возвращает false при ошибке/пустом списке [по коду]
+- `SearchCoordinate` (:90) — обёртка координатного поиска с `CoordinateSearchCache` (кэш AC25 Windows only; см. секцию 2026-10-15) [по коду]
+- `PrepareRoomProcessingContext` (:529) — заполняет контекст: `Class_FindFinClass` → `GetStories` → `Floor_FindAll`; контейнеры живут до выхода из `RoomBook`. [по коду]
+- `AdvanceProcessPhase` (`CommonFunction.cpp:2653`) — единственная точка обновления прогресса: увеличивает `nPhase`, сообщает фазу и возвращает признак отмены; на AC27+ `ACAPI_ProcessWindow_SetNextProcessPhase`/`IsProcessCanceled`, иначе `ACAPI_Interface` с `APIIo_SetNextProcessPhaseID`/`APIIo_IsProcessCanceledID`. Раньше эти блоки были скопированы в девяти местах. `nPhase = 1` сбрасывается в `RoomBook` перед `ProcessWindowGuard`. [по коду]
+- `BuildElementReadIndex` (:537), `ProcessElementsForRoomData` (:606), `PrepareRoomPartitions` (:662) — индекс, прогресс/отмена, `ClearZoneGUID`, классификация, dispatch, подготовленные источники и разбиение поверхностей. [по коду]
+- `ReportRoomReadCounters` (:716) — итог счётчиков чтения после последнего cached consumer, до записи модели. [по коду]
+- `PrepareReadParams` (:763), `ReadElementParameters` (:767) — подготовка и чтение параметров; `ReadParamsForRoomBook` хранит параметры окон и комнат. Временный `paramDict` создаётся в `ReadElementParameters`, очищается между типами и не хранится в `RoomProcessingContext`; `paramDict_favorite` остаётся в контексте. Порядок чтения не менялся. [по коду]
+- `ProcessRoomFinishes` (:1408) обходит комнаты; `ProcessSlabFinishes` (:796), `ProcessWallFinishes` (:879), `ApplyFavoriteAndMaterialData` (:861) сохраняют порядок создания/настройки отделки. [по коду и fresh MCP]
+- `BuildMaterialSummaryForRooms` (:1028, P3j) принимает roomsinfo/paramToRead напрямую; `WriteRoomMaterialData` (:1122) использует общий `MaterialSummary`; `paramToWrite` затем передаётся `SetSyncOtdWall`. [по коду и fresh MCP]
+- `RemoveUnusedFinishingElements` (:1485), `PrepareElementsForUpdate` (`CommonFunction.cpp:2531`) — сбор GUID на удаление и разблокировка/резервирование; отказ в резервировании завершает `RoomBook` до отрисовки. [по коду]
+- Комментарий `REFACTOR PLAN` в Roombook.cpp:1523-1542 описывает этот рефакторинг. [из комментария]
+- P3e #260 (рабочее дерево после b3cc8c2, AC25 Windows): в `ApplyFavoriteAndMaterialData` (:862), `WriteRoomMaterialData` (:1123) и `RemoveUnusedFinishingElements` (:1485) сняты десять локальных алиасов; используются прямые обращения `context.*`/`summary.*`. Список аргументов, порядок обходов и вызовов сохранены. Собран AC25, TestKit 69/2567/0; один запуск через VS подтвердил частичный read-back 1778 элементов без различий. Продолжение A/B отменено владельцем: замеры производительности только для крупных изменений. Полные контуры/материалы — not verified. [по коду + runtime]
 - Правка P3d: в теле `RoomBook` (исторически :609) сняты пять `auto &`-алиасов на поля контекста
   (`storyLevels`, `deletelist`, `exsistot_byzone`, `roomsinfo`, `paramDict_favorite`) — обращения идут
   через `context.<поле>`. Оставшиеся алиасы (`finclass`, `finclassguids`, `paramToRead`) сохранены:
   поля используются в нескольких соседних вызовах. Порядок операций не менялся. [по коду]
 - Исторический список вызовов из Docs/_generated/body_scan.json (96 до #195) устарел после извлечения helpers; актуальные вызовы сверять по `Sources/AddOn/Roombook.cpp`. Подсистемы: `Param_*`, `OtdData_*`, `OtdWall/OtdBeam/Opening/Floor_*`, `Class_*`, `Favorite_*`, Sync, PROPERTYCACHE и SDK ProcessWindow/Teamwork. [по коду; полный граф — не проверено]
 
-## Функции по подсистемам [по коду / по имени]
+## Функции по подсистемам [по коду / по имени; координаты 2026-10-15]
 
 ### Зоны и сбор данных
-`Otd_GetOtd_ByZone` (:758), `BuildOtdByParent` (:876), `Otd_GetOtd_Parent` (:917), `CollectRoomInfo` (:1206), `ClearZoneGUID` (:3447; P2b3), `Edges_GetFromRoom` (:3325), `Edge_FindOnEdge` (:3944), `Edge_FindEdge` (:3975), `typeinzone`/`reducededges` — глобальные переменные namespace (:25/:28) [по коду]
+`Otd_GetOtd_ByZone` (:1653), `BuildOtdByParent` (:1752), `Otd_GetOtd_Parent` (:1795), `CollectRoomInfo` (:2255), `ClearZoneGUID` (:4455; P2b3), `Edges_GetFromRoom` (:4383), `Edge_FindOnEdge` (:5111), `Edge_FindEdge` (:5142), `typeinzone`/`reducededges` — глобальные переменные namespace (:39/:40) [по коду]
 
 `BuildOtdByParent` преобразует результат `SyncGetSubelement` из формы `GUID базового элемента -> GUID дочерней отделки` в индекс `база -> тип отделки -> GUID отделки`. Внешний ключ остаётся GUID базы, тип определяется по внутреннему GUID отделочного элемента; неизвестные дочерние GUID пропускаются. [по коду; #193]
 
 ### Данные отделки (OtdData)
-`OtdData_GetColumnfFormat` (:812), `OtdData_CalcForRoom` (:903), `OtdData_WriteToRoom` (:996), `OtdData_AddValueToDict` (:1138), `OtdWall_GetArea` (:1167)
+`OtdData_GetColumnfFormat` (:1839), `OtdData_CalcForRoom` (:1985), `OtdData_WriteToRoom` (:2067), `OtdData_AddValueToDict` (:2185), `OtdWall_GetArea` (:2214)
 
 ### Создание элементов отделки
-`OtdWall_Create_FromWall` (:1412), `OtdWall_Create_FromColumn` (:1671), `OtdWall_Add_One` (:1642), `Opening_Create_One` (:1363), `Opening_Add_One` (:1610), `OpeningReveals_Create_One` (:3432), `Floor_FindAll` (:1768), `Floor_FindInOneRoom` (:1814), `Floor_Create_All` (:1859), `Floor_Create_One` (:1912)
+`OtdWall_Create_FromWall` (:2459), `OtdWall_Create_FromColumn` (:2730), `OtdWall_Add_One` (:2701), `Opening_Create_One` (:2408), `Opening_Add_One` (:2687), `OpeningReveals_Create_One` (:4565), `Floor_FindAll` (:2826), `Floor_FindInOneRoom` (:2889), `Floor_Create_All` (:2938), `Floor_Create_One` (:2993)
 
 ### Параметры (Param)
-`Param_ToParamDict` (:2080), `Param_GetForWindowParams` (:2094), `Param_GetForBase` (:2146), `Param_GetForRooms` (:2290), `Param_Property_FindInParams` (:2528), `Param_Property_Read` (:2649), `Param_Material_Get` (:2614), `Param_SetToRooms` (:2920), `Param_SetToBase` (:2963), `Param_SetComposite` (:3026), `Param_SetToWindows` (:3140), `Param_AddUnicElementByType` (:5287), `Param_AddUnicGUIDByType` (:5315)
+`Param_ToParamDict` (:3153), `Param_GetForWindowParams` (:3168), `Param_GetForBase` (:3190), `Param_GetForRooms` (:3336), `Param_Property_FindInParams` (:3621), `Param_Property_Read` (:3632), `Param_Material_Get` (:3670), `Param_SetToRooms` (:4037), `Param_SetToBase` (:4060), `Param_SetComposite` (:4167), `Param_SetToWindows` (:4266), `Param_AddUnicElementByType` (:6474), `Param_AddUnicGUIDByType` (:6503)
 
 ### Разделение стен и материалы
-`OtdWall_Delim_All` (:3589), `OtdWall_Delim_One` (:3725), `SetMaterialByType` (:3794), `SetMaterialFinish_ByComposite` (:3904), `SetMaterialFinish` (:3915), `RoomRedProc` (:3269)
+`OtdWall_Delim_All` (:4728), `OtdWall_Delim_One` (:4889), `SetMaterialByType` (:5050), `SetMaterialFinish_ByComposite` (:5067), `SetMaterialFinish` (:5080), `RoomRedProc` (:4325)
 
 ### Отрисовка (Draw) и дефолты
-`Draw_Elements` (:3992), `OtdWall_Draw` (:4152), `OtdBeam_Draw_Beam` (:4181), `OtdBeam_Draw_Object` (:4253), `OtdWall_Draw_Object` (:4291), `OtdWall_Draw_Wall` (:4450), `Opening_Draw` (:4538), `Floor_Draw` (:4619), `Floor_Draw_Slab` (:4650), `Floor_Draw_Object` (:4751); дефолты: `OtdBeam_GetDefult_Beam` (:4234), `OtdBeam_GetDefult_Object` (:4264), `OtdWall_GetDefult_Object` (:4423), `OtdWall_GetDefult_Wall` (:4509), `Opening_GetDefult` (:4597), `Floor_GetDefult_Object` (:4896), `Floor_GetDefult_Slab` (:4920)
+`Draw_Elements` (:5156), `OtdWall_Draw` (:5286), `OtdBeam_Draw_Beam` (:5323), `OtdBeam_Draw_Object` (:5401), `OtdWall_Draw_Object` (:5442), `OtdWall_Draw_Wall` (:5596), `Opening_Draw` (:5713), `Floor_Draw` (:5799), `Floor_Draw_Slab` (:5839), `Floor_Draw_Object` (:5959); дефолты: `OtdBeam_GetDefult_Beam` (:5381), `OtdBeam_GetDefult_Object` (:5415), `OtdWall_GetDefult_Object` (:5569), `OtdWall_GetDefult_Wall` (:5684), `Opening_GetDefult` (:5777), `Floor_GetDefult_Object` (:6107), `Floor_GetDefult_Slab` (:6133)
 
 ### Классификация отделки (Class)
-`Class_SetClass` ×3 (:4952/4963/4976), `Class_GetClassGuid` (:4979), `Class_GetOtdTypeByClass` (:5026), `Class_FindFinClass` (:5070), `Class_IsElementFinClass` (:5272), `SetSyncOtdWall` (:5141)
+`Class_SetClass` ×3 (:6160/6174/6187), `Class_GetClassGuid` (:6196), `Class_GetOtdTypeByClass` (:6245), `Class_FindFinClass` (:6299), `Class_IsElementFinClass` (:6456), `SetSyncOtdWall` (:6380)
 
 ### Избранное (Favorite)
-`Favorite_GetType` (:5327), `Favorite_GetDict` (:5342), `Favorite_ReadComposite` (:5412), `Favorite_FindName` (:5449), `Favorite_GetByName` ×2 (:5554/5572)
+`Favorite_GetType` (:6517), `Favorite_GetDict` (:6535), `Favorite_ReadComposite` (:6646), `Favorite_FindName` (:6685), `Favorite_GetByName` ×2 (:6787/6808)
 
 ### Прочее
-`Check` (:5594, до :5685 — [назначение не установлено; вероятно, итоговая проверка])
+`Check` (:6831)
+
+### Геометрия отделки (roombook/, 2026-10-15)
+
+Чтение поверхностей (`RoomSurfaces.cpp`): `TransformRoomSurface` (:15), `AddSurfaceError` (:65), `ReadSurfaceComponent` (:86), `ReadSurfacePolygon` (:120), `ReadRoomSurfaces` (:234), `ReadRoomSurfaceZBounds` (:301), `ReadElement` (:367), `ReadClassificationItems` (:383), `ReadZoneRelations` (:398), `ReadConnectedElements` (:423).
+
+Кандидаты (`RoomSurfaceCandidates.cpp`): `CandidateError` (:8), `IsFinish` (:13), `ReadCandidate` (:35), `ReadSegments` (:60), `ReadBase` (:88), `ReadRoomSurfaceCandidates` (:143).
+
+Разбиение (`RoomSurfacePartition.cpp`): `ProjectSurface` (:125), `SameFace` (:164), `SameClaim` (:184), `PushCells` (:197), `MakePiece` (:219), `PartitionFace` (:263), `PartitionRoomSurfaces` (:327), `SectionZone` (:448), `ClipBeamFace` (:552), `BuildRoomBeamFinish` (:677); локальные: `DistanceTolerance` :13, `PlaneTolerance` :15, `AreaTolerance` :16, `Frame` :30 (`Set` :36/`SetFromVertices` :58/`Project` :102/`Restore` :107), `BeamAxis` :410, `SectionEdge` :437.
+
+Финишные построения (`RoomSurfaceFinish.cpp`): `CleanCollinearPolygonVertices` (:14), `ExtendFloorContoursToCore` (:22), `BuildSurfaceWall` (:184), `ClampSurfaceWallToParts` (:247), `BuildSurfaceWalls` (:369), `LinkSurfaceOpenings` (:499), `GroupSurfaceWallPieces` (:603), `DeduplicateAcceptedSlabContacts` (:766), `BuildSurfaceSlabs` (:934), `BuildProjectedSlabFinishes` (:994); локальные: `DistanceTolerance` :127, `AreaTolerance` :128.
+
+Контракты заголовков: `RoomSurfaces.hpp` (`RoomSurfaceStatus` :14, `RoomSurfaceVertex` :16, `RoomSurfaceContour` :23, `RoomSurfaceOrigin` :29, `RoomSurface` :31, `RoomSurfaceBody` :46, `RoomSurfaceReadError` :56, `RoomSurfaceSnapshot` :65, `RoomSurfaceReadCounters` :82, `RoomSurfaceZBounds` :105, `ElementRead` :112, `ClassificationRead` :118, `RoomRelationValues` :124, `ConnectedElementsRead` :134, `RoomSurfaceCache` :144, `ReadConnectedElementsCached` :163), `RoomSurfaceCandidates.hpp` (`RoomSurfaceCandidateError` :9, `RoomSurfaceCandidates` :16), `RoomSurfacePartition.hpp` (`RoomSurfaceSource` :9, `RoomSurfaceSourceFace` :18, `RoomSurfacePieceStatus` :31, `RoomSurfacePiece` :38, `RoomSurfacePartition` :52, `RoomSurfaceBeamFinish` :73), `RoomSurfaceFinish.hpp` (`BuildSurfaceWall` :10, `DeduplicateAcceptedSlabContacts` :13, `CleanCollinearPolygonVertices` :16, `ExtendFloorContoursToCore` :19, `BuildSurfaceWalls` :22, `ClampSurfaceWallToParts` :26, `LinkSurfaceOpenings` :35, `GroupSurfaceWallPieces` :40, `BuildSurfaceSlabs` :44, `BuildProjectedSlabFinishes` :48).
+
+Аналитический маршрут (`Roombook.cpp`): `AnalyticFace` (:141), `AppendAnalyticRectangles` (:164), `BuildPreparedWallSource` (:217), `BuildPreparedSlabSource` (:372), `PrepareSource` (:470), `PrepareRoomPartitions` (:662); `SearchCoordinate` (:90), `ReportRoomReadCounters` (:716).
 
 ## P3f/P3g — явные зависимости helpers (#260)
 
@@ -410,13 +482,15 @@
 
 ## Зависимости
 - `CommonFunction.hpp`, `Helpers.hpp`, `Propertycache.hpp` [по include]
+- Внутримодульные заголовки roombook/: `CoordinateSearchCache.hpp`, `FloorCoreGeometry.hpp`, `RoomAnalyticGeometry.hpp`, `RoomSurfaces.hpp`, `RoomSurfaceCandidates.hpp`, `RoomSurfacePartition.hpp`, `RoomSurfaceFinish.hpp` [по include, 2026-10-15]
 
 ## Инварианты и подводные камни
-- Утечка memo при ошибке GetMemo (:2028-2034) — **исправлена** (FIX 2026-09-12) [из комментария + проверено]
+- Утечка memo при ошибке GetMemo (:2281-2284) — **исправлена** (FIX 2026-09-12) [из комментария + проверено]
 - AGENTS.md §16: recreation of finish elements — out of scope [из AGENTS.md]
 - Глобальные переменные namespace (`min_dim` в ревью-заметках) — thread-safety ограничение [из ревью; не проверено в этой сессии]
-- `reducededges` (:28) — адрес `RoomEdges` для callback `RoomRedProc`/`RoomReductionPolyProc`. Присваивается в `Edges_GetFromRoom` (:3398) перед вызовом SDK и обнуляется сразу после возврата (:3410); адрес локального `rdges` не переживает выход из функции. Владение глобалом соответствует контракту SDK: `RoomReductionPolyProc` — синхронный callback (`APIdefs_Callback.h`, AC25–29), пример DevKit использует тот же паттерн «указатель → вызов → чтение». Повторный вход в `Edges_GetFromRoom` до обнуления невозможен: вызов синхронный. [по коду + DevKit AC25–29 + LightRAG]
-- Подсчёт пробелов/разделителей для выравнивания текста (`Roombook.cpp:1030`, `:1040`, `:1251`) с 2026-09-28 (#221) идёт через `CommonFunction::DoubleToInt32` — при выходе за диапазон Int32 подставляется граница и выводится сообщение `msg_rep`. [по коду]
+- `reducededges` (:40) — адрес `RoomEdges` для callback `RoomRedProc`/`RoomReductionPolyProc`. Присваивается в `Edges_GetFromRoom` (:4384) перед вызовом SDK (:4390) и обнуляется сразу после возврата (:4399); адрес локального `rdges` не переживает выход из функции. Владение глобалом соответствует контракту SDK: `RoomReductionPolyProc` — синхронный callback (`APIdefs_Callback.h`, AC25–29), пример DevKit использует тот же паттерн «указатель → вызов → чтение». Повторный вход в `Edges_GetFromRoom` до обнуления невозможен: вызов синхронный. [по коду + DevKit AC25–29 + LightRAG]
+- Подсчёт пробелов/разделителей для выравнивания текста (`Roombook.cpp:1908`, `:1918`, `:2146`) с 2026-09-28 (#221) идёт через `CommonFunction::DoubleToInt32` — при выходе за диапазон Int32 подставляется граница и выводится сообщение `msg_rep`. [по коду]
 ## Версии
 - AC27 (`#170`): материалы сегментов балки — `API_OverriddenAttribute` (`overridden` + `attributeIndex`) заменён на `APIOptional<API_AttributeIndex>` (`hasValue` + `value`, индекс через `ACAPI_CreateAttributeIndex`). [по коду DevKit + сборка AC27]
 - AC27: `ACAPI_ElementGroup_Create` → `ACAPI_ElementSet_Create`; в новом API нет параметра родительской группы, поэтому аддон передаёт только список элементов и выходной GUID. [по коду DevKit]
+- AC26–30 (`#275`): `GetElemTypeID`/`SetElemTypeID` вместо прямого typeID; variation через `type` (AC26+); connected query сохраняет type+variation/filter/renovation при новом AC26 parameter shape и имени Grouping с AC27; relation-snapshot хранит SDK-тип ключей. Диагностика: APIOptional override, integer JSON для AttributeIndex, новые profile/hatch accessors с проверкой bounds и ADB-конверсии AC27/28+. [по коду DevKit + сборка]
