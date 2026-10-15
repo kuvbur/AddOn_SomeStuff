@@ -42,12 +42,14 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
         msg_rep ("DimAutoRound", "ACAPI_Element_Get", err, elemGuid);
         return err;
     }
-    // Если нет элементов - выходим
     if (!element.header.hasMemo)
         return err;
     // Повторно проверим тип - проверка бесплатная, но в DimRoundAll() мы можем вызвать DimAutoRound() на всех
     // элементах, а не только на размерах
     if (GetElemTypeID (element.header) != API_DimensionID)
+        return NoError;
+    // Проверяем - на находится ли размер в модуле
+    if (element.header.hotlinkGuid != APINULLGuid)
         return NoError;
     short pen_dimenstion = element.dimension.linPen;
     short pen_original = element.dimension.defNote.notePen;
