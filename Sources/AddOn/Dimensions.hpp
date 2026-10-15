@@ -14,7 +14,7 @@ GSErrCode DimAutoRoundOne (const API_Guid &elemGuid, const SyncSettings &syncSet
 // Обработка одного размера
 // -----------------------------------------------------------------------------
 // Обрабатывает один размер и решает, нужно ли менять его текст, цвет или сбросить формат.
-GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettings);
+GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettings, bool isUndo);
 
 // -----------------------------------------------------------------------------
 // Обрабатывает размер и решает - что с ним делать
@@ -43,6 +43,6 @@ void DimRoundAll (const SyncSettings &syncSettings, bool isUndo);
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
 // Округляет размеры только для одного типа элементов.
-bool DimRoundByType (const API_ElemTypeID &typeID, const SyncSettings &syncSettings);
+bool DimRoundByType (const API_ElemTypeID &typeID, const SyncSettings &syncSettings, bool isUndo);
 
 #endif

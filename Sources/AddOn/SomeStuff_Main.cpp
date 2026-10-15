@@ -121,9 +121,9 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
         break;
     case APINotify_Close:
     case APINotify_Quit:
+        ClearSyncThrottleCache ();
         if (notifID == APINotify_Quit)
             BrowserPalette::DestroyInstance ();
-        ClearSyncThrottleCache ();
 #ifdef ServerMainVers_2700
         ACAPI_Element_CatchNewElement (nullptr, nullptr);
         ACAPI_Element_InstallElementObserver (nullptr);
@@ -135,11 +135,11 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     case APINotify_ChangeProjectDB:
     case APINotify_ChangeWindow:
     case APINotify_ChangeFloor:
+        DimRoundAll (syncSettings, false);
 #if defined(TESTING)
         err = ClearLegacyProjectPreferences ();
 #endif
         ClearSyncThrottleCache ();
-        DimRoundAll (syncSettings, false);
         break;
     default:
         break;
@@ -157,7 +157,15 @@ GSErrCode ElementEventHandlerProc (const API_NotifyElementType *elemType) {
 #else
 GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *elemType) {
 #endif
-    ACAPI_KeepInMemory (true);
+#ifdef ServerMainVers_2600
+    const API_ElemVariationID elementVariation = elemType->elemHead.type.variationID;
+#else
+    const API_ElemVariationID elementVariation = elemType->elemHead.variationID;
+#endif
+    // Для новых элементов с variationID == APIVarId_GridElement не выполняем синхронизацию - вылетает на разрезах
+    if (elementVariation == APIVarId_GridElement) {
+        return NoError;
+    }
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings);
     int dummymode = DUMMY_MODE_UNDEF;
@@ -171,37 +179,11 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
         elemType->notifID == APINotifyElement_ClassificationChange;
     // Смотрим - что поменялось
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
-#ifdef ServerMainVers_2600
-    const API_ElemVariationID elementVariation = elemType->elemHead.type.variationID;
-#else
-    const API_ElemVariationID elementVariation = elemType->elemHead.variationID;
-#endif
-    // Для новых элементов с variationID == APIVarId_GridElement не выполняем синхронизацию - вылетает на разрезах
-    if (elemType->notifID == APINotifyElement_New && elementType == API_ObjectID) {
-        if (elementVariation == APIVarId_GridElement)
-            return NoError;
-    }
-    switch (elementType) {
-    case API_DimensionID:
-        if (isChangeEvent && PROPERTYCACHE ().hasDimAutotext) {
-            if (elemType->notifID == APINotifyElement_New)
-                AttachObserver (elemType->elemHead.guid, syncSettings);
-            if (ACAPI_Element_Filter (elemType->elemHead.guid,
-                                      APIFilt_InMyWorkspace | APIFilt_HasAccessRight | APIFilt_IsEditable |
-                                          APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay |
-                                          APIFilt_OnVisLayer) &&
-                !IsElementThrottled (elemType->elemHead.guid))
-                DimAutoRoundOne (elemType->elemHead.guid, syncSettings, false);
-        }
-        return NoError;
 #ifdef ServerMainVers_2800
-    case API_ExternalElemID:
+    if (elementType == API_ExternalElemID) {
         MEPv1::ClearRoutingSubelemCache ();
-        break;
-#endif
-    default:
-        break;
     }
+#endif
 #if defined(TESTING)
     DBprnt ("ElementEventHandlerProc start");
 #endif
@@ -209,19 +191,6 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
         return NoError;
     if (!IsElementEditable (elemType->elemHead, syncSettings, true))
         return NoError;
-    // Для новых элементов с variationID == APIVarId_GridElement не выполняем синхронизацию - вылетает на разрезах
-    if (elementType == API_ObjectID && elementVariation == APIVarId_GridElement) {
-        if (elemType->notifID == APINotifyElement_New) {
-            return NoError;
-
-        }
-#if defined(TESTING)
-        else {
-            DBprnt ("elemHead.variationID == APIVarId_GridElement start");
-        }
-#endif
-    }
-
     if (elemType->notifID == APINotifyElement_New)
         AttachObserver (elemType->elemHead.guid, syncSettings);
     if (IsElementThrottled (elemType->elemHead.guid))
@@ -310,6 +279,7 @@ void Do_ElementMonitor (bool syncMon) {
     bool isteamwork = false;
     short userid = 0;
     GSErrCode err = IsTeamwork (isteamwork, userid);
+    (void)err;
     if (syncMon) {
 #if defined(TESTING)
         DBprnt ("Do_ElementMonitor on");

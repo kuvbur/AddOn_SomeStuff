@@ -321,6 +321,17 @@ Plan:
 
 ## Archive
 
+### #277 — вылеты Undo.dll при переключении окон и в ElementEventHandlerProc (2026-10-15)
+
+Scope: Sources/AddOn/SomeStuff_Main.cpp, Sources/AddOn/Dimensions.cpp, Sources/AddOn/Dimensions.hpp.
+Факты и реализация:
+1. Создан issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/277
+2. Полностью убрана обработка `API_DimensionID` из `ElementEventHandlerProc` (восстановлено безопасное поведение v1.77, исключающее интерференцию с обновлением разрезов/осей).
+3. Добавлена ранняя фильтрация `APIVarId_GridElement` на старте `ElementEventHandlerProc`.
+4. Исправлен вынос Undo-транзакции: `ACAPI_CallUndoableCommand` убран из глобального `DimRoundAll` (где он открывался при смене окон) и перенесён внутрь `DimAutoRound` точечно для изменяемого размера (только при `flag_write == true` и `!isUndo`).
+5. Добавлена процедура очистки `cleanupMemoContentUStr ()` (освобождение `delete (*memo.dimElems)[i].note.contentUStr` и обнуление) при ранних выходах из `DimAutoRound` (проёмы, колонны) и в конце функции.
+6. clang-format PASS, LSP clangd 0 ошибок, BuildAddOn.py AC25 Debug `Build succeeded!`.
+
 ### Совместимость SDK AC26–30 — #275
 
 Scope: только SDK-адаптация RoomSurfaces.cpp/.hpp, Roombook.cpp, SomeStuff_Main.cpp, SyncSettings.cpp и TestRoombookGeometry.cpp, Windows Debug AC26–30. План: [x] прочитаны issue/документы/SDK25–30 и сохранены baseline; [x] минимальные изменения и clang-format; [x] review дельты; [x] финальные canonical сборки всех пяти версий exit0, CMAKE_BUILD_OK/Build succeeded; [x] APX свежие, hashes/размеры сохранены, все шесть затронутых файлов не новее каждого APX. Причина — implementation error: AC25-поля/сигнатуры без ветвей новых SDK.
