@@ -1556,7 +1556,6 @@ namespace TestFunc {
                     Roombook::OtdRoom room;
                     room.zone_guid = zones[0];
                     room.height = 3;
-                    room.create_all_elements = initial != 0;
                     Roombook::Param_SetToRooms (materials, room, read, requests);
                     const bool actual[] = {room.create_column_elements,
                                            room.create_wall_elements,
@@ -1567,8 +1566,6 @@ namespace TestFunc {
                         const bool expected = mode >= 2 ? mode == 3 : (mask & (1u << j)) != 0;
                         DBtest (actual[j] == expected, "Room params all/individual flag precedence");
                     }
-                    DBtest (room.create_all_elements == (mode >= 2 ? mode == 3 : initial != 0),
-                            "Room params absent/invalid global preserves initial value");
                     DBtest (room.tip_otd == "flags" && room.height_main == 3 && room.height_up == 0,
                             "Room params flags fixture read and normalized");
                 }

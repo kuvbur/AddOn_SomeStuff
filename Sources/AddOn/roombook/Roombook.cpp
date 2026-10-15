@@ -712,48 +712,6 @@ namespace Roombook
         return true;
     }
 
-    // Итог после последнего cached consumer, до записи модели; reads — фактические SDK-вызовы.
-    static void ReportRoomReadCounters (const RoomProcessingContext &context) {
-        const auto &search = context.coordinateSearchStats;
-        msg_rep ("RoomBook coordinate cache",
-                 GS::UniString::Printf ("calls=%llu hits=%llu refused=%llu",
-                                        static_cast<unsigned long long> (search.calls),
-                                        static_cast<unsigned long long> (search.hits),
-                                        static_cast<unsigned long long> (search.refused)),
-                 NoError,
-                 APINULLGuid);
-        const auto &c = context.surfaceCache.counters;
-        msg_rep ("RoomBook source route",
-                 GS::UniString::Printf ("analyticWall=%llu analyticSlab=%llu analyticFaces=%llu nativeFallback=%llu "
-                                        "snapshotReads=%llu snapshotHits=%llu boundsReads=%llu boundsHits=%llu "
-                                        "componentReads=%llu componentHits=%llu wall3DReads=%llu slab3DReads=%llu "
-                                        "elementReads=%llu elementHits=%llu classificationReads=%llu "
-                                        "classificationHits=%llu relationReads=%llu relationHits=%llu "
-                                        "connectedReads=%llu connectedHits=%llu",
-                                        c.analyticWallSources,
-                                        c.analyticSlabSources,
-                                        c.analyticFaces,
-                                        c.nativeFallbackSources,
-                                        c.snapshotReads,
-                                        c.snapshotHits,
-                                        c.boundsReads,
-                                        c.boundsHits,
-                                        c.componentReads,
-                                        c.componentHits,
-                                        c.wallSnapshotReads,
-                                        c.slabSnapshotReads,
-                                        c.elementReads,
-                                        c.elementHits,
-                                        c.classificationReads,
-                                        c.classificationHits,
-                                        c.relationReads,
-                                        c.relationHits,
-                                        c.connectedReads,
-                                        c.connectedHits),
-                 NoError,
-                 APINULLGuid);
-    }
-
     struct ReadParamsForRoomBook {
         ReadParams windowParams = Param_GetForWindowParams ();
         ReadParams roomParams = Param_GetForRooms ();
@@ -1043,8 +1001,8 @@ namespace Roombook
     #endif
             if (AdvanceProcessPhase (funcname, nPhase))
                 return false;
-            if (otd.isValid && (otd.create_all_elements || otd.create_ceil_elements || otd.create_floor_elements ||
-                                otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements)) {
+            if (otd.isValid && (otd.create_ceil_elements || otd.create_floor_elements || otd.create_wall_elements ||
+                                otd.create_column_elements || otd.create_reveal_elements)) {
                 zones.Push (otd.zone_guid);
             }
             if (otd.isValid) {
@@ -1219,7 +1177,7 @@ namespace Roombook
         nominalFloor.zBottom = room.zBottom;
         nominalFloor.material = room.om_floor;
         OtdSlab nominalCeiling = room.poly;
-        nominalCeiling.zBottom = room.zBottom + room.height_main + room.height_down;
+        nominalCeiling.zBottom = room.zBottom + room.height_ceil;
         nominalCeiling.material = room.om_ceil;
         double rejectedSlabArea = 0;
         if ((room.has_floor && !BuildProjectedSlabFinishes (room.surfaceSnapshot,
@@ -1583,7 +1541,6 @@ namespace Roombook
             zones, context.finclassguids, context.finclass, has_base_element, reserv_elements, &context.surfaceCache);
         if (!ProcessRoomFinishes (context, readParams, paramCompositeToRead, favdict, has_base_element, funcname))
             return;
-        ReportRoomReadCounters (context);
         // Получаем список уже существующих отделочных элементов для обработанных зон.
         // Он понадобится для последующего удаления устаревших объектов.
         zones.Clear ();
@@ -2930,225 +2887,6 @@ namespace Roombook
             Param_AddUnicGUIDByType (elGuid, API_SlabID, guidselementToRead);
     }
 
-    // -----------------------------------------------------------------------------
-    // Обработка потолков и полов в зоне
-    // -----------------------------------------------------------------------------
-    // Готовит отделку включённых пола и потолка по перекрытиям либо по полигону зоны, если это разрешено.
-    // После обработки очищает исходный полигон комнаты.
-    void Floor_Create_All (const Stories &storyLevels, OtdRoom &roominfo) {
-        if (!roominfo.has_floor && !roominfo.has_ceil) {
-            roominfo.poly.poly.Clear ();
-            return;
-        }
-        if (roominfo.has_floor) {
-            roominfo.poly.zBottom = roominfo.zBottom;
-            if (!roominfo.floorslab.IsEmpty ()) {
-                Floor_Create_One (storyLevels,
-                                  roominfo.floorInd,
-                                  roominfo.poly,
-                                  roominfo.floorslab,
-                                  roominfo.otdslab,
-                                  roominfo.otdwall,
-                                  Floor,
-                                  roominfo.om_floor,
-                                  roominfo.floor_by_slab);
-            } else {
-                if (!roominfo.floor_by_slab) {
-                    OtdSlab poly = roominfo.poly;
-                    poly.type = Floor;
-                    poly.material = roominfo.om_floor;
-                    poly.floorInd = roominfo.floorInd;
-                    roominfo.otdslab.Push (poly);
-                }
-            }
-        }
-        if (roominfo.has_ceil) {
-            roominfo.poly.zBottom = roominfo.zBottom + roominfo.height_main + roominfo.height_down;
-            roominfo.poly.material = roominfo.om_ceil;
-            if (!roominfo.ceilslab.IsEmpty ()) {
-                Floor_Create_One (storyLevels,
-                                  roominfo.floorInd,
-                                  roominfo.poly,
-                                  roominfo.ceilslab,
-                                  roominfo.otdslab,
-                                  roominfo.otdwall,
-                                  Ceil,
-                                  roominfo.om_ceil,
-                                  roominfo.ceil_by_slab);
-            } else {
-                if (!roominfo.ceil_by_slab) {
-                    OtdSlab poly = roominfo.poly;
-                    poly.type = Ceil;
-                    poly.material = roominfo.om_ceil;
-                    poly.floorInd = roominfo.floorInd;
-                    roominfo.otdslab.Push (poly);
-                }
-            }
-        }
-        roominfo.poly.poly.Clear ();
-    }
-
-    // Обрабатывает перекрытия по убыванию отметки выбранной грани и сохраняет наибольшие пересечения с комнатой.
-    // Добавляет боковую отделку перепадов и вычитает обработанные участки; остаток сохраняет, если разрешено.
-    void Floor_Create_One (const Stories &storyLevels,
-                           short floorInd,
-                           OtdSlab &poly,
-                           GS::Array<API_Guid> &slabGuids,
-                           GS::Array<OtdSlab> &otdslabs,
-                           GS::Array<OtdWall> &otdwall,
-                           TypeOtd type,
-                           OtdMaterial &material,
-                           bool only_on_slab) {
-        Geometry::Polygon2D roompolygon = poly.poly;
-        double area = 0;
-        GSErrCode err = NoError;
-        API_Element element = {};
-        Geometry::Polygon2D reducedroom;
-        // Необходимо в первую очередь построить отделку верхних (в случае полов)
-        // или нижних (в случае потолков) граней перекрытий Сортируем массив
-        // элементов по расстоянию до нужной грани
-        std::vector<GuidByZ> elems;
-        for (API_Guid &slabGuid : slabGuids) {
-            BNZeroMemory (&element, sizeof (API_Element));
-            element.header.guid = slabGuid;
-            err = ACAPI_Element_Get (&element);
-            if (err != NoError || !element.header.hasMemo) {
-    #if defined(TESTING)
-                DBprnt ("Floor_Create_One err", "ACAPI_Element_Get slab");
-    #endif
-                continue;
-            }
-            double zBottom = GetzPos (element.slab.level + element.slab.offsetFromTop - element.slab.thickness,
-                                      element.header.floorInd,
-                                      storyLevels);
-            double zUp = zBottom + element.slab.thickness;
-            zBottom = std::round (zBottom * 1000) / 1000;
-            zUp = std::round (zUp * 1000) / 1000;
-            GuidByZ z;
-            z.guid = slabGuid;
-            if (type == Ceil) {
-                z.r = zBottom;
-            } else {
-                z.r = zUp;
-            }
-            z.zBottom = zBottom;
-            z.zUp = zUp;
-            elems.push_back (z);
-        }
-        // Сортируем по расстоянию до начала зоны
-        std::sort (elems.begin (), elems.end (), [] (const GuidByZ &a, const GuidByZ &b) { return a.r > b.r; });
-        for (const auto &el : elems) {
-            API_Guid slabGuid = el.guid;
-            API_ElementMemo memo = {};
-            err = ACAPI_Element_GetMemo (slabGuid, &memo, APIMemoMask_Polygon);
-            if (err != NoError || memo.coords == nullptr) {
-    #if defined(TESTING)
-                DBprnt ("Floor_Create_One err", "ACAPI_Element_GetMemo slab");
-    #endif
-                ACAPI_DisposeElemMemoHdls (&memo);
-                continue;
-            }
-            Geometry::Polygon2D slabpolygon;
-            err = ConstructPolygon2DFromElementMemo (memo, slabpolygon);
-            if (err != NoError) {
-                msg_rep ("Floor_Create_One err", "ConstructPolygon2DFromElementMemo", err, slabGuid);
-                ACAPI_DisposeElemMemoHdls (&memo);
-                continue;
-            }
-            area = slabpolygon.CalcArea ();
-            if (area < 0.001) {
-                ACAPI_DisposeElemMemoHdls (&memo);
-                continue;
-            }
-            // Находим общую часть перекрытия и комнаты
-            Geometry::MultiPolygon2D resultPolys = roompolygon.Intersect (slabpolygon);
-            if (resultPolys.IsEmpty ()) {
-                ACAPI_DisposeElemMemoHdls (&memo);
-                continue;
-            }
-            reducedroom = resultPolys.PopLargest ();
-            resultPolys.Clear ();
-            area = reducedroom.CalcArea ();
-            if (area < 0.001) {
-                ACAPI_DisposeElemMemoHdls (&memo);
-                continue;
-            }
-            OtdSlab otdslab;
-            otdslab.poly = reducedroom;
-            otdslab.base_type = API_SlabID;
-            otdslab.base_guid = slabGuid;
-            if (type == Ceil) {
-                otdslab.zBottom = el.zBottom;
-            } else {
-                otdslab.zBottom = el.zUp;
-            }
-            otdslab.zBottom = std::round (otdslab.zBottom * 1000) / 1000;
-            otdslab.floorInd = floorInd;
-            otdslab.type = type;
-            otdslab.material = poly.material;
-            otdslabs.Push (std::move (otdslab));
-            // Удаляем отверстия и вычитаем из комнаты
-            reducedroom.RemoveHoles ();
-            if (poly.zBottom >= el.zBottom && poly.zBottom <= el.zUp) {
-                // Добавляем отделочные стенки по контуру
-                Geometry::Polygon2DData polygon2DData;
-                Geometry::InitPolygon2DData (&polygon2DData);
-                Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, reducedroom);
-                if (polygon2DData.contourEnds == nullptr) {
-                    msg_rep ("Floor_Create_One - error", "polygon2DData.contourEnds == nullptr", NoError, slabGuid);
-                    Geometry::FreePolygon2DData (&polygon2DData);
-                    ACAPI_DisposeElemMemoHdls (&memo);
-                    continue;
-                }
-                UInt32 begInd = (*polygon2DData.contourEnds)[0] + 1;
-                UInt32 endInd = (*polygon2DData.contourEnds)[1];
-                for (UInt32 k = begInd; k < endInd; k++) {
-                    OtdWall wallotd;
-                    Point2D begC = {(*polygon2DData.vertices)[k].x, (*polygon2DData.vertices)[k].y};
-                    Point2D endC = {(*polygon2DData.vertices)[k + 1].x, (*polygon2DData.vertices)[k + 1].y};
-                    if (!(roompolygon.IsCoordOnEdge (begC, nullptr) && roompolygon.IsCoordOnEdge (endC, nullptr))) {
-                        wallotd.base_guid = slabGuid;
-                        if (type == Floor) {
-                            wallotd.height = el.zUp - poly.zBottom;
-                            wallotd.zBottom = poly.zBottom;
-                        } else {
-                            wallotd.height = poly.zBottom - el.zBottom;
-                            wallotd.zBottom = el.zBottom;
-                        }
-                        wallotd.endC = {begC.x, begC.y};
-                        wallotd.begC = {endC.x, endC.y};
-                        wallotd.material = poly.material;
-                        wallotd.base_type = API_SlabID;
-                        wallotd.type = type;
-                        wallotd.floorInd = floorInd;
-                        if (wallotd.height > 0.005)
-                            otdwall.Push (std::move (wallotd));
-                    }
-                }
-                Geometry::FreePolygon2DData (&polygon2DData);
-            }
-            resultPolys = roompolygon.Substract (reducedroom);
-            if (!resultPolys.IsEmpty ()) {
-                roompolygon = resultPolys.PopLargest ();
-                area = roompolygon.CalcArea ();
-                resultPolys.Clear ();
-            } else {
-                roompolygon.Clear ();
-            }
-            ACAPI_DisposeElemMemoHdls (&memo);
-        }
-        area = roompolygon.CalcArea ();
-        if (!only_on_slab && area > 0.0001) {
-            OtdSlab otdslab = poly;
-            otdslab.type = type;
-            otdslab.zBottom = std::round (otdslab.zBottom * 1000) / 1000;
-            otdslab.floorInd = floorInd;
-            otdslab.poly = roompolygon;
-            roompolygon.Clear ();
-            otdslabs.Push (std::move (otdslab));
-        }
-    }
-
     // Добавляет все rawnames из списка параметров в словарь значений для чтения.
     void Param_ToParamDict (ParamDictValue &paramDict, ReadParams &zoneparams) {
         if (zoneparams.IsEmpty ())
@@ -3709,10 +3447,12 @@ namespace Roombook
         }
         if (roominfo.height < 0.0001)
             roominfo.isValid = false;
+        roominfo.height_ceil = roominfo.height_main + roominfo.height_down;
         roominfo.height = std::round (roominfo.height * 1000) / 1000;
         roominfo.height_main = std::round (roominfo.height_main * 1000) / 1000;
         roominfo.height_down = std::round (roominfo.height_down * 1000) / 1000;
         roominfo.height_up = std::round (roominfo.height_up * 1000) / 1000;
+        roominfo.height_ceil = std::round (roominfo.height_ceil * 1000) / 1000;
     }
 
     // Переносит валидные флаги создания элементов в комнату.
@@ -3721,12 +3461,13 @@ namespace Roombook
         GS::UniString param_name;
         ParamValueData val;
         bool find_create_all_elements = false;
+        bool create_all_elements = true;
         param_name = "create_all_elements";
         if (const auto *p = readparams.GetPtr (param_name)) {
             if (p->isValid) {
                 val = p->val;
                 find_create_all_elements = true;
-                roominfo.create_all_elements = val.boolValue;
+                create_all_elements = val.boolValue;
             }
         }
         // Если найдено свойство create_all_elements, то читать смысла нет
@@ -3768,11 +3509,11 @@ namespace Roombook
             }
         }
         if (find_create_all_elements) {
-            roominfo.create_ceil_elements = roominfo.create_all_elements;   // Создавать элементы отделки потолка
-            roominfo.create_wall_elements = roominfo.create_all_elements;   // Создавать элементы отделки стен
-            roominfo.create_column_elements = roominfo.create_all_elements; // Создавать элементы отделки колонн
-            roominfo.create_reveal_elements = roominfo.create_all_elements; // Создавать элементы отделки откосов
-            roominfo.create_floor_elements = roominfo.create_all_elements;  // Создавать элементы отделки откосов
+            roominfo.create_ceil_elements = create_all_elements;   // Создавать элементы отделки потолка
+            roominfo.create_wall_elements = create_all_elements;   // Создавать элементы отделки стен
+            roominfo.create_column_elements = create_all_elements; // Создавать элементы отделки колонн
+            roominfo.create_reveal_elements = create_all_elements; // Создавать элементы отделки откосов
+            roominfo.create_floor_elements = create_all_elements;  // Создавать элементы отделки пола
         }
     }
 
@@ -5187,8 +4928,6 @@ namespace Roombook
                 if (AdvanceProcessPhase (funcname, nPhase))
                     return NoError;
                 if (!otd.isValid)
-                    continue;
-                if (!otd.create_all_elements)
                     continue;
                 API_Guid class_guid = APINULLGuid;
                 group.Clear ();

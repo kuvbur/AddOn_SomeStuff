@@ -197,6 +197,7 @@ namespace Roombook {
         double height_down = 0;                     // Высота панелей
         double height_main = 0;                     // Высота основной отделки
         double height_up = 0;                       // Высота верхней части отделки
+        double height_ceil = 0;                     // Высота до потолка (height_down+height_main)
         OtdSlab poly;                               // Полгон зоны для полов/потолков
         GS::Array<API_Guid> floorslab;              // Перекрытия в уровне пола
         GS::Array<API_Guid> ceilslab;               // Перекрытия в уровне потолка
@@ -216,12 +217,11 @@ namespace Roombook {
         GS::UniString tip_otd = EMPTYSTRING; // Тип отделки для разбивки
         API_Guid zone_guid = APINULLGuid;    // GUID базового элемента
         bool isValid = true;                 // Зона считана нормально
-        bool create_all_elements = true;     // Создавать элементы отделки
-        bool create_ceil_elements = false;   // Создавать элементы отделки потолка
-        bool create_floor_elements = false;  // Создавать элементы отделки пола
-        bool create_wall_elements = false;   // Создавать элементы отделки стен
-        bool create_column_elements = false; // Создавать элементы отделки колонн
-        bool create_reveal_elements = false; // Создавать элементы отделки откосов
+        bool create_ceil_elements = true;    // Создавать элементы отделки потолка
+        bool create_floor_elements = true;   // Создавать элементы отделки пола
+        bool create_wall_elements = true;    // Создавать элементы отделки стен
+        bool create_column_elements = true;  // Создавать элементы отделки колонн
+        bool create_reveal_elements = true;  // Создавать элементы отделки откосов
     }; // Структура для хранения информации о зоне
 
     typedef GS::HashTable<API_Guid, OtdRoom> OtdRooms; // Словарь отделки всех зон
@@ -505,19 +505,6 @@ namespace Roombook {
                             GS::Array<Sector> &columnedges,
                             GS::Array<Sector> &restedges,
                             GS::Array<Sector> &gableedges);
-
-    void Floor_Create_All (const Stories &storyLevels, OtdRoom &roominfo);
-
-    void Floor_Create_One (const Stories &storyLevels,
-                           short floorInd,
-                           OtdSlab &poly,
-                           GS::Array<API_Guid> &slabGuids,
-                           GS::Array<OtdSlab> &otdslabs,
-                           GS::Array<OtdWall> &otdwall,
-                           TypeOtd type,
-                           OtdMaterial &material,
-                           bool only_on_slab);
-
     bool Edge_FindOnEdge (const Sector &edge, const GS::Array<Sector> &edges, Sector &findedge);
 
     // -----------------------------------------------------------------------------

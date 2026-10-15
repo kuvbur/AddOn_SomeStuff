@@ -767,7 +767,7 @@ namespace Roombook {
         using Polygons = Geometry::MultiPolygon2D;
         // Условия включения совпадают с Draw_Elements; Floor/Ceil-боковины идут стеновым writer.
         const auto enabled = [&] (const OtdWall &w) {
-            if (!room.isValid || !room.create_all_elements || !w.isValid ||
+            if (!room.isValid || !w.isValid ||
                 !(room.create_wall_elements || room.create_column_elements || room.create_reveal_elements))
                 return false;
             if ((w.type == Wall_Main || w.type == Wall_Up || w.type == Wall_Down) && !room.create_wall_elements)
