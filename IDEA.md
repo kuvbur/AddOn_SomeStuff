@@ -53,6 +53,13 @@ BUILD_PASS: исправления и пять Windows Debug-сборок зав
 
 
 
+### #278 — отписка наблюдателей (DetachObserver)
+
+https://github.com/kuvbur/AddOn_SomeStuff/issues/278. AC_ALL. Commit 0dd7ba3 (Refs: #278).
+Helpers: `DetachObserver(guid)` + `DetachAllObservedElements()` (AC22 — массив заголовков с BMKillHandle, AC23–26 — `ACAPI_Element_GetObservedElements`, AC27+ — `ACAPI_Notification_GetObservedElements`).
+ReservationChangeHandler — `DetachObserver` по `released`/`deleted`; ProjectEventHandlerProc — `DetachAllObservedElements()` при `APINotify_Close`/`APINotify_Quit` перед снятием глобального монитора.
+clang-format PASS; LSP: SomeStuff_Main 0 диагностик, Helpers.cpp только прежние, Helpers.hpp 3 прежних unused-includes. Compiled: not performed (VS в режиме отладки ARCHICAD). Tested: not performed. Push не выполнен.
+
 ### Регрессия Object-избранного пола/потолка — #192
 
 https://github.com/kuvbur/AddOn_SomeStuff/issues/192#issuecomment-6187937702. AC25 Windows; минимально восстановить Object/Slab dispatch в surface_geometry, остальные политики и чужие изменения сохранить. План: [x] исходник/история и issue; [x] точный backup и минимальный dispatch; [x] extracted production-branch regression RED 4/12 FAIL → GREEN 12/12 PASS (writers/link — doubles, роли не участвуют в dispatch); [x] clang-format/diff-check и clangd force_refresh 0 diagnostics; [x] canonical BuildAddOn.py -c config.json -v25: после закрытия Archicad владельцем повторная сборка AC25 Debug завершилась exit0, CMAKE_BUILD_OK/Build succeeded, SomeStuff.apx создан. Проверены VS Design и отсутствие ARCHICAD; standalone dispatch regression повторно 12/12 PASS. Следующий шаг — native-приёмка Object favorite пола/потолка в Archicad; runtime создания не выполнен. Лог успешной сборки: Hermes scratch/floor-object-192/build-ac25-retry.log. Evidence: Hermes scratch/floor-object-192/{fix.diff,red.cpp,green.cpp,red.log,green.log,build-ac25.log}; checkpoint прежний. Docs/generated/commit/push не выполнять. Backup: Hermes scratch/floor-object-192.
