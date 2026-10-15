@@ -1,6 +1,8 @@
 //------------ kuvbur 2026 ------------
 #include "SpecExecutor.hpp"
 
+#include "OnExit.hpp"
+
 // Создание элементов спецификации, группировка и GDL-скрипты — отдельная
 // единица компиляции, потому что этап исполнения должен быть читаем без
 // разбора расчёта: у него нет состояния между вызовами, всё приходит
@@ -64,6 +66,7 @@ namespace Spec {
 #endif
                     BNZeroMemory (&element, sizeof (API_Element));
                     API_ElementMemo memo = {};
+                    const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
                     err = GetElementForPlace (el.favorite_name, element, memo);
                     if (runResult != nullptr) {
                         // Попытка создания засчитывается ДО вызова: отказ
@@ -77,7 +80,6 @@ namespace Spec {
                             runResult->hasPrimaryError = true;
                             runResult->hasUnconfirmedCreate = true;
                         }
-                        ACAPI_DisposeElemMemoHdls (&memo);
                         msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
                         continue;
                     }
@@ -194,7 +196,6 @@ namespace Spec {
                     } else {
                         msg_rep ("Spec", "ACAPI_Element_Create", err, APINULLGuid);
                     }
-                    ACAPI_DisposeElemMemoHdls (&memo);
                 }
                 // Счётчик этого словаря закрыт: следующий проход начнёт свой.
                 dictIndex += 1;

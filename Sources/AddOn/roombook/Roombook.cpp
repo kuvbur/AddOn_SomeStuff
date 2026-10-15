@@ -15,6 +15,7 @@
 #include "Algorithms.hpp"
 #include "CommonFunction.hpp"
 #include "Helpers.hpp"
+#include "OnExit.hpp"
 #include "ProfileAdditionalInfo.hpp"
 #include "ProfileVectorImage.hpp"
 #include "ProfileVectorImageOperations.hpp"
@@ -493,10 +494,10 @@ namespace Roombook
                                                 source);
         } else {
             API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             Geometry::Polygon2D polygon;
             const GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_Polygon);
             const GSErrCode polygonError = err == NoError ? ConstructPolygon2DFromElementMemo (memo, polygon) : err;
-            ACAPI_DisposeElemMemoHdls (&memo);
             if (polygonError == NoError)
                 analytic = BuildPreparedSlabSource (
                     element, GetzPos (element.slab.level, element.header.floorInd, stories), polygon, slabs, source);
@@ -2235,9 +2236,9 @@ namespace Roombook
         }
 
         API_ElementMemo zonememo = {};
+        const GS::OnExit zoneMemoGuard ([&zonememo] () { ACAPI_DisposeElemMemoHdls (&zonememo); });
         err = ACAPI_Element_GetMemo (zoneelement.header.guid, &zonememo);
         if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&zonememo);
             msg_rep ("CollectRoomInfo err", "ACAPI_Element_GetMemo zone", err, zoneGuid);
             return false;
         }
@@ -2251,7 +2252,6 @@ namespace Roombook
         RoomRelationValues relData;
         err = ReadZoneRelations (zoneGuid, cache, relData);
         if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&zonememo);
             msg_rep ("CollectRoomInfo err", "ACAPI_Element_GetRelations zone", err, zoneGuid);
             return false;
         }
@@ -2311,7 +2311,6 @@ namespace Roombook
                                                    APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace,
                                                    cache);
                         if (connected.error != NoError) {
-                            ACAPI_DisposeElemMemoHdls (&zonememo);
                             msg_rep (
                                 "CollectRoomInfo err", "ACAPI_Element_GetConnectedElements", connected.error, elGuid);
                             return false;
@@ -2353,7 +2352,6 @@ namespace Roombook
     #else
         roominfo.om_zone.material = zoneelement.zone.material;
     #endif
-        ACAPI_DisposeElemMemoHdls (&zonememo);
         // Пока только снимок: ошибка 3D не меняет прежний результат сбора и создания отделки.
         roominfo.surfaceSnapshot = ReadRoomSurfaces (zoneelement.header, cache);
         return flag;
@@ -2691,7 +2689,6 @@ namespace Roombook
                                     UnicGUIDByType &guidselementToRead) {
         GSErrCode err;
         API_Element element = {};
-        API_ElementMemo segmentmemo = {};
         element.header.guid = elGuid;
         err = ACAPI_Element_Get (&element);
         if (err != NoError || !element.header.hasMemo) {
@@ -2704,6 +2701,8 @@ namespace Roombook
     #endif
             return;
         }
+        API_ElementMemo segmentmemo = {};
+        const GS::OnExit memoGuard ([&segmentmemo] () { ACAPI_DisposeElemMemoHdls (&segmentmemo); });
         err = ACAPI_Element_GetMemo (elGuid,
                                      &segmentmemo,
                                      APIMemoMask_ColumnSegment | APIMemoMask_AssemblySegmentScheme |
@@ -2712,7 +2711,6 @@ namespace Roombook
     #if defined(TESTING)
             DBprnt ("OtdWall_Create_FromColumn err", "ACAPI_Element_GetMemo column");
     #endif
-            ACAPI_DisposeElemMemoHdls (&segmentmemo);
             return;
         }
         bool flag_find = false;
@@ -2773,7 +2771,6 @@ namespace Roombook
         }
         if (flag_find)
             Param_AddUnicGUIDByType (elGuid, API_ColumnID, guidselementToRead);
-        ACAPI_DisposeElemMemoHdls (&segmentmemo);
     }
 
     // -----------------------------------------------------------------------------
@@ -2804,19 +2801,19 @@ namespace Roombook
         GS::HashTable<API_Guid, Geometry::Polygon2D> zonePolygons;
         for (const auto &zoneGuid : zones) {
             API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             Geometry::Polygon2D polygon;
             const GSErrCode memoError = ACAPI_Element_GetMemo (zoneGuid, &memo, APIMemoMask_Polygon);
             if (memoError == NoError && ConstructPolygon2DFromElementMemo (memo, polygon) == NoError)
                 zonePolygons.Add (zoneGuid, polygon);
-            ACAPI_DisposeElemMemoHdls (&memo);
         }
         for (const auto &slabGuid : allslabs) {
             API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             Geometry::Polygon2D polygon;
             const GSErrCode memoError = ACAPI_Element_GetMemo (slabGuid, &memo, APIMemoMask_Polygon);
             const GSErrCode polygonError =
                 memoError == NoError ? ConstructPolygon2DFromElementMemo (memo, polygon) : memoError;
-            ACAPI_DisposeElemMemoHdls (&memo);
             if (polygonError != NoError)
                 continue;
             for (const auto &zoneGuid : zones) {
@@ -5063,6 +5060,7 @@ namespace Roombook
         GSErrCode err = NoError;
         API_Element beamelement = {};
         API_ElementMemo beammemo = {};
+        const GS::OnExit memoGuard ([&beammemo] () { ACAPI_DisposeElemMemoHdls (&beammemo); });
         if (!OtdBeam_GetDefult_Beam (favorite_name, beamelement, beammemo)) {
             return;
         }
@@ -5107,7 +5105,6 @@ namespace Roombook
         beamelement.beam.level = GetOffsetFromStory (edges.zBottom, edges.floorInd, storyLevels);
         beamelement.beam.isFlipped = false;
         err = ACAPI_Element_Create (&beamelement, &beammemo);
-        ACAPI_DisposeElemMemoHdls (&beammemo);
         if (err != NoError) {
             msg_rep ("OtdBeam_Draw_Beam err", "ACAPI_Element_Create", err, APINULLGuid);
             return;
@@ -5182,6 +5179,7 @@ namespace Roombook
         GSErrCode err = NoError;
         API_Element wallobjelement = {};
         API_ElementMemo wallobjmemo = {};
+        const GS::OnExit memoGuard ([&wallobjmemo] () { ACAPI_DisposeElemMemoHdls (&wallobjmemo); });
         if (!OtdWall_GetDefult_Object (favorite_name, wallobjelement, wallobjmemo)) {
             return;
         }
@@ -5292,7 +5290,6 @@ namespace Roombook
     #endif
         wallobjelement.object.level = GetOffsetFromStory (edges.zBottom, edges.floorInd, storyLevels);
         err = ACAPI_Element_Create (&wallobjelement, &wallobjmemo);
-        ACAPI_DisposeElemMemoHdls (&wallobjmemo);
         if (err != NoError) {
             msg_rep ("OtdWall_Draw_Object err", "ACAPI_Element_Create", err, APINULLGuid);
             return;
@@ -5462,6 +5459,7 @@ namespace Roombook
             return;
         }
         windowelement.window.owner = wallelement.header.guid;
+        const GS::OnExit memoGuard ([&windowmemo] () { ACAPI_DisposeElemMemoHdls (&windowmemo); });
         if (op.surface_geometry) {
             // Вырез следует наклону стены, независимо от точки фиксации избранного.
             windowelement.window.directionType = API_WDAssociativeToWall;
@@ -5491,14 +5489,12 @@ namespace Roombook
         // objLoc присваиваем ПОСЛЕ коррекции откосов, чтобы центр проёма совпадал со скорректированными размерами
         windowelement.window.objLoc = op.objLoc;
         if (op.width < min_dim || op.height < min_dim) {
-            ACAPI_DisposeElemMemoHdls (&windowmemo);
             return;
         }
         windowelement.window.openingBase.width = op.width;
         windowelement.window.openingBase.height = op.height;
         windowelement.window.lower = op.lower;
         err = ACAPI_Element_Create (&windowelement, &windowmemo);
-        ACAPI_DisposeElemMemoHdls (&windowmemo);
         if (err != NoError) {
             msg_rep ("Opening_Draw err", "ACAPI_Element_Create", err, APINULLGuid);
             return;
@@ -5586,6 +5582,7 @@ namespace Roombook
         API_Element slabelement = {};
         bool is_new = (otdslab.otd_guid == APINULLGuid); // Элемент уже существует, нужно только обновить
         API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         if (is_new) {
             if (!Floor_GetDefult_Slab (favorite_name, slabelement))
                 return;
@@ -5601,7 +5598,6 @@ namespace Roombook
             err = ACAPI_Element_GetMemo (slabelement.header.guid, &memo, APIMemoMask_Polygon);
             if (err != NoError) {
                 msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, otdslab.otd_guid);
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return;
             }
         }
@@ -5645,7 +5641,6 @@ namespace Roombook
         }
         err = ConvertPolygon2DToAPIPolygon (otdslab.poly, slabelement.slab.poly, memo);
         if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&memo);
             return;
         }
         if (is_new) {
@@ -5687,7 +5682,6 @@ namespace Roombook
                                         APIMemoMask_Polygon | APIMemoMask_SideMaterials | APIMemoMask_EdgeTrims,
                                         true);
         }
-        ACAPI_DisposeElemMemoHdls (&memo);
         if (err != NoError) {
             msg_rep ("Floor_Draw_Slab", favorite_name, err, APINULLGuid);
             return;
@@ -5703,6 +5697,7 @@ namespace Roombook
         GSErrCode err = NoError;
         API_Element slabobjelement = {};
         API_ElementMemo slabobjmemo = {};
+        const GS::OnExit memoGuard ([&slabobjmemo] () { ACAPI_DisposeElemMemoHdls (&slabobjmemo); });
         bool is_new = (otdslab.otd_guid == APINULLGuid); // Элемент уже существует, нужно только обновить
         if (is_new) {
             if (!Floor_GetDefult_Object (favorite_name, slabobjelement, slabobjmemo))
@@ -5720,7 +5715,6 @@ namespace Roombook
             err = ACAPI_Element_GetMemo (otdslab.otd_guid, &slabobjmemo);
             if (err != NoError) {
                 otdslab.otd_guid = APINULLGuid;
-                ACAPI_DisposeElemMemoHdls (&slabobjmemo);
                 msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, savedGuid_GetMemo);
                 return;
             }
@@ -5835,7 +5829,6 @@ namespace Roombook
             ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, floorInd);
             err = ACAPI_Element_Change (&slabobjelement, &mask, &slabobjmemo, APIMemoMask_AddPars, true);
         }
-        ACAPI_DisposeElemMemoHdls (&slabobjmemo);
         if (err != NoError) {
             otdslab.otd_guid = APINULLGuid;
             msg_rep ("Floor_Draw_Object", favorite_name, err, APINULLGuid);
@@ -6558,14 +6551,15 @@ namespace Roombook
         API_Favorite favorite (favorite_name);
         favorite.memo.New ();
         BNZeroMemory (&favorite.memo.Get (), sizeof (API_ElementMemo));
+        GS::OnExit favMemoGuard ([&favorite] () { ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ()); });
         err = ACAPI_Favorite_Get (&favorite);
         if (err == NoError) {
             element = favorite.element;
             UnhideUnlockElementLayer (element.header);
             memo = *favorite.memo;
+            favMemoGuard.Deactivate ();
             return true;
         }
-        ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
         return false;
     #endif
     }

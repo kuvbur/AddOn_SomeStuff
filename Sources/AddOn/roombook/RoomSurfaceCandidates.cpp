@@ -2,6 +2,7 @@
 
 #ifdef ServerMainVers_2400
     #include "CommonFunction.hpp"
+    #include "OnExit.hpp"
 
 namespace Roombook {
     namespace {
@@ -108,12 +109,7 @@ namespace Roombook {
                 return;
             }
             API_ElementMemo memo = {};
-
-            struct MemoGuard {
-                API_ElementMemo *memo;
-
-                ~MemoGuard () { ACAPI_DisposeElemMemoHdls (memo); }
-            } guard{&memo};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
 
             const GSErrCode memoError = ACAPI_Element_GetMemo (
                 guid, &memo, type == API_ColumnID ? APIMemoMask_ColumnSegment : APIMemoMask_BeamSegment);

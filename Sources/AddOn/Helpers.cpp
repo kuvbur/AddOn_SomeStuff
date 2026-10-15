@@ -15,6 +15,7 @@
 #include "Helpers.hpp"
 #include "Model3D/MeshBody.hpp"
 #include "Model3D/model.h"
+#include "OnExit.hpp"
 #include "ProfileAdditionalInfo.hpp"
 #include "ProfileVectorImage.hpp"
 #include "ProfileVectorImageOperations.hpp"
@@ -943,7 +944,6 @@ void GetRelationsElement (const API_Guid &elemGuid,
 
     GSErrCode err = NoError;
     API_Element element = {};
-    API_ElementMemo memo = {};
 
 #ifdef ServerMainVers_2300
     auto GetHierarchicalOwners =
@@ -974,6 +974,8 @@ void GetRelationsElement (const API_Guid &elemGuid,
             }
             if (element.column.nSegments == 0)
                 return;
+            API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
             if (err == NoError && memo.columnSegments != nullptr) {
                 subelemGuid.SetCapacity (subelemGuid.GetSize () + element.column.nSegments);
@@ -981,7 +983,6 @@ void GetRelationsElement (const API_Guid &elemGuid,
                     subelemGuid.Push (memo.columnSegments[i].head.guid);
                 }
             }
-            ACAPI_DisposeElemMemoHdls (&memo);
         }
         break;
     case API_BeamID:
@@ -994,6 +995,8 @@ void GetRelationsElement (const API_Guid &elemGuid,
             }
             if (element.beam.nSegments == 0)
                 return;
+            API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
             if (err == NoError && memo.beamSegments != nullptr) {
                 subelemGuid.SetCapacity (subelemGuid.GetSize () + element.beam.nSegments);
@@ -1001,7 +1004,6 @@ void GetRelationsElement (const API_Guid &elemGuid,
                     subelemGuid.Push (memo.beamSegments[i].head.guid);
                 }
             }
-            ACAPI_DisposeElemMemoHdls (&memo);
         }
         break;
 #endif
@@ -1204,9 +1206,9 @@ bool ParamHelpers::ReadMorphParam (const API_Guid &guid, ParamDictValue &pdictva
     DBprnt ("      ReadMorphParam");
 #endif
     API_ElementMemo memo = {};
+    const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
     GSErrCode err = ACAPI_Element_GetMemo (guid, &memo);
     if (err != NoError || memo.morphBody == nullptr) {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return false;
     }
     double L = 0;
@@ -1280,10 +1282,8 @@ bool ParamHelpers::ReadMorphParam (const API_Guid &guid, ParamDictValue &pdictva
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "a", A, true);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "b", B, true);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "zzyzx", ZZYZX, true);
-        ACAPI_DisposeElemMemoHdls (&memo);
         return true;
     } else {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return false;
     }
 }
@@ -2090,6 +2090,7 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
         bool bsymb_pos_s_correctu_ = false;
         bool bsymb_pos_correctu_ = false;
         API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         if (ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
             Int32 size = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallSegments)) / sizeof (API_CWSegmentType);
             for (Int32 inx_segment = 0; inx_segment < size; ++inx_segment) {
@@ -2177,7 +2178,6 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                     bsymb_pos_correctu_ = true;
             }
         }
-        ACAPI_DisposeElemMemoHdls (&memo);
         if (skip_north) {
             angznorth = -1.0;
             angznorthtxt = "UNDEF";
@@ -2431,6 +2431,7 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                 skip_north = true;
             Int32 inx_segment = element.cwPanel.segmentID;
             API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             if (ACAPI_Element_GetMemo (owner.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
                 Int32 size = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallSegments)) / sizeof (API_CWSegmentType);
                 if (size > inx_segment) {
@@ -2442,7 +2443,6 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                     isFliped = owner.curtainWall.flipped;
                 }
             }
-            ACAPI_DisposeElemMemoHdls (&memo);
         }
 #endif
     } else {
@@ -6664,10 +6664,10 @@ bool ParamHelpers::GDLParamByName (const API_Element &element,
     API_Guid elemGuid;
     GetGDLParametersHead (element, elem_head, elemType, elemGuid);
     API_ElementMemo memo = {};
+    const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
     GSErrCode err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
     if (err != NoError) {
         msg_rep ("ParamHelpers::GDLParamByName", "GetGDLParameters", err, elemGuid);
-        ACAPI_DisposeElemMemoHdls (&memo);
         return false;
     }
 
@@ -6718,7 +6718,6 @@ bool ParamHelpers::GDLParamByName (const API_Element &element,
             break;
         }
     }
-    ACAPI_DisposeElemMemoHdls (&memo);
     return flagFind;
 }
 
@@ -9532,7 +9531,6 @@ bool ParamHelpers::Components (const API_Element &element,
     // Получаем данные о составе конструкции. Т.к. для разных типов элементов
     // информация храница в разных местах - запишем всё в одни переменные
     API_ElemTypeID eltype = GetElemTypeID (elemhead);
-    API_ElementMemo memo = {};
     GSErrCode err = NoError;
     switch (eltype) {
 #ifdef ServerMainVers_2300
@@ -9571,7 +9569,8 @@ bool ParamHelpers::Components (const API_Element &element,
             return false;
         }
         if (element.column.nSegments == 1) {
-            BNZeroMemory (&memo, sizeof (API_ElementMemo));
+            API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
             if (err == NoError && memo.columnSegments != nullptr) {
                 elemhead = memo.columnSegments[0].head;
@@ -9592,7 +9591,6 @@ bool ParamHelpers::Components (const API_Element &element,
                     constrinx = memo.columnSegments[0].assemblySegmentData.profileAttr;
             } else {
                 msg_rep ("ParamHelpers::Components", "ACAPI_Element_GetMemo - ColumnSegment", err, element.header.guid);
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return false;
             }
         } else {
@@ -9609,7 +9607,8 @@ bool ParamHelpers::Components (const API_Element &element,
             return false;
         }
         if (element.beam.nSegments == 1) {
-            BNZeroMemory (&memo, sizeof (API_ElementMemo));
+            API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
             if (err == NoError && memo.beamSegments != nullptr) {
                 elemhead = memo.beamSegments[0].head;
@@ -9632,7 +9631,6 @@ bool ParamHelpers::Components (const API_Element &element,
                     constrinx = memo.beamSegments[0].assemblySegmentData.profileAttr;
             } else {
                 msg_rep ("ParamHelpers::Components", "ACAPI_Element_GetMemo - BeamSegment", err, element.header.guid);
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return false;
             }
         } else {
@@ -9683,11 +9681,12 @@ bool ParamHelpers::Components (const API_Element &element,
             constrinx = element.shell.shellBase.buildingMaterial;
         fillThick = element.shell.shellBase.thickness;
         break;
-    case API_MeshID:
+    case API_MeshID: {
         constrinx = element.mesh.buildingMaterial;
         fillThick = 0;
         fillThick_min = element.mesh.skirtLevel;
-        BNZeroMemory (&memo, sizeof (API_ElementMemo));
+        API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_MeshPolyZ);
         if (err == NoError && memo.meshPolyZ != nullptr) {
             Int32 nMeshLevels = BMGetHandleSize ((GSHandle)memo.meshPolyZ) / sizeof (double);
@@ -9700,6 +9699,7 @@ bool ParamHelpers::Components (const API_Element &element,
             fillThick_min = element.mesh.skirtLevel;
         }
         break;
+    }
     case API_MorphID:
         constrinx = element.morph.buildingMaterial;
         fillThick = 0;
@@ -9716,7 +9716,6 @@ bool ParamHelpers::Components (const API_Element &element,
         return false;
         break;
     }
-    ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
     // Получим словарь исключительно с определениями состава
@@ -9778,22 +9777,20 @@ bool ParamHelpers::Components (const API_Element &element,
 #ifndef AC_23
     if (structtype == API_ProfileStructure) {
         API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         UInt64 mask = APIMemoMask_StretchedProfile;
         GSErrCode err = ACAPI_Element_GetMemo (elemhead.guid, &memo, mask);
         if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&memo);
             msg_rep ("ParamHelpers::Components", "err", err, element.header.guid);
             return false;
         }
         if (memo.stretchedProfile == nullptr) {
-            ACAPI_DisposeElemMemoHdls (&memo);
             msg_rep ("ParamHelpers::Components", "Profile not found, missing attribute", NoError, element.header.guid);
             return false;
         }
         ProfileVectorImage profileDescription = *memo.stretchedProfile;
         hasData = ParamHelpers::ComponentsProfileStructure (
             profileDescription, params, paramcomposite, paramsAdd, width, length, needReadQuantities);
-        ACAPI_DisposeElemMemoHdls (&memo);
     }
 #endif
     return hasData;

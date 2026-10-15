@@ -11,6 +11,7 @@
 
 #include "CommonFunction.hpp"
 
+#include "OnExit.hpp"
 #include "Propertycache.hpp"
 #include "third_party/qrcodegen.hpp"
 #if defined(_MAC)
@@ -1721,11 +1722,11 @@ GSErrCode GetRElementsForCWall (const API_Guid &cwGuid, GS::Array<API_Guid> &ele
         return err;
     }
     API_ElementMemo memo = {};
+    const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
     UInt64 mask =
         APIMemoMask_CWallFrames | APIMemoMask_CWallPanels | APIMemoMask_CWallJunctions | APIMemoMask_CWallAccessories;
     err = ACAPI_Element_GetMemo (cwGuid, &memo, mask);
     if (err != NoError) {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
     bool isDegenerate = false;
@@ -1770,7 +1771,6 @@ GSErrCode GetRElementsForCWall (const API_Guid &cwGuid, GS::Array<API_Guid> &ele
             }
         }
     }
-    ACAPI_DisposeElemMemoHdls (&memo);
     return err;
 }
 
@@ -1785,6 +1785,7 @@ GSErrCode GetRElementsForRailing (const API_Guid &elemGuid, GS::Array<API_Guid> 
         return err;
     }
     API_ElementMemo memo = {};
+    const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
     UInt64 mask = APIMemoMask_RailingNode | APIMemoMask_RailingSegment | APIMemoMask_RailingPost |
                   APIMemoMask_RailingInnerPost | APIMemoMask_RailingRail | APIMemoMask_RailingHandrail |
                   APIMemoMask_RailingToprail | APIMemoMask_RailingPanel | APIMemoMask_RailingBaluster |
@@ -1793,7 +1794,6 @@ GSErrCode GetRElementsForRailing (const API_Guid &elemGuid, GS::Array<API_Guid> 
                   APIMemoMask_RailingHandrailConnection | APIMemoMask_RailingToprailConnection;
     err = ACAPI_Element_GetMemo (elemGuid, &memo, mask);
     if (err != NoError) {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
     GSSize n = 0;
@@ -1881,7 +1881,6 @@ GSErrCode GetRElementsForRailing (const API_Guid &elemGuid, GS::Array<API_Guid> 
                 elementsGuids.Push (std::move (memo.railingPanels[idx].head.guid));
         }
     }
-    ACAPI_DisposeElemMemoHdls (&memo);
     return err;
 }
 

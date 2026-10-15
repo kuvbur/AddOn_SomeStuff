@@ -13,6 +13,7 @@
     #include "tests/TestFunc.hpp"
 #endif
 #include "dialogs/DG4rule.hpp"
+#include "OnExit.hpp"
 #include "Propertycache.hpp"
 
 namespace Spec {
@@ -2974,6 +2975,7 @@ namespace Spec {
             favorite.memo.New ();
             favorite.properties.New ();
             BNZeroMemory (&favorite.memo.Get (), sizeof (API_ElementMemo));
+            const GS::OnExit favMemoGuard ([&favorite] () { ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ()); });
             err = ACAPI_Favorite_Get (&favorite);
             if (err == NoError) {
                 if (readInfo != nullptr) {
@@ -3007,7 +3009,6 @@ namespace Spec {
                         }
                     }
                 }
-                ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
                 return err;
             } else {
                 msg_rep ("Spec",
@@ -3026,10 +3027,10 @@ namespace Spec {
         if (readInfo != nullptr)
             readInfo->fromDefaultElem = true;
         msg_rep ("Spec", "Read the default settings of the object", err, APINULLGuid);
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         err = ACAPI_Element_GetDefaults (&element, &memo);
         if (err != NoError) {
             msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
-            ACAPI_DisposeElemMemoHdls (&memo);
             return err;
         }
         if (memo.params != nullptr) {
@@ -3044,7 +3045,6 @@ namespace Spec {
                     paramdict.Add (rawName, EMPTYSTRING);
             }
         }
-        ACAPI_DisposeElemMemoHdls (&memo);
         GS::Array<API_PropertyDefinition> definitions = {};
 #ifdef ServerMainVers_2600
         err = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (
@@ -3089,13 +3089,13 @@ namespace Spec {
             API_Favorite favorite (favorite_name);
             favorite.memo.New ();
             BNZeroMemory (&favorite.memo.Get (), sizeof (API_ElementMemo));
+            GS::OnExit favMemoGuard ([&favorite] () { ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ()); });
             err = ACAPI_Favorite_Get (&favorite);
             if (err == NoError) {
                 element = favorite.element;
                 memo = *favorite.memo;
+                favMemoGuard.Deactivate ();
                 return err;
-            } else {
-                ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
             }
         }
 #endif

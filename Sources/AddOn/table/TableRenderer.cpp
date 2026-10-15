@@ -4,6 +4,7 @@
 #include "TableRenderer.hpp"
 
 #include "CommonFunction.hpp"
+#include "OnExit.hpp"
 
 // Реализация общего класса отрисовки таблиц.
 // Проверенная редакция ТЗ и источники SDK: Docs/TableRenderer_AC25.md (issue #177).
@@ -812,6 +813,7 @@ namespace TableRenderer {
         API_ElementMemo memo;
         BNZeroMemory (&element, sizeof (API_Element));
         BNZeroMemory (&memo, sizeof (API_ElementMemo));
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         SetElemTypeID (element, API_HatchID); // Задание типа с учётом версии AC
         GSErrCode err = ACAPI_Element_GetDefaults (&element, nullptr);
         if (err != NoError)
@@ -841,7 +843,6 @@ namespace TableRenderer {
         memo.pends = reinterpret_cast<Int32 **> (BMhAllClear ((element.hatch.poly.nSubPolys + 1) * sizeof (Int32)));
 
         if (memo.coords == nullptr || memo.pends == nullptr) {
-            ACAPI_DisposeElemMemoHdls (&memo);
             return APIERR_MEMFULL;
         }
 
@@ -855,7 +856,6 @@ namespace TableRenderer {
         (*memo.pends)[1] = element.hatch.poly.nCoords;
 
         err = ACAPI_Element_Create (&element, &memo);
-        ACAPI_DisposeElemMemoHdls (&memo);
 
         return err;
     }
@@ -870,6 +870,7 @@ namespace TableRenderer {
         API_ElementMemo memo;
         BNZeroMemory (&element, sizeof (API_Element));
         BNZeroMemory (&memo, sizeof (API_ElementMemo));
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
 
 #ifdef ServerMainVers_2800
         // AC28: memo.textContent стал GS::UniString*, GSHandle и API_TextType::charCode удалены —
@@ -889,7 +890,6 @@ namespace TableRenderer {
 
         GSErrCode err = ACAPI_Element_GetDefaults (&element, nullptr);
         if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&memo);
             return err;
         }
 
@@ -960,7 +960,6 @@ namespace TableRenderer {
             element.text.pen = rules.textPenIndex;
 
         err = ACAPI_Element_Create (&element, &memo);
-        ACAPI_DisposeElemMemoHdls (&memo);
 
         return err;
     }

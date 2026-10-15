@@ -5,6 +5,7 @@
 
 #include "Dimensions.hpp"
 
+#include "OnExit.hpp"
 #include "Propertycache.hpp"
 
 #define DIM_NOCHANGE 0
@@ -94,17 +95,6 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
     if (rules.IsEmpty ())
         return err;
     API_ElementMemo memo = {};
-    err = ACAPI_Element_GetMemo (element.header.guid, &memo);
-    if (err != NoError) {
-        msg_rep ("DimAutoRound", "ACAPI_Element_GetMemo", err, elemGuid);
-        ACAPI_DisposeElemMemoHdls (&memo);
-        return err;
-    }
-    if (memo.dimElems == nullptr || element.dimension.nDimElem < 1) {
-        ACAPI_DisposeElemMemoHdls (&memo);
-        return NoError;
-    }
-
     auto cleanupMemoContentUStr = [&memo, &element] () {
         if (memo.dimElems != nullptr) {
             for (Int32 i = 0; i < element.dimension.nDimElem; i++) {
@@ -115,6 +105,19 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
             }
         }
     };
+    const GS::OnExit memoGuard ([&memo, &cleanupMemoContentUStr] () {
+        cleanupMemoContentUStr ();
+        ACAPI_DisposeElemMemoHdls (&memo);
+    });
+
+    err = ACAPI_Element_GetMemo (element.header.guid, &memo);
+    if (err != NoError) {
+        msg_rep ("DimAutoRound", "ACAPI_Element_GetMemo", err, elemGuid);
+        return err;
+    }
+    if (memo.dimElems == nullptr || element.dimension.nDimElem < 1) {
+        return NoError;
+    }
 
     API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
     API_ElemTypeID elementType = API_ZombieElemID;
@@ -124,13 +127,9 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
     elementType = (*memo.dimElems)[0].base.base.typeID;
 #endif // AC_26
     if (elementType == API_OpeningID) {
-        cleanupMemoContentUStr ();
-        ACAPI_DisposeElemMemoHdls (&memo);
         return NoError;
     }
     if (is_equal ((*memo.dimElems)[0].dimVal, 0) && elementType == API_ColumnID) {
-        cleanupMemoContentUStr ();
-        ACAPI_DisposeElemMemoHdls (&memo);
         return NoError;
     };
     API_Element mask = {};
@@ -166,13 +165,9 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
 #endif // AC_26
        // TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
         if (is_equal ((*memo.dimElems)[k].dimVal, 0) && elementType == API_ColumnID) {
-            cleanupMemoContentUStr ();
-            ACAPI_DisposeElemMemoHdls (&memo);
             return NoError;
         };
         if (elementType == API_OpeningID) {
-            cleanupMemoContentUStr ();
-            ACAPI_DisposeElemMemoHdls (&memo);
             return NoError;
         }
         if (is_equal ((*memo.dimElems)[k].dimVal, 0)) {
@@ -299,8 +294,6 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
             msg_rep ("DimAutoRound", "ACAPI_Element_Change", err, elemGuid);
         }
     }
-    cleanupMemoContentUStr ();
-    ACAPI_DisposeElemMemoHdls (&memo);
     return err;
 }
 
