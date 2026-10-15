@@ -43,13 +43,18 @@ static GSErrCode __ACENV_CALL ReservationChangeHandler (const GS::HashTable<API_
                                                         const GS::HashSet<API_Guid> &released,
                                                         const GS::HashSet<API_Guid> &deleted) {
 #endif
-    (void)deleted;
-    (void)released;
 #ifdef TESTING
     DBprnt ("ReservationChangeHandler");
 #endif
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings);
+    // При освобождении или удалении элементов в Teamwork снимаем с них наблюдение
+    for (const API_Guid &objectId : released) {
+        DetachObserver (objectId);
+    }
+    for (const API_Guid &objectId : deleted) {
+        DetachObserver (objectId);
+    }
     // здесь только подписка наблюдателей — никакой записи БД и полного обновления кэша.
     for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs (); it != nullptr; ++it) {
 #ifdef ServerMainVers_2800
@@ -122,6 +127,7 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     case APINotify_Close:
     case APINotify_Quit:
         ClearSyncThrottleCache ();
+        DetachAllObservedElements ();
         if (notifID == APINotify_Quit)
             BrowserPalette::DestroyInstance ();
 #ifdef ServerMainVers_2700

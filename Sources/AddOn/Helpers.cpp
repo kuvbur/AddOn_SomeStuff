@@ -517,6 +517,54 @@ GSErrCode AttachObserver (const API_Guid &objectId, const SyncSettings &syncSett
     return err;
 }
 
+// -----------------------------------------------------------------------------
+// Снятие отслеживания (для разных версий)
+// -----------------------------------------------------------------------------
+GSErrCode DetachObserver (const API_Guid &objectId) {
+    GSErrCode err = NoError;
+#ifndef ServerMainVers_2300
+    API_Elem_Head elemHead;
+    elemHead.guid = objectId;
+    err = ACAPI_Element_DetachObserver (&elemHead);
+#else
+    err = ACAPI_Element_DetachObserver (objectId);
+#endif
+    return err;
+}
+
+// -----------------------------------------------------------------------------
+// Массовое снятие отслеживания со всех элементов (для разных версий)
+// -----------------------------------------------------------------------------
+GSErrCode DetachAllObservedElements () {
+    GSErrCode err = NoError;
+#ifndef ServerMainVers_2300
+    API_Elem_Head **elemHead = nullptr;
+    Int32 nElems = 0;
+    err = ACAPI_Element_GetObservedElements (&elemHead, &nElems);
+    if (err == NoError && elemHead != nullptr) {
+        for (Int32 i = 0; i < nElems; ++i) {
+            if ((*elemHead)[i].guid != APINULLGuid) {
+                ACAPI_Element_DetachObserver (&((*elemHead)[i]));
+            }
+        }
+        BMKillHandle (reinterpret_cast<GSHandle *> (&elemHead));
+    }
+#else
+    GS::Array<API_Elem_Head> observedElems;
+    #ifdef ServerMainVers_2700
+    err = ACAPI_Notification_GetObservedElements (&observedElems);
+    #else
+    err = ACAPI_Element_GetObservedElements (&observedElems);
+    #endif
+    if (err == NoError) {
+        for (const auto &elemHead : observedElems) {
+            ACAPI_Element_DetachObserver (elemHead.guid);
+        }
+    }
+#endif
+    return err;
+}
+
 // --------------------------------------------------------------------
 // Проверяет - попадает ли тип элемента в под настройки синхронизации
 // --------------------------------------------------------------------
