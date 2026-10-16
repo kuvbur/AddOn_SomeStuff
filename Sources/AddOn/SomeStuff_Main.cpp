@@ -179,6 +179,12 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
         return NoError;
     if (elemType->elemHead.hotlinkGuid != APINULLGuid)
         return NoError;
+    if (elemType->notifID == APINotifyElement_Delete || elemType->notifID == APINotifyElement_Undo_Created ||
+        elemType->notifID == APINotifyElement_Redo_Deleted)
+        DetachObserver (elemType->elemHead.guid);
+    if (elemType->notifID == APINotifyElement_Copy || elemType->notifID == APINotifyElement_Undo_Deleted ||
+        elemType->notifID == APINotifyElement_Redo_Created)
+        AttachObserver (elemType->elemHead.guid, syncSettings);
     const bool isChangeEvent =
         elemType->notifID == APINotifyElement_New || elemType->notifID == APINotifyElement_Change ||
         elemType->notifID == APINotifyElement_Edit || elemType->notifID == APINotifyElement_PropertyValueChange ||
@@ -332,7 +338,6 @@ static GSErrCode SelectionChangeHandlerProc (const API_Neig *selElemNeig) {
 #else
 static GSErrCode __ACENV_CALL SelectionChangeHandlerProc (const API_Neig *selElemNeig) {
 #endif
-    DBprnt ("SelectionChangeHandlerProc ()");
     return BrowserPalette::SelectionChangeHandler (selElemNeig);
 }
 

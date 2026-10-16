@@ -5412,6 +5412,8 @@ namespace Roombook
             edges.zBottom -= edges.height;
             if (!is_equal (edges.width, 0) && edges.width > 0)
                 wallelement.wall.thickness = edges.width;
+            wallelement.wall.offset = wallelement.wall.thickness;
+            wallelement.wall.offsetFromOutside = 0;
         }
         // Верхний откос уже ориентирован при подготовке; повторный разворот меняет сторону глубины.
         wallelement.wall.begC = edges.begC;

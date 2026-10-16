@@ -1008,7 +1008,8 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition &definision, GS::Uni
             name.Append (SLASH);
             name.Append (definision.name);
         } else {
-            msg_rep ("GetPropertyFullName", "ACAPI_Property_GetPropertyGroup " + definision.name, error, APINULLGuid);
+            msg_rep (
+                "GetPropertyFullName", "ACAPI_Property_GetPropertyGroup err " + definision.name, error, APINULLGuid);
         }
     }
     return error;
