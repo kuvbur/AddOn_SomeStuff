@@ -1127,7 +1127,7 @@ namespace Roombook
                     const double wy = wall.endC.y - wall.begC.y;
                     // Торец не имеет стороны многослойки; боковая грань использует исходное направление.
                     if (std::fabs (dx * wy - dy * wx) > 1e-6 * std::hypot (dx, dy) * std::hypot (wx, wy))
-                        return false;
+                        continue; // Из-за одной ошибки нельзя прерывать всю работу
                     wall.base_flipped = (dx * wx + dy * wy < 0) != base.wall.flipped;
                     wall.base_th = base.wall.thickness;
                 }
@@ -1241,7 +1241,7 @@ namespace Roombook
             }
             const auto base = ReadElement (wall.base_guid, cache);
             if (base.error != NoError)
-                return false;
+                continue; // Из-за одной ошибки нельзя прерывать всю работу
             // Для дуги tBeg/tEnd нельзя интерпретировать как расстояния по хорде.
             if (base.element.wall.zoneRel == APIZRel_None || base.element.wall.angle != 0) {
                 correctedWalls.Push (wall);
@@ -1275,11 +1275,11 @@ namespace Roombook
             // Многосегментная beamPart пока не подтверждена; не выбираем первый сегмент.
             if (sourceCount != 1) {
                 msg_rep ("Surface finish", "Unsupported beam segment ownership", APIERR_BADPARS, part.guid);
-                return false;
+                continue; // Из-за одной ошибки нельзя прерывать всю работу: другие beamParts могут быть корректны.
             }
             const ElementRead beamRead = ReadElement (part.guid, cache);
             if (beamRead.error != NoError)
-                return false;
+                continue; // Из-за одной ошибки нельзя прерывать всю работу
             const API_Element &beam = beamRead.element;
             RoomSurfaceBeamPartitions result;
             const auto finish = BuildRoomBeamFinish (*source,
@@ -1293,7 +1293,7 @@ namespace Roombook
                                                      &room.surfaceSnapshot);
             if (!result.errors.IsEmpty ()) {
                 msg_rep ("Surface finish", "Unsupported beam geometry", APIERR_BADPARS, part.guid);
-                return false;
+                continue; // Из-за одной ошибки нельзя прерывать всю работу
             }
             for (const auto &beamPiece : finish.pieces) {
                 RoomSurfacePiece piece;
@@ -1403,7 +1403,7 @@ namespace Roombook
                 openingWalls.Push (wall); // Все legacy-участки нужны также для стороны полного состава #268.
             }
             if (!BuildRoomSurfaceFinishes (otd, &context.surfaceCache))
-                return false;
+                continue; // Из-за одной ошибки нельзя прерывать всю работу
             if (otd.otdwall.IsEmpty () && otd.otdslab.IsEmpty () && openingWalls.IsEmpty ())
                 continue;
             ProcessSlabFinishes (otd,
@@ -1596,20 +1596,13 @@ namespace Roombook
             if (!Check (context.finclass, context.finclassguids))
                 return;
         }
-        RemoveUnusedFinishingElements (context.exsistot_byzone, context.deletelist);
-        // Причина неудачи пока не различается вызывающим: и конфликт Teamwork,
-        // и отказ разблокировки приводят к одному и тому же - работа не идёт.
-        PrepareElementsResult prepareResult = PrepareElementsResult::NothingToDo;
-        if (!PrepareElementsForUpdate (reserv_elements, prepareResult))
-            return;
-
-        UnicElementByType subelementByparent; // Словарь с созданными родительскими
-                                              // и дочерними элементами
-        // Отросовка элементов отделки
-        Draw_Elements (
-            context.storyLevels, context.roomsinfo, subelementByparent, context.finclass, context.deletelist);
-        // Привязка отделочных элементов к базовым
-        SetSyncOtdWall (subelementByparent, paramToWrite);
+        Draw_Elements (context.exsistot_byzone,
+                       context.deletelist,
+                       context.roomsinfo,
+                       context.storyLevels,
+                       context.finclass,
+                       reserv_elements,
+                       paramToWrite);
         finish = clock ();
         duration = (double)(finish - start) / CLOCKS_PER_SEC;
         GS::UniString time = GS::UniString::Printf ("Calculate complete for %d room(s) by", zones.GetSize ()) +
@@ -4946,24 +4939,127 @@ namespace Roombook
         return false;
     }
 
-    void Draw_Elements (const Stories &storyLevels,
-                        OtdRooms &zoneelements,
-                        UnicElementByType &subelementByparent,
-                        ClassificationFunc::ClassificationDict &finclass,
-                        GS::Array<API_Guid> &deletelist) {
+    static void Draw_Elements_OneRoom (const Stories &storyLevels,
+                                       OtdRoom &otd,
+                                       UnicElementByType &subelementByparent,
+                                       ClassificationFunc::ClassificationDict &finclass) {
     #if defined(TESTING)
-        DBprnt ("Draw_Elements", "start");
+        DBprnt ("Draw_Elements_OneRoom", "start");
     #endif
-        GS::UniString funcname = "Draw finishing element(s)";
         GSErrCode err = NoError;
-        const Int32 iseng = ID_ADDON_STRINGS + isEng ();
-        GS::UniString UndoString = RSGetIndString (iseng, RoombookId, ACAPI_GetOwnResModule ());
         Int32 n_elem = 0;
-        SuspendGroupsGuard suspGuard; // отключаем режим группировки на время записи.
         GS::Array<API_Guid> group;
+        if (!otd.isValid)
+            return;
+        API_Guid class_guid = APINULLGuid;
+        if (otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements) {
+            for (OtdWall &otdwall : otd.otdwall) {
+                if (!otdwall.isValid)
+                    continue;
+                if ((otdwall.type == Wall_Main || otdwall.type == Wall_Up || otdwall.type == Wall_Down) &&
+                    !otd.create_wall_elements)
+                    continue;
+                if ((otdwall.type == Column) && !otd.create_column_elements)
+                    continue;
+                if ((otdwall.type == Reveal_Main || otdwall.type == Reveal_Down || otdwall.type == Reveal_Up) &&
+                    !otd.create_reveal_elements)
+                    continue;
+                OtdWall_Draw (storyLevels, otdwall, subelementByparent);
+                if (!otdwall.isValid)
+                    continue;
+                if (otdwall.otd_guid != APINULLGuid) {
+                    Param_AddUnicElementByType (otd.zone_guid,
+                                                otdwall.otd_guid,
+                                                API_ZoneID,
+                                                subelementByparent); // Привязка отделочных стен к
+                                                                     // зоне
+                    for (OtdOpening &op : otdwall.openings) {
+                        Param_AddUnicElementByType (otd.zone_guid,
+                                                    op.otd_guid,
+                                                    API_ZoneID,
+                                                    subelementByparent); // Привязка отделочных
+                                                                         // проёмов к зоне
+                    }
+                    // Классификация созданных стен
+                    Class_SetClass (otdwall, finclass);
+                    for (OtdOpening &op : otdwall.openings) {
+                        if (op.otd_guid == APINULLGuid)
+                            continue;
+                        n_elem += 1;
+                        Class_SetClass (op, finclass);
+                    }
+                    group.Push (otdwall.otd_guid);
+                } else {
+                    msg_rep ("Draw_Elements_OneRoom", "otdwall.otd_guid == APINULLGuid", NoError, APINULLGuid);
+                }
+            }
+        } else {
+            otd.otdwall.Clear ();
+        }
+        if (otd.create_ceil_elements || otd.create_floor_elements) {
+            for (OtdSlab &otdslab : otd.otdslab) {
+                if (!otdslab.isValid)
+                    continue;
+                if (otdslab.type == Ceil && !otd.create_ceil_elements)
+                    continue;
+                if (otdslab.type == Floor && !otd.create_floor_elements)
+                    continue;
+                Floor_Draw (storyLevels, otdslab, subelementByparent);
+                if (otdslab.otd_guid != APINULLGuid) {
+                    Param_AddUnicElementByType (otd.zone_guid,
+                                                otdslab.otd_guid,
+                                                API_ZoneID,
+                                                subelementByparent); // Привязка перекрытий к зоне
+                    Class_SetClass (otdslab, finclass);
+                    group.Push (otdslab.otd_guid);
+                } else {
+                    msg_rep ("Draw_Elements_OneRoom", "otdslab.otd_guid == APINULLGuid", NoError, APINULLGuid);
+                }
+            }
+        } else {
+            otd.otdslab.Clear ();
+        }
+        n_elem += group.GetSize ();
+        if (group.GetSize () > 1) {
+    #ifdef ServerMainVers_2700
+            err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
+    #else
+            API_Guid groupGuid = APINULLGuid;
+            err = ACAPI_ElementGroup_Create (group, &groupGuid);
+        #ifdef ServerMainVers_2300
+            if (err != NoError)
+                err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
+        #endif
+    #endif
+            if (err != NoError)
+                msg_rep ("Draw_Elements_OneRoom", "ACAPI_Grouping_CreateGroup", err, APINULLGuid);
+        }
+        msg_rep (
+            "RoomBook", GS::UniString::Printf ("Create or update %d finishing elements", n_elem), err, APINULLGuid);
+    }
+
+    void Draw_Elements (GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,
+                        GS::Array<API_Guid> &deletelist,
+                        OtdRooms &roomsinfo,
+                        const Stories &storyLevels,
+                        ClassificationFunc::ClassificationDict &finclass,
+                        UnicGuid &reserv_elements,
+                        ParamDictElement &paramToWrite) {
+        RemoveUnusedFinishingElements (exsistot_byzone, deletelist);
+        UnicElementByType subelementByparent; // Словарь с созданными родительскими
+                                              // и дочерними элементами
+        // Отрисовка элементов отделки
+        GS::UniString funcname = "Draw finishing element(s)";
+        GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
+        SuspendGroupsGuard suspGuard; // отключаем режим группировки на время записи.
         ACAPI_CallUndoableCommand (UndoString, [&] () -> GSErrCode {
+            // Резервируем и разблокируем
+            PrepareElementsResult prepareResult = PrepareElementsResult::NothingToDo;
+            if (!PrepareElementsForUpdate (reserv_elements, prepareResult))
+                return NoError;
+            // Удаляем устаревшие элементы отделки
             if (!deletelist.IsEmpty ()) {
-                err = ACAPI_Element_Delete (deletelist);
+                GSErrCode err = ACAPI_Element_Delete (deletelist);
                 msg_rep ("RoomBook",
                          GS::UniString::Printf ("Removed %d obsolete finishing elements", deletelist.GetSize ()),
                          err,
@@ -4971,104 +5067,20 @@ namespace Roombook
             } else {
                 msg_rep ("RoomBook", "Obsolete finishing elements not found", NoError, APINULLGuid);
             }
-            for (OtdRooms::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
+            for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
                 OtdRoom &otd = cIt->value;
     #else
-            OtdRoom& otd = *cIt->value;
+                OtdRoom &otd = *cIt->value;
     #endif
                 if (AdvanceProcessPhase (funcname, nPhase))
                     return NoError;
-                if (!otd.isValid)
-                    continue;
-                API_Guid class_guid = APINULLGuid;
-                group.Clear ();
-                if (otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements) {
-                    for (OtdWall &otdwall : otd.otdwall) {
-                        if (!otdwall.isValid)
-                            continue;
-                        if ((otdwall.type == Wall_Main || otdwall.type == Wall_Up || otdwall.type == Wall_Down) &&
-                            !otd.create_wall_elements)
-                            continue;
-                        if ((otdwall.type == Column) && !otd.create_column_elements)
-                            continue;
-                        if ((otdwall.type == Reveal_Main || otdwall.type == Reveal_Down || otdwall.type == Reveal_Up) &&
-                            !otd.create_reveal_elements)
-                            continue;
-                        OtdWall_Draw (storyLevels, otdwall, subelementByparent);
-                        if (!otdwall.isValid)
-                            continue;
-                        if (otdwall.otd_guid != APINULLGuid) {
-                            Param_AddUnicElementByType (otd.zone_guid,
-                                                        otdwall.otd_guid,
-                                                        API_ZoneID,
-                                                        subelementByparent); // Привязка отделочных стен к
-                                                                             // зоне
-                            for (OtdOpening &op : otdwall.openings) {
-                                Param_AddUnicElementByType (otd.zone_guid,
-                                                            op.otd_guid,
-                                                            API_ZoneID,
-                                                            subelementByparent); // Привязка отделочных
-                                                                                 // проёмов к зоне
-                            }
-                            // Классификация созданных стен
-                            Class_SetClass (otdwall, finclass);
-                            for (OtdOpening &op : otdwall.openings) {
-                                if (op.otd_guid == APINULLGuid)
-                                    continue;
-                                n_elem += 1;
-                                Class_SetClass (op, finclass);
-                            }
-                            group.Push (otdwall.otd_guid);
-                        } else {
-                            msg_rep ("RoomBook", "otdwall.otd_guid == APINULLGuid", NoError, APINULLGuid);
-                        }
-                    }
-                } else {
-                    otd.otdwall.Clear ();
-                }
-                if (otd.create_ceil_elements || otd.create_floor_elements) {
-                    for (OtdSlab &otdslab : otd.otdslab) {
-                        if (!otdslab.isValid)
-                            continue;
-                        if (otdslab.type == Ceil && !otd.create_ceil_elements)
-                            continue;
-                        if (otdslab.type == Floor && !otd.create_floor_elements)
-                            continue;
-                        Floor_Draw (storyLevels, otdslab, subelementByparent);
-                        if (otdslab.otd_guid != APINULLGuid) {
-                            Param_AddUnicElementByType (otd.zone_guid,
-                                                        otdslab.otd_guid,
-                                                        API_ZoneID,
-                                                        subelementByparent); // Привязка перекрытий к зоне
-                            Class_SetClass (otdslab, finclass);
-                            group.Push (otdslab.otd_guid);
-                        } else {
-                            msg_rep ("RoomBook", "otdslab.otd_guid == APINULLGuid", NoError, APINULLGuid);
-                        }
-                    }
-                } else {
-                    otd.otdslab.Clear ();
-                }
-                n_elem += group.GetSize ();
-                if (group.GetSize () > 1) {
-    #ifdef ServerMainVers_2700
-                    err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
-    #else
-                API_Guid groupGuid = APINULLGuid;
-                err = ACAPI_ElementGroup_Create (group, &groupGuid);
-        #ifdef ServerMainVers_2300
-                if (err != NoError) err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
-        #endif
-    #endif
-                    if (err != NoError)
-                        msg_rep ("Draw_Elements", "ACAPI_Grouping_CreateGroup", err, APINULLGuid);
-                }
+                Draw_Elements_OneRoom (storyLevels, otd, subelementByparent, finclass);
             }
             return NoError;
         });
-        msg_rep (
-            "RoomBook", GS::UniString::Printf ("Create or update %d finishing elements", n_elem), err, APINULLGuid);
+        // Привязка отделочных элементов к базовым
+        SetSyncOtdWall (subelementByparent, paramToWrite);
     }
 
     // -----------------------------------------------------------------------------

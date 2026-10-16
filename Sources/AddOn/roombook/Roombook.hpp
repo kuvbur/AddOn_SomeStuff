@@ -519,11 +519,13 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     // Создание элементов отделки
     // -----------------------------------------------------------------------------
-    void Draw_Elements (const Stories &storyLevels,
-                        OtdRooms &zoneelements,
-                        UnicElementByType &subelementByparent,
+    void Draw_Elements (GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,
+                        GS::Array<API_Guid> &deletelist,
+                        OtdRooms &roomsinfo,
+                        const Stories &storyLevels,
                         ClassificationFunc::ClassificationDict &finclass,
-                        GS::Array<API_Guid> &deletelist);
+                        UnicGuid &reserv_elements,
+                        ParamDictElement &paramToWrite);
 
     // -----------------------------------------------------------------------------
     // Построение отделочных стен (общая)
