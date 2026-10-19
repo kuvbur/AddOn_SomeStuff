@@ -2,6 +2,12 @@
 
 ## Обновления по задачам
 
+### #287 — инициализация API_Attribute, чекпоинт 2026-10-19 (база f86e0de)
+
+- В кодовом diff только `API_Attribute attrib = {};` в Param_SetComposite; остальные незакоммиченные Roombook/тесты не входят в этот чекпоинт. Обновлена карточка Roombook с контрактом, координатами индексируемого снимка и границами crash-анализа. [по коду + staged diff]
+- В symbols.json исправлена только существующая cpp-запись Param_SetComposite:4167→3942 по blob этого коммита; MCP текущего worktree даёт4118, совпадение тела после одной инициализации проверено. Все остальные symbol records/order сохранены; их прежние координаты не заявляются актуальными. Исправление не добавляет символов/вызовов и не сдвигает строки относительно базы:0 новых symbols,0 новых edges,0 line delta. Callgraph и whole-tree generator не запускались/не менялись; посторонний WIP в generated не переносился. [MCP + git/source/JSON audit]
+- Ранее выполнены RED2/4→GREEN6/0 SDK25 initialization probe и canonical AC25 Windows x64 INT/RelWithDebInfo compile+link success на текущем рабочем дереве. Отдельный staged-снимок не собирался; host reproduction/AC28/full TestKit not verified. Новое разрезное падение12:41:48/PID35784 остаётся без module/stack/root cause до получения RPT/RPTA/DMP. Issue #287 не закрывается; push не запрошен. [реальные outputs + границы проверки]
+
 ### #273 — scoped preferences cleanup
 
 - Карточка dialogs/SyncSettings уточнена: очистка только непустых legacy preferences, read-back и ошибки до project callback; JSON и все user-data stores вне scope. Canonical AC25 Windows Debug build success, текущий extracted helper matches, SDK-double8/8 PASS; owner-reported финальный runner принят по явной команде закрыть issue. Собственный runner exit20 не принят за success, повтор отменён владельцем; независимый host/save-reopen not verified.

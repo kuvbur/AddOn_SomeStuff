@@ -4575,7 +4575,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/Roombook.cpp",
     "module": "roombook",
-    "line": 4167
+    "line": 3942
   },
   {
     "name": "Roombook::Param_SetToWindows",

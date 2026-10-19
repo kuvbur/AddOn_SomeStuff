@@ -3996,7 +3996,7 @@ namespace Roombook
             last = otdcpmpoosite.GetLast ();
         }
         if (last.structype == -1) {
-            API_Attribute attrib;
+            API_Attribute attrib = {};
             attrib.header.typeID = API_BuildingMaterialID;
             attrib.header.index = last.inx;
             GSErrCode err = ACAPI_Attribute_Get (&attrib);
