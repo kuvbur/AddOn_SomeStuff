@@ -15,6 +15,11 @@ namespace Roombook {
         RoomSurfaceOrigin origin = RoomSurfaceOrigin::Native3D;
     };
 
+    struct MeshFloorSource {
+        RoomSurfaceSource surface;
+        bool hasBottom = false;
+    };
+
     struct RoomSurfaceSourceFace {
         API_Guid baseGuid = APINULLGuid;
         API_ElemTypeID baseType = API_ZombieElemID;
@@ -62,7 +67,7 @@ namespace Roombook {
     RoomSurfacePartition PartitionRoomSurfaces (const RoomSurfaceSnapshot &zone,
                                                 const GS::Array<RoomSurfaceSource> &sources);
 
-    enum class RoomSurfaceBeamFace { Bottom, LeftSide, RightSide };
+    enum class RoomSurfaceBeamFace { Bottom, Top, LeftSide, RightSide };
 
     struct RoomSurfaceBeamPiece {
         RoomSurfaceBeamFace face = RoomSurfaceBeamFace::Bottom;

@@ -563,7 +563,7 @@ namespace Roombook {
             if (!frame.Set (surface) || !ProjectSurface (surface, frame, original) ||
                 !SectionZone (zone, frame, section))
                 return false;
-            if (face != RoomSurfaceBeamFace::Bottom) {
+            if (face != RoomSurfaceBeamFace::Bottom && face != RoomSurfaceBeamFace::Top) {
                 double tMin = axis.Along (surface.contours[0].vertices[0].world);
                 double tMax = tMin;
                 for (const auto &contour : surface.contours)
@@ -742,12 +742,10 @@ namespace Roombook {
                 const double z = std::fabs (n.z);
                 RoomSurfaceBeamPiece piece;
                 if (z > 1.0 - DistanceTolerance) {
-                    if (n.z > 0) // верх — не отделываем
-                        continue;
                     const double faceZ = first.z;
                     if (faceZ < zBottom - DistanceTolerance || faceZ > zTop + DistanceTolerance)
                         continue;
-                    piece.face = RoomSurfaceBeamFace::Bottom;
+                    piece.face = n.z > 0 ? RoomSurfaceBeamFace::Top : RoomSurfaceBeamFace::Bottom;
                     if (zone != nullptr) {
                         if (!ClipBeamFace (
                                 surface, *zone, axis, tBeg, tEnd, zBottom, zTop, piece.face, finish.pieces)) {

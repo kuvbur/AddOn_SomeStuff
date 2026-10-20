@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <utility>
 #include <vector>
 
 namespace Roombook {
@@ -79,6 +80,37 @@ namespace Roombook {
                 }
                 result = std::move (next);
             }
+            return true;
+        }
+
+        inline bool CutWallBottom (const Rect &wall,
+                                   const std::vector<Rect> &openings,
+                                   double tolerance,
+                                   std::vector<std::pair<double, double>> &result) {
+            result.clear ();
+            if (!Valid (wall) || !std::isfinite (tolerance) || tolerance < 0)
+                return false;
+            std::vector<std::pair<double, double>> cuts;
+            cuts.reserve (openings.size ());
+            for (const auto &opening : openings) {
+                if (!Valid (opening))
+                    return false;
+                if (opening.bottom > wall.bottom + tolerance || opening.top <= wall.bottom + tolerance)
+                    continue;
+                const double start = std::max (wall.left, opening.left);
+                const double end = std::min (wall.right, opening.right);
+                if (end - start > tolerance)
+                    cuts.push_back ({start, end});
+            }
+            std::sort (cuts.begin (), cuts.end ());
+            double cursor = wall.left;
+            for (const auto &cut : cuts) {
+                if (cut.first - cursor > tolerance)
+                    result.push_back ({cursor, cut.first});
+                cursor = std::max (cursor, cut.second);
+            }
+            if (wall.right - cursor > tolerance)
+                result.push_back ({cursor, wall.right});
             return true;
         }
 

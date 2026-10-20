@@ -8,6 +8,9 @@ namespace Roombook {
     // При отказе выход не меняется; zBottom — абсолютная отметка контакта.
     // Один параллелограмм без отверстий; линия и уклон задают контактную плоскость, не габарит грани.
     bool BuildSurfaceWall (const RoomSurfacePiece &piece, short floorInd, OtdWall &wall);
+    // Готовые нижние отрезки стен без доходящих до низа проёмов; повтор заменяет массив.
+    // При ошибке напольный массив пуст; потолочный массив и исходные стены не меняет.
+    bool BuildFloorSkirtingSegments (OtdRoom &room);
     // После правил вычитает только принятое конечное покрытие боковин перепадов.
     // При непредставимом остатке сохраняет исходный контакт и возвращает false.
     bool DeduplicateAcceptedSlabContacts (OtdRoom &room);
@@ -17,6 +20,8 @@ namespace Roombook {
     // Доводит до ядра только пол; затем очищает лишние вершины пола и потолка.
     // Стены — read-only источник конечных контактов.
     bool ExtendFloorContoursToCore (OtdRoom &room);
+    // Входит существующим полом одного отделочного проёма на глубину откоса; новые OtdSlab не создаются.
+    bool ExtendFloorContourToOpening (OtdRoom &room, const OtdWall &openingWall, const OtdOpening &opening);
     // Добавляет одну стену в плоскости контакта; прямоугольные вырезы и отверстия задаёт проёмами.
     // Диагональные рёбра в координатах ось/отметка отвергаются без частичного добавления.
     bool BuildSurfaceWalls (const RoomSurfacePiece &piece, short floorInd, GS::Array<OtdWall> &walls);
@@ -42,6 +47,39 @@ namespace Roombook {
                                  GS::Array<RoomSurfacePiece> &grouped);
     // Горизонтальные контакты с отверстиями; тип пола/потолка определяется нормалью зоны.
     bool BuildSurfaceSlabs (const RoomSurfacePiece &piece, short floorInd, GS::Array<OtdSlab> &slabs);
+    // Только конечная область допустимых Mesh; за её пределами сохраняется прежний маршрут Slab.
+    // slabSupports содержит уже допущенные верхние контакты Slab, не отфильтрованные по максимуму Mesh.
+    // Локально выбирается верхняя опора; неоднозначность/невалидный снимок — отказ без изменения выхода.
+    bool BuildProjectedMeshFloorFinishes (const Geometry::Polygon2D &footprint,
+                                          double roomFloor,
+                                          short floorInd,
+                                          const GS::Array<MeshFloorSource> &meshes,
+                                          const GS::Array<OtdSlab> &slabSupports,
+                                          GS::Array<OtdSlab> &floors,
+                                          Geometry::MultiPolygon2D &meshCoverage);
+
+    // Геометрический план пола; сам по себе не разрешает native-запись.
+    struct MixedFloorGeometry {
+        GS::Array<OtdSlab> floors;
+        GS::Array<OtdWall> steps;
+        Geometry::MultiPolygon2D meshDomain;
+        Geometry::MultiPolygon2D changedDomain;
+        double rejectedArea = 0;
+    };
+
+    // Победители внутри всей допустимой области Mesh и все части прежнего пола снаружи.
+    // Без Mesh делегирует прежнему Slab-маршруту; при отказе result не меняется.
+    bool BuildFiniteMixedFloorGeometry (const RoomSurfaceSnapshot &zone,
+                                        const GS::Array<RoomSurfaceSource> &sources,
+                                        const GS::Array<API_Guid> &roles,
+                                        short floorInd,
+                                        const OtdSlab &nominal,
+                                        bool onlyOnSlab,
+                                        const GS::Array<OtdSlab> &prepared,
+                                        double roomFloor,
+                                        const GS::Array<MeshFloorSource> &meshes,
+                                        MixedFloorGeometry &result);
+
     // XY-покрытие комнаты пересекается с реальными гранями оснований; Z остаётся исходным.
     // Прежние приоритет по убыванию, наибольшие части, исключение отверстий и опциональные остаток/перепады.
     // Для потолка номинальная отметка зоны участвует в выборе наравне с перекрытиями.

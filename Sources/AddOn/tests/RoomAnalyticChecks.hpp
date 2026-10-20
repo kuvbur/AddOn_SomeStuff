@@ -35,6 +35,47 @@ namespace Roombook {
         check (SubtractOpenings (base, {{-1, -1, 5, 4}}, result) && result.empty (), "full cut leaves no wall");
         check (SubtractOpenings (base, {{4, 0, 5, 3}}, result) && almostEqual (area (), 12), "touching opening no cut");
         check (!SubtractOpenings (base, {{1, 1, 1, 2}}, result) && result.empty (), "invalid opening fails closed");
+        const Rect bottomWall{0, 5, 10, 8};
+        std::vector<std::pair<double, double>> bottomSegments;
+        const auto bottomMatches = [&] (const std::vector<Rect> &openings,
+                                        const std::vector<std::pair<double, double>> &expected) {
+            if (!CutWallBottom (bottomWall, openings, 1e-6, bottomSegments) ||
+                bottomSegments.size () != expected.size ())
+                return false;
+            for (std::size_t i = 0; i < expected.size (); ++i)
+                if (!almostEqual (bottomSegments[i].first, expected[i].first) ||
+                    !almostEqual (bottomSegments[i].second, expected[i].second))
+                    return false;
+            return true;
+        };
+        check (bottomMatches ({}, {{0, 10}}), "skirting uncut bottom");
+        check (bottomMatches ({{1, 5, 3, 7}}, {{0, 1}, {3, 10}}), "skirting door cuts bottom");
+        check (bottomMatches ({{1, 6, 3, 7}}, {{0, 10}}), "skirting window above bottom retained");
+        check (bottomMatches ({{1, 3, 3, 5}}, {{0, 10}}), "skirting opening ending at bottom retained");
+        check (bottomMatches ({{1, 4, 3, 6}}, {{0, 1}, {3, 10}}), "skirting opening crossing bottom cuts");
+        check (bottomMatches ({{4, 5, 7, 7}, {1, 5, 5, 7}}, {{0, 1}, {7, 10}}),
+               "skirting overlapping unsorted openings union");
+        check (bottomMatches ({{1, 5, 8, 7}, {2, 5, 3, 7}}, {{0, 1}, {8, 10}}), "skirting nested openings union");
+        check (bottomMatches ({{1, 5, 3, 7}, {3, 5, 5, 7}}, {{0, 1}, {5, 10}}),
+               "skirting touching openings leave no duplicate segment");
+        check (bottomMatches ({{1, 5, 2, 7}, {5, 5, 6, 7}}, {{0, 1}, {2, 5}, {6, 10}}),
+               "skirting separated openings preserve intermediate segment");
+        check (bottomMatches ({{-2, 5, 3, 7}}, {{3, 10}}), "skirting opening clipped at wall beginning");
+        check (bottomMatches ({{7, 5, 12, 7}}, {{0, 7}}), "skirting opening clipped at wall end");
+        check (bottomMatches ({{-1, 5, 11, 7}}, {}), "skirting full opening leaves empty bottom");
+        check (bottomMatches ({{11, 5, 12, 7}, {-2, 5, -1, 7}}, {{0, 10}}), "skirting outside openings do not cut");
+        check (bottomMatches ({{1, 5 + 5e-7, 3, 7}}, {{0, 1}, {3, 10}}),
+               "skirting opening bottom uses existing distance tolerance");
+        check (bottomMatches ({{1, 5 + 2e-6, 3, 7}}, {{0, 10}}), "skirting real opening gap above bottom retained");
+        check (!CutWallBottom (bottomWall, {{1, 5, 1, 7}}, 1e-6, bottomSegments) && bottomSegments.empty (),
+               "skirting invalid opening fails without partial bottom");
+        check (!CutWallBottom ({0, 5, 0, 8}, {}, 1e-6, bottomSegments) && bottomSegments.empty (),
+               "skirting zero wall rejected");
+        check (
+            !CutWallBottom (bottomWall, {{1, 5, std::numeric_limits<double>::infinity (), 7}}, 1e-6, bottomSegments) &&
+                bottomSegments.empty (),
+            "skirting nonfinite opening rejected");
+        check (bottomMatches ({}, {{0, 10}}), "skirting repeat replaces previous bottom segments");
         check (SlabRole (-.5545, 0, 0) == SlabCandidateRole::Floor,
                "floor slab crossing nominal floor survives wall bottom minus .1");
         check (SlabRole (-.9, -.5545, 0) == SlabCandidateRole::Floor, "below floor support retained");

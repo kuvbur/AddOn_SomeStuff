@@ -742,8 +742,9 @@ namespace {
         check (sectionResult.errors.IsEmpty () &&
                    closeArea (beamArea (sectionFinish, RoomSurfaceBeamFace::Bottom), 9 * 0.3) &&
                    closeArea (beamArea (sectionFinish, RoomSurfaceBeamFace::LeftSide), 9 * 0.5 + 9.5 * 0.12) &&
-                   closeArea (beamArea (sectionFinish, RoomSurfaceBeamFace::RightSide), 9 * 0.5 + 9.5 * 0.12),
-               "3D zone section extends beam bottom and both sides beyond lower-profile beamPart");
+                   closeArea (beamArea (sectionFinish, RoomSurfaceBeamFace::RightSide), 9 * 0.5 + 9.5 * 0.12) &&
+                   closeArea (beamArea (sectionFinish, RoomSurfaceBeamFace::Top), 9.5 * 0.3),
+               "3D zone section extends beam bottom, top and both sides beyond lower-profile beamPart");
         steppedZone.bodies[0].surfaces.Delete (0);
         sectionResult.errors.Clear ();
         const auto brokenSection =
@@ -751,20 +752,23 @@ namespace {
         check (brokenSection.pieces.IsEmpty () && !sectionResult.errors.IsEmpty (),
                "open zone section is rejected without partial beam finish");
         auto beam = BuildRoomBeamFinish (beamSource, beamBeg, beamEnd, 0, 100, 0, 3, beamResult);
-        check (beam.pieces.GetSize () == 3 && closeArea (beamArea (beam, RoomSurfaceBeamFace::Bottom), 10 * 0.3) &&
+        check (beam.pieces.GetSize () == 4 && closeArea (beamArea (beam, RoomSurfaceBeamFace::Bottom), 10 * 0.3) &&
+                   closeArea (beamArea (beam, RoomSurfaceBeamFace::Top), 10 * 0.3) &&
                    closeArea (beamArea (beam, RoomSurfaceBeamFace::LeftSide), 10 * 0.62) &&
                    closeArea (beamArea (beam, RoomSurfaceBeamFace::RightSide), 10 * 0.62),
-               "full beam part yields bottom and both sides");
+               "full beam part yields bottom, top and both sides");
         beam = BuildRoomBeamFinish (beamSource, beamBeg, beamEnd, 25, 75, 0, 3, beamResult);
-        check (beam.pieces.GetSize () == 3 && closeArea (beamArea (beam, RoomSurfaceBeamFace::Bottom), 5 * 0.3) &&
+        check (beam.pieces.GetSize () == 4 && closeArea (beamArea (beam, RoomSurfaceBeamFace::Bottom), 5 * 0.3) &&
+                   closeArea (beamArea (beam, RoomSurfaceBeamFace::Top), 5 * 0.3) &&
                    closeArea (beamArea (beam, RoomSurfaceBeamFace::LeftSide), 5 * 0.62),
-               "tBeg/tEnd clip bottom and sides");
+               "tBeg/tEnd clip bottom, top and sides");
         beam = BuildRoomBeamFinish (beamSource, beamBeg, beamEnd, 0, 100, 0, 2.31, beamResult);
         check (beam.pieces.GetSize () == 3 && closeArea (beamArea (beam, RoomSurfaceBeamFace::LeftSide), 10 * 0.31) &&
                    closeArea (beamArea (beam, RoomSurfaceBeamFace::Bottom), 3),
                "zTop clip keeps the bottom intact");
         beam = BuildRoomBeamFinish (beamSource, beamBeg, beamEnd, 0, 100, 2.31, 3, beamResult);
-        check (beam.pieces.GetSize () == 2 && closeArea (beamArea (beam, RoomSurfaceBeamFace::LeftSide), 10 * 0.31),
+        check (beam.pieces.GetSize () == 3 && closeArea (beamArea (beam, RoomSurfaceBeamFace::LeftSide), 10 * 0.31) &&
+                   closeArea (beamArea (beam, RoomSurfaceBeamFace::Top), 10 * 0.3),
                "zBottom above the beam drops its bottom face");
         beam = BuildRoomBeamFinish (beamSource, beamBeg, beamEnd, 50, 50, 0, 3, beamResult);
         check (beam.pieces.IsEmpty () && !beamResult.errors.IsEmpty (), "empty t-range is an explicit error");
@@ -786,7 +790,7 @@ namespace {
             for (const auto &vertex : piece.vertices)
                 validVertices = validVertices && vertex.x >= 2.5 - 1e-6 && vertex.x <= 7.5 + 1e-6;
         }
-        check (validVertices && beam.pieces.GetSize () == 3,
+        check (validVertices && beam.pieces.GetSize () == 4,
                "beam vertices have the reported nonzero area and t bounds");
         check (closeArea (beam.tBeg, 25) && closeArea (beam.tEnd, 75), "beam result preserves raw SDK part bounds");
         for (auto &surface : beamSource.snapshot.bodies[0].surfaces)
@@ -794,9 +798,10 @@ namespace {
                 for (auto &vertex : contour.vertices)
                     vertex.world.x = 2 + vertex.world.x * 0.6;
         beam = BuildRoomBeamFinish (beamSource, beamBeg, beamEnd, 0, 100, 0, 3, beamResult);
-        check (beam.pieces.GetSize () == 3 && closeArea (beamArea (beam, RoomSurfaceBeamFace::Bottom), 6 * 0.3) &&
+        check (beam.pieces.GetSize () == 4 && closeArea (beamArea (beam, RoomSurfaceBeamFace::Bottom), 6 * 0.3) &&
+                   closeArea (beamArea (beam, RoomSurfaceBeamFace::Top), 6 * 0.3) &&
                    closeArea (beamArea (beam, RoomSurfaceBeamFace::LeftSide), 6 * 0.62),
-               "segment face bounds clip bottom and sides within the parent beam");
+               "segment face bounds clip bottom, top and sides within the parent beam");
         beamSource.snapshot.bodies[0].surfaces.Clear ();
         // Снимок второй реальной балки AC25 сохранён до перезапуска без записи PLN.
         const API_Coord3D observedBeamFace0[4] = {{8.843547364, -3.715530072, 3.856828094},
@@ -1542,10 +1547,10 @@ namespace {
                    floorZone, slabSources, roles, Floor, 0, projected, rejected, &nominal, true, &steps) &&
                    projected.IsEmpty (),
                "zero-source floor by-slab suppresses residual");
-        nominal.zBottom = 3.1;
+        nominalCeiling.zBottom = 3.1;
         projected.Clear ();
         check (BuildProjectedSlabFinishes (
-                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominal, false, &steps) &&
+                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominalCeiling, false, &steps) &&
                    projected.GetSize () == 1 && closeArea (projected[0].zBottom, 3.1) && projected[0].type == Ceil,
                "zero-source ceiling residual uses supplied main-plus-down nominal plane");
         slabSources = {source (baseA, atLevel (rectangle (0, 2, 0, 3, -1), 3.2), API_SlabID),
@@ -1561,9 +1566,11 @@ namespace {
                    rejected == 0,
                "ceiling uses ascending lower-face priority then remaining coverage");
         slabSources[0] = source (baseA, atLevel (rectangle (0, 2, 0, 3, -1), 3.4), API_SlabID);
+        // Номинальный потолок идёт после перекрытий, чтобы проверить неоднозначность их покрытия.
+        nominalCeiling.zBottom = 3.6;
         projected.Clear ();
         check (BuildProjectedSlabFinishes (
-                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominal, false, &steps) &&
+                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominalCeiling, false, &steps) &&
                    closeArea (slabArea (projected), 9) && closeArea (rejected, 3),
                "equal-level owner overlap is excluded, never converted to nominal fallback");
         slabSources = {source (baseA, atLevel (rectangle (0, 2, 0, 3, 1), 0.2), API_SlabID)};
@@ -1608,11 +1615,11 @@ namespace {
                "source holes are not backfilled even when nominal residual is enabled");
         slabSources = {source (baseA, atLevel (rectangle (0, 2, 0, 3, -1), 3.2), API_SlabID)};
         slabSources[0].snapshot.bodies[0].surfaces.Push (atLevel (rectangle (0, 2, 0, 3, 1), 3.6));
-        nominal.zBottom = 3.4;
+        nominalCeiling.zBottom = 3.4;
         projected.Clear ();
         steps.Clear ();
         check (BuildProjectedSlabFinishes (
-                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominal, false, &steps) &&
+                   ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominalCeiling, false, &steps) &&
                    projected.GetSize () == 2 && steps.GetSize () == 1 && steps[0].type == Ceil &&
                    closeArea (steps[0].height, 0.2) && closeArea (steps[0].zBottom, 3.2),
                "ceiling internal step spans source lower face to nominal plane");
@@ -1902,6 +1909,118 @@ namespace {
             room.otdwall.Push (wall);
             return room;
         };
+        OtdOpening floorOpening;
+        floorOpening.base_guid = baseA;
+        floorOpening.objLoc = 2;
+        floorOpening.width = 1;
+        floorOpening.height = 2;
+        floorOpening.base_reveal_width = .5;
+        const auto openingPolygon = [] (const GS::Array<Point2D> &points) {
+            return Geometry::Polygon2D::Create (points, 0)[0];
+        };
+        const auto sameCoverage = [] (const Geometry::Polygon2D &a, const Geometry::Polygon2D &b) {
+            Geometry::MultiPolygon2D first, second;
+            first.Push (a);
+            second.Push (b);
+            return Geometry::MultiPolygon2D::Substract (first, second).CalcArea () <= 1.e-6 &&
+                   Geometry::MultiPolygon2D::Substract (second, first).CalcArea () <= 1.e-6;
+        };
+        const auto expectedEntrance =
+            openingPolygon ({{0, 0}, {1.5, 0}, {1.5, -.5}, {2.5, -.5}, {2.5, 0}, {4, 0}, {4, 3}, {0, 3}});
+        for (bool roomReveals : {false, true})
+            for (bool openingReveals : {false, true}) {
+                auto room = coreRoom (false);
+                room.create_reveal_elements = roomReveals;
+                floorOpening.create_reveal = openingReveals;
+                const auto wall = room.otdwall[0];
+                check (ExtendFloorContourToOpening (room, wall, floorOpening) && room.otdslab.GetSize () == 2 &&
+                           sameCoverage (room.otdslab[0].poly, expectedEntrance) &&
+                           sameCoverage (room.otdslab[1].poly, corePolygon (false)),
+                       "floor opening exact coverage independent of both reveal flags, ceiling unchanged");
+                check (room.otdslab[0].base_guid == baseB && room.otdslab[0].otd_guid == segment &&
+                           room.otdslab[0].favorite.name == "preserved" && room.otdslab[0].floorInd == 7 &&
+                           closeArea (room.otdslab[0].zBottom, 0),
+                       "floor opening preserves slab ownership favorite story and elevation");
+                check (ExtendFloorContourToOpening (room, wall, floorOpening) &&
+                           sameCoverage (room.otdslab[0].poly, expectedEntrance),
+                       "floor opening repeated extension does not grow beyond reveal depth");
+            }
+        {
+            auto room = coreRoom (false);
+            auto op = floorOpening;
+            op.zBottom = -.2;
+            check (ExtendFloorContourToOpening (room, room.otdwall[0], op) &&
+                       sameCoverage (room.otdslab[0].poly, expectedEntrance),
+                   "floor opening below zone bottom is included");
+            for (int invalid = 0; invalid < 7; ++invalid) {
+                room = coreRoom (false);
+                op = floorOpening;
+                if (invalid == 0)
+                    op.zBottom = .1;
+                if (invalid == 1)
+                    op.base_guid = APINULLGuid;
+                if (invalid == 2)
+                    op.base_reveal_width = 0;
+                if (invalid == 3)
+                    op.width = 0;
+                if (invalid == 4)
+                    op.height = 0;
+                if (invalid == 5)
+                    op.base_reveal_width = std::numeric_limits<double>::quiet_NaN ();
+                if (invalid == 6)
+                    op.zBottom = -op.height;
+                check (ExtendFloorContourToOpening (room, room.otdwall[0], op) &&
+                           sameCoverage (room.otdslab[0].poly, corePolygon (false)),
+                       "floor opening invalid above-zone or closed-at-floor input leaves original intact");
+            }
+        }
+        {
+            auto room = coreRoom (true);
+            check (ExtendFloorContourToOpening (room, room.otdwall[0], floorOpening) &&
+                       room.otdslab[0].poly.GetContourNum () == 2 && closeArea (room.otdslab[0].poly.CalcArea (), 11.5),
+                   "floor opening preserves unrelated hole");
+            room = coreRoom (false);
+            room.otdslab.Push (room.otdslab[0]);
+            const auto distant = openingPolygon ({{10, 0}, {14, 0}, {14, 3}, {10, 3}});
+            room.otdslab[0].poly = distant;
+            check (ExtendFloorContourToOpening (room, room.otdwall[0], floorOpening) &&
+                       sameCoverage (room.otdslab[0].poly, distant) &&
+                       sameCoverage (room.otdslab[2].poly, expectedEntrance) && room.otdslab.GetSize () == 3,
+                   "floor opening extends contacting slab rather than first slab");
+            room = coreRoom (false);
+            room.otdslab.Push (room.otdslab[0]);
+            room.otdslab[0].poly = openingPolygon ({{0, 0}, {2, 0}, {2, 3}, {0, 3}});
+            room.otdslab[2].poly = openingPolygon ({{2, 0}, {4, 0}, {4, 3}, {2, 3}});
+            check (ExtendFloorContourToOpening (room, room.otdwall[0], floorOpening) &&
+                       sameCoverage (room.otdslab[0].poly,
+                                     openingPolygon ({{0, 0}, {1.5, 0}, {1.5, -.5}, {2, -.5}, {2, 3}, {0, 3}})) &&
+                       sameCoverage (room.otdslab[2].poly,
+                                     openingPolygon ({{2, -.5}, {2.5, -.5}, {2.5, 0}, {4, 0}, {4, 3}, {2, 3}})) &&
+                       room.otdslab.GetSize () == 3,
+                   "floor opening split slabs extend only their own finite spans without new slab");
+            room = coreRoom (false);
+            room.otdslab[0].zBottom = -1;
+            check (ExtendFloorContourToOpening (room, room.otdwall[0], floorOpening) &&
+                       sameCoverage (room.otdslab[0].poly, corePolygon (false)),
+                   "floor opening does not extend floor below opening bottom");
+        }
+        for (const Point2D &dir : {Point2D{0, 1}, Point2D{.6, .8}, Point2D{-.6, -.8}}) {
+            auto room = coreRoom (false);
+            const auto transform = [&] (const GS::Array<Point2D> &coords) {
+                GS::Array<Point2D> rotated;
+                for (const auto &p : coords)
+                    rotated.Push ({10 + dir.x * p.x - dir.y * p.y, 20 + dir.y * p.x + dir.x * p.y});
+                return openingPolygon (rotated);
+            };
+            room.otdslab[0].poly = transform ({{0, 0}, {4, 0}, {4, 3}, {0, 3}});
+            room.otdwall[0].begC = {10, 20};
+            room.otdwall[0].endC = {10 + dir.x * 4, 20 + dir.y * 4};
+            check (ExtendFloorContourToOpening (room, room.otdwall[0], floorOpening) &&
+                       sameCoverage (
+                           room.otdslab[0].poly,
+                           transform ({{0, 0}, {1.5, 0}, {1.5, -.5}, {2.5, -.5}, {2.5, 0}, {4, 0}, {4, 3}, {0, 3}})),
+                   "floor opening rotated reversed and oblique wall uses outward reveal direction");
+        }
         auto core = coreRoom (false);
         {
             GS::Array<Point2D> coords = {{0, 0}, {2, 0}, {4, 0}, {4, 3}, {0, 3}};
@@ -3105,13 +3224,21 @@ GS::String RoomGeometryDiagnosticCommand::GetName () const { return "RoomGeometr
 
 GS::Optional<GS::UniString> RoomGeometryDiagnosticCommand::GetInputParametersSchema () const {
     return GS::UniString (
-        R"({"type":"object","properties":{"favoriteName":{"type":"string"},"guid":{"type":"string","pattern":"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"},"memoOnly":{"type":"boolean"},"collectRoomInfo":{"type":"boolean"},"transformSelfTest":{"type":"boolean"},"partitionSelfTest":{"type":"boolean"},"partitionSurfaces":{"type":"boolean"}},"additionalProperties":false})");
+        R"({"type":"object","properties":{"favoriteName":{"type":"string"},"guid":{"type":"string","pattern":"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"},"memoOnly":{"type":"boolean"},"collectRoomInfo":{"type":"boolean"},"transformSelfTest":{"type":"boolean"},"partitionSelfTest":{"type":"boolean"},"meshFloorSelfTest":{"type":"boolean"},"finishReuseSelfTest":{"type":"boolean"},"partitionSurfaces":{"type":"boolean"}},"additionalProperties":false})");
 }
 
 GS::Optional<GS::UniString> RoomGeometryDiagnosticCommand::GetResponseSchema () const { return GS::NoValue; }
 
 GS::ObjectState RoomGeometryDiagnosticCommand::Execute (const GS::ObjectState &parameters,
                                                         GS::ProcessControl & /*processControl*/) const {
+    bool finishReuseSelfTest = false;
+    parameters.Get ("finishReuseSelfTest", finishReuseSelfTest);
+    if (finishReuseSelfTest)
+        return RunFinishReuseChecks ();
+    bool meshFloorSelfTest = false;
+    parameters.Get ("meshFloorSelfTest", meshFloorSelfTest);
+    if (meshFloorSelfTest)
+        return RunMeshFloorNativeChecks ();
     bool partitionSelfTest = false;
     parameters.Get ("partitionSelfTest", partitionSelfTest);
     if (partitionSelfTest)

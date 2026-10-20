@@ -96,10 +96,16 @@ namespace Roombook {
                         std::fabs (Cross (dir, contact.begin - edge.begin)) > Tolerance ||
                         std::fabs (Cross (dir, contact.end - edge.begin)) > Tolerance)
                         continue;
-                    const double a = std::max (0.0, Dot (contact.begin - edge.begin, dir));
-                    const double b = std::min (length, Dot (contact.end - edge.begin, dir));
+                    double a = std::max (0.0, Dot (contact.begin - edge.begin, dir));
+                    double b = std::min (length, Dot (contact.end - edge.begin, dir));
                     if (b - a <= Tolerance)
                         continue;
+                    // Микрозазор у вершины не должен разрывать стык смещённых сторон.
+                    // Короткие контакты отсеяны выше; реальные разрывы сохраняются.
+                    if (a <= Tolerance)
+                        a = 0;
+                    if (length - b <= Tolerance)
+                        b = length;
                     matches.push_back ({a, b, contact.offset, contact.owner});
                     cuts.push_back (a);
                     cuts.push_back (b);

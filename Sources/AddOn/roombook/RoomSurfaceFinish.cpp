@@ -3,6 +3,7 @@
 #include "roombook/RoomSurfaceFinish.hpp"
 
 #include "roombook/FloorCoreGeometry.hpp"
+#include "roombook/RoomAnalyticGeometry.hpp"
 
 #ifdef ServerMainVers_2400
     #include <algorithm>
@@ -11,12 +12,117 @@
     #include <vector>
 
 namespace Roombook {
+    bool BuildFloorSkirtingSegments (OtdRoom &room) {
+        constexpr double tolerance = FloorCoreGeometry::Tolerance;
+        room.otdbeam_floor.Clear ();
+        if (!room.isValid)
+            return true;
+        if (!std::isfinite (room.zBottom))
+            return false;
+        GS::Array<OtdBeam> prepared;
+        for (UIndex i = 0; i < room.otdwall.GetSize (); ++i) {
+            const OtdWall &wall = room.otdwall[i];
+            if (!wall.isValid ||
+                (wall.type != Wall_Main && wall.type != Wall_Down && wall.type != Wall_Up && wall.type != Column) ||
+                (wall.type != Column && !room.create_wall_elements) ||
+                (wall.type == Column && !room.create_column_elements))
+                continue;
+            if (!std::isfinite (wall.zBottom))
+                return false;
+            if (std::fabs (wall.zBottom - room.zBottom) > tolerance)
+                continue;
+            const double dx = wall.endC.x - wall.begC.x;
+            const double dy = wall.endC.y - wall.begC.y;
+            const double length = std::hypot (dx, dy);
+            if (!std::isfinite (length) || length <= tolerance || !std::isfinite (wall.begC.x) ||
+                !std::isfinite (wall.begC.y) || !std::isfinite (wall.endC.x) || !std::isfinite (wall.endC.y))
+                return false;
+            std::vector<AnalyticGeometry::Rect> openings;
+            openings.reserve (wall.openings.GetSize ());
+            for (const auto &opening : wall.openings)
+                openings.push_back ({opening.objLoc - opening.width / 2,
+                                     opening.zBottom,
+                                     opening.objLoc + opening.width / 2,
+                                     opening.zBottom + opening.height});
+            std::vector<std::pair<double, double>> segments;
+            if (!AnalyticGeometry::CutWallBottom (
+                    {0, wall.zBottom, length, wall.zBottom + wall.height}, openings, tolerance, segments))
+                return false;
+            for (const auto &segment : segments) {
+                OtdBeam beam;
+                beam.begC = {wall.begC.x + dx * (segment.first / length), wall.begC.y + dy * (segment.first / length)};
+                beam.endC = {wall.begC.x + dx * (segment.second / length),
+                             wall.begC.y + dy * (segment.second / length)};
+                beam.zBottom = wall.zBottom;
+                beam.floorInd = wall.floorInd;
+                beam.base_guid = wall.base_guid;
+                beam.base_type = wall.base_type;
+                beam.wallIndex = static_cast<Int32> (i);
+                prepared.Push (beam);
+            }
+        }
+        room.otdbeam_floor.Swap (prepared);
+        return true;
+    }
+
     USize CleanCollinearPolygonVertices (Geometry::Polygon2D &polygon) {
         if (polygon.IsEmpty ())
             return 0;
         const USize before = polygon.GetVertexNum ();
         Geometry::Polygon2D::RemoveSameDirEdgesWithSameEdgeUserData (polygon);
         return before - polygon.GetVertexNum ();
+    }
+
+    bool ExtendFloorContourToOpening (OtdRoom &room, const OtdWall &wall, const OtdOpening &opening) {
+        constexpr double tolerance = FloorCoreGeometry::Tolerance;
+        const double dx = wall.endC.x - wall.begC.x, dy = wall.endC.y - wall.begC.y;
+        const double length = std::hypot (dx, dy);
+        if (!wall.isValid || opening.base_guid == APINULLGuid || !std::isfinite (length) || length <= tolerance ||
+            !std::isfinite (opening.objLoc) || !std::isfinite (opening.width) || opening.width <= tolerance ||
+            !std::isfinite (opening.base_reveal_width) || opening.base_reveal_width <= tolerance ||
+            !std::isfinite (opening.zBottom) || !std::isfinite (opening.height) || opening.height <= tolerance ||
+            opening.zBottom > room.zBottom + tolerance)
+            return true;
+
+        const double left = std::max (0.0, opening.objLoc - opening.width / 2);
+        const double right = std::min (length, opening.objLoc + opening.width / 2);
+        if (right - left <= tolerance)
+            return true;
+        const Sector entrance = {{wall.begC.x + dx * left / length, wall.begC.y + dy * left / length},
+                                 {wall.begC.x + dx * right / length, wall.begC.y + dy * right / length}};
+        const double shiftX = dy / length * opening.base_reveal_width;
+        const double shiftY = -dx / length * opening.base_reveal_width;
+        bool complete = true;
+        for (auto &floor : room.otdslab) {
+            if (!floor.isValid || floor.type != Floor || floor.poly.IsEmpty () ||
+                opening.zBottom > floor.zBottom + tolerance ||
+                opening.zBottom + opening.height <= floor.zBottom + tolerance)
+                continue;
+            Geometry::MultiPolygon2D united;
+            united.Push (floor.poly);
+            // Каждый пол входит только на своей конечной части проёма, включая совпавшую границу.
+            for (const auto &contact : floor.poly.CutElem (entrance, Geometry::Boundary_Closed)) {
+                if (std::hypot (contact.c2.x - contact.c1.x, contact.c2.y - contact.c1.y) <= tolerance)
+                    continue;
+                const GS::Array<Point2D> coords = {contact.c1,
+                                                   contact.c2,
+                                                   {contact.c2.x + shiftX, contact.c2.y + shiftY},
+                                                   {contact.c1.x + shiftX, contact.c1.y + shiftY}};
+                united.Append (Geometry::Polygon2D::Create (coords, 0));
+            }
+            if (united.GetSize () == 1)
+                continue;
+            united.Unify ();
+            Geometry::MultiPolygon2D original;
+            original.Push (floor.poly);
+            if (united.GetSize () != 1 ||
+                Geometry::MultiPolygon2D::Substract (original, united).CalcArea () > tolerance) {
+                complete = false;
+                continue;
+            }
+            floor.poly = united[0];
+        }
+        return complete;
     }
 
     bool ExtendFloorContoursToCore (OtdRoom &room) {
@@ -31,9 +137,9 @@ namespace Roombook {
             std::vector<Contact> contacts;
             std::vector<API_Guid> owners;
             for (const auto &wall : room.otdwall) {
-                if (!wall.isValid || wall.base_guid == APINULLGuid || !wall.surface_geometry ||
-                    wall.type == Reveal_Main || wall.type == Reveal_Up || wall.type == Reveal_Down ||
-                    floor.zBottom < wall.zBottom - Tolerance || floor.zBottom >= wall.zBottom + wall.height - Tolerance)
+                if (!wall.isValid || wall.base_guid == APINULLGuid || wall.type == Reveal_Main ||
+                    wall.type == Reveal_Up || wall.type == Reveal_Down || floor.zBottom < wall.zBottom - Tolerance ||
+                    floor.zBottom >= wall.zBottom + wall.height - Tolerance)
                     continue;
                 auto owner = std::find (owners.begin (), owners.end (), wall.base_guid);
                 if (owner == owners.end ()) {
@@ -991,6 +1097,463 @@ namespace Roombook {
         return true;
     }
 
+    namespace {
+        using FloorPolygons = Geometry::MultiPolygon2D;
+
+        double FloorPlaneHeight (const OtdSlab &plane, const Point2D &point) {
+            return plane.zBottom + plane.slope_x * (point.x - plane.plane_origin.x) +
+                   plane.slope_y * (point.y - plane.plane_origin.y);
+        }
+
+        bool ProjectFloorFace (const RoomSurface &face, OtdSlab &plane, FloorPolygons &polygons) {
+            if (!Finite (face.normalWorld) || !std::isfinite (face.planeOffset) || face.contours.IsEmpty () ||
+                face.contours[0].vertices.IsEmpty () || std::fabs (face.normalWorld.z) <= DistanceTolerance)
+                return false;
+            const double length = Length (face.normalWorld);
+            const auto origin = face.contours[0].vertices[0].world;
+            if (!Finite (origin) ||
+                std::fabs (Dot (face.normalWorld, origin) + face.planeOffset) / length > DistanceTolerance)
+                return false;
+            plane.plane_origin = {origin.x, origin.y};
+            plane.zBottom = origin.z;
+            plane.reference_z = origin.z;
+            plane.slope_x = -face.normalWorld.x / face.normalWorld.z;
+            plane.slope_y = -face.normalWorld.y / face.normalWorld.z;
+            RoomSurfacePiece piece;
+            piece.normal = {0, 0, -1};
+            for (const auto &contour : face.contours) {
+                if (contour.vertices.GetSize () < 3)
+                    return false;
+                RoomSurfacePieceContour projected;
+                projected.hole = contour.hole;
+                double twiceArea = 0;
+                for (UIndex i = 0; i < contour.vertices.GetSize (); ++i) {
+                    const auto &point = contour.vertices[i].world;
+                    const auto &next = contour.vertices[(i + 1) % contour.vertices.GetSize ()].world;
+                    if (!Finite (point) ||
+                        std::fabs (Dot (face.normalWorld, Subtract (point, origin))) / length > DistanceTolerance)
+                        return false;
+                    projected.vertices.Push ({point.x, point.y, 0});
+                    twiceArea +=
+                        (point.x - origin.x) * (next.y - origin.y) - (next.x - origin.x) * (point.y - origin.y);
+                }
+                piece.area += (contour.hole ? -1 : 1) * std::fabs (twiceArea) / 2;
+                piece.contours.Push (projected);
+            }
+            if (!std::isfinite (piece.area) || piece.area < 0)
+                return false;
+            if (piece.area == 0)
+                return true;
+            GS::Array<OtdSlab> projected;
+            if (!BuildSurfaceSlabs (piece, 0, projected))
+                return false;
+            for (const auto &part : projected)
+                polygons.Push (part.poly);
+            return true;
+        }
+
+        // Нормализуем коэффициенты только после проверки константной/касательной отсечки.
+        bool ClipFloorBelow (const FloorPolygons &input,
+                             const OtdSlab &lower,
+                             const OtdSlab &upper,
+                             FloorPolygons &output) {
+            const double a = lower.slope_x - upper.slope_x, b = lower.slope_y - upper.slope_y;
+            const double length = std::hypot (a, b);
+            for (const auto &polygon : input) {
+                GS::Array<Point2D> coords;
+                GS::Array<PolyArcRec> arcs;
+                GS::Array<UIndex> ends;
+                GS::Array<Geometry::Polygon2D::ConstContourIterator> reversed;
+                polygon.CopyPolygonData (
+                    coords, arcs, ends, reversed, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
+                if (!arcs.IsEmpty () || coords.IsEmpty ())
+                    return false;
+                double minimum = std::numeric_limits<double>::infinity (), maximum = -minimum;
+                for (const auto &point : coords) {
+                    const double difference = FloorPlaneHeight (lower, point) - FloorPlaneHeight (upper, point);
+                    if (!std::isfinite (difference))
+                        return false;
+                    minimum = std::min (minimum, difference);
+                    maximum = std::max (maximum, difference);
+                }
+                if (maximum <= 0) {
+                    output.Push (polygon);
+                    continue;
+                }
+                if (minimum >= 0)
+                    continue;
+                if (!std::isfinite (length) || length == 0)
+                    return false;
+                const double c = FloorPlaneHeight (upper, {lower.plane_origin.x, lower.plane_origin.y}) -
+                                 lower.zBottom + a * lower.plane_origin.x + b * lower.plane_origin.y;
+                bool inside = false, degenerate = false;
+                GS::Int32 warning = 0;
+                const auto clipped =
+                    polygon.Cut (HalfPlane2DData (a / length, b / length, c / length), &inside, &warning, &degenerate);
+                if (warning != 0 || degenerate)
+                    return false;
+                output.Append (clipped);
+            }
+            return true;
+        }
+
+        bool SameFloorPlane (const OtdSlab &a, const OtdSlab &b, const FloorPolygons &domain) {
+            const double na = std::sqrt (1 + a.slope_x * a.slope_x + a.slope_y * a.slope_y);
+            const double nb = std::sqrt (1 + b.slope_x * b.slope_x + b.slope_y * b.slope_y);
+            if (Length ({a.slope_x / na - b.slope_x / nb, a.slope_y / na - b.slope_y / nb, 1 / na - 1 / nb}) >
+                DistanceTolerance)
+                return false;
+            for (const auto &polygon : domain) {
+                GS::Array<Point2D> coords;
+                GS::Array<PolyArcRec> arcs;
+                GS::Array<UIndex> ends;
+                GS::Array<Geometry::Polygon2D::ConstContourIterator> reversed;
+                polygon.CopyPolygonData (
+                    coords, arcs, ends, reversed, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
+                if (!arcs.IsEmpty ())
+                    return false;
+                for (const auto &point : coords)
+                    if (std::fabs (FloorPlaneHeight (a, point) - FloorPlaneHeight (b, point)) > DistanceTolerance)
+                        return false;
+            }
+            return true;
+        }
+    } // namespace
+
+    bool BuildProjectedMeshFloorFinishes (const Geometry::Polygon2D &footprint,
+                                          double roomFloor,
+                                          short floorInd,
+                                          const GS::Array<MeshFloorSource> &meshes,
+                                          const GS::Array<OtdSlab> &slabSupports,
+                                          GS::Array<OtdSlab> &floors,
+                                          Geometry::MultiPolygon2D &meshCoverage) {
+        if (meshes.IsEmpty ()) {
+            meshCoverage.Clear ();
+            return true;
+        }
+        if (footprint.IsEmpty () || !std::isfinite (roomFloor))
+            return false;
+
+        struct Patch {
+            OtdSlab plane;
+            FloorPolygons domain;
+            std::vector<OtdSlab> members;
+        };
+
+        std::vector<Patch> patches;
+        FloorPolygons domain;
+        OtdSlab level;
+        level.zBottom = roomFloor;
+        for (const auto &mesh : meshes) {
+            const auto &source = mesh.surface;
+            if (source.baseType != API_MeshID || source.baseGuid == APINULLGuid ||
+                source.geometryGuid != source.baseGuid || source.snapshot.guid != source.baseGuid ||
+                !source.snapshot.IsComplete ())
+                return false;
+            for (const auto &body : source.snapshot.bodies) {
+                FloorPolygons bottom;
+                bool hasBottom = false;
+                if (mesh.hasBottom)
+                    for (const auto &face : body.surfaces) {
+                        if (!Finite (face.normalWorld))
+                            return false;
+                        if (face.normalWorld.z >= -DistanceTolerance)
+                            continue;
+                        hasBottom = true;
+                        OtdSlab plane;
+                        FloorPolygons projected;
+                        if (!ProjectFloorFace (face, plane, projected) ||
+                            !ClipFloorBelow (projected, plane, level, bottom))
+                            return false;
+                    }
+                bottom.Unify ();
+                for (const auto &face : body.surfaces) {
+                    if (!Finite (face.normalWorld))
+                        return false;
+                    if (face.normalWorld.z <= DistanceTolerance)
+                        continue;
+                    Patch patch;
+                    if (!ProjectFloorFace (face, patch.plane, patch.domain))
+                        return false;
+                    FloorPolygons room;
+                    room.Push (footprint);
+                    patch.domain = FloorPolygons::Intersect (patch.domain, room);
+                    if (patch.domain.IsEmpty ())
+                        continue;
+                    if (mesh.hasBottom) {
+                        if (!hasBottom)
+                            return false;
+                        patch.domain = FloorPolygons::Intersect (patch.domain, bottom);
+                    } else {
+                        FloorPolygons admitted;
+                        if (!ClipFloorBelow (patch.domain, patch.plane, level, admitted))
+                            return false;
+                        patch.domain = admitted;
+                    }
+                    if (patch.domain.IsEmpty ())
+                        continue;
+                    patch.plane.base_guid = source.baseGuid;
+                    patch.plane.base_type = API_MeshID;
+                    patch.plane.draw_type = API_RoofID;
+                    patch.plane.surface_geometry = true;
+                    patch.plane.type = Floor;
+                    patch.plane.floorInd = floorInd;
+                    domain.Append (patch.domain);
+                    patches.push_back (patch);
+                }
+            }
+        }
+        domain.Unify ();
+        if (domain.IsEmpty ()) {
+            meshCoverage.Clear ();
+            return true;
+        }
+        for (const auto &support : slabSupports) {
+            if (!support.isValid || support.base_guid == APINULLGuid || support.base_type != API_SlabID ||
+                support.poly.IsEmpty () || !std::isfinite (support.zBottom) || support.slope_x != 0 ||
+                support.slope_y != 0)
+                return false;
+            Patch patch;
+            patch.plane = support;
+            patch.plane.type = Floor;
+            patch.plane.floorInd = floorInd;
+            patch.plane.surface_geometry = true;
+            FloorPolygons projected;
+            projected.Push (support.poly);
+            patch.domain = FloorPolygons::Intersect (projected, domain);
+            if (!patch.domain.IsEmpty ())
+                patches.push_back (patch);
+        }
+        // Стабильная опорная плоскость и проверка каждого участника не допускают tolerance-chain.
+        std::sort (patches.begin (), patches.end (), [] (const Patch &a, const Patch &b) {
+            if (a.plane.slope_x != b.plane.slope_x)
+                return a.plane.slope_x < b.plane.slope_x;
+            if (a.plane.slope_y != b.plane.slope_y)
+                return a.plane.slope_y < b.plane.slope_y;
+            return FloorPlaneHeight (a.plane, {0, 0}) < FloorPlaneHeight (b.plane, {0, 0});
+        });
+        std::vector<Patch> groups;
+        for (const auto &patch : patches) {
+            bool merged = false;
+            for (auto &group : groups) {
+                if (group.plane.base_guid != patch.plane.base_guid || group.plane.base_type != patch.plane.base_type)
+                    continue;
+                auto combined = group.domain;
+                combined.Append (patch.domain);
+                bool compatible = true;
+                for (const auto &member : group.members)
+                    compatible = compatible && SameFloorPlane (member, patch.plane, combined);
+                if (!compatible)
+                    continue;
+                group.domain = combined;
+                group.domain.Unify ();
+                group.members.push_back (patch.plane);
+                merged = true;
+                break;
+            }
+            if (!merged) {
+                auto group = patch;
+                group.members.push_back (patch.plane);
+                groups.push_back (group);
+            }
+        }
+        std::vector<FloorPolygons> visible (groups.size ());
+        for (size_t i = 0; i < groups.size (); ++i) {
+            visible[i] = groups[i].domain;
+            for (size_t j = 0; j < groups.size () && !visible[i].IsEmpty (); ++j) {
+                if (i == j)
+                    continue;
+                const auto overlap = FloorPolygons::Intersect (groups[i].domain, groups[j].domain);
+                if (overlap.IsEmpty () || SameFloorPlane (groups[i].plane, groups[j].plane, overlap))
+                    continue;
+                FloorPolygons higher;
+                if (!ClipFloorBelow (groups[j].domain, groups[i].plane, groups[j].plane, higher))
+                    return false;
+                visible[i] = FloorPolygons::Substract (visible[i], higher);
+            }
+        }
+        // Неоднозначность оценивается после всех более высоких опор, а не до третьего кандидата.
+        for (size_t i = 0; i < groups.size (); ++i)
+            for (size_t j = 0; j < i; ++j) {
+                const auto overlap = FloorPolygons::Intersect (visible[i], visible[j]);
+                if (overlap.CalcArea () <= AreaTolerance)
+                    continue;
+                if (groups[i].plane.base_guid != groups[j].plane.base_guid ||
+                    groups[i].plane.base_type != groups[j].plane.base_type)
+                    return false;
+                visible[i] = FloorPolygons::Substract (visible[i], visible[j]);
+            }
+        GS::Array<OtdSlab> results;
+        FloorPolygons complete;
+        for (size_t i = 0; i < groups.size (); ++i)
+            for (const auto &polygon : visible[i]) {
+                auto floor = groups[i].plane;
+                floor.poly = polygon;
+                results.Push (floor);
+                complete.Push (polygon);
+            }
+        complete.Unify ();
+        if (FloorPolygons::Substract (complete, domain).CalcArea () > AreaTolerance ||
+            FloorPolygons::Substract (domain, complete).CalcArea () > AreaTolerance)
+            return false;
+        floors.Append (results);
+        meshCoverage = domain;
+        return true;
+    }
+
+    namespace {
+        struct ProjectedSlabCandidate {
+            OtdSlab slab;
+            double bottom, top;
+        };
+
+        // Общие исходные контакты до выбора победителя и ограничения числа компонент.
+        bool CollectProjectedSlabInputs (const RoomSurfaceSnapshot &zone,
+                                         const GS::Array<RoomSurfaceSource> &sources,
+                                         const GS::Array<API_Guid> &roles,
+                                         TypeOtd type,
+                                         short floorInd,
+                                         const GS::Array<OtdSlab> *prepared,
+                                         Geometry::MultiPolygon2D &footprint,
+                                         std::vector<ProjectedSlabCandidate> &candidates) {
+            if (!zone.IsComplete () || (type != Floor && type != Ceil))
+                return false;
+            const double normal = type == Floor ? -1 : 1;
+            const auto horizontal = [] (const RoomSurface &face) {
+                if (face.contours.IsEmpty () || face.contours[0].vertices.IsEmpty () ||
+                    std::hypot (face.normalWorld.x, face.normalWorld.y) > DistanceTolerance ||
+                    std::fabs (std::fabs (face.normalWorld.z) - 1) > DistanceTolerance)
+                    return false;
+                const double z = face.contours[0].vertices[0].world.z;
+                for (const auto &contour : face.contours)
+                    for (const auto &point : contour.vertices)
+                        if (!Finite (point.world) || std::fabs (point.world.z - z) > DistanceTolerance)
+                            return false;
+                return true;
+            };
+            // Объединение проекций убирает дубли разных тел/ступеней зоны, сохраняя
+            // отверстия.
+            for (const auto &body : zone.bodies)
+                for (const auto &face : body.surfaces) {
+                    if (!horizontal (face) || face.normalWorld.z * normal < 0)
+                        continue;
+                    RoomSurfacePiece piece;
+                    piece.status = RoomSurfacePieceStatus::Matched;
+                    piece.baseGuid = zone.guid;
+                    piece.baseType = API_ZoneID;
+                    piece.normal = {0, 0, normal};
+                    for (const auto &contour : face.contours) {
+                        if (contour.vertices.GetSize () < 3)
+                            return false;
+                        const auto origin = contour.vertices[0].world;
+                        RoomSurfacePieceContour projected;
+                        projected.hole = contour.hole;
+                        double twiceArea = 0;
+                        for (UIndex i = 0; i < contour.vertices.GetSize (); ++i) {
+                            const auto &a = contour.vertices[i].world;
+                            const auto &b = contour.vertices[(i + 1) % contour.vertices.GetSize ()].world;
+                            projected.vertices.Push ({a.x, a.y, 0});
+                            twiceArea += (a.x - origin.x) * (b.y - origin.y) - (b.x - origin.x) * (a.y - origin.y);
+                        }
+                        piece.area += (contour.hole ? -1 : 1) * std::fabs (twiceArea) / 2;
+                        piece.contours.Push (projected);
+                    }
+                    GS::Array<OtdSlab> projected;
+                    if (!BuildSurfaceSlabs (piece, floorInd, projected))
+                        return false;
+                    for (const auto &slab : projected)
+                        footprint.Push (slab.poly);
+                }
+            if (footprint.IsEmpty ())
+                return false;
+            footprint.Unify ();
+
+            GS::Array<API_Guid> visited;
+            for (const auto &guid : roles) {
+                bool duplicate = false;
+                for (const auto &seen : visited)
+                    duplicate = duplicate || seen == guid;
+                if (duplicate)
+                    continue;
+                visited.Push (guid);
+                bool found = false;
+                for (const auto &source : sources) {
+                    if (source.baseGuid != guid || source.baseType != API_SlabID)
+                        continue;
+                    found = true;
+                    if (!source.snapshot.IsComplete ())
+                        return false;
+                    if (source.origin == RoomSurfaceOrigin::PreparedAnalytic && prepared != nullptr) {
+                        bool hasBase = false;
+                        for (const auto &base : *prepared) {
+                            if (base.base_guid != guid)
+                                continue;
+                            hasBase = true;
+                            OtdSlab slab = base;
+                            slab.type = type;
+                            slab.floorInd = floorInd;
+                            slab.surface_geometry = true;
+                            const double bottom = base.zBottom, top = bottom + base.height;
+                            slab.zBottom = type == Floor ? top : bottom;
+                            candidates.push_back ({slab, bottom, top});
+                        }
+                        if (!hasBase)
+                            return false;
+                        continue;
+                    }
+                    for (const auto &body : source.snapshot.bodies) {
+                        double bottom = std::numeric_limits<double>::infinity ();
+                        double top = -bottom;
+                        for (const auto &face : body.surfaces)
+                            for (const auto &contour : face.contours)
+                                for (const auto &vertex : contour.vertices) {
+                                    if (!Finite (vertex.world))
+                                        return false;
+                                    bottom = std::min (bottom, vertex.world.z);
+                                    top = std::max (top, vertex.world.z);
+                                }
+                        for (const auto &face : body.surfaces) {
+                            if (!horizontal (face) || face.normalWorld.z * normal > 0)
+                                continue;
+                            RoomSurfacePiece piece;
+                            piece.status = RoomSurfacePieceStatus::Matched;
+                            piece.baseGuid = guid;
+                            piece.baseType = API_SlabID;
+                            piece.normal = {0, 0, normal};
+                            const double elevation = face.contours[0].vertices[0].world.z;
+                            piece.planeOffset = -normal * elevation;
+                            for (const auto &contour : face.contours) {
+                                if (contour.vertices.GetSize () < 3)
+                                    return false;
+                                RoomSurfacePieceContour output;
+                                output.hole = contour.hole;
+                                const auto origin = contour.vertices[0].world;
+                                double twiceArea = 0;
+                                for (UIndex i = 0; i < contour.vertices.GetSize (); ++i) {
+                                    const auto a = contour.vertices[i].world;
+                                    const auto b = contour.vertices[(i + 1) % contour.vertices.GetSize ()].world;
+                                    output.vertices.Push (a);
+                                    twiceArea +=
+                                        (a.x - origin.x) * (b.y - origin.y) - (b.x - origin.x) * (a.y - origin.y);
+                                }
+                                piece.area += (contour.hole ? -1 : 1) * std::fabs (twiceArea) / 2;
+                                piece.contours.Push (output);
+                            }
+                            GS::Array<OtdSlab> selected;
+                            if (!BuildSurfaceSlabs (piece, floorInd, selected))
+                                return false;
+                            for (const auto &slab : selected)
+                                candidates.push_back ({slab, bottom, top});
+                        }
+                    }
+                }
+                if (!found)
+                    return false;
+            }
+            return true;
+        }
+    } // namespace
+
     bool BuildProjectedSlabFinishes (const RoomSurfaceSnapshot &zone,
                                      const GS::Array<RoomSurfaceSource> &sources,
                                      const GS::Array<API_Guid> &roles,
@@ -1002,145 +1565,11 @@ namespace Roombook {
                                      bool onlyOnSlab,
                                      GS::Array<OtdWall> *walls,
                                      const GS::Array<OtdSlab> *prepared) {
-        if (!zone.IsComplete () || (type != Floor && type != Ceil))
-            return false;
-        const double normal = type == Floor ? -1 : 1;
-        const auto horizontal = [] (const RoomSurface &face) {
-            if (face.contours.IsEmpty () || face.contours[0].vertices.IsEmpty () ||
-                std::hypot (face.normalWorld.x, face.normalWorld.y) > DistanceTolerance ||
-                std::fabs (std::fabs (face.normalWorld.z) - 1) > DistanceTolerance)
-                return false;
-            const double z = face.contours[0].vertices[0].world.z;
-            for (const auto &contour : face.contours)
-                for (const auto &point : contour.vertices)
-                    if (!Finite (point.world) || std::fabs (point.world.z - z) > DistanceTolerance)
-                        return false;
-            return true;
-        };
-        // Объединение проекций убирает дубли разных тел/ступеней зоны, сохраняя отверстия.
+        using Candidate = ProjectedSlabCandidate;
         Geometry::MultiPolygon2D footprint;
-        for (const auto &body : zone.bodies)
-            for (const auto &face : body.surfaces) {
-                if (!horizontal (face) || face.normalWorld.z * normal < 0)
-                    continue;
-                RoomSurfacePiece piece;
-                piece.status = RoomSurfacePieceStatus::Matched;
-                piece.baseGuid = zone.guid;
-                piece.baseType = API_ZoneID;
-                piece.normal = {0, 0, normal};
-                for (const auto &contour : face.contours) {
-                    if (contour.vertices.GetSize () < 3)
-                        return false;
-                    const auto origin = contour.vertices[0].world;
-                    RoomSurfacePieceContour projected;
-                    projected.hole = contour.hole;
-                    double twiceArea = 0;
-                    for (UIndex i = 0; i < contour.vertices.GetSize (); ++i) {
-                        const auto &a = contour.vertices[i].world;
-                        const auto &b = contour.vertices[(i + 1) % contour.vertices.GetSize ()].world;
-                        projected.vertices.Push ({a.x, a.y, 0});
-                        twiceArea += (a.x - origin.x) * (b.y - origin.y) - (b.x - origin.x) * (a.y - origin.y);
-                    }
-                    piece.area += (contour.hole ? -1 : 1) * std::fabs (twiceArea) / 2;
-                    piece.contours.Push (projected);
-                }
-                GS::Array<OtdSlab> projected;
-                if (!BuildSurfaceSlabs (piece, floorInd, projected))
-                    return false;
-                for (const auto &slab : projected)
-                    footprint.Push (slab.poly);
-            }
-        if (footprint.IsEmpty ())
-            return false;
-        footprint.Unify ();
-
-        struct Candidate {
-            OtdSlab slab;
-            double bottom, top;
-        };
-
         std::vector<Candidate> candidates;
-        GS::Array<API_Guid> visited;
-        for (const auto &guid : roles) {
-            bool duplicate = false;
-            for (const auto &seen : visited)
-                duplicate = duplicate || seen == guid;
-            if (duplicate)
-                continue;
-            visited.Push (guid);
-            bool found = false;
-            for (const auto &source : sources) {
-                if (source.baseGuid != guid || source.baseType != API_SlabID)
-                    continue;
-                found = true;
-                if (!source.snapshot.IsComplete ())
-                    return false;
-                if (source.origin == RoomSurfaceOrigin::PreparedAnalytic && prepared != nullptr) {
-                    bool hasBase = false;
-                    for (const auto &base : *prepared) {
-                        if (base.base_guid != guid)
-                            continue;
-                        hasBase = true;
-                        OtdSlab slab = base;
-                        slab.type = type;
-                        slab.floorInd = floorInd;
-                        slab.surface_geometry = true;
-                        const double bottom = base.zBottom, top = bottom + base.height;
-                        slab.zBottom = type == Floor ? top : bottom;
-                        candidates.push_back ({slab, bottom, top});
-                    }
-                    if (!hasBase)
-                        return false;
-                    continue;
-                }
-                for (const auto &body : source.snapshot.bodies) {
-                    double bottom = std::numeric_limits<double>::infinity ();
-                    double top = -bottom;
-                    for (const auto &face : body.surfaces)
-                        for (const auto &contour : face.contours)
-                            for (const auto &vertex : contour.vertices) {
-                                if (!Finite (vertex.world))
-                                    return false;
-                                bottom = std::min (bottom, vertex.world.z);
-                                top = std::max (top, vertex.world.z);
-                            }
-                    for (const auto &face : body.surfaces) {
-                        if (!horizontal (face) || face.normalWorld.z * normal > 0)
-                            continue;
-                        RoomSurfacePiece piece;
-                        piece.status = RoomSurfacePieceStatus::Matched;
-                        piece.baseGuid = guid;
-                        piece.baseType = API_SlabID;
-                        piece.normal = {0, 0, normal};
-                        const double elevation = face.contours[0].vertices[0].world.z;
-                        piece.planeOffset = -normal * elevation;
-                        for (const auto &contour : face.contours) {
-                            if (contour.vertices.GetSize () < 3)
-                                return false;
-                            RoomSurfacePieceContour output;
-                            output.hole = contour.hole;
-                            const auto origin = contour.vertices[0].world;
-                            double twiceArea = 0;
-                            for (UIndex i = 0; i < contour.vertices.GetSize (); ++i) {
-                                const auto a = contour.vertices[i].world;
-                                const auto b = contour.vertices[(i + 1) % contour.vertices.GetSize ()].world;
-                                output.vertices.Push (a);
-                                twiceArea += (a.x - origin.x) * (b.y - origin.y) - (b.x - origin.x) * (a.y - origin.y);
-                            }
-                            piece.area += (contour.hole ? -1 : 1) * std::fabs (twiceArea) / 2;
-                            piece.contours.Push (output);
-                        }
-                        GS::Array<OtdSlab> selected;
-                        if (!BuildSurfaceSlabs (piece, floorInd, selected))
-                            return false;
-                        for (const auto &slab : selected)
-                            candidates.push_back ({slab, bottom, top});
-                    }
-                }
-            }
-            if (!found)
-                return false;
-        }
+        if (!CollectProjectedSlabInputs (zone, sources, roles, type, floorInd, prepared, footprint, candidates))
+            return false;
         // Потолок зоны — такой же кандидат: ближние перекрытия обрабатываются раньше,
         // а остаток покрывается отметкой height_ceil прежним алгоритмом остатка.
         const bool zoneCeilingCandidate = type == Ceil && nominal != nullptr && !onlyOnSlab;
@@ -1151,12 +1580,14 @@ namespace Roombook {
             zoneCeiling.slab.floorInd = floorInd;
             zoneCeiling.slab.surface_geometry = true;
             zoneCeiling.slab.zBottom = nominal->zBottom;
-            // Перепад до номинальной отметки не строим: собственных границ у кандидата нет.
+            // Перепад до номинальной отметки не строим: собственных границ у кандидата
+            // нет.
             zoneCeiling.bottom = std::numeric_limits<double>::infinity ();
             zoneCeiling.top = -zoneCeiling.bottom;
             candidates.push_back (zoneCeiling);
         }
-        // Изнутри зоны: верхние грани пола по убыванию, нижние грани потолка по возрастанию.
+        // Изнутри зоны: верхние грани пола по убыванию, нижние грани потолка по
+        // возрастанию.
         std::sort (candidates.begin (), candidates.end (), [type] (const Candidate &a, const Candidate &b) {
             return type == Floor ? a.slab.zBottom > b.slab.zBottom : a.slab.zBottom < b.slab.zBottom;
         });
@@ -1172,13 +1603,15 @@ namespace Roombook {
                     intersections.Push (part);
             if (intersections.IsEmpty ())
                 continue;
-            // Явное ограничение legacy: сохраняем только наибольшую несвязную часть пересечения/остатка.
+            // Явное ограничение legacy: сохраняем только наибольшую несвязную часть
+            // пересечения/остатка.
             Geometry::Polygon2D processed = intersections.PopLargest ();
             if (processed.CalcArea () < 0.001)
                 continue;
             Geometry::MultiPolygon2D accepted;
             accepted.Push (processed);
-            // std::sort не задавал владельца при равных отметках; не выбираем его по GUID/порядку.
+            // std::sort не задавал владельца при равных отметках; не выбираем его по
+            // GUID/порядку.
             for (UIndex j = 0; j < candidates.size (); ++j) {
                 if (j == i || candidates[j].slab.base_guid == candidate.slab.base_guid ||
                     std::fabs (candidates[j].slab.zBottom - candidate.slab.zBottom) > DistanceTolerance)
@@ -1249,7 +1682,8 @@ namespace Roombook {
                     }
                 }
             }
-            // Прежнее исключение: отверстия обработанного покрытия не становятся нижней/резервной отделкой.
+            // Прежнее исключение: отверстия обработанного покрытия не становятся
+            // нижней/резервной отделкой.
             processed.RemoveHoles ();
             Geometry::MultiPolygon2D next;
             for (const auto &remaining : remainder)
@@ -1259,7 +1693,8 @@ namespace Roombook {
             if (!next.IsEmpty ())
                 remainder.Push (next.PopLargest ());
         }
-        // Номинальный потолок уже был кандидатом: второй остаток на той же отметке не нужен.
+        // Номинальный потолок уже был кандидатом: второй остаток на той же отметке не
+        // нужен.
         if (!onlyOnSlab && nominal != nullptr && !zoneCeilingCandidate && remainder.CalcArea () > 0.0001) {
             OtdSlab residual = *nominal;
             residual.poly = remainder.PopLargest ();
@@ -1272,6 +1707,148 @@ namespace Roombook {
             walls->Append (steps);
         slabs.Append (results);
         rejectedArea += rejected;
+        return true;
+    }
+
+    namespace {
+        Geometry::MultiPolygon2D FloorCoverage (const GS::Array<OtdSlab> &floors) {
+            Geometry::MultiPolygon2D coverage;
+            for (const auto &floor : floors)
+                coverage.Push (floor.poly);
+            coverage.Unify ();
+            return coverage;
+        }
+
+        bool SameFloorOwner (const OtdSlab &a, const OtdSlab &b) {
+            return a.base_guid == b.base_guid && a.base_type == b.base_type;
+        }
+
+        // Положительная площадь с прежним owner и той же плоскостью не меняет
+        // смежность.
+        Geometry::MultiPolygon2D ChangedFloorCoverage (const GS::Array<OtdSlab> &before,
+                                                       const GS::Array<OtdSlab> &after) {
+            Geometry::MultiPolygon2D changed;
+            const auto appendDifference = [&] (const GS::Array<OtdSlab> &left, const GS::Array<OtdSlab> &right) {
+                for (const auto &floor : left) {
+                    Geometry::MultiPolygon2D remaining;
+                    remaining.Push (floor.poly);
+                    for (const auto &other : right) {
+                        if (!SameFloorOwner (floor, other))
+                            continue;
+                        Geometry::MultiPolygon2D domain;
+                        domain.Push (other.poly);
+                        const auto overlap = Geometry::MultiPolygon2D::Intersect (remaining, domain);
+                        if (!overlap.IsEmpty () && SameFloorPlane (floor, other, overlap))
+                            remaining = Geometry::MultiPolygon2D::Substract (remaining, overlap);
+                    }
+                    changed.Append (remaining);
+                }
+            };
+            appendDifference (before, after);
+            appendDifference (after, before);
+            changed.Unify ();
+            return changed;
+        }
+
+        // Все компоненты разности сохраняют исходную запись целиком, кроме контура.
+        bool MergeMixedFloorDomains (const GS::Array<OtdSlab> &legacy,
+                                     const GS::Array<OtdSlab> &inside,
+                                     const Geometry::MultiPolygon2D &domain,
+                                     GS::Array<OtdSlab> &output) {
+            GS::Array<OtdSlab> staged = inside;
+            for (const auto &floor : legacy) {
+                Geometry::MultiPolygon2D original;
+                original.Push (floor.poly);
+                for (const auto &polygon : Geometry::MultiPolygon2D::Substract (original, domain)) {
+                    auto remainder = floor;
+                    remainder.poly = polygon;
+                    staged.Push (remainder);
+                }
+            }
+            const auto insideCoverage = FloorCoverage (inside);
+            if (Geometry::MultiPolygon2D::Substract (insideCoverage, domain).CalcArea () > AreaTolerance ||
+                Geometry::MultiPolygon2D::Substract (domain, insideCoverage).CalcArea () > AreaTolerance)
+                return false;
+            for (UIndex i = 0; i < staged.GetSize (); ++i)
+                for (UIndex j = 0; j < i; ++j) {
+                    Geometry::MultiPolygon2D a, b;
+                    a.Push (staged[i].poly);
+                    b.Push (staged[j].poly);
+                    if (Geometry::MultiPolygon2D::Intersect (a, b).CalcArea () > AreaTolerance)
+                        return false;
+                }
+            output = staged;
+            return true;
+        }
+    } // namespace
+
+    bool BuildFiniteMixedFloorGeometry (const RoomSurfaceSnapshot &zone,
+                                        const GS::Array<RoomSurfaceSource> &sources,
+                                        const GS::Array<API_Guid> &roles,
+                                        short floorInd,
+                                        const OtdSlab &nominal,
+                                        bool onlyOnSlab,
+                                        const GS::Array<OtdSlab> &prepared,
+                                        double roomFloor,
+                                        const GS::Array<MeshFloorSource> &meshes,
+                                        MixedFloorGeometry &result) {
+        MixedFloorGeometry staged;
+        // Та же функция, аргументы и error-policy; никаких новых проверок для
+        // Slab-only.
+        if (!BuildProjectedSlabFinishes (zone,
+                                         sources,
+                                         roles,
+                                         Floor,
+                                         floorInd,
+                                         staged.floors,
+                                         staged.rejectedArea,
+                                         &nominal,
+                                         onlyOnSlab,
+                                         &staged.steps,
+                                         &prepared))
+            return false;
+        if (meshes.IsEmpty ()) {
+            result = staged;
+            return true;
+        }
+        Geometry::MultiPolygon2D footprint;
+        std::vector<ProjectedSlabCandidate> raw;
+        if (!CollectProjectedSlabInputs (zone, sources, roles, Floor, floorInd, &prepared, footprint, raw))
+            return false;
+        GS::Array<OtdSlab> supports;
+        for (const auto &candidate : raw) {
+            auto support = candidate.slab;
+            // Как и в legacy: material задаётся номиналом, base provenance не
+            // подменяется.
+            support.material = nominal.material;
+            supports.Push (support);
+        }
+        GS::Array<OtdSlab> inside;
+        Geometry::MultiPolygon2D domain;
+        for (const auto &component : footprint) {
+            Geometry::MultiPolygon2D localDomain;
+            GS::Array<OtdSlab> localInside;
+            if (!BuildProjectedMeshFloorFinishes (
+                    component, roomFloor, floorInd, meshes, supports, localInside, localDomain))
+                return false;
+            inside.Append (localInside);
+            domain.Append (localDomain);
+        }
+        domain.Unify ();
+        if (domain.IsEmpty ()) {
+            result = staged;
+            return true;
+        }
+        for (auto &floor : inside)
+            floor.material = nominal.material;
+        GS::Array<OtdSlab> merged;
+        if (!MergeMixedFloorDomains (staged.floors, inside, domain, merged))
+            return false;
+        staged.changedDomain = ChangedFloorCoverage (staged.floors, merged);
+
+        staged.floors = merged;
+        staged.meshDomain = domain;
+        result = staged;
         return true;
     }
 } // namespace Roombook

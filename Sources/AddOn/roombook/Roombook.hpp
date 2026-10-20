@@ -20,6 +20,8 @@ namespace Roombook {
     #ifndef ServerMainVers_2400
     void RoomBook ();
     #else
+    using MeshFloorIndex = GS::HashTable<API_Guid, GS::Array<MeshFloorSource>>;
+
     enum TypeOtd {
         NoSet = 0,
         Wall_Main = 1,
@@ -113,6 +115,9 @@ namespace Roombook {
         short floorInd = 0; // Этаж
         double height = 0;
         double reference_z = 0; // Исходная абсолютная отметка reference plane основания
+        API_Coord plane_origin = {0, 0};
+        double slope_x = 0;
+        double slope_y = 0;
         OtdMaterial material;
         GS::UniString tip = EMPTYSTRING;               // Тип потолка/пола из зоны
         API_ElemTypeID base_type = API_ZombieElemID;   // Тип базового элемента
@@ -143,6 +148,7 @@ namespace Roombook {
         API_Coord endC = {0, 0};                       // Координата конца
         API_Guid base_guid = APINULLGuid;              // GUID базового элемента
         API_Guid otd_guid = APINULLGuid;               // GUID стены-отделки
+        GSErrCode draw_error = NoError;                // Результат записи; ненулевой GUID не заменяет проверку ошибки
         bool base_flipped = false;                     // Базовая конструкция отзеркалена (для чтения состава)
         GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
         GS::Array<OtdOpening> openings;                // Проёмы в стене-отделке
@@ -162,6 +168,17 @@ namespace Roombook {
         bool slab_step = false;
         bool slab_step_writer_eligible = true;
     }; // Структура со стенами для отделки
+
+    struct OtdBeam {
+        API_Coord begC = {0, 0};
+        API_Coord endC = {0, 0};
+        double zBottom = 0;
+        short floorInd = 0;
+        API_Guid base_guid = APINULLGuid;
+        API_ElemTypeID base_type = API_ZombieElemID;
+        Int32 wallIndex = -1; // Индекс в итоговом otdwall для последующей связи с созданной стеной.
+        API_Guid otd_guid = APINULLGuid;
+    };
 
     struct RoomEdges {
         GS::Array<Sector> walledges;   // Границы стен, не явяющихся границей зоны
@@ -204,11 +221,17 @@ namespace Roombook {
         GS::Array<API_Guid> ceilslab;               // Перекрытия в уровне потолка
         // Полные исходные снимки кандидатов; роли discovery не выводятся заново из отметки зоны.
         GS::Array<RoomSurfaceSource> slabSources;
+        // Typed Mesh-кандидаты: 3D-снимки заполняются только для включённого пола.
+        GS::Array<MeshFloorSource> meshFloorSources;
         // Неизменяемые основания/проёмы отделены от очищаемых и разбиваемых результатов ниже.
         GS::Array<OtdWall> preparedWalls;
         GS::Array<OtdSlab> preparedSlabs;
         GS::Array<OtdWall> otdwall; // Стены-отделки, созданные для расчётов и отрисовки
         GS::Array<OtdSlab> otdslab; // Потолки/полы для построения
+        GS::Array<OtdBeam> otdbeam_floor;
+        GS::Array<OtdBeam> otdbeam_ceil;
+        double length_beam_floor = 0; // Суммарная длина напольных плинтусов, м
+        double length_beam_ceil = 0;  // Суммарная длина потолочных плинтусов, м
         bool has_ceil = true;
         bool has_floor = true;
         bool ceil_by_slab = false;           // Создавать потолок только по перекрытиям
@@ -315,7 +338,14 @@ namespace Roombook {
                           UnicElementByType &elementToRead,
                           GS::HashTable<API_Guid, GS::Array<API_Guid>> &slabsinzone,
                           RoomSurfaceCache *cache = nullptr,
-                          CoordinateSearchCache *coordinateCache = nullptr);
+                          CoordinateSearchCache *coordinateCache = nullptr,
+                          const MeshFloorIndex *meshesinzone = nullptr);
+
+    // Конечный XY-discovery сохраняет тип Mesh; native-тела читаются отдельно после включения пола.
+    bool Mesh_FindAll (MeshFloorIndex &meshesinzone,
+                       const UnicGuid &finclassguids,
+                       const GS::HashTable<API_Guid, Geometry::Polygon2D> &zonePolygons,
+                       RoomSurfaceCache *cache = nullptr);
 
     // -----------------------------------------------------------------------------
     // Находит все перекрытия, котрые пересекают зону и не являются элементами отделки
@@ -530,6 +560,11 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     // Построение отделочных стен (общая)
     // -----------------------------------------------------------------------------
+    // Расходует один совместимый GUID из пула; геометрию и классификацию не изменяет.
+    API_Guid TakeExistingWallFinish (UnicGuid &pool,
+                                     const API_Element &target,
+                                     const GS::HashTable<API_Guid, API_Element> &existing);
+
     void OtdWall_Draw (const Stories &storyLevels, OtdWall &edges, UnicElementByType &subelementByparent);
 
     void OtdBeam_Draw_Beam (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges);
@@ -588,6 +623,13 @@ namespace Roombook {
 
     void Floor_Draw_Slab (const GS::UniString &favorite_name, const Stories &storyLevels, OtdSlab &otdslab);
 
+    // Создаёт односкатный пол по контактной плоскости с настройками выбранного перекрытия.
+    // Вызывается внутри существующей undo-транзакции; при отказе GUID результата не меняется.
+    GSErrCode CreateFloorRoof (const Stories &storyLevels,
+                               OtdSlab &floor,
+                               const API_Element &slabSettings,
+                               const GS::Array<OtdSlab> *neighbors = nullptr);
+
     void Floor_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdSlab &otdslab);
 
     bool Floor_GetDefult_Object (const GS::UniString &favorite_name,
@@ -629,18 +671,17 @@ namespace Roombook {
     void Param_AddUnicGUIDByType (const API_Guid &elGuid, API_ElemTypeID elemtype, UnicGUIDByType &guidselementToRead);
 
     API_ElemTypeID Favorite_GetType (const GS::UniString &favorite_name);
-    MatarialToFavoriteDict Favorite_GetDict ();
+    bool Favorite_GetDict (MatarialToFavoriteDict &favdict);
     void Favorite_ReadComposite (const ParamValue &param_composite,
-                                 MatarialToFavoriteDict &favdict,
                                  ParamDictValue &paramToRead_favorite,
                                  const GS::UniString &fav_name);
     void Favorite_FindName (MatarialToFavorite &favorite,
                             const OtdMaterial &material,
                             const TypeOtd &type,
                             const API_ElemTypeID &draw_type,
-                            MatarialToFavoriteDict &favdict,
                             ParamDictValue &paramToRead_favorite,
-                            ParamValue &param_composite);
+                            ParamValue &param_composite,
+                            GS::UniString &tip);
     bool Favorite_GetByName (const GS::UniString &favorite_name, API_Element &element);
     bool Favorite_GetByName (const GS::UniString &favorite_name, API_Element &element, API_ElementMemo &memo);
 

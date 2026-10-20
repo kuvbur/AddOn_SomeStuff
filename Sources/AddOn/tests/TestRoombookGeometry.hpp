@@ -8,6 +8,11 @@
 // Явный TESTING-вызов существующего writer по подготовленным 3D-граням.
 GS::ObjectState DrawRoomSurfaceWalls (const GS::ObjectState &parameters);
 
+// Явная native-проверка на временных элементах; допустима только в тестовом проекте.
+GS::ObjectState RunMeshFloorNativeChecks ();
+
+GS::ObjectState RunFinishReuseChecks ();
+
 // Диагностика вызывается только явно через JSON, не из автоматического TestKit.
 class RoomGeometryDiagnosticCommand : public CommandBase {
   public:
