@@ -147,9 +147,13 @@ jobs:
         run: |
           set -euo pipefail
           TAG=test-latest
-          NOTES="Автоматическая тестовая сборка: ArchiCAD 25-29, Windows/macOS. Это НЕ релиз: возможны ошибки, берите копию проекта. Описание текущей работы и ссылки: https://kuvbur.org/ru/addons/somestuff/test/"
           export GH_REPO="${GITHUB_REPOSITORY:?}"
-          echo "репозиторий: $GH_REPO, тег: $TAG"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          COMMIT_URL="https://github.com/${GH_REPO}/commit/${GITHUB_SHA}"
+          NOTES="Автоматическая тестовая сборка: ArchiCAD 25-29, Windows/macOS. Это НЕ релиз: возможны ошибки, берите копию проекта. Описание текущей работы и ссылки: https://kuvbur.org/ru/addons/somestuff/test/
+
+          Коммит сборки: [${SHORT_SHA}](${COMMIT_URL}) (${GITHUB_SHA})"
+          echo "репозиторий: $GH_REPO, тег: $TAG, коммит: $GITHUB_SHA"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" builds/*.zip --clobber
             gh release edit "$TAG" --title "DEBUG VERSION SomeStuff $TIME" --notes "$NOTES"
