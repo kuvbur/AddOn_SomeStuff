@@ -6,6 +6,7 @@
 
 #if defined(ServerMainVers_2500)
 
+    #include "json_commands/HealthCommand.hpp"
     #include "json_commands/RoomBookCommand.hpp"
     #include "json_commands/SpecCommand.hpp"
     #include "json_commands/SyncAllCommand.hpp"
@@ -55,6 +56,15 @@ void RegisterJsonCommands () {
     #endif
     if (syncAllErr != NoError)
         DBprnt ("Failed to register SyncAllCommand, error: " + GS::ValueToUniString (syncAllErr));
+
+    GS::Owner<HealthCommand> healthCommand = GS::NewOwned<HealthCommand> ();
+    #ifdef ServerMainVers_2700
+    const GSErrCode healthErr = ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler (healthCommand.Pass ());
+    #else
+    const GSErrCode healthErr = ACAPI_Install_AddOnCommandHandler (healthCommand.Pass ());
+    #endif
+    if (healthErr != NoError)
+        DBprnt ("Failed to register HealthCommand, error: " + GS::ValueToUniString (healthErr));
 }
 
 #else

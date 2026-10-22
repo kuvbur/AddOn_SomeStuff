@@ -41,6 +41,20 @@ GS::ObjectState HealthCommand::Execute (const GS::ObjectState & /*parameters*/,
     response.Add ("version", version.ToCStr ().Get ());
     response.Add ("addon", "SomeStuff");
 
+    // Имя открытого проекта — для выбора нужного экземпляра Archicad в GUI.
+    // Документация API 25: APIEnv_ProjectID, header APIdefs_Environment.h.
+    API_ProjectInfo projectInfo = {};
+    #ifdef ServerMainVers_2700
+    const GSErrCode projectError = ACAPI_ProjectOperation_Project (&projectInfo);
+    #else
+    const GSErrCode projectError = ACAPI_Environment (APIEnv_ProjectID, &projectInfo);
+    #endif
+    if (projectError == NoError && !projectInfo.untitled && projectInfo.projectName != nullptr) {
+        response.Add ("projectName", *projectInfo.projectName);
+    } else {
+        response.Add ("projectName", "untitled");
+    }
+
     return response;
 }
 
