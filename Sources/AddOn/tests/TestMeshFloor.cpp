@@ -11,6 +11,15 @@
 
     #include "CommonFunction.hpp"
     #include "roombook/Roombook.hpp"
+
+    #ifdef ServerMainVers_2700
+        #define SMSTF_INDEX(i) ACAPI_CreateAttributeIndex (i)
+        #define SMSTF_IDX_LT(a, b) ((a).ToInt32_Deprecated () < (b).ToInt32_Deprecated ())
+    #else
+        #define SMSTF_INDEX(i) (i)
+        #define SMSTF_IDX_LT(a, b) ((a) < (b))
+    #endif
+
     #include "roombook/RoomSurfaceFinish.hpp"
 
 namespace Roombook {
@@ -59,11 +68,15 @@ GS::ObjectState RunMeshFloorNativeChecks () {
                 current.header.typeID = API_LayerID;
                 current.header.index = ownedLayer.header.index;
                 const GSErrCode readError = ACAPI_Attribute_Get (&current);
-                const bool identityMatches =
-                    readError == NoError && current.header.guid == ownedLayer.header.guid && current.header.index != 1;
+                const bool identityMatches = readError == NoError && current.header.guid == ownedLayer.header.guid &&
+                                             current.header.index != SMSTF_INDEX (1);
                 check (identityMatches, "cleanup verifies owned layer GUID and nonprotected index");
                 if (identityMatches) {
+    #ifdef ServerMainVers_2700
+                    const GSErrCode deleteError = ACAPI_Attribute_Delete (current.header);
+    #else
                     const GSErrCode deleteError = ACAPI_Attribute_Delete (&current.header);
+    #endif
                     check (deleteError == NoError, "cleanup deletes only the new owned layer");
                     API_Attr_Head lookup = {};
                     lookup.typeID = API_LayerID;
@@ -107,7 +120,7 @@ GS::ObjectState RunMeshFloorNativeChecks () {
             check (err == NoError, "setup creates NEW hidden locked layer");
             if (err != NoError)
                 return;
-            layerOwned = ownedLayer.header.index != 1;
+            layerOwned = ownedLayer.header.index != SMSTF_INDEX (1);
             check (layerOwned, "setup new layer is not protected index one");
             if (!layerOwned)
                 return;
@@ -327,7 +340,9 @@ GS::ObjectState RunMeshFloorNativeChecks () {
                         band.maximum = std::max (band.maximum, distance);
                     }
             }
-            std::sort (band.materials.begin (), band.materials.end ());
+            std::sort (band.materials.begin (),
+                       band.materials.end (),
+                       [] (const API_AttributeIndex &a, const API_AttributeIndex &b) { return SMSTF_IDX_LT (a, b); });
             band.materials.erase (std::unique (band.materials.begin (), band.materials.end ()), band.materials.end ());
             bands.Push (band);
         }
@@ -554,25 +569,34 @@ GS::ObjectState RunMeshFloorNativeChecks () {
     check (error == NoError, "read slab settings");
     if (error != NoError)
         return GS::ObjectState ("status", "Failed", "checks", checks, "failed", failed);
-    settings.header.layer = 1;
+    settings.header.layer = SMSTF_INDEX (1);
     settings.slab.modelElemStructureType = API_BasicStructure;
     settings.slab.thickness = 0.08;
 
     API_Element compositeSettings = settings;
     bool hasComposite = false;
+    #ifdef ServerMainVers_2700
+    GS::UInt32 count = 0;
+    error = ACAPI_Attribute_GetNum (API_CompWallID, count);
+    #else
     API_AttributeIndex count = 0;
     error = ACAPI_Attribute_GetNum (API_CompWallID, &count);
+    #endif
     check (error == NoError, "enumerate composites");
     if (error == NoError) {
+    #ifdef ServerMainVers_2700
+        for (GS::UInt32 index = 1; index <= count; ++index) {
+    #else
         for (API_AttributeIndex index = 1; index <= count; ++index) {
+    #endif
             API_Attribute attribute = {};
             attribute.header.typeID = API_CompWallID;
-            attribute.header.index = index;
+            attribute.header.index = SMSTF_INDEX (index);
             if (ACAPI_Attribute_Get (&attribute) != NoError || attribute.compWall.nComps < 2 ||
                 (attribute.header.flags & APICWall_ForRoof) == 0 || (attribute.header.flags & APICWall_ForSlab) == 0)
                 continue;
             compositeSettings.slab.modelElemStructureType = API_CompositeStructure;
-            compositeSettings.slab.composite = index;
+            compositeSettings.slab.composite = SMSTF_INDEX (index);
             compositeSettings.slab.thickness = attribute.compWall.totalThick;
             hasComposite = true;
             break;
@@ -612,7 +636,7 @@ GS::ObjectState RunMeshFloorNativeChecks () {
         check (error == NoError, "read mesh defaults");
         GS::Array<API_Guid> created;
         if (error == NoError) {
-            mesh.header.layer = 1;
+            mesh.header.layer = SMSTF_INDEX (1);
             mesh.mesh.level = GetOffsetFromStory (0, mesh.header.floorInd, stories);
             check (std::fabs (GetzPos (mesh.mesh.level, mesh.header.floorInd, stories)) < 1e-6,
                    "fixture reference is absolute zero on its selected story");

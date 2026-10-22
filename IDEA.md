@@ -416,6 +416,16 @@ Next Step: после согласованной загрузки исправл
 
 ## Archive
 
+### #275 — совместимость AC27–30, финальная проверка 2026-10-22
+
+Scope: Windows, только penOverride (AC<=26) и совместимость API_AttributeIndex/Attribute_Delete/GetNum/сортировки в TestMeshFloor.cpp и TestFinishReuse.cpp. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/275. Большой незакоммиченный рефакторинг, Health/projectName и Python не включены; исправление penOverride в index применено к прежнему Roombook.cpp, в worktree сохранён перенесённый RoombookDraw.cpp. Публичные сигнатуры и граф вызовов не менялись; Docs/generated рефакторинга остаются отложены по его Scope.
+Status: COMPLETED в scope compile/link. Plan: [x] 275-build — изолировать совместимость, проверить именно staged source snapshot, выполнить review и checkpoint по команде владельца.
+Validation: canonical BuildAddOn.py -c config.json -v 27 28 29 30 (Debug), затем тот же список --release --package: оба exit0, все восемь CMAKE_BUILD_OK. Четыре пакета сохранены одновременно, SHA256 каждого совпадает с соответствующим INT/RelWithDebInfo/SomeStuff.apx. Исходники проверочного каталога совпадают с index после штатного Git clean-filter; пять затронутых рабочих файлов сохранены byte-identical. clang-format с явным repo style для отдельных staged hunks, git diff --cached --check PASS. Clangd с новой CDB27: семь unused-variable в Roombook, один unused-lambda-capture в TestMeshFloor вне изменённых участков; дополнительные внутренние tweak failures дают exit3, полный LSP GREEN не заявляется. Runtime/macOS не выполнялись. Сборки изолированного snapshot имеют display commit unknown (Git archive), что не меняет проверенные исходники.
+Evidence: Hermes scratch/ac27-30-final/{tree.txt,compatibility.patch,debug-final.log,release-final.log,validation.json,lsp-results.json}; пакеты checkout/Build/Package/SomeStuff/{27,28,29,30}/SomeStuff.apx. No issues found in inspected compatibility delta.
+Next Step: при необходимости отдельно push и macOS/host-приёмка; исходную #275 не переоткрывать и не закрывать повторно.
+Last Checkpoint: данный checkpoint [275-build], родитель 981d11f (отдельный Python-коммит; C++ и build-конфигурация не менялись); точный hash в git log. Push не выполнялся.
+
+
 ### Новые логи перехода на разрез — 2026-10-19
 
 Scope: read-only восемь новых файлов из D:/Рогожин ДА/rec/Telegram Desktop/logs; без C++/SDK/build/host/model. Status: ANALYSIS_COMPLETE; faulting module/function/root cause — not verified без RPT/RPTA/DMP. Plan: [x] все файлы и hashes; [x] разбор пяти FastLogger и трёх UsageLogger (один пуст); [x] независимые байтовые проверки/сравнение; [x] отчёт и границы вывода.

@@ -9,6 +9,12 @@
     #include "CommonFunction.hpp"
     #include "roombook/Roombook.hpp"
 
+    #ifdef ServerMainVers_2700
+        #define SMSTF_INDEX(i) ACAPI_CreateAttributeIndex (i)
+    #else
+        #define SMSTF_INDEX(i) (i)
+    #endif
+
 GS::ObjectState RunFinishReuseChecks () {
     using namespace Roombook;
     GS::Array<GS::ObjectState> checks;
@@ -87,7 +93,7 @@ GS::ObjectState RunFinishReuseChecks () {
     const Stories stories = GetStories ();
     API_Attribute material = {};
     material.header.typeID = API_MaterialID;
-    material.header.index = 1;
+    material.header.index = SMSTF_INDEX (1);
     const GSErrCode materialErr = ACAPI_Attribute_Get (&material);
     check (materialErr == NoError, "native fixture material exists");
     API_Guid nativeWall = APINULLGuid;

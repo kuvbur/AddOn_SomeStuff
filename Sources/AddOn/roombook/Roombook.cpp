@@ -6364,7 +6364,9 @@ namespace Roombook
         base.thickness = thickness;
         base.pen = settings.pen;
         base.ltypeInd = settings.ltypeInd;
+    #ifndef ServerMainVers_2700
         base.penOverride = settings.penOverride;
+    #endif
         base.sectContPen = settings.sectContPen;
         base.sectContLtype = settings.sectContLtype;
         base.topMat = settings.topMat;
