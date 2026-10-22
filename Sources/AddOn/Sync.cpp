@@ -1029,7 +1029,7 @@ void SyncAddSubelement (const GS::Array<API_Guid> &subelemGuids,
         // Запись в дочерние элементы: правило разворачивается на КАЖДЫЙ подэлемент.
         // ВАЖНО: проверяется именно toSub. Раньше здесь ошибочно стояло fromSub —
         // ветка была недостижима (первая ветка уже сбрасывала fromSub), и правило
-        // to_sub молча не разворачивалось (баг P1, тест TestSyncAddSubelement).
+        // to_sub молча не разворачивалось
         if (mainsyncRule.toSub) {
             for (const API_Guid &elguid : subelemGuids) {
 #if defined(TESTING)
