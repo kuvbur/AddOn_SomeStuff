@@ -4,6 +4,7 @@ on:
     paths:
         - 'Sources/**'
         - 'Tools/**'
+        - 'python_scripts/**'
         - 'CMakeLists.txt'
         - 'config.json'
   workflow_dispatch:
@@ -100,8 +101,50 @@ jobs:
           name: SomeStuff AC${{ matrix.ac-version }} Mac ${{ env.TIME }}
           path: Build/Package/SomeStuff/${{ matrix.ac-version }}
 
+  build_scripts:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip pyinstaller
+          if [ -f python_scripts/requirements.txt ]; then
+            python -m pip install -r python_scripts/requirements.txt
+          fi
+
+      - name: Build exe
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          count=0
+          for f in python_scripts/*.py; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f" .py)
+            case "$name" in _*|test_*) continue ;; esac
+            flags=(--onefile --clean --noconfirm --name "$name" --distpath out)
+            # обновлятору нужны права администратора (запрос UAC при запуске)
+            case "$name" in somestuff_updater) flags+=(--uac-admin) ;; esac
+            echo "сборка: $name"
+            python -m PyInstaller "${flags[@]}" "$f"
+            count=$((count+1))
+          done
+          [ "$count" -gt 0 ] || { echo "в python_scripts нет скриптов"; exit 1; }
+          ls -la out
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SomeStuff Scripts Win
+          path: out/*.exe
+
   publish_test:
-    needs: [build_win, build_mac]
+    needs: [build_win, build_mac, build_scripts]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -139,6 +182,22 @@ jobs:
           done
           [ "$count" -gt 0 ] || { echo "нет артефактов в builds/"; exit 1; }
           ls -la builds/*.zip
+
+      - name: Download scripts artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: "SomeStuff Scripts Win"
+          path: scripts
+
+      - name: Pack scripts zip
+        env:
+          TIME: "${{ steps.time.outputs.time }}"
+        run: |
+          set -euo pipefail
+          zip="$(pwd)/builds/SomeStuff.Scripts.Win.${TIME}.zip"
+          (cd scripts && zip -qr "$zip" .)
+          echo "packed: $zip"
+          unzip -l "$zip"
 
       - name: Publish test release (test-latest)
         env:
