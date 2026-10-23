@@ -106,12 +106,11 @@ int main () {
     const auto beforeRun = calls;
     nextRun.SearchOrRead (request, successful);
     Require (calls == beforeRun + 1, "new run never reuses earlier results");
-    const auto stats = cache.GetStats ();
-    Require (stats.calls == 29 && stats.hits == 10 && stats.refused == 18, "actual calls/hits/refusals counters");
-    Require (calls == stats.calls + nextRun.GetStats ().calls, "counters match actual callback executions");
+    Require (beforeRun == 29 && calls == beforeRun + 1, "exact callback totals across cached queries and runs");
+    const auto repeatedInNewRun = nextRun.SearchOrRead (request, errorResult);
+    Require (repeatedInNewRun.error == 0 && repeatedInNewRun.guid == 42 && calls == beforeRun + 1,
+             "new run retains success without executing a different callback");
     std::cout
-        << "PASS: identical; exact XY/Z(nextafter)/type/variation/filter; null/error; finite guard; signed zero; run isolation\n"
-        << "calls=" << stats.calls << " hits=" << stats.hits << " refused=" << stats.refused
-        << " nextRunCalls=" << nextRun.GetStats ().calls << '\n';
+        << "PASS: identical; exact XY/Z(nextafter)/type/variation/filter; null/error; finite guard; signed zero; run isolation\n";
 }
 #endif

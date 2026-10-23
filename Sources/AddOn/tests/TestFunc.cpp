@@ -1,6 +1,7 @@
 //------------ kuvbur 2022 ------------
 #ifdef TESTING
     #include <cstdlib> // std::getenv для отбора наборов (SMSTF_TEST)
+    #include <cstring>
 
     #include "ACAPinc.h"
 
@@ -130,6 +131,17 @@ namespace TestFunc {
         TestKit::Register ("TestRenumRunReport", Groups::Renum, TestRenumRunReport);
 
         const char *filter = std::getenv ("SMSTF_TEST");
+    #if defined(ServerMainVers_2500)
+        TestKit::Register ("TestRoomSurfaceTransform", Groups::Core, TestRoomSurfaceTransform);
+        TestKit::Register ("TestRoomSurfacePartition", Groups::Core, TestRoomSurfacePartition);
+        TestKit::Register ("TestFinishReuse", Groups::Core, TestFinishReuse);
+        // Native-наборы меняют временные элементы: широкая группа или пустой фильтр их не запускает.
+        if (filter != nullptr && std::strstr (filter, "TestMeshFloorNative") != nullptr)
+            TestKit::Register ("TestMeshFloorNative", Groups::Core, TestMeshFloorNative);
+        if (filter != nullptr && std::strstr (filter, "TestFinishReuseNative") != nullptr)
+            TestKit::Register ("TestFinishReuseNative", Groups::Core, TestFinishReuseNative);
+    #endif
+
         const int failed = TestKit::Run (filter);
         if (failed > 0)
             // Хвост прогона дублируется через Note: в файле отчёта строка SUMMARY

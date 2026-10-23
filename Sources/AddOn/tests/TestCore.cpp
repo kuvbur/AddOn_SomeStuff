@@ -94,25 +94,25 @@ namespace TestFunc {
         parentDict.Add (baseGuid, childElements);
 
         bool hasBaseElement = false;
-        Roombook::UnicGuidByBase result = Roombook::BuildOtdByParent (otdElements, parentDict, hasBaseElement);
+        Roombook::UnicGuidByBase result = Roombook::Otd_BuildByParent (otdElements, parentDict, hasBaseElement);
         const Roombook::UnicGuidByTypeOtd *types = result.GetPtr (baseGuid);
         const UnicGuid *floorElements = types != nullptr ? types->GetPtr (Roombook::Floor) : nullptr;
         const UnicGuid *wallElements = types != nullptr ? types->GetPtr (Roombook::Wall_Main) : nullptr;
 
-        DBtest (hasBaseElement, "BuildOtdByParent: known children set has_base_element");
+        DBtest (hasBaseElement, "Otd_BuildByParent: known children set has_base_element");
         DBtest (floorElements != nullptr && floorElements->ContainsKey (floorGuid),
-                "BuildOtdByParent: floor child indexed by base GUID");
+                "Otd_BuildByParent: floor child indexed by base GUID");
         DBtest (wallElements != nullptr && wallElements->ContainsKey (wallGuid),
-                "BuildOtdByParent: wall child indexed by base GUID");
+                "Otd_BuildByParent: wall child indexed by base GUID");
 
         UnicGuid unknownChildren;
         unknownChildren.Add (unknownGuid, true);
         UnicGuidByGuid unknownParentDict;
         unknownParentDict.Add (baseGuid, unknownChildren);
         hasBaseElement = false;
-        result = Roombook::BuildOtdByParent (otdElements, unknownParentDict, hasBaseElement);
-        DBtest (!hasBaseElement, "BuildOtdByParent: unknown child keeps has_base_element false");
-        DBtest (result.IsEmpty (), "BuildOtdByParent: unknown child is ignored");
+        result = Roombook::Otd_BuildByParent (otdElements, unknownParentDict, hasBaseElement);
+        DBtest (!hasBaseElement, "Otd_BuildByParent: unknown child keeps has_base_element false");
+        DBtest (result.IsEmpty (), "Otd_BuildByParent: unknown child is ignored");
 
         const API_Guid secondBaseGuid = APIGuidFromString ("{55555555-5555-5555-5555-555555555555}");
         const API_Guid secondWallGuid = APIGuidFromString ("{66666666-6666-6666-6666-666666666666}");
@@ -128,31 +128,31 @@ namespace TestFunc {
         multipleParents.Add (baseGuid, childElements);
         multipleParents.Add (secondBaseGuid, otherChildren);
         hasBaseElement = false;
-        result = Roombook::BuildOtdByParent (otdElements, multipleParents, hasBaseElement);
+        result = Roombook::Otd_BuildByParent (otdElements, multipleParents, hasBaseElement);
         const Roombook::UnicGuidByTypeOtd *firstParent = result.GetPtr (baseGuid);
         const Roombook::UnicGuidByTypeOtd *secondParent = result.GetPtr (secondBaseGuid);
         const UnicGuid *firstWalls = firstParent != nullptr ? firstParent->GetPtr (Roombook::Wall_Main) : nullptr;
         const UnicGuid *secondWalls = secondParent != nullptr ? secondParent->GetPtr (Roombook::Wall_Main) : nullptr;
-        DBtest (hasBaseElement, "BuildOtdByParent: known children among unknown set flag");
-        DBtest (result.GetSize (), (USize)2, "BuildOtdByParent: two parent entries");
+        DBtest (hasBaseElement, "Otd_BuildByParent: known children among unknown set flag");
+        DBtest (result.GetSize (), (USize)2, "Otd_BuildByParent: two parent entries");
         DBtest (firstWalls != nullptr && firstWalls->GetSize () == 2 && firstWalls->ContainsKey (wallGuid) &&
                     firstWalls->ContainsKey (secondWallGuid) && !firstWalls->ContainsKey (unknownGuid),
-                "BuildOtdByParent: two walls of one type, unknown excluded");
+                "Otd_BuildByParent: two walls of one type, unknown excluded");
         DBtest (secondWalls != nullptr && secondWalls->GetSize () == 1 && secondWalls->ContainsKey (thirdWallGuid) &&
                     !secondWalls->ContainsKey (wallGuid),
-                "BuildOtdByParent: second parent stays separate");
+                "Otd_BuildByParent: second parent stays separate");
 
         UnicGuidByGuid emptyParents;
         hasBaseElement = false;
-        result = Roombook::BuildOtdByParent (otdElements, emptyParents, hasBaseElement);
-        DBtest (result.IsEmpty () && !hasBaseElement, "BuildOtdByParent: empty parent input");
+        result = Roombook::Otd_BuildByParent (otdElements, emptyParents, hasBaseElement);
+        DBtest (result.IsEmpty () && !hasBaseElement, "Otd_BuildByParent: empty parent input");
 
         GS::HashTable<API_Guid, Roombook::TypeOtd> emptyTypes;
-        result = Roombook::BuildOtdByParent (emptyTypes, multipleParents, hasBaseElement);
-        DBtest (result.IsEmpty () && !hasBaseElement, "BuildOtdByParent: empty type input");
+        result = Roombook::Otd_BuildByParent (emptyTypes, multipleParents, hasBaseElement);
+        DBtest (result.IsEmpty () && !hasBaseElement, "Otd_BuildByParent: empty type input");
         hasBaseElement = true;
-        result = Roombook::BuildOtdByParent (emptyTypes, multipleParents, hasBaseElement);
-        DBtest (result.IsEmpty () && hasBaseElement, "BuildOtdByParent: input flag is not reset");
+        result = Roombook::Otd_BuildByParent (emptyTypes, multipleParents, hasBaseElement);
+        DBtest (result.IsEmpty () && hasBaseElement, "Otd_BuildByParent: input flag is not reset");
     }
 
     void TestOpeningAddOne () {
@@ -203,7 +203,7 @@ namespace TestFunc {
             Roombook::OtdOpening sentinel;
             sentinel.objLoc = -99;
             wall.openings.Push (sentinel);
-            Roombook::Opening_Add_One (input, c.flipped, 100, c.begin, c.end, c.wallLength, wall);
+            Roombook::OtdOpening_Add (input, c.flipped, 100, c.begin, c.end, c.wallLength, wall);
             DBtest (wall.openings.GetSize () == (c.added ? 2 : 1), label + " count");
             DBtest (wall.openings.Get (0).objLoc, -99.0, label + " existing opening preserved");
             DBtest (input.objLoc == c.center && input.width == c.width && input.height == 2.5 && input.lower == 0.5 &&
@@ -754,15 +754,15 @@ namespace TestFunc {
                     layer.length = 43;
                     layer.fillThick = 0.2;
                     wall.base_composite.Push (layer);
-                    Roombook::SetMaterialByType (wall,
-                                                 materials[0],
-                                                 materials[1],
-                                                 materials[2],
-                                                 materials[3],
-                                                 materials[4],
-                                                 materials[5],
-                                                 materials[6],
-                                                 materials[7]);
+                    Roombook::OtdWall_SetMaterialByType (wall,
+                                                         materials[0],
+                                                         materials[1],
+                                                         materials[2],
+                                                         materials[3],
+                                                         materials[4],
+                                                         materials[5],
+                                                         materials[6],
+                                                         materials[7]);
                     const char *modeNames[] = {"full",
                                                "empty secondary",
                                                "equal rawname",
@@ -915,24 +915,24 @@ namespace TestFunc {
                 sentinel.height = 99;
                 slabs.Push (sentinel);
                 double bottom = c.wallBottom, down = 0, main = 0, up = 0, height = 20;
-                Roombook::OpeningReveals_Create_One (slabs,
-                                                     source,
-                                                     opening,
-                                                     perpendicular,
-                                                     walls,
-                                                     bottom,
-                                                     down,
-                                                     main,
-                                                     up,
-                                                     height,
-                                                     materials[0],
-                                                     materials[1],
-                                                     materials[2],
-                                                     materials[3],
-                                                     materials[4],
-                                                     materials[5],
-                                                     materials[6],
-                                                     materials[7]);
+                Roombook::OtdOpening_CreateReveals (slabs,
+                                                    source,
+                                                    opening,
+                                                    perpendicular,
+                                                    walls,
+                                                    bottom,
+                                                    down,
+                                                    main,
+                                                    up,
+                                                    height,
+                                                    materials[0],
+                                                    materials[1],
+                                                    materials[2],
+                                                    materials[3],
+                                                    materials[4],
+                                                    materials[5],
+                                                    materials[6],
+                                                    materials[7]);
                 DBtest (walls.GetSize () == c.count, label + " count/order");
                 DBtest (opening.has_reveal == (hadReveal || c.count > 0), label + " reveal flag");
                 DBtest (opening.objLoc == c.position && opening.width == c.width && opening.height == c.height &&
@@ -1127,24 +1127,24 @@ namespace TestFunc {
                     sentinelSlab.height = 98;
                     slabs.Push (sentinelSlab);
                     double bottom = c.bottom, down = c.down, main = c.main, up = c.up, height = c.total;
-                    Roombook::OpeningReveals_Create_One (slabs,
-                                                         source,
-                                                         opening,
-                                                         perpendicular,
-                                                         walls,
-                                                         bottom,
-                                                         down,
-                                                         main,
-                                                         up,
-                                                         height,
-                                                         materials[0],
-                                                         materials[1],
-                                                         materials[2],
-                                                         materials[3],
-                                                         materials[4],
-                                                         materials[5],
-                                                         materials[6],
-                                                         materials[7]);
+                    Roombook::OtdOpening_CreateReveals (slabs,
+                                                        source,
+                                                        opening,
+                                                        perpendicular,
+                                                        walls,
+                                                        bottom,
+                                                        down,
+                                                        main,
+                                                        up,
+                                                        height,
+                                                        materials[0],
+                                                        materials[1],
+                                                        materials[2],
+                                                        materials[3],
+                                                        materials[4],
+                                                        materials[5],
+                                                        materials[6],
+                                                        materials[7]);
                     DBtest (walls.GetSize () == c.count + 1, label + " count/order");
                     // Флаг отмечает попытку построения до Delim_All, а не наличие выходных стенок.
                     DBtest (opening.has_reveal, label + " flag retained even when all outputs rejected");
@@ -1240,18 +1240,18 @@ namespace TestFunc {
                               {"large repeated input", {}, 0, 4, 15, true}};
 
         Roombook::UnicElementByType emptyIndex;
-        Roombook::ClearZoneGUID (emptyIndex);
-        DBtest (emptyIndex.IsEmpty (), "ClearZoneGUID empty index stays empty");
+        Roombook::Zone_ClearDuplicateGUIDs (emptyIndex);
+        DBtest (emptyIndex.IsEmpty (), "Zone_ClearDuplicateGUIDs empty index stays empty");
         Roombook::UnicElementByType emptyBucket;
         Roombook::UnicElement noElements;
         emptyBucket.Add (API_WallID, noElements);
-        Roombook::ClearZoneGUID (emptyBucket);
-        DBrequire (emptyBucket.GetPtr (API_WallID) != nullptr, "ClearZoneGUID empty bucket key retained");
+        Roombook::Zone_ClearDuplicateGUIDs (emptyBucket);
+        DBrequire (emptyBucket.GetPtr (API_WallID) != nullptr, "Zone_ClearDuplicateGUIDs empty bucket key retained");
         DBtest (emptyBucket.GetSize () == 1 && emptyBucket.GetPtr (API_WallID)->IsEmpty (),
-                "ClearZoneGUID empty bucket stays empty without adding types");
+                "Zone_ClearDuplicateGUIDs empty bucket stays empty without adding types");
 
         for (const Case &c : cases) {
-            GS::UniString label = GS::UniString ("ClearZoneGUID ") + c.name;
+            GS::UniString label = GS::UniString ("Zone_ClearDuplicateGUIDs ") + c.name;
             GS::Array<API_Guid> input;
             for (UInt32 i = 0; i < c.count; ++i)
                 input.Push (zones[c.indices[i]]);
@@ -1279,7 +1279,7 @@ namespace TestFunc {
 
             // Порядок обработанных GUID не фиксируем: production перечисляет HashTable.
             for (UInt32 repeat = 0; repeat < 2; ++repeat) {
-                Roombook::ClearZoneGUID (index);
+                Roombook::Zone_ClearDuplicateGUIDs (index);
                 DBtest (index.GetSize () == 7, label + " type keys retained");
                 for (API_ElemTypeID type : types) {
                     const Roombook::UnicElement *elements = index.GetPtr (type);
@@ -1838,7 +1838,7 @@ namespace TestFunc {
         ParamDictElement read;
         read.Add (zones[0], data[0]);
         read.Add (zones[1], data[1]);
-        // Как в ProcessRoomFinishes: новая рабочая копия шаблона для каждой зоны.
+        // Как в OtdRooms_ProcessFinishes: новая рабочая копия шаблона для каждой зоны.
         for (UInt32 reverse = 0; reverse < 2; ++reverse) {
             for (UInt32 step = 0; step < 2; ++step) {
                 const UInt32 i = reverse == 0 ? step : 1 - step;
@@ -2343,7 +2343,7 @@ namespace TestFunc {
                     Roombook::OtdOpening source = openingFor (0);
                     source.ref_side = side.ref_side;
                     source.reflected = mirror != 0;
-                    Roombook::Opening_Add_One (source, side.reversed, 0, 0, 4, 4, wall);
+                    Roombook::OtdOpening_Add (source, side.reversed, 0, 0, 4, 4, wall);
                     DBtest (wall.openings.GetSize () == 1, "Opening reveal side survives wall clipping");
                     if (wall.openings.IsEmpty ())
                         continue;

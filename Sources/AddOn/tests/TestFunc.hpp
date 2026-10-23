@@ -150,6 +150,13 @@ namespace TestFunc {
     void TestOtdWallAddOne ();
     void TestSetMaterialByType ();
     void TestOpeningRevealsCreateOne ();
+        #if defined(ServerMainVers_2500)
+    void TestRoomSurfaceTransform ();
+    void TestRoomSurfacePartition ();
+    void TestMeshFloorNative ();
+    void TestFinishReuse ();
+    void TestFinishReuseNative ();
+        #endif
 } // namespace TestFunc
 
     #endif

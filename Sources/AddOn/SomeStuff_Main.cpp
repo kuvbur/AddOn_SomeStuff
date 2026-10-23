@@ -456,7 +456,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
             break;
         case RoomBook_CommandID:
             msg_rep ("RoomBook", "============== START ==============", NoError, APINULLGuid);
-            Roombook::RoomBook ();
+            Roombook::RoomBook_Run ();
             msg_rep ("RoomBook", "=============== END ===============", NoError, APINULLGuid);
             break;
 #ifdef ServerMainVers_2300
