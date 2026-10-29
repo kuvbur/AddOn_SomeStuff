@@ -1,8 +1,6 @@
 #pragma once
 
-#if defined(ServerMainVers_2500)
-
-    #include "json_commands/CommandBase.hpp"
+#include "json_commands/CommandBase.hpp"
 
 class SpecCommand : public CommandBase {
   public:
@@ -31,5 +29,3 @@ class SpecCommand : public CommandBase {
     // -----------------------------------------------------------------------------
     GS::ObjectState Execute (const GS::ObjectState &parameters, GS::ProcessControl &processControl) const override;
 };
-
-#endif // defined (ServerMainVers_2500)

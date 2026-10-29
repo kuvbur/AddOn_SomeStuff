@@ -18,7 +18,6 @@
 
 #include "CommonFunction.hpp"
 #include "dialogs/BrowserPalette.hpp"
-#include "dialogs/CommandHelpers.hpp"
 #include "dialogs/SyncSettings.hpp"
 #include "Propertycache.hpp"
 #include "spec/Spec.hpp"

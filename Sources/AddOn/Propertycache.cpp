@@ -4,9 +4,9 @@
 #include "Propertycache.hpp"
 
 #include "CommonFunction.hpp"
-#include "dialogs/CommandHelpers.hpp"
 #include "File.hpp"
 #include "Helpers.hpp"
+#include "Sync.hpp"
 
 bool GetPropertyRuleFlag (const API_PropertyDefinition &definition) {
     auto &cache = PROPERTYCACHE ();

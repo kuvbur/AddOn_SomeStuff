@@ -1,8 +1,6 @@
 #pragma once
 
-#if defined(ServerMainVers_2500)
-
-    #include "json_commands/CommandBase.hpp"
+#include "json_commands/CommandBase.hpp"
 
 class HealthCommand : public CommandBase {
   public:
@@ -32,5 +30,3 @@ class HealthCommand : public CommandBase {
     virtual GS::ObjectState Execute (const GS::ObjectState &parameters,
                                      GS::ProcessControl &processControl) const override;
 };
-
-#endif // defined (ServerMainVers_2500)

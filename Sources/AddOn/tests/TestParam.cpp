@@ -4,7 +4,6 @@
 
     #include "api_headers/APIEnvir.h"
 
-    #include "dialogs/CommandHelpers.hpp"
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "tests/TestFunc.hpp"

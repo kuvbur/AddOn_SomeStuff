@@ -8,8 +8,6 @@
 #include "Propertycache.hpp"
 #include "Sync.hpp"
 
-#if defined(ServerMainVers_2500)
-
 // -----------------------------------------------------------------------------
 // Создаёт JSON-команду запуска полной синхронизации.
 // -----------------------------------------------------------------------------
@@ -54,5 +52,3 @@ GS::ObjectState SyncAllCommand::Execute (const GS::ObjectState & /*parameters*/,
     response.Add ("elapsedSeconds", elapsedSeconds);
     return response;
 }
-
-#endif // defined (ServerMainVers_2500)

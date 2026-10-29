@@ -1,7 +1,5 @@
 #include "CommandBase.hpp"
 
-#if defined(ServerMainVers_2500)
-
 // -----------------------------------------------------------------------------
 // Возвращает пространство имён, общее для всех JSON-команд аддона.
 // -----------------------------------------------------------------------------
@@ -24,13 +22,13 @@ API_AddOnCommandExecutionPolicy CommandBase::GetExecutionPolicy () const {
     return API_AddOnCommandExecutionPolicy::ScheduleForExecutionOnMainThread;
 }
 
-    #ifdef ServerMainVers_2600
+#ifdef ServerMainVers_2600
 // -----------------------------------------------------------------------------
 // Сообщает Archicad о показе окна процесса во время выполнения команды.
 // Метод появился в API_AddOnCommand начиная с AC26.
 // -----------------------------------------------------------------------------
 bool CommandBase::IsProcessWindowVisible () const { return true; }
-    #endif // ServerMainVers_2600
+#endif // ServerMainVers_2600
 
 // -----------------------------------------------------------------------------
 // Обрабатывает ошибку проверки ответа команды.
@@ -66,5 +64,3 @@ GS::ObjectState CreateErrorResponse (GSErrCode errorCode, const GS::UniString &e
 // Формирует успешный ответ команды.
 // -----------------------------------------------------------------------------
 GS::ObjectState CreateSuccessResponse () { return GS::ObjectState ("success", true); }
-
-#endif // defined (ServerMainVers_2500)

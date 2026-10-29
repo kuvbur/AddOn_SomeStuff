@@ -10,8 +10,6 @@
 #include "spec/Spec.hpp"
 #include "spec/SpecCompat.hpp"
 
-#if defined(ServerMainVers_2500)
-
 // -----------------------------------------------------------------------------
 // Создаёт JSON-команду запуска построения спецификации.
 // -----------------------------------------------------------------------------
@@ -156,11 +154,11 @@ static void AddDumpedValues (GS::ObjectState &target,
     std::vector<GS::UniString> names;
     for (GS::HashTable<GS::UniString, GS::UniString>::ConstPairIterator cIt = values.EnumeratePairs (); cIt != NULL;
          ++cIt) {
-    #ifdef ServerMainVers_2800
+#ifdef ServerMainVers_2800
         names.push_back (cIt->key);
-    #else
+#else
         names.push_back (*cIt->key);
-    #endif
+#endif
     }
     std::sort (names.begin (), names.end (), [] (const GS::UniString &a, const GS::UniString &b) { return a < b; });
     // Поле добавляется даже при пустом словаре - тогда в JSON будет [] ,
@@ -289,5 +287,3 @@ GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
     }
     return response;
 }
-
-#endif // defined (ServerMainVers_2500)
