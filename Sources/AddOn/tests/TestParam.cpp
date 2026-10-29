@@ -1115,6 +1115,59 @@ namespace TestFunc {
     // Проверяет: первичный расчёт, попадание в кэш (второй вызов без перечитывания),
     // инвалидацию по изменению описания и отсутствие ложных правил у обычных свойств.
     // -----------------------------------------------------------------------------
+    static void TestRuleIndexUpdates () {
+        auto &cache = PROPERTYCACHE ();
+        API_PropertyDefinition definition = {};
+        definition.guid = APINULLGuid;
+        for (auto &definitions : cache.addonrulesbytype.Values ())
+            definitions.Delete (definition.guid);
+        cache.propertyRuleFlags.Delete (definition.guid);
+
+        definition.description = "Sum{x} Sum{y}";
+        DBtest (GetPropertyRuleFlag (definition), "RuleIndex Sum has rule");
+        const auto *sum = cache.addonrulesbytype.GetPtr (SUMM_COMMAND);
+        DBtest (sum != nullptr && sum->ContainsKey (definition.guid), "RuleIndex Sum contains property");
+        const USize sumCount = sum != nullptr ? sum->GetSize () : 0;
+        GetPropertyRuleFlag (definition);
+        sum = cache.addonrulesbytype.GetPtr (SUMM_COMMAND);
+        DBtest (sum != nullptr && sum->GetSize () == sumCount, "RuleIndex repeated rules retain one property");
+
+        definition.description = "Renum{x}";
+        GetPropertyRuleFlag (definition);
+        sum = cache.addonrulesbytype.GetPtr (SUMM_COMMAND);
+        DBtest (sum == nullptr || !sum->ContainsKey (definition.guid), "RuleIndex changed type removes old membership");
+        const auto *renum = cache.addonrulesbytype.GetPtr (RENUM_COMMAND);
+        DBtest (renum != nullptr && renum->ContainsKey (definition.guid), "RuleIndex changed type adds new membership");
+
+        definition.name = "Renamed rule property";
+        GetPropertyRuleFlag (definition);
+        renum = cache.addonrulesbytype.GetPtr (RENUM_COMMAND);
+        const auto *renumDefinition = renum != nullptr ? renum->GetPtr (definition.guid) : nullptr;
+        DBtest (renumDefinition != nullptr && renumDefinition->name == definition.name,
+                "RuleIndex unchanged description refreshes definition");
+
+        definition.description = "Renum{updated}";
+        GetPropertyRuleFlag (definition);
+        renum = cache.addonrulesbytype.GetPtr (RENUM_COMMAND);
+        renumDefinition = renum != nullptr ? renum->GetPtr (definition.guid) : nullptr;
+        DBtest (renumDefinition != nullptr && renumDefinition->description == definition.description,
+                "RuleIndex same type refreshes description");
+
+        definition.description = EMPTYSTRING;
+        DBtest (!GetPropertyRuleFlag (definition), "RuleIndex empty description has no rule");
+        renum = cache.addonrulesbytype.GetPtr (RENUM_COMMAND);
+        DBtest (renum == nullptr || !renum->ContainsKey (definition.guid),
+                "RuleIndex removed rule leaves no membership");
+
+        definition.description = "Sync_flag";
+        DBtest (GetPropertyRuleFlag (definition), "RuleIndex bare Sync_flag is recognized");
+        const auto *flags = cache.addonrulesbytype.GetPtr (SYNCFLAG_COMMAND);
+        DBtest (flags != nullptr && flags->ContainsKey (definition.guid), "RuleIndex bare Sync_flag is indexed");
+        for (auto &definitions : cache.addonrulesbytype.Values ())
+            definitions.Delete (definition.guid);
+        cache.propertyRuleFlags.Delete (definition.guid);
+    }
+
     void TestGetPropertyRuleFlag () {
         API_PropertyDefinition definition = {};
         definition.guid = APINULLGuid;
@@ -1187,6 +1240,7 @@ namespace TestFunc {
                     !entry->parsed.hasSyncRules && !entry->parsed.hasOtherCommands,
                 "RuleCache clears parsed commands for empty description");
         flags.Delete (definition.guid);
+        TestRuleIndexUpdates ();
         return;
     }
 
