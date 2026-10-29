@@ -869,7 +869,43 @@ namespace TestFunc {
     // -----------------------------------------------------------------------------
     // Тест ParsePropertyDescriptionToRules — парсинг описания в структурированные правила
     // -----------------------------------------------------------------------------
+    static void TestDescriptionFlagCommands () {
+        const GS::UniString bareFlags[] = {"Sync_flag", "sync_flag"};
+        for (const auto &flag : bareFlags) {
+            const auto result = ParsePropertyDescriptionToRules (flag);
+            DBtest (!result.hasSyncRules, "DescFlag marker is not an executable Sync rule");
+            DBtest (result.otherCommands.GetSize () == 1 && result.otherCommands[0].isValid &&
+                        result.otherCommands[0].commandType == SYNCFLAG_COMMAND &&
+                        result.otherCommands[0].fullCommand == flag && result.otherCommands[0].parameters.IsEmpty (),
+                    "DescFlag bare marker is valid and has no parameters");
+            DBtest (result.remainingText.IsEmpty (), "DescFlag bare marker consumes only itself");
+        }
+
+        const auto followed = ParsePropertyDescriptionToRules ("Sync_flag text Sum{x}");
+        DBtest (followed.otherCommands.GetSize () == 2 && followed.otherCommands[0].isValid &&
+                    followed.otherCommands[0].fullCommand == "Sync_flag" &&
+                    followed.otherCommands[0].parameters.IsEmpty () && followed.otherCommands[1].isValid &&
+                    followed.otherCommands[1].fullCommand == "Sum{x}",
+                "DescFlag does not borrow next command closing brace");
+        DBtest (followed.remainingText.Contains ("text") && !followed.remainingText.Contains ("Sync_flag"),
+                "DescFlag preserves text between commands");
+
+        const auto braced = ParsePropertyDescriptionToRules ("Sync_flag{x}");
+        DBtest (braced.otherCommands.GetSize () == 1 && braced.otherCommands[0].isValid &&
+                    braced.otherCommands[0].parameters == "x" && braced.otherCommands[0].fullCommand == "Sync_flag{x}",
+                "DescFlag optional braces exclude opening brace from parameters");
+        const auto incomplete = ParsePropertyDescriptionToRules ("Sync_flag{x");
+        DBtest (incomplete.otherCommands.GetSize () == 1 && !incomplete.otherCommands[0].isValid,
+                "DescFlag opened braces still require closing brace");
+        const auto sum = ParsePropertyDescriptionToRules ("before Sum{x} after");
+        DBtest (sum.otherCommands.GetSize () == 1 && sum.otherCommands[0].isValid &&
+                    sum.otherCommands[0].parameters == "x" && sum.remainingText.Contains ("before") &&
+                    sum.remainingText.Contains ("after"),
+                "DescFlag ordinary Sum and surrounding text remain unchanged");
+    }
+
     void TestParsePropertyDescriptionToRules () {
+        TestDescriptionFlagCommands ();
         // Тест 1: простое Sync_from описание
         {
             GS::UniString desc = "Sync_from{Property:TestProperty}";
@@ -941,12 +977,12 @@ namespace TestFunc {
             }
         }
 
-        // Тест 8: Sync_flag (не создаёт правило)
+        // Флаг распознаётся отдельно от исполняемых правил синхронизации.
         {
             GS::UniString desc = "Sync_flag";
             ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
             DBtest (!result.hasSyncRules, "DescToRules Sync_flag -> no sync rules");
-            DBtest (!result.hasOtherCommands, "DescToRules Sync_flag -> no other commands");
+            DBtest (result.hasOtherCommands, "DescToRules Sync_flag -> recognized marker");
         }
 
         // Тест 9: Несколько правил + remainingText
