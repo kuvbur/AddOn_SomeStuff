@@ -10,23 +10,31 @@
 
 bool GetPropertyRuleFlag (const API_PropertyDefinition &definition) {
     auto &cache = PROPERTYCACHE ();
-    if (const PropertyRuleFlag *cached = cache.propertyRuleFlags.GetPtr (definition.guid)) {
-        if (cached->description.IsEqual (definition.description))
-            return cached->hasRule;                       // описание не менялось — переиспользуем результат
-        cache.propertyRuleFlags.Delete (definition.guid); // описание изменилось — запись устарела
+    const PropertyRuleFlag *cached = cache.propertyRuleFlags.GetPtr (definition.guid);
+    if (cached == nullptr || !cached->description.IsEqual (definition.description)) {
+        // Смена описания должна удалить свойство и из прежних типов правил.
+        for (auto &definitions : cache.addonrulesbytype.Values ())
+            definitions.Delete (definition.guid);
+        cache.propertyRuleFlags.Delete (definition.guid);
+        PropertyRuleFlag &entry = cache.propertyRuleFlags.Retrieve (definition.guid);
+        entry.description = definition.description;
+        entry.parsed = ParsePropertyDescriptionToRules (definition.description);
     }
-    // Копия описания в записи — инвалидация при последующем чтении свойства
     PropertyRuleFlag &entry = cache.propertyRuleFlags.Retrieve (definition.guid);
-    entry.description = definition.description;
-    entry.parsed = ParsePropertyDescriptionToRules (definition.description);
     const ParsePropertyResult &parsed = entry.parsed;
     entry.hasRule = parsed.hasSyncRules;
-    // #159: правилом считается любая валидная команда — Sync, Spec_rule, Renum(_flag), Sum
+    for (const auto &command : parsed.syncRules) {
+        if (!command.isValid)
+            continue;
+        cache.addonrulesbytype.Retrieve (command.commandType).Put (definition.guid, definition);
+    }
+
     for (const auto &command : parsed.otherCommands) {
-        if (command.isValid) {
-            entry.hasRule = true;
-            break;
-        }
+        if (!command.isValid)
+            continue;
+        entry.hasRule = true;
+        // Определение обновляется и без смены описания: могли измениться имя или другие поля.
+        cache.addonrulesbytype.Retrieve (command.commandType).Put (definition.guid, definition);
     }
     return entry.hasRule;
 }
@@ -37,33 +45,6 @@ PropertyCache &GetCache () {
 }
 
 PropertyCache &(*PROPERTYCACHE) () = GetCache;
-
-#if defined(TESTING)
-// -----------------------------------------------------------------------------
-// Печатает накопленные счётчики кэшей формул EvalExpression (#217).
-// Доли попаданий считаются от числа вызовов, дошедших до кэшей: вызовы,
-// отсечённые пустой строкой или отсутствием разделителей, к кэшам не доходят.
-// -----------------------------------------------------------------------------
-void ReportFormulaCacheStats (const GS::UniString &reason) {
-    const FormulaCacheStats &stats = PROPERTYCACHE ().formulaCacheStats;
-    if (stats.calls == 0)
-        return;
-
-    const double fullHitRate = (double)stats.fullHits * 100.0 / (double)stats.calls;
-    const double exprHitRate = (double)stats.exprHits * 100.0 / (double)stats.calls;
-
-    DBprnt ("=EvalExpression=", "перед очисткой кэша: " + reason);
-    DBprnt ("  вызовов          : " + GS::UniString::Printf ("%llu", (unsigned long long)stats.calls));
-    DBprnt ("  попаданий (вся строка) : " +
-            GS::UniString::Printf ("%llu (%.1f%%)", (unsigned long long)stats.fullHits, fullHitRate));
-    DBprnt ("  попаданий (выражение)  : " +
-            GS::UniString::Printf ("%llu (%.1f%%)", (unsigned long long)stats.exprHits, exprHitRate));
-    DBprnt ("  очисток по переполнению : " +
-            GS::UniString::Printf ("%llu", (unsigned long long)stats.fullClears + stats.exprClears) + " (вся строка " +
-            GS::UniString::Printf ("%llu", (unsigned long long)stats.fullClears) + ", выражение " +
-            GS::UniString::Printf ("%llu", (unsigned long long)stats.exprClears) + ")");
-}
-#endif // defined (TESTING)
 
 namespace ParamHelpers {
 
@@ -802,6 +783,9 @@ namespace ParamHelpers {
                     msg_rep ("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions", err, APINULLGuid);
                 if (err == NoError)
                     GetArrayPropertyDefinitionToParamDict (propertyParams, definitions);
+                for (const auto &definision : definitions) {
+                    GetPropertyRuleFlag (definision);
+                }
             }
         }
 #if defined(TESTING)
@@ -1163,4 +1147,524 @@ bool DimParsePref (const GS::UniString &rawrule, DimRule &dimrule, bool &hasexpr
         }
     }
     return flag_find;
+}
+
+// -----------------------------------------------------------------------------
+// Вспомогательная функция: определяет тип источника/цели и имя из rawName
+// -----------------------------------------------------------------------------
+static void ExtractSourceInfo (const GS::UniString &rawName, GS::UniString &sourceType, GS::UniString &sourceName) {
+    sourceType = EMPTYSTRING;
+    sourceName = EMPTYSTRING;
+
+    if (rawName.BeginsWith (PROPERTYNAMEPREFIX)) {
+        sourceType = "Property";
+        sourceName = rawName.GetSubstring (PROPERTYNAMEPREFIX.GetLength (),
+                                           rawName.GetLength () - PROPERTYNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (GDLNAMEPREFIX)) {
+        sourceType = "GDL";
+        sourceName =
+            rawName.GetSubstring (GDLNAMEPREFIX.GetLength (), rawName.GetLength () - GDLNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (COORDNAMEPREFIX)) {
+        sourceType = "Coord";
+        sourceName =
+            rawName.GetSubstring (COORDNAMEPREFIX.GetLength (), rawName.GetLength () - COORDNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (FORMULANAMEPREFIX)) {
+        sourceType = "Formula";
+        sourceName = rawName.GetSubstring (FORMULANAMEPREFIX.GetLength (),
+                                           rawName.GetLength () - FORMULANAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (IDNAMEPREFIX)) {
+        sourceType = "ID";
+        sourceName = rawName.GetSubstring (IDNAMEPREFIX.GetLength (), rawName.GetLength () - IDNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (MATERIALNAMEPREFIX)) {
+        sourceType = "Material";
+        sourceName = rawName.GetSubstring (MATERIALNAMEPREFIX.GetLength (),
+                                           rawName.GetLength () - MATERIALNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (FILENAMEPREFIX)) {
+        sourceType = "File";
+        sourceName =
+            rawName.GetSubstring (FILENAMEPREFIX.GetLength (), rawName.GetLength () - FILENAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (CLASSNAMEPREFIX)) {
+        sourceType = "Classification";
+        sourceName =
+            rawName.GetSubstring (CLASSNAMEPREFIX.GetLength (), rawName.GetLength () - CLASSNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (MORPHNAMEPREFIX)) {
+        sourceType = "Morph";
+        sourceName =
+            rawName.GetSubstring (MORPHNAMEPREFIX.GetLength (), rawName.GetLength () - MORPHNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (INFONAMEPREFIX)) {
+        sourceType = "Info";
+        sourceName =
+            rawName.GetSubstring (INFONAMEPREFIX.GetLength (), rawName.GetLength () - INFONAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (IFCNAMEPREFIX)) {
+        sourceType = "IFC";
+        sourceName =
+            rawName.GetSubstring (IFCNAMEPREFIX.GetLength (), rawName.GetLength () - IFCNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (GLOBNAMEPREFIX)) {
+        sourceType = "Glob";
+        sourceName =
+            rawName.GetSubstring (GLOBNAMEPREFIX.GetLength (), rawName.GetLength () - GLOBNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (ATTRIBNAMEPREFIX)) {
+        sourceType = "Attrib";
+        sourceName =
+            rawName.GetSubstring (ATTRIBNAMEPREFIX.GetLength (), rawName.GetLength () - ATTRIBNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (LISTDATANAMEPREFIX)) {
+        sourceType = "Listdata";
+        sourceName = rawName.GetSubstring (LISTDATANAMEPREFIX.GetLength (),
+                                           rawName.GetLength () - LISTDATANAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (ELEMENTNAMEPREFIX)) {
+        sourceType = "Element";
+        sourceName = rawName.GetSubstring (ELEMENTNAMEPREFIX.GetLength (),
+                                           rawName.GetLength () - ELEMENTNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (MEPNAMEPREFIX)) {
+        sourceType = "MEP";
+        sourceName =
+            rawName.GetSubstring (MEPNAMEPREFIX.GetLength (), rawName.GetLength () - MEPNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Вспомогательная функция: извлекает формат строки из полной команды
+// -----------------------------------------------------------------------------
+static GS::UniString ExtractFormatString (const GS::UniString &fullCommand) {
+    GS::UniString formatStr = "";
+    UIndex dotPos = fullCommand.FindLast (CHARFORMULAEND);
+    if (dotPos != MaxUSize) {
+        // Ищем точку после закрывающей скобки формулы
+        UIndex formatStart = fullCommand.FindFirst (DOT, dotPos);
+        if (formatStart != MaxUSize) {
+            UIndex braceEnd = fullCommand.FindFirst (BRACEEND, formatStart);
+            if (braceEnd != MaxUSize) {
+                formatStr = fullCommand.GetSubstring (formatStart, braceEnd - formatStart);
+            }
+        }
+    } else {
+        // Нет формулы - ищем точку перед закрывающей скобкой
+        UIndex formatStart = fullCommand.FindLast (DOT);
+        if (formatStart != MaxUSize) {
+            UIndex braceEnd = fullCommand.FindFirst (BRACEEND, formatStart);
+            if (braceEnd != MaxUSize && braceEnd > formatStart) {
+                formatStr = fullCommand.GetSubstring (formatStart, braceEnd - formatStart);
+            }
+        }
+    }
+    return formatStr;
+}
+
+// -----------------------------------------------------------------------------
+// Вспомогательная функция: извлекает ignore values из параметров
+// -----------------------------------------------------------------------------
+static GS::Array<GS::UniString> ExtractIgnoreVals (const GS::UniString &parameters) {
+    GS::Array<GS::UniString> ignoreVals;
+    GS::Array<GS::UniString> parts;
+    GS::Array<GS::UniString> scratch;
+    UInt32 n = StringSplt (parameters, SEMICOLON, parts, true, &scratch);
+    for (UInt32 i = 1; i < n; ++i) { // первый элемент — это источник/цель, остальные — модификаторы
+        GS::UniString part = parts[i];
+        part.Trim ();
+        if (part == "empty" || part == "trim_empty" || part == "def" || part == "NULL") {
+            ignoreVals.Push (part);
+        }
+    }
+    return ignoreVals;
+}
+
+// -----------------------------------------------------------------------------
+// Вспомогательная функция: извлекает тип и имя цели (target) из fullCommand
+// Для SYNC_TO / SYNC_TO_SUB цель находится внутри фигурных скобок после префикса
+// -----------------------------------------------------------------------------
+static void ExtractTargetInfo (const GS::UniString &fullCommand, GS::UniString &targetType, GS::UniString &targetName) {
+    targetType = "";
+    targetName = "";
+
+    // Извлекаем содержимое скобок
+    UIndex braceStart = fullCommand.FindFirst (CHARBRACESTART);
+    UIndex braceEnd = fullCommand.FindFirst (CHARBRACEEND, braceStart);
+    if (braceStart == MaxUSize || braceEnd == MaxUSize) {
+        return;
+    }
+
+    GS::UniString inside = fullCommand.GetSubstring (braceStart + 1, braceEnd - braceStart - 1);
+    // Параметры разделены ; - первый параметр это цель для TO команд
+    GS::Array<GS::UniString> parts;
+    GS::Array<GS::UniString> scratch;
+    UInt32 n = StringSplt (inside, SEMICOLON, parts, true, &scratch);
+    if (n == 0) {
+        return;
+    }
+
+    GS::UniString targetParam = parts[0];
+    targetParam.Trim ();
+
+    // Определяем тип цели по префиксу
+    if (targetParam.BeginsWith (PROPERTYPREF)) {
+        targetType = "Property";
+        targetName =
+            targetParam.GetSubstring (PROPERTYPREF.GetLength (), targetParam.GetLength () - PROPERTYPREF.GetLength ());
+    } else if (targetParam.BeginsWith (GDLNAMEPREFIX)) {
+        targetType = "GDL";
+        targetName = targetParam.GetSubstring (GDLNAMEPREFIX.GetLength (),
+                                               targetParam.GetLength () - GDLNAMEPREFIX.GetLength ());
+    } else if (targetParam.BeginsWith (COORDPREF)) {
+        targetType = "Coord";
+        targetName =
+            targetParam.GetSubstring (COORDPREF.GetLength (), targetParam.GetLength () - COORDPREF.GetLength ());
+    } else if (targetParam.BeginsWith (CLASSPREF)) {
+        targetType = "Classification";
+        targetName =
+            targetParam.GetSubstring (CLASSPREF.GetLength (), targetParam.GetLength () - CLASSPREF.GetLength ());
+    } else if (targetParam.BeginsWith (ATTRIBPREF)) {
+        targetType = "Attrib";
+        targetName =
+            targetParam.GetSubstring (ATTRIBPREF.GetLength (), targetParam.GetLength () - ATTRIBPREF.GetLength ());
+    } else if (targetParam.BeginsWith ("id") || targetParam.BeginsWith ("ID")) {
+        targetType = "ID";
+        targetName = "id";
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Основная функция: парсит описание и возвращает структурированные правила
+// -----------------------------------------------------------------------------
+ParsePropertyResult ParsePropertyDescriptionToRules (const GS::UniString &description) {
+    ParsePropertyResult result;
+
+    if (description.IsEmpty ()) {
+        return result;
+    }
+
+    // Используем существующую функцию для базового парсинга
+    GS::Array<ParsedPropertyCommand> commands;
+    GS::UniString remainingText;
+    ParsePropertyDescription (description, commands, remainingText);
+
+    result.remainingText = remainingText;
+
+    // Обрабатываем найденные команды
+    for (const auto &cmd : commands) {
+        if (cmd.commandType == SYNC_COMMAND && cmd.isValid) {
+            // Это команда синхронизации — разбираем подробно
+            SyncRuleInfo ruleInfo;
+            ruleInfo.commandType = SYNC_COMMAND;
+            ruleInfo.fullCommand = cmd.fullCommand;
+            ruleInfo.parameters = cmd.parameters;
+
+            // Определяем направление синхронизации по fullCommand
+            GS::UniString fullCmdLower = UniStringToLower (cmd.fullCommand);
+            if (fullCmdLower.BeginsWith (SYNCFROMSUBSTRING) || fullCmdLower.BeginsWith (SYNCTOSUBSTRING)) {
+                ruleInfo.hasSub = true;
+            }
+            if (fullCmdLower.BeginsWith (UniStringToLower (FROMGUIDBR)) ||
+                fullCmdLower.BeginsWith (UniStringToLower (TOGUIDBR))) {
+                ruleInfo.hasGUID = true;
+            }
+
+            // Используем SyncString для детального разбора параметров
+            ParamValue param;
+            SkipValues ignorevals;
+            FormatString stringformat;
+            SyncMode syncdirection = SYNC_NO;
+            API_ElemTypeID elementType = API_ObjectID;
+
+            bool ok = SyncString (
+                elementType, cmd.fullCommand, syncdirection, param, ignorevals, stringformat, true, true, true, false);
+
+            if (ok) {
+                ruleInfo.isValid = true;
+
+                // Источник (from) - определяется по флагам в param
+                if (param.fromProperty) {
+                    ExtractSourceInfo (param.rawName, ruleInfo.sourceType, ruleInfo.sourceName);
+                } else if (param.fromGDLparam) {
+                    ruleInfo.sourceType = "GDL";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        GDLNAMEPREFIX.GetLength (), param.rawName.GetLength () - GDLNAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                } else if (param.fromCoord) {
+                    ruleInfo.sourceType = "Coord";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        COORDNAMEPREFIX.GetLength (), param.rawName.GetLength () - COORDNAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                } else if (param.val.hasFormula) {
+                    ruleInfo.sourceType = "Formula";
+                    ruleInfo.sourceName = param.val.uniStringValue;
+                } else if (param.fromID) {
+                    ruleInfo.sourceType = "ID";
+                    ruleInfo.sourceName = "id";
+                } else if (param.fromMaterial) {
+                    ruleInfo.sourceType = "Material";
+                    ruleInfo.sourceName = param.val.uniStringValue;
+                } else if (param.fromFile) {
+                    ruleInfo.sourceType = "File";
+                    ruleInfo.sourceName = param.val.uniStringValue;
+                } else if (param.fromClassification) {
+                    ruleInfo.sourceType = "Classification";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        CLASSNAMEPREFIX.GetLength (), param.rawName.GetLength () - CLASSNAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                } else if (param.fromMorph) {
+                    ruleInfo.sourceType = "Morph";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        MORPHNAMEPREFIX.GetLength (), param.rawName.GetLength () - MORPHNAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                } else if (param.fromInfo) {
+                    ruleInfo.sourceType = "Info";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        INFONAMEPREFIX.GetLength (), param.rawName.GetLength () - INFONAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                } else if (param.fromIFCProperty) {
+                    ruleInfo.sourceType = "IFC";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        IFCNAMEPREFIX.GetLength (), param.rawName.GetLength () - IFCNAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                } else if (param.fromGlob) {
+                    ruleInfo.sourceType = "Glob";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        GLOBNAMEPREFIX.GetLength (), param.rawName.GetLength () - GLOBNAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                } else if (param.fromAttribElement) {
+                    ruleInfo.sourceType = "Attrib";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        ATTRIBNAMEPREFIX.GetLength (), param.rawName.GetLength () - ATTRIBNAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                } else if (param.fromListData) {
+                    ruleInfo.sourceType = "Listdata";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        LISTDATANAMEPREFIX.GetLength (), param.rawName.GetLength () - LISTDATANAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                } else if (param.fromElement) {
+                    ruleInfo.sourceType = "Element";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        ELEMENTNAMEPREFIX.GetLength (), param.rawName.GetLength () - ELEMENTNAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                } else if (param.fromMEP) {
+                    ruleInfo.sourceType = "MEP";
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        MEPNAMEPREFIX.GetLength (), param.rawName.GetLength () - MEPNAMEPREFIX.GetLength ());
+                    ruleInfo.sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+                }
+
+                // Цель (to) - для Sync_to и Sync_to_sub
+                if (syncdirection == SYNC_TO || syncdirection == SYNC_TO_SUB) {
+                    ExtractTargetInfo (cmd.fullCommand, ruleInfo.targetType, ruleInfo.targetName);
+                }
+
+                // Формат строки
+                ruleInfo.formatString = stringformat.stringformat;
+
+                // Ignore values
+                if (ignorevals.skip_empty)
+                    ruleInfo.ignoreVals.Push ("empty");
+                if (ignorevals.skip_trim_empty)
+                    ruleInfo.ignoreVals.Push ("trim_empty");
+                if (ignorevals.reset_to_def)
+                    ruleInfo.ignoreVals.Push ("def");
+                for (const auto &val : ignorevals.ignorevals)
+                    ruleInfo.ignoreVals.Push (val);
+
+                // GUID source property для from_GUID/to_GUID
+                if (ruleInfo.hasGUID) {
+                    // Имя свойства-источника GUID находится в параметрах перед первым ';'
+                    GS::Array<GS::UniString> parts;
+                    GS::Array<GS::UniString> scratch;
+                    UInt32 n = StringSplt (cmd.parameters, SEMICOLON, parts, true, &scratch);
+                    if (n >= 1) {
+                        GS::UniString guidProp = parts[0];
+                        guidProp.Trim ();
+                        ruleInfo.guidSourceProperty = guidProp;
+                    }
+                }
+            } else {
+                ruleInfo.isValid = false;
+                ruleInfo.errorMessage = "SyncString не смог распарсить команду";
+            }
+
+            result.syncRules.Push (std::move (ruleInfo));
+            result.hasSyncRules = true;
+        } else {
+            // Остальные команды (Renum, Sum, Spec) — оставляем как есть
+            result.otherCommands.Push (cmd);
+            result.hasOtherCommands = true;
+        }
+    }
+
+    return result;
+}
+
+// -----------------------------------------------------------------------------
+// Парсит полное описание свойства, выделяя все команды (Sync, Renum, Sum, Spec)
+// Возвращает true, если описание содержит хотя бы одну распознанную команду
+// -----------------------------------------------------------------------------
+bool ParsePropertyDescription (const GS::UniString &description,
+                               GS::Array<ParsedPropertyCommand> &commands,
+                               GS::UniString &remainingText) {
+    commands.Clear ();
+    remainingText = description;
+
+    if (description.IsEmpty ()) {
+        return false;
+    }
+    // Ищем все вхождения команд в описании
+    GS::Array<std::pair<UIndex, CommandPrefix>> foundCommands;
+
+    for (UIndex i = 0; i < description.GetLength (); ++i) {
+        for (const auto &cmd : knownCommands) {
+            UIndex foundPos = description.FindFirst (cmd.prefix, i);
+            if (foundPos == i) {
+                CommandPrefix command = cmd;
+                const UIndex prefixEnd = i + command.prefix.GetLength ();
+                if (command.commandType == SYNCFLAG_COMMAND && prefixEnd < description.GetLength () &&
+                    description[prefixEnd] == CHARBRACESTART)
+                    command.prefix.Append (BRACESTART);
+                foundCommands.Push ({i, command});
+                i += command.prefix.GetLength () - 1;
+                break;
+            }
+        }
+    }
+
+    // Если команды не найдены, возвращаем всё как оставшийся текст
+    if (foundCommands.IsEmpty ()) {
+        remainingText = description;
+        return false;
+    }
+
+    // Обрабатываем найденные команды
+    GS::UniString processedText;
+
+    for (UIndex idx = 0; idx < foundCommands.GetSize (); ++idx) {
+        UIndex startPos = foundCommands[idx].first;
+        const CommandPrefix &cmdPrefix = foundCommands[idx].second;
+
+        // Добавляем текст перед командой в remainingText
+        if (startPos > 0) {
+            GS::UniString beforeCmd = description.GetSubstring (0, startPos);
+            if (!beforeCmd.IsEmpty ()) {
+                processedText.Append (beforeCmd);
+            }
+        }
+
+        // Бесскобочный флаг не должен забирать закрывающую скобку следующей команды.
+        if (cmdPrefix.commandType == SYNCFLAG_COMMAND && !cmdPrefix.prefix.Contains (BRACESTART)) {
+            ParsedPropertyCommand cmd;
+            cmd.commandType = cmdPrefix.commandType;
+            cmd.fullCommand = cmdPrefix.prefix;
+            cmd.isValid = true;
+            commands.Push (std::move (cmd));
+            continue;
+        }
+
+        // Ищем закрывающую скобку для этой команды
+        UIndex braceStart = startPos + cmdPrefix.prefix.GetLength ();
+        UIndex braceEnd = description.FindFirst (BRACEEND, braceStart);
+
+        if (braceEnd == MaxUSize) {
+            // Закрывающая скобка не найдена - команда некорректна
+            ParsedPropertyCommand cmd;
+            cmd.commandType = cmdPrefix.commandType;
+            cmd.fullCommand = description.GetSubstring (startPos, description.GetLength () - startPos);
+            cmd.parameters = EMPTYSTRING;
+            cmd.isValid = false;
+            cmd.errorMessage = "braceend }";
+            commands.Push (std::move (cmd));
+            continue;
+        }
+
+        // Извлекаем полную команду и параметры
+        GS::UniString fullCommand = description.GetSubstring (startPos, braceEnd - startPos + 1);
+        GS::UniString parameters = description.GetSubstring (braceStart, braceEnd - braceStart);
+
+        ParsedPropertyCommand cmd;
+        cmd.commandType = cmdPrefix.commandType;
+        cmd.fullCommand = cmdPrefix.prefix + parameters + BRACEEND;
+        cmd.parameters = parameters;
+        cmd.isValid = true;
+        cmd.errorMessage = EMPTYSTRING;
+
+        // Дополнительная валидация для Sync команд
+        if (cmdPrefix.commandType == SYNC_COMMAND) {
+            SyncMode syncdirection = SYNC_NO;
+            ParamValue param;
+            SkipValues ignorevals;
+            FormatString stringformat;
+            API_ElemTypeID elementType = API_ObjectID;
+
+            GS::UniString ruleString = cmd.fullCommand;
+            if (!SyncString (
+                    elementType, ruleString, syncdirection, param, ignorevals, stringformat, true, true, true, false)) {
+                cmd.isValid = false;
+                cmd.errorMessage = "SyncString error";
+            }
+        }
+
+        commands.Push (std::move (cmd));
+    }
+
+    // Оставшийся текст - это всё, что не вошло в команды
+    // Берём текст после последней обработанной команды
+    if (!foundCommands.IsEmpty ()) {
+        UIndex lastEnd = foundCommands[foundCommands.GetSize () - 1].first;
+        const CommandPrefix &lastCmd = foundCommands[foundCommands.GetSize () - 1].second;
+        UIndex braceStart = lastEnd + lastCmd.prefix.GetLength ();
+        UIndex braceEnd = description.FindFirst (BRACEEND, braceStart);
+        if (braceEnd != MaxUSize) {
+            remainingText = description.GetSubstring (braceEnd + 1, description.GetLength () - (braceEnd + 1));
+        } else {
+            remainingText = EMPTYSTRING;
+        }
+    }
+
+    // Удаляем обработанные команды из remainingText (оставляем только текст между командами)
+    GS::UniString cleanRemaining;
+    UIndex prevEnd = 0;
+
+    for (UIndex idx = 0; idx < foundCommands.GetSize (); ++idx) {
+        UIndex startPos = foundCommands[idx].first;
+        const CommandPrefix &cmdPrefix = foundCommands[idx].second;
+        UIndex braceStart = startPos + cmdPrefix.prefix.GetLength ();
+        const bool bareFlag = cmdPrefix.commandType == SYNCFLAG_COMMAND && !cmdPrefix.prefix.Contains (BRACESTART);
+        UIndex braceEnd = bareFlag ? braceStart - 1 : description.FindFirst (BRACEEND, braceStart);
+
+        if (braceEnd != MaxUSize) {
+            // Добавляем текст между предыдущей командой и этой
+            if (startPos > prevEnd) {
+                GS::UniString between = description.GetSubstring (prevEnd, startPos - prevEnd);
+                if (!between.IsEmpty ()) {
+                    if (!cleanRemaining.IsEmpty ())
+                        cleanRemaining.Append (" ");
+                    cleanRemaining.Append (between);
+                }
+            }
+            prevEnd = braceEnd + 1;
+        }
+    }
+
+    // Добавляем текст после последней команды
+    if (prevEnd < description.GetLength ()) {
+        GS::UniString afterLast = description.GetSubstring (prevEnd, description.GetLength () - prevEnd);
+        if (!afterLast.IsEmpty ()) {
+            if (!cleanRemaining.IsEmpty ())
+                cleanRemaining.Append (" ");
+            cleanRemaining.Append (afterLast);
+        }
+    }
+
+    remainingText = cleanRemaining;
+
+    return !commands.IsEmpty ();
 }

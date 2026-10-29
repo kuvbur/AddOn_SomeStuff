@@ -358,6 +358,14 @@ bool GetRuleFromSelected (GS::Array<API_Guid> &guidArray,
                           GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
                           const GS::UniString &name,
                           bool check_bracket) {
+    // if (guidArray.IsEmpty ()) {
+    //     GS::UniString soursetype;
+    //     if (name.Contains ("Sum"))
+    //         soursetype = SYNC_COMMAND;
+    //     if (name.Contains (RENUMFLAG))
+    //         soursetype = RENUMFLAG_COMMAND;
+    //     return (!definitions.IsEmpty ());
+    // }
     if (guidArray.GetSize () == 1) {
         GetRuleFromSelected (guidArray[0], definitions, name, check_bracket);
         if (definitions.IsEmpty ())
@@ -529,39 +537,6 @@ GSErrCode DetachObserver (const API_Guid &objectId) {
     err = ACAPI_Element_DetachObserver (&elemHead);
 #else
     err = ACAPI_Element_DetachObserver (objectId);
-#endif
-    return err;
-}
-
-// -----------------------------------------------------------------------------
-// Массовое снятие отслеживания со всех элементов (для разных версий)
-// -----------------------------------------------------------------------------
-GSErrCode DetachAllObservedElements () {
-    GSErrCode err = NoError;
-#ifndef ServerMainVers_2300
-    API_Elem_Head **elemHead = nullptr;
-    Int32 nElems = 0;
-    err = ACAPI_Element_GetObservedElements (&elemHead, &nElems);
-    if (err == NoError && elemHead != nullptr) {
-        for (Int32 i = 0; i < nElems; ++i) {
-            if ((*elemHead)[i].guid != APINULLGuid) {
-                ACAPI_Element_DetachObserver (&((*elemHead)[i]));
-            }
-        }
-        BMKillHandle (reinterpret_cast<GSHandle *> (&elemHead));
-    }
-#else
-    GS::Array<API_Elem_Head> observedElems;
-    #ifdef ServerMainVers_2700
-    err = ACAPI_Notification_GetObservedElements (&observedElems);
-    #else
-    err = ACAPI_Element_GetObservedElements (&observedElems);
-    #endif
-    if (err == NoError) {
-        for (const auto &elemHead : observedElems) {
-            ACAPI_Element_DetachObserver (elemHead.guid);
-        }
-    }
 #endif
     return err;
 }
@@ -5427,11 +5402,7 @@ void ParamHelpers::WriteGDL (const API_Guid &elemGuid, ParamDictValue &params) {
                 // Поиск индекса аттрибута при необходимости
                 API_AttributeIndex attribinx;
                 if (API_AttributeIndexFindByName (pValuePtr->val.uniStringValue, type, attribinx)) {
-#ifdef ServerMainVers_2700
-                    attribinxint = attribinx.ToInt32_Deprecated ();
-#else
-                    attribinxint = attribinx;
-#endif
+                    attribinxint = AttributeIndexGetShort (attribinx);
                 } else {
                     attribinxint = pValuePtr->val.intValue;
                 }
@@ -6253,11 +6224,7 @@ bool ParamHelpers::ReadAttributeValues (const API_Element &element, ParamDictVal
             target->fromAttribElement = true;
             target->val.type = API_PropertyStringValueType;
             if ((i == 0 && structure == API_CompositeStructure) || (i == 1 && structure == API_BasicStructure)) {
-#ifdef ServerMainVers_2700
-                const Int32 index = indices[i].ToInt32_Deprecated ();
-#else
-                const Int32 index = indices[i];
-#endif
+                const Int32 index = (Int32)AttributeIndexGetShort (indices[i]);
                 ParamValue cached;
                 if (index > 0 &&
                     ParamHelpers::GetParamValueFromCache (
@@ -6280,11 +6247,7 @@ bool ParamHelpers::ReadAttributeValues (const API_Element &element, ParamDictVal
         return false;
     p->isValid = true;
     p->fromAttribElement = true;
-#ifdef ServerMainVers_2700
-    GS::Int32 intValue = elem_head.layer.ToInt32_Deprecated ();
-#else
-    GS::Int32 intValue = elem_head.layer;
-#endif
+    const GS::Int32 intValue = AttributeIndexGetShort (elem_head.layer);
     GS::UniString cname = "{@attrib:layer_inx_" + GS::UniString::Printf ("%d", intValue) + BRACEEND;
     ParamValue cacheparam;
     if (GetParamValueFromCache (cname, cacheparam)) {
@@ -8262,13 +8225,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData &pvalue,
             GSErrCode err = ACAPI_Attribute_Get (&attrib);
             if (err == NoError) {
                 pvalue.type = API_PropertyStringValueType;
-#ifdef ServerMainVers_2700
-                param_bool = (attrInx.ToInt32_Deprecated () != 0);
-                param_int = attrInx.ToInt32_Deprecated ();
-#else
-                param_bool = (attrInx != 0);
-                param_int = attrInx;
-#endif
+                param_int = AttributeIndexGetShort (attrInx);
+                param_bool = (param_int != 0);
                 param_real = param_int / 1.0;
                 pvalue.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
             } else {
@@ -8787,11 +8745,8 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue &pvalue,
         pvalue.rawName.Append (UniStringToLower (paramName));
         pvalue.rawName.Append (BRACEEND);
     }
-#ifdef ServerMainVers_2700
-    pvalue.val.intValue = attr.header.index.ToInt32_Deprecated ();
-#else
-    pvalue.val.intValue = attr.header.index;
-#endif
+
+    pvalue.val.intValue = AttributeIndexGetShort (attr.header.index);
     pvalue.val.doubleValue = pvalue.val.intValue * 1.0;
     pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
     pvalue.val.hasrawDouble = true;
@@ -9112,11 +9067,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid &elemguid,
 #if defined(TESTING)
     DBprnt ("        ComponentsCompositeStructure");
 #endif
-#ifdef ServerMainVers_2700
-    Int32 key = constrinx.ToInt32_Deprecated ();
-#else
-    Int32 key = (Int32)constrinx;
-#endif
+    Int32 key = (Int32)AttributeIndexGetShort (constrinx);
     auto &cache = PROPERTYCACHE ().compositeCache;
     if (!cache.ContainsKey (key)) {
 #if defined(TESTING)
@@ -9802,13 +9753,8 @@ bool ParamHelpers::Components (const API_Element &element,
 bool ParamHelpers::GetAttributeValues (const API_AttributeIndex &constrinx,
                                        ParamDictValue &params,
                                        ParamDictValue &paramsAdd) {
-#ifdef ServerMainVers_2700
-    Int32 constrinxvalue = constrinx.ToInt32_Deprecated ();
-#else
-    Int32 constrinxvalue = (Int32)constrinx;
-#endif
+    Int32 constrinxvalue = (Int32)AttributeIndexGetShort (constrinx);
     GS::UniString attribsuffix = GS::UniString::Printf ("%d", constrinxvalue);
-
     bool isClassRead = false;   // была попытка чтения классификации
     bool isClassReadOk = false; // Классификация прочитана
     bool isBmatAttribReadOk = false;

@@ -127,7 +127,6 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     case APINotify_Close:
     case APINotify_Quit:
         ClearSyncThrottleCache ();
-        DetachAllObservedElements ();
         if (notifID == APINotify_Quit)
             BrowserPalette::DestroyInstance ();
 #ifdef ServerMainVers_2700

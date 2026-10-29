@@ -521,4 +521,38 @@ static const GS::Array<short> paramTypesListWrite = {PROPERTYTYPEINX,
                                                      ATTRIBTYPEINX,
                                                      COORDTYPEINX}; // Список типов тегов, разрешённых для записи
 
+// Список известных команд для поиска
+struct CommandPrefix {
+    GS::UniString prefix;      // Префикс команды (например, "Sync_from{")
+    GS::UniString commandType; // Тип команды для классификации
+};
+
+static const GS::UniString SYNC_COMMAND = "Sync";
+static const GS::UniString SYNCFLAG_COMMAND = "Sync_flag";
+static const GS::UniString RENUMFLAG_COMMAND = "Renum_flag";
+static const GS::UniString RENUM_COMMAND = "Renum";
+static const GS::UniString SUMM_COMMAND = "Sum";
+static const GS::UniString SPEC_COMMAND = "Spec_rule";
+
+static const GS::Array<CommandPrefix> knownCommands{{SYNCFROMSTRING, SYNC_COMMAND},
+                                                    {SYNCTOSTRING, SYNC_COMMAND},
+                                                    {SYNCFROMSUBSTRING, SYNC_COMMAND},
+                                                    {SYNCTOSUBSTRING, SYNC_COMMAND},
+                                                    {FROMGUIDBR, SYNC_COMMAND},
+                                                    {TOGUIDBR, SYNC_COMMAND},
+                                                    {GS::UniString ("Renum_flag{"), RENUMFLAG_COMMAND},
+                                                    {GS::UniString ("Renum{"), RENUM_COMMAND},
+                                                    {GS::UniString ("renum_flag{"), RENUMFLAG_COMMAND},
+                                                    {GS::UniString ("renum{"), RENUM_COMMAND},
+                                                    {GS::UniString ("Sum{"), SUMM_COMMAND},
+                                                    {GS::UniString ("sum{"), SUMM_COMMAND},
+                                                    {GS::UniString ("Spec_rule{"), SPEC_COMMAND},
+                                                    {GS::UniString ("spec_rule{"), SPEC_COMMAND},
+                                                    {GS::UniString ("Spec_rule_v2{"), SPEC_COMMAND},
+                                                    {GS::UniString ("spec_rule_v2{"), SPEC_COMMAND},
+                                                    {GS::UniString ("Spec_rule_v3{"), SPEC_COMMAND},
+                                                    {GS::UniString ("spec_rule_v3{"), SPEC_COMMAND},
+                                                    {GS::UniString ("Sync_flag"), SYNCFLAG_COMMAND},
+                                                    {GS::UniString ("sync_flag"), SYNCFLAG_COMMAND}};
+
 #endif
