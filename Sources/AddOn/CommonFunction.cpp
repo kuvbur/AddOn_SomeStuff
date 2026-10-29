@@ -1355,22 +1355,10 @@ bool EvalExpression (GS::UniString &unistring_expression) {
     // ускорить работу. Счётчики попаданий и сбросов: см. #217.
     GS::UniString fullkey = unistring_expression;
     static GS::HashTable<GS::UniString, GS::UniString> exprResultFullCache; // Кэш для строковых результатов
-#if defined(TESTING)
-    FormulaCacheStats &stats = PROPERTYCACHE ().formulaCacheStats;
-    stats.calls += 1;
-#endif
     if (exprResultFullCache.GetSize () > 4096) {
-#if defined(TESTING)
-        // Сброс уничтожает рабочее множество — печатаем накопленное до него.
-        ReportFormulaCacheStats ("переполнение кэша всей строки");
-        stats.fullClears += 1;
-#endif
         exprResultFullCache.Clear ();
     }
     if (const GS::UniString *cachedPtr = exprResultFullCache.GetPtr (fullkey)) {
-#if defined(TESTING)
-        stats.fullHits += 1;
-#endif
         unistring_expression = *cachedPtr; // Используем кэшированный результат
         return (!unistring_expression.IsEmpty ());
     }
@@ -1430,19 +1418,12 @@ bool EvalExpression (GS::UniString &unistring_expression) {
 
                 static GS::HashTable<GS::UniString, ExprResult> exprResultCache;
                 if (exprResultCache.GetSize () > 4096) {
-#if defined(TESTING)
-                    ReportFormulaCacheStats ("переполнение кэша текста выражения");
-                    stats.exprClears += 1;
-#endif
                     exprResultCache.Clear (); // защита от неограниченного роста на длинной сессии
                 }
 
                 const GS::UniString cacheKey (expression_string.c_str (), chcode);
                 ExprResult result;
                 if (const ExprResult *cachedPtr = exprResultCache.GetPtr (cacheKey)) {
-#if defined(TESTING)
-                    stats.exprHits += 1;
-#endif
                     result = *cachedPtr;
                 } else {
                     expression_t expression;
@@ -2643,6 +2624,16 @@ GSErrCode HighlightElements (const GS::Array<API_Guid> &guids) {
     #endif
 #endif
     return hlErr;
+}
+
+short AttributeIndexGetShort (const API_AttributeIndex &attribinx) {
+    short attribinxint = 0;
+#ifdef ServerMainVers_2700
+    attribinxint = attribinx.ToInt32_Deprecated ();
+#else
+    attribinxint = attribinx;
+#endif
+    return attribinxint;
 }
 
 // -----------------------------------------------------------------------------

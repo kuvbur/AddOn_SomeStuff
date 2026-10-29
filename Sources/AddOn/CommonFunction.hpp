@@ -609,6 +609,8 @@ GSErrCode HighlightElements (const UnicGuid &guids);
 
 GSErrCode HighlightElements (const GS::Array<API_Guid> &guids);
 
+short AttributeIndexGetShort (const API_AttributeIndex &attribinx);
+
 bool AdvanceProcessPhase (GS::UniString &funcname, GS::Int32 &nPhase);
 
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &type, API_AttributeIndex &attribinx);
