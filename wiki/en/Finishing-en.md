@@ -104,15 +104,31 @@ For the add-on to function, it is necessary to configure the classes for finishi
 - `some_stuff_fin_columns` - For columns (if not specified, it will take the `some_stuff_fin_wall` or `some_stuff_fin_class`)
 - `some_stuff_fin_floors` - For floors (if not specified, it will take the `some_stuff_fin_class`)
 - `some_stuff_fin_ceils` - For ceilings (if not specified, it will take the `some_stuff_fin_class`)
+- `some_stuff_fin_skirting` - For floor skirting (dedicated class, no fallback)
+- `some_stuff_fin_cornice` - For ceiling cornice (dedicated class, no fallback)
 
-For the add-on to work correctly, the existence of the class with the description `some_stuff_fin_class` is sufficient; other classes can be created as needed. The add-on itself assigns the classification to elements during the creation of finishing elements; manual assignment is not required. Elements classified as finishing are not considered in calculations.
+For the add-on to work correctly, the existence of the class with the description `some_stuff_fin_class` is sufficient, except for skirting and cornice - they require dedicated classes; other classes can be created as needed. The add-on itself assigns the classification to elements during the creation of finishing elements; manual assignment is not required. Elements classified as finishing are not considered in calculations.
 
 ### Properties of Finishing Elements
 
 Properties must be visible in the classification of finishing elements
 
-- `Sync_GUID base element` - for the add-on to record the GUID of the base element to which the finishing element will be linked
-- `Sync_GUID zone` - for the add-on to record the GUID of the zone
+| Property | Data type | Description |
+| --- | --- | --- |
+| `Sync_GUID base element` | String, single value | For the add-on to record the GUID of the base element to which the finishing element will be linked |
+| `Sync_GUID zone` | String, single value | For the add-on to record the GUID of the zone |
+
+For common roles `Sync_GUID zone` is mandatory - without it the calculation stops with a configuration error. A missing `Sync_GUID base element` in common roles only produces a warning: existing floor/ceiling elements will be updated by replacement.
+
+For skirting and cornice the check is strict: both properties must be of type `String`, collection `Single value`, and explicitly available in the corresponding role class; otherwise the calculation ends with a configuration error.
+
+### Skirting and Cornice
+
+Floor skirting and ceiling cornice are separate roles (`Floor_Skirting`, `Ceil_Cornice`) that are created only from Beam elements.
+
+- They use dedicated classes `some_stuff_fin_skirting` and `some_stuff_fin_cornice`; fallback to `some_stuff_fin_class` is not applied.
+- If the role class is missing or not recognized, the calculation ends with a configuration error.
+- Properties `Sync_GUID zone` and `Sync_GUID base element` are mandatory and must be a string with a single value, available in the role class.
 
 ### Properties of Base Elements
 
@@ -131,5 +147,111 @@ If no favorite is specified for the material (i.e., the material name does not c
 - `smstf floor` - for modeling floors. Tool type - slab or object (accessory)
 - `smstf reveal side` - for modeling the vertical part of reveals. Tool type - wall or object (accessory)
 - `smstf reveal up` - for modeling the horizontal part of reveals. Tool type - beam
+- `smstf ceil side` - for walls at ceiling height changes. Tool type - wall or object (accessory)
+- `smstf floor side` - for walls at floor height changes. Tool type - wall or object (accessory)
+- `smstf skirting` - for floor skirting. Tool type - beam only; fallback to `smstf wall` or material is not applied
+- `smstf cornice` - for ceiling cornice. Tool type - beam only; fallback to `smstf wall` or material is not applied
 
-If no suitable elements are found in the favorites at all, the tool's default settings will be applied (for walls and slabs).
+If no suitable elements are found in the favorites at all, the tool's default settings will be applied (for walls and slabs). This fallback does not apply to skirting and cornice.
+
+## RoomBook JSON command
+
+The command is invoked through the HTTP port of the running Archicad (`POST http://127.0.0.1:19723`) and takes no calculation parameters: `addOnCommandParameters` can be omitted or passed as an empty object.
+
+### Request
+
+```json
+{
+  "command": "API.ExecuteAddOnCommand",
+  "parameters": {
+    "addOnCommandId": {
+      "commandNamespace": "SomeStuffCommand",
+      "commandName": "RoomBook"
+    },
+    "addOnCommandParameters": {}
+  }
+}
+```
+
+### Response
+
+Archicad wraps the command result in `result.addOnCommandResponse`:
+
+```json
+{
+  "succeeded": true,
+  "result": {
+    "addOnCommandResponse": {
+      "status": "returned",
+      "rooms": [
+        {
+          "zone_guid": "B69820A5-9B3A-4D30-A33A-DE995E4447CB",
+          "types": [
+            {
+              "TypeOtd": 4,
+              "elements": [
+                {
+                  "otd_guid": "93A36784-485B-4D8C-AB6B-F11BB4E94A7A",
+                  "base_guid": "61AEC870-2A86-42BB-82E6-8A3FF809CA2F",
+                  "write_succeeded": true,
+                  "was_created": true,
+                  "length": 0.02,
+                  "length_available": true,
+                  "area": 0.042,
+                  "area_available": true,
+                  "material": 366,
+                  "bmaterial": 3,
+                  "structtype": 0
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+Response fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `status` | string | Call completion marker; the current implementation always returns `returned` |
+| `rooms` | array | Processed rooms (zones) |
+| `rooms[].zone_guid` | string | Room GUID |
+| `rooms[].types` | array | Created finishing elements grouped by type |
+| `types[].TypeOtd` | number | Numeric finishing type (`TypeOtd`), see the table below |
+| `types[].elements` | array | Finishing elements of this type in the room |
+| `elements[].otd_guid` | string | GUID of the created or updated finishing element |
+| `elements[].base_guid` | string | GUID of the base element the finishing belongs to |
+| `elements[].write_succeeded` | bool | The element was successfully written to the model |
+| `elements[].was_created` | bool | The element was created in this run (`false` - an existing one was updated) |
+| `elements[].length` | number | Linear length (for roles where it is calculated) |
+| `elements[].length_available` | bool | `length` has been calculated |
+| `elements[].area` | number | Element area |
+| `elements[].area_available` | bool | `area` has been calculated |
+| `elements[].material` | number | Finishing material index |
+| `elements[].bmaterial` | number | Building material index |
+| `elements[].structtype` | number | Structure type |
+
+`TypeOtd` values:
+
+| Value | Finishing type |
+| --- | --- |
+| 0 | Not set (`NoSet`) |
+| 1 | Main zone finish (`Wall_Main`) |
+| 2 | Upper zone finish (`Wall_Up`) |
+| 3 | Lower zone finish (`Wall_Down`) |
+| 4 | Reveal side (`Reveal_Main`) |
+| 5 | Reveal top (`Reveal_Up`) |
+| 6 | Reveal bottom (`Reveal_Down`) |
+| 7 | Column finish (`Column`) |
+| 8 | Floor finish (`Floor`) |
+| 9 | Ceiling finish (`Ceil`) |
+| 10 | Floor skirting (`Floor_Skirting`) |
+| 11 | Ceiling cornice (`Ceil_Cornice`) |
+| 12 | Ceiling beam finish (`Beam_Ceil`) |
+| 13 | Wall beam finish (`Beam_Wall`) |
+
+The response does not guarantee that every listed element remains in the model: the write batch can be rolled back, so rely on `write_succeeded` and `was_created`.
