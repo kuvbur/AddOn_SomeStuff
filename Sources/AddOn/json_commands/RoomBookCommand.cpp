@@ -4,10 +4,10 @@
 
     #include "ACAPinc.h"
 
-    #include "json_commands/RoomBookCommand.hpp"
-    #include "roombook/Roombook.hpp"
-    #include "Propertycache.hpp"
     #include "CommonFunction.hpp"
+    #include "json_commands/RoomBookCommand.hpp"
+    #include "Propertycache.hpp"
+    #include "roombook/Roombook.hpp"
 
 // -----------------------------------------------------------------------------
 // Создаёт JSON-команду запуска построения отделки.
@@ -285,6 +285,236 @@ GS::ObjectState RoomBookCreateClassificationItemCommand::Execute (const GS::Obje
         return CreateErrorResponse (err, "ACAPI_Classification_CreateClassificationItem failed");
     GS::ObjectState response;
     response.Add ("itemGuid", APIGuidToString (item.guid));
+    return response;
+}
+
+// -----------------------------------------------------------------------------
+// Создаёт JSON-команду изменения описания свойства.
+// -----------------------------------------------------------------------------
+RoomBookSetPropertyDescriptionCommand::RoomBookSetPropertyDescriptionCommand () : CommandBase (CommonSchema::NotUsed) {}
+
+// -----------------------------------------------------------------------------
+// Возвращает имя команды изменения описания свойства.
+// -----------------------------------------------------------------------------
+GS::String RoomBookSetPropertyDescriptionCommand::GetName () const { return "SetPropertyDescription"; }
+
+// -----------------------------------------------------------------------------
+// Указывает, что команда принимает описание и один идентификатор свойства
+// (GUID или полное имя).
+// -----------------------------------------------------------------------------
+GS::Optional<GS::UniString> RoomBookSetPropertyDescriptionCommand::GetInputParametersSchema () const {
+    return R"({
+    "type": "object",
+    "properties": {
+        "propertyGuid": {
+            "type": "string",
+            "description": "GUID of the property definition."
+        },
+        "name": {
+            "type": "string",
+            "description": "Full property name \"Group/Name\"; used only when propertyGuid is absent."
+        },
+        "description": {
+            "type": "string",
+            "description": "New description text; an empty string clears the description."
+        }
+    },
+    "additionalProperties": false,
+    "required": ["description"]
+})";
+}
+
+// -----------------------------------------------------------------------------
+// Указывает, что команда возвращает свободный ответ.
+// -----------------------------------------------------------------------------
+GS::Optional<GS::UniString> RoomBookSetPropertyDescriptionCommand::GetResponseSchema () const { return GS::NoValue; }
+
+// -----------------------------------------------------------------------------
+// Приводит имя свойства к виду для поиска в кэше: нижний регистр,
+// без префикса "{@property:" и закрывающей фигурной скобки.
+// -----------------------------------------------------------------------------
+GS::UniString NormalizePropertyNameForCache (const GS::UniString &name) {
+    GS::UniString lowered = UniStringToLower (name);
+    if (lowered.Contains (PROPERTYNAMEPREFIX))
+        lowered = lowered.GetSuffix (lowered.GetLength () - PROPERTYNAMEPREFIX.GetLength ());
+    lowered.TrimRight (CHARBRACEEND);
+    return lowered;
+}
+
+// -----------------------------------------------------------------------------
+// Ищет GUID определения в кэше PropertyCache по GUID или по полному имени.
+// Кэш при необходимости читает сам. Возвращает true, если определение найдено.
+// -----------------------------------------------------------------------------
+bool FindPropertyGuidInCache (const API_Guid &guid, const GS::UniString &name, API_Guid &foundGuid) {
+    auto &cache = PROPERTYCACHE ();
+    if (!cache.isPropertyDefinitionRead)
+        cache.ReadPropertyDefinition ();
+    if (!cache.isPropertyDefinition_OK)
+        return false;
+
+    const bool searchByName = (guid == APINULLGuid);
+    GS::UniString needle;
+    if (searchByName)
+        needle = NormalizePropertyNameForCache (name);
+
+    for (const auto &cIt : cache.property) {
+    #ifdef ServerMainVers_2800
+        const ParamValue &pvalue = cIt.value;
+    #else
+        const ParamValue &pvalue = *cIt.value;
+    #endif
+        if (!searchByName) {
+            if (pvalue.definition.guid == guid) {
+                foundGuid = guid;
+                return true;
+            }
+            continue;
+        }
+        GS::UniString cachedName = UniStringToLower (pvalue.name);
+        if (cachedName.IsEqual (needle)) {
+            foundGuid = pvalue.definition.guid;
+            return true;
+        }
+    }
+    return false;
+}
+
+// -----------------------------------------------------------------------------
+// Запасной поиск по имени во всех группах (включая встроенные, отфильтрованные
+// кэшем): находит свойство, добавляет его группу в кэш и возвращает GUID.
+// -----------------------------------------------------------------------------
+bool FindPropertyGuidByGroups (const GS::UniString &name, API_Guid &foundGuid) {
+    auto &cache = PROPERTYCACHE ();
+    if (!cache.isGroupPropertyRead_full)
+        cache.ReadGroupProperty ();
+    if (!cache.isGroupProperty_OK)
+        return false;
+    GS::UniString needle = NormalizePropertyNameForCache (name);
+    GSErrCode err = NoError;
+    for (const auto &cIt : cache.propertygroups) {
+    #ifdef ServerMainVers_2800
+        const API_PropertyGroup &group = cIt.value;
+    #else
+        const API_PropertyGroup &group = *cIt.value;
+    #endif
+        GS::Array<API_PropertyDefinition> definitions = {};
+        err = ACAPI_Property_GetPropertyDefinitions (group.guid, definitions);
+        if (err != NoError) {
+            msg_rep ("SetPropertyDescription", "ACAPI_Property_GetPropertyDefinitions", err, APINULLGuid);
+            continue;
+        }
+        for (const API_PropertyDefinition &definition : definitions) {
+            GS::UniString fullName = group.name;
+            fullName.Append (SLASH);
+            fullName.Append (definition.name);
+            if (UniStringToLower (fullName).IsEqual (needle)) {
+                foundGuid = definition.guid;
+                // Найденную группу добавляем в кэш, чтобы последующие обращения
+                // шли уже через PropertyCache.
+                GS::Array<API_PropertyDefinition> cachedDefinitions = definitions;
+                ParamHelpers::GetArrayPropertyDefinitionToParamDict (cache.property, cachedDefinitions);
+                for (const API_PropertyDefinition &cachedDefinition : cachedDefinitions)
+                    GetPropertyRuleFlag (cachedDefinition);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// -----------------------------------------------------------------------------
+// Обновляет определение свойства в кэше после записи, пересобирает правила
+// SomeStuff и перечитывает File-правила, зависящие от описаний.
+// -----------------------------------------------------------------------------
+void UpdatePropertyDescriptionInCache (const API_PropertyDefinition &definition) {
+    auto &cache = PROPERTYCACHE ();
+    for (const auto &cIt : cache.property) {
+    #ifdef ServerMainVers_2800
+        ParamValue &pvalue = cIt.value;
+    #else
+        ParamValue &pvalue = *cIt.value;
+    #endif
+        if (pvalue.definition.guid == definition.guid) {
+            pvalue.definition = definition;
+            break;
+        }
+    }
+    // GetPropertyRuleFlag сам удаляет устаревшую запись (описание изменилось)
+    // и пересобирает propertyRuleFlags и addonrulesbytype.
+    GetPropertyRuleFlag (definition);
+    cache.ReadFileFromDefinition ();
+}
+
+// -----------------------------------------------------------------------------
+// Меняет описание определения свойства. Свойство ищется в кэше PropertyCache,
+// перед записью определение перечитывается по GUID: ChangePropertyDefinition
+// записывает структуру целиком, поэтому устаревшая копия из кэша затёрла бы
+// чужие поля. Ответ возвращает описание, прочитанное обратно из модели.
+// -----------------------------------------------------------------------------
+GS::ObjectState RoomBookSetPropertyDescriptionCommand::Execute (const GS::ObjectState &parameters,
+                                                                GS::ProcessControl & /*processControl*/) const {
+    GS::UniString description;
+    GS::UniString name;
+    GS::UniString guidStr;
+    const bool hasDescription = parameters.Get ("description", description);
+    const bool hasName = parameters.Get ("name", name);
+    const bool hasGuid = parameters.Get ("propertyGuid", guidStr);
+    if (!hasDescription)
+        return CreateErrorResponse (APIERR_BADPARS, "description is required");
+    if (!hasName && !hasGuid)
+        return CreateErrorResponse (APIERR_BADPARS, "propertyGuid or name is required");
+
+    API_Guid guid = APINULLGuid;
+    if (hasGuid) {
+        guid = APIGuidFromString (guidStr.ToCStr (0, MaxUSize, GChCode));
+        if (guid == APINULLGuid)
+            return CreateErrorResponse (APIERR_BADPARS, "propertyGuid is invalid");
+    }
+
+    // Поиск в кэше нужен для имени -> GUID; по GUID он подтверждает наличие
+    // свойства в кэше, но не обязателен для записи.
+    API_Guid foundGuid = guid;
+    if (guid == APINULLGuid) {
+        if (!FindPropertyGuidInCache (guid, name, foundGuid) && !FindPropertyGuidByGroups (name, foundGuid))
+            return CreateErrorResponse (APIERR_BADID, "Property definition not found: " + name);
+        if (foundGuid == APINULLGuid)
+            return CreateErrorResponse (APIERR_BADID, "Property definition not found: " + name);
+    }
+
+    API_PropertyDefinition definition = {};
+    definition.guid = foundGuid;
+    GSErrCode err = ACAPI_Property_GetPropertyDefinition (definition);
+    if (err != NoError)
+        return CreateErrorResponse (err, "ACAPI_Property_GetPropertyDefinition failed");
+
+    GS::ObjectState response;
+    response.Add ("propertyGuid", APIGuidToString (foundGuid));
+    if (definition.description.IsEqual (description)) {
+        // Изменений нет: запись и инвалидация кэша не требуются.
+        response.Add ("changed", false);
+        response.Add ("description", definition.description);
+        return response;
+    }
+
+    definition.description = description;
+    err = ACAPI_CallUndoableCommand ("Set property description", [&] () -> GSErrCode {
+        return ACAPI_Property_ChangePropertyDefinition (definition);
+    });
+    if (err != NoError)
+        return CreateErrorResponse (err, "ACAPI_Property_ChangePropertyDefinition failed");
+
+    UpdatePropertyDescriptionInCache (definition);
+
+    // Читаем обратно: ответ подтверждает фактическое состояние модели,
+    // а не поданное на вход значение.
+    API_PropertyDefinition check = {};
+    check.guid = foundGuid;
+    err = ACAPI_Property_GetPropertyDefinition (check);
+    if (err != NoError)
+        return CreateErrorResponse (err, "Read-back ACAPI_Property_GetPropertyDefinition failed");
+
+    response.Add ("changed", true);
+    response.Add ("description", check.description);
     return response;
 }
 

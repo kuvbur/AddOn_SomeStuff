@@ -92,5 +92,18 @@ void RegisterJsonCommands () {
     if (createClassificationItemErr != NoError)
         DBprnt ("Failed to register RoomBookCreateClassificationItemCommand, error: " +
                 GS::ValueToUniString (createClassificationItemErr));
+
+    GS::Owner<RoomBookSetPropertyDescriptionCommand> setPropertyDescriptionCommand =
+        GS::NewOwned<RoomBookSetPropertyDescriptionCommand> ();
+    #ifdef ServerMainVers_2700
+    const GSErrCode setPropertyDescriptionErr =
+        ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler (setPropertyDescriptionCommand.Pass ());
+    #else
+    const GSErrCode setPropertyDescriptionErr =
+        ACAPI_Install_AddOnCommandHandler (setPropertyDescriptionCommand.Pass ());
+    #endif
+    if (setPropertyDescriptionErr != NoError)
+        DBprnt ("Failed to register RoomBookSetPropertyDescriptionCommand, error: " +
+                GS::ValueToUniString (setPropertyDescriptionErr));
 #endif // ServerMainVers_2500
 }
