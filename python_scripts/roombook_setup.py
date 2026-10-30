@@ -392,6 +392,74 @@ def check_layer_combination(port):
 
 
 # ---------------------------------------------------------------------------
+# Свойства проекта: список, описание, установка описания (команда аддона #304)
+# ---------------------------------------------------------------------------
+
+def fetch_user_properties(port):
+    """UserDefined-свойства проекта для выпадающих списков.
+
+    Возвращает ([(метка «Группа/Имя», localizedName)], None) или (None, ошибка).
+    Список строится одним вызовом GetAllPropertyNames; GUID при применении
+    резолвится отдельно (GetPropertyIds) — не замедляем загрузку списка.
+    """
+    data, err = raw_post(port, "API.GetAllPropertyNames", {})
+    if data is None:
+        return None, "нет ответа: %s" % err
+    if not data.get("succeeded"):
+        return None, "код %s" % data.get("error", {}).get("code")
+    props = []
+    for prop in data.get("result", {}).get("properties") or []:
+        if prop.get("type") != "UserDefined":
+            continue
+        localizedName = prop.get("localizedName") or []
+        if len(localizedName) >= 2:
+            props.append(("%s / %s" % (localizedName[0], localizedName[1]), localizedName))
+    return props, None
+
+
+def get_property_guid_and_description(port, localizedName):
+    """Резолвит GUID и текущее описание одного свойства.
+
+    GetPropertyIds -> GetDetailsOfProperties. Возвращает (guid, description)
+    или (None, None) при ошибке.
+    """
+    data, _ = raw_post(port, "API.GetPropertyIds", {
+        "properties": [{"type": "UserDefined", "localizedName": localizedName}]})
+    if data is None or not data.get("succeeded"):
+        return None, None
+    for p in data.get("result", {}).get("properties", []):
+        guid = (p.get("propertyId") or {}).get("guid")
+        if not guid:
+            continue
+        det, _ = raw_post(port, "API.GetDetailsOfProperties", {
+            "properties": [{"propertyId": {"guid": guid}}]})
+        description = ""
+        if det and det.get("succeeded"):
+            items = det.get("result", {}).get("propertyDefinitions", []) or []
+            for item in items:
+                defn = item.get("propertyDefinition") or item
+                description = defn.get("description", "") or ""
+                break
+        return guid, description
+    return None, None
+
+
+def set_property_description(port, property_guid, description):
+    """Ставит описание свойства командой аддона SetPropertyDescription (#304).
+
+    Возвращает (True, None) или (False, текст_ошибки).
+    """
+    data, err = addon_call(port, "SetPropertyDescription", {
+        "propertyGuid": property_guid, "description": description})
+    if data is None:
+        return False, "нет ответа: %s" % err
+    if not data.get("succeeded"):
+        error = data.get("error", {})
+        return False, "код %s: %s" % (error.get("code"), error.get("message"))
+    return True, None
+
+
+# ---------------------------------------------------------------------------
 # Создание классов отделки (режим --create-classes, только CLI)
 # ---------------------------------------------------------------------------
 
@@ -594,14 +662,27 @@ STRINGS = {
             "checkbutton_auto": "Проверить все найденные экземпляры",
             "btn_refresh": "Обновить порты",
             "btn_run": "Запустить проверку",
+            "tab_check": "Проверка",
+            "tab_properties": "Свойства",
+            "btn_load_props": "Загрузить свойства проекта",
+            "btn_apply_props": "Применить выбранные",
+            "checkbutton_overwrite": "Перезаписывать существующее описание",
+            "props_hint": "Для каждого маркера выберите свойство — его описание станет маркером.",
             "status_ready": "Готов к работе",
             "status_scanning": "Поиск Archicad...",
             "status_running": "Проверка выполняется...",
+            "status_loading_props": "Загрузка свойств...",
+            "status_props_loaded": "Свойства загружено: %d (UserDefined).",
+            "status_props_done": "Описания применены: %d; пропущено: %d; ошибки: %d.",
             "status_no_archicad": "Archicad не найден. Запустите Archicad и откройте проект.",
             "status_done_ok": "Проверка завершена: всё в порядке.",
             "status_done_fail": "Проверка завершена: есть проблемы.",
             "status_done_incomplete": "Проверка завершена не полностью: часть данных не проверена.",
             "status_error": "Ошибка: ",
+            "props_already": "уже есть описание",
+            "props_set": "описание установлено",
+            "props_no_selection": "свойство не выбрано",
+            "props_no_guid": "GUID не найден",
         },
         "en": {
             "window_title": "Roombook setup check " + APP_VERSION,
@@ -610,14 +691,27 @@ STRINGS = {
             "checkbutton_auto": "Check all detected instances",
             "btn_refresh": "Refresh ports",
             "btn_run": "Run check",
+            "tab_check": "Check",
+            "tab_properties": "Properties",
+            "btn_load_props": "Load project properties",
+            "btn_apply_props": "Apply selected",
+            "checkbutton_overwrite": "Overwrite existing description",
+            "props_hint": "For each marker pick a property — its description becomes the marker.",
             "status_ready": "Ready",
             "status_scanning": "Scanning for Archicad...",
             "status_running": "Check in progress...",
+            "status_loading_props": "Loading properties...",
+            "status_props_loaded": "Properties loaded: %d (UserDefined).",
+            "status_props_done": "Descriptions applied: %d; skipped: %d; errors: %d.",
             "status_no_archicad": "Archicad not found. Start Archicad and open the project.",
             "status_done_ok": "Check finished: all good.",
             "status_done_fail": "Check finished: problems found.",
             "status_done_incomplete": "Check incomplete: some data could not be checked.",
             "status_error": "Error: ",
+            "props_already": "description exists",
+            "props_set": "description set",
+            "props_no_selection": "no property selected",
+            "props_no_guid": "GUID not found",
         },
     },
 }
@@ -670,13 +764,210 @@ class App(tk.Tk):
         self.btn_run = ttk.Button(actions, text="", command=self.run_check)
         self.btn_run.pack(side="right", **pad)
 
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill="both", expand=True, **pad)
+        self.tab_check = ttk.Frame(self.notebook)
+        self.tab_props = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab_check, text="")
+        self.notebook.add(self.tab_props, text="")
+
+        self.txt = scrolledtext.ScrolledText(self.tab_check, wrap="word", font=("Consolas", 9))
+        self.txt.pack(fill="both", expand=True, **pad)
+
+        self._build_properties_tab()
+
         self.status = tk.StringVar()
         self.status.set("")
         lbl_status = ttk.Label(self, textvariable=self.status, anchor="w")
         lbl_status.pack(fill="x", **pad)
 
-        self.txt = scrolledtext.ScrolledText(self, wrap="word", font=("Consolas", 9))
-        self.txt.pack(fill="both", expand=True, **pad)
+    def _build_properties_tab(self):
+        """Вкладка «Свойства»: для каждого маркера — выпадающий список с поиском."""
+        pad = {"padx": 6, "pady": 2}
+
+        bar = ttk.Frame(self.tab_props)
+        bar.pack(fill="x", **pad)
+        self.lbl_props_hint = ttk.Label(bar, text="")
+        self.lbl_props_hint.pack(side="left", **pad)
+        self.btn_load_props = ttk.Button(bar, text="", command=self.load_properties)
+        self.btn_load_props.pack(side="right", **pad)
+
+        self.var_overwrite = tk.BooleanVar(value=False)
+        self.chk_overwrite = ttk.Checkbutton(self.tab_props, text="", variable=self.var_overwrite)
+        self.chk_overwrite.pack(anchor="w", **pad)
+
+        self.btn_apply_props = ttk.Button(self.tab_props, text="", command=self.apply_descriptions)
+        self.btn_apply_props.pack(anchor="e", **pad)
+
+        # Прокручиваемый список строк «маркер — свойство — статус».
+        canvas = tk.Canvas(self.tab_props, highlightthickness=0)
+        scroll = ttk.Scrollbar(self.tab_props, orient="vertical", command=canvas.yview)
+        self.props_inner = ttk.Frame(canvas)
+        self.props_inner.bind(
+            "<Configure>",
+            lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=self.props_inner, anchor="nw")
+        canvas.configure(yscrollcommand=scroll.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+        self.props_canvas = canvas
+
+        self._property_labels = []   # метки «Группа / Имя» для поиска
+        self._property_by_label = {} # метка -> localizedName (list)
+        self._prop_rows = []         # [{marker, combo, status}]
+        for marker in REQUIRED_PROPERTY_MARKERS:
+            row = ttk.Frame(self.props_inner)
+            row.pack(fill="x", **pad)
+            ttk.Label(row, text=marker, width=36).pack(side="left")
+            combo = ttk.Combobox(row, values=[], width=48)
+            combo.pack(side="left", padx=6)
+            status = ttk.Label(row, text="", width=28)
+            status.pack(side="left")
+            combo.bind("<KeyRelease>", lambda event, r=row: self._on_property_search(r, event))
+            self._prop_rows.append({"marker": marker, "combo": combo, "status": status})
+
+    # ------------------------------------------------- вкладка «Свойства»
+    def _selected_port(self):
+        return self._port_by_label.get(self.cmb_port.get())
+
+    def load_properties(self):
+        if self._busy:
+            return
+        port = self._selected_port()
+        s = STRINGS["i18n"][self.lang]
+        if port is None:
+            self.status.set(s["status_no_archicad"])
+            return
+        self._set_busy(True)
+        self._worker_error = None
+        self.status.set(s["status_loading_props"])
+        self._props_result = None
+        self._props_thread = threading.Thread(
+            target=self._props_worker, args=(port,), daemon=True)
+        self._props_thread.start()
+        self.after(100, self._poll_props)
+
+    def _props_worker(self, port):
+        try:
+            self._props_result = fetch_user_properties(port)
+        except Exception as exc:
+            self._worker_error = str(exc)
+
+    def _poll_props(self):
+        if self._props_thread.is_alive():
+            self.after(100, self._poll_props)
+        else:
+            s = STRINGS["i18n"][self.lang]
+            props, err = self._props_result or (None, None)
+            if self._worker_error is not None:
+                self._show_worker_error()
+                return
+            if props is None:
+                self.status.set(s["status_error"] + (err or "?"))
+                self._set_busy(False)
+                return
+            self._property_labels = [label for label, _loc in props]
+            self._property_by_label = dict(props)
+            for row in self._prop_rows:
+                row["combo"]["values"] = self._property_labels
+            self.status.set(s["status_props_loaded"] % len(props))
+            self._set_busy(False)
+
+    @staticmethod
+    def _filter_properties(labels, typed):
+        typed = typed.strip().lower()
+        if not typed:
+            return labels
+        return [label for label in labels if label.lower().startswith(typed)] or [
+            label for label in labels if typed in label.lower()]
+
+    def _on_property_search(self, row, event):
+        # Поиск по первым буквам: фильтруем значения и держим список раскрытым.
+        if event.keysym in ("Up", "Down", "Return", "Escape", "Tab"):
+            return
+        combo = row["combo"]
+        matches = self._filter_properties(self._property_labels, combo.get())
+        combo["values"] = matches
+        if matches:
+            try:
+                combo.tk.eval("ttk::combobox::Post %s" % combo)
+            except tk.TclError:
+                pass
+
+    def apply_descriptions(self):
+        """Ставит описание = маркер выбранным свойствам (аддонная SetPropertyDescription)."""
+        if self._busy:
+            return
+        port = self._selected_port()
+        s = STRINGS["i18n"][self.lang]
+        if port is None:
+            self.status.set(s["status_no_archicad"])
+            return
+        tasks = []
+        overwrite = self.var_overwrite.get()
+        for row in self._prop_rows:
+            label = row["combo"].get().strip()
+            if not label:
+                row["status"].config(text=s["props_no_selection"])
+                continue
+            localizedName = self._property_by_label.get(label)
+            if localizedName is None:
+                row["status"].config(text=s["props_no_guid"])
+                continue
+            tasks.append((row, localizedName))
+        if not tasks:
+            return
+        self._set_busy(True)
+        self._worker_error = None
+        self.status.set(s["status_loading_props"])
+        self._apply_result = None
+        self._apply_thread = threading.Thread(
+            target=self._apply_worker, args=(port, tasks, overwrite), daemon=True)
+        self._apply_thread.start()
+        self.after(100, self._poll_apply)
+
+    def _apply_worker(self, port, tasks, overwrite):
+        try:
+            results = []
+            for row, localizedName in tasks:
+                guid, description = get_property_guid_and_description(port, localizedName)
+                if guid is None:
+                    results.append((row["marker"], "failed", "GUID не найден"))
+                    continue
+                # Существующее чужое описание без явного разрешения не перезаписываем.
+                if not overwrite and description and description != row["marker"]:
+                    results.append((row["marker"], "skipped", description))
+                    continue
+                ok, err = set_property_description(port, guid, row["marker"])
+                results.append((row["marker"], "applied" if ok else "failed", err))
+            self._apply_result = results
+        except Exception as exc:
+            self._worker_error = str(exc)
+
+    def _poll_apply(self):
+        if self._apply_thread.is_alive():
+            self.after(100, self._poll_apply)
+        else:
+            s = STRINGS["i18n"][self.lang]
+            if self._worker_error is not None:
+                self._show_worker_error()
+                return
+            applied = skipped = failed = 0
+            status_by_marker = {}
+            for marker, state, info in self._apply_result or []:
+                if state == "applied":
+                    applied += 1
+                    status_by_marker[marker] = s["props_set"]
+                elif state == "skipped":
+                    skipped += 1
+                    status_by_marker[marker] = "%s: %s" % (s["props_already"], info)
+                else:
+                    failed += 1
+                    status_by_marker[marker] = "ошибка: %s" % info
+            for row in self._prop_rows:
+                row["status"].config(text=status_by_marker.get(row["marker"], ""))
+            self.status.set(s["status_props_done"] % (applied, skipped, failed))
+            self._set_busy(False)
 
     def _apply_language(self):
         self.lang = self.cmb_lang.get() or "ru"
@@ -687,6 +978,12 @@ class App(tk.Tk):
         self.btn_refresh.config(text=s["btn_refresh"])
         self.chk_auto.config(text=s["checkbutton_auto"])
         self.btn_run.config(text=s["btn_run"])
+        self.notebook.tab(self.tab_check, text=s["tab_check"])
+        self.notebook.tab(self.tab_props, text=s["tab_properties"])
+        self.lbl_props_hint.config(text=s["props_hint"])
+        self.btn_load_props.config(text=s["btn_load_props"])
+        self.chk_overwrite.config(text=s["checkbutton_overwrite"])
+        self.btn_apply_props.config(text=s["btn_apply_props"])
         if self.status.get() in ("", "Ready", "Готов к работе"):
             self.status.set(s["status_ready"])
         self._fill_port_list()
@@ -697,6 +994,9 @@ class App(tk.Tk):
         self.btn_run.config(state=state)
         self.btn_refresh.config(state=state)
         self.chk_auto.config(state=state)
+        self.btn_load_props.config(state=state)
+        self.btn_apply_props.config(state=state)
+        self.chk_overwrite.config(state=state)
         self.cmb_port.config(state="disabled" if busy else "readonly")
 
     def _show_worker_error(self):
