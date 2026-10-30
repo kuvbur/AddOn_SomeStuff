@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """roombook_setup.py — первичная проверка готовности проекта Archicad к функции отделки.
 
@@ -20,8 +20,11 @@
 
 import argparse
 import concurrent.futures
+import ctypes
+import queue
 import json
 import sys
+import webbrowser
 import threading
 import urllib.request
 
@@ -82,6 +85,59 @@ REQUIRED_PROPERTY_MARKERS = [
     "some_stuff_fin_down_result_bytype",
     "some_stuff_fin_reveal_result_bytype",
 ]
+
+# Понятные тексты описаний свойств (wiki/ru/Finishing-ru.md, колонка «Назначение»).
+# Маркер обязан остаться в описании (аддон ищет свойства по Contains(marker)),
+# поэтому описание ставится в формате «Понятный текст (маркер)».
+MARKER_DESCRIPTIONS = {
+    "some_stuff_fin_has_ceil": "Наличие потолка",
+    "some_stuff_fin_has_floor": "Наличие пола",
+    "some_stuff_fin_floor_by_slab": "Считать и строить пол (и плинтус пола) только по перекрытиям",
+    "some_stuff_fin_ceil_by_slab": "Считать и строить потолок (и карниз потолка) только по перекрытиям",
+    "some_stuff_fin_type": "Тип отделки стен для объединения зон",
+    "some_stuff_fin_type_ceil": "Тип отделки потолка для объединения зон",
+    "some_stuff_fin_type_floor": "Тип отделки пола для объединения зон",
+    "some_stuff_fin_main_material": "Имя покрытия основной части стены (чистовая отделка)",
+    "some_stuff_fin_main_height": "Высота зоны до потолка (если не задан, либо равен нулю - принимается высота зоны)",
+    "some_stuff_fin_up_material": "Имя покрытия верхней части (разность высоты зоны и высоты основной отделки, чистовая отделка)",
+    "some_stuff_fin_down_material": "Имя покрытие панелей (низа стен и колонн, чистовая отделка)",
+    "some_stuff_fin_down_height": "Высота панелей",
+    "some_stuff_fin_column_material": "Имя покрытия колонн (чистовая отделка)",
+    "some_stuff_fin_ceil_material": "Имя покрытия потолка (чистовая отделка)",
+    "some_stuff_fin_ceil_result": "Отделка потолка (запись результата)",
+    "some_stuff_fin_main_result": "Отделка стен (запись результата)",
+    "some_stuff_fin_up_result": "Отделка верха стен, от подвесного потолка до верха стены (запись результата)",
+    "some_stuff_fin_down_result": "Отделка низа стен/колонн (запись результата)",
+    "some_stuff_fin_reveal_result": "Отделка откосов (запись результата)",
+    "some_stuff_fin_ceil_result_bytype": "Отделка потолка (запись результата с группировкой по типам отделки)",
+    "some_stuff_fin_main_result_bytype": "Отделка стен (запись результата с группировкой по типам отделки)",
+    "some_stuff_fin_up_result_bytype": "Отделка верха стен (запись результата с группировкой по типам отделки)",
+    "some_stuff_fin_down_result_bytype": "Отделка низа стен/колонн (запись результата с группировкой по типам отделки)",
+    "some_stuff_fin_reveal_result_bytype": "Отделка откосов (запись результата с группировкой по типам отделки)",
+}
+
+
+def build_property_description(marker):
+    """Описание свойства: понятный текст + маркер в скобках.
+
+    Маркер обязателен в описании (аддон ищет свойства по Contains(marker) в
+    описании, RoombookData); понятный текст показывает назначение в Archicad.
+    """
+    text = MARKER_DESCRIPTIONS.get(marker)
+    return "%s (%s)" % (text, marker) if text else marker
+
+
+def extract_format_block(description):
+    """Выделяет блок форматирования «{ ШИРИНА ; ШИРИНА ; РАЗМЕР ; ШРИФТ ... }»
+    из существующего описания свойства результата (wiki/ru/Finishing-ru.md).
+    Возвращает строку с блоком (с фигурными скобками) или пустую строку."""
+    start = description.find("{")
+    if start < 0:
+        return ""
+    end = description.find("}", start)
+    if end < 0:
+        return ""
+    return description[start:end + 1]
 
 # Комбинация слоёв ищется по суффиксу smstf_fin (Roombook.cpp:69-83).
 LAYER_COMBINATION_SUFFIX = "smstf_fin"
@@ -624,7 +680,8 @@ def report(port, sections):
         print("\n[%s] %s" % (status, title))
         print("    %s" % section["detail"])
         for row in section.get("rows", []):
-            label = row.get("name") or row.get("marker") or row.get("cls")
+            marker = row.get("marker")
+            label = row.get("name") or (build_property_description(marker) if marker else None) or row.get("cls")
             found = row.get("found")
             req = row.get("required")
             mark = "?" if found is None else ("OK " if found else "MISS")
@@ -651,28 +708,91 @@ def collect_report(port):
 # GUI (tkinter) — по образцу libpack2gsm; логика проверки — функции выше
 # ---------------------------------------------------------------------------
 
-APP_VERSION = "v1.0"
+APP_VERSION = "v2.0"
+SITE_URL = "https://kuvbur.org/go/archicad"
+
+# ---------------------------------------------------------------------------
+# GUI (tkinter) — дизайн по образцу somestuff_updater.py; логика проверок — функции выше
+# ---------------------------------------------------------------------------
+
+# Палитра: светлая и тёмная темы (автовыбор определяется в App по системе Windows)
+THEMES = {
+    "light": {
+        "bg": "#f4f5f8", "card": "#ffffff", "border": "#e0e3ea",
+        "text": "#1f2430", "muted": "#6b7385",
+        "accent": "#2563eb", "accent_dark": "#1d4ed8",
+        "hover": "#eef1f6", "trough": "#e3e7ef",
+        "err_fg": "#b91c1c", "ok_fg": "#15803d",
+    },
+    "dark": {
+        "bg": "#1e1f25", "card": "#2a2b33", "border": "#3a3c46",
+        "text": "#e2e4ec", "muted": "#9aa1b2",
+        "accent": "#3b82f6", "accent_dark": "#2563eb",
+        "hover": "#35373f", "trough": "#3a3c46",
+        "err_fg": "#f87171", "ok_fg": "#4ade80",
+    },
+}
+C_BG = THEMES["light"]["bg"]
+C_CARD = THEMES["light"]["card"]
+C_BORDER = THEMES["light"]["border"]
+C_TEXT = THEMES["light"]["text"]
+C_MUTED = THEMES["light"]["muted"]
+C_ACCENT = THEMES["light"]["accent"]
+C_ACCENT_DARK = THEMES["light"]["accent_dark"]
+# вид плашки статуса: (фон, текст) — тёмные варианты генерируются при переключении темы
+BADGES = {
+    "idle": ("#eceff4", "#6b7385"),
+    "info": ("#dbeafe", "#1d4ed8"),
+    "ok": ("#dcfce7", "#15803d"),
+    "warn": ("#fef3c7", "#b45309"),
+    "err": ("#fee2e2", "#b91c1c"),
+}
+BADGES_DARK = {
+    "idle": ("#2f313a", "#9aa1b2"),
+    "info": ("#1e3a8a", "#93c5fd"),
+    "ok": ("#14532d", "#4ade80"),
+    "warn": ("#78350f", "#fbbf24"),
+    "err": ("#7f1d1d", "#f87171"),
+}
+FONT = "Segoe UI"
+
+
+def _windows_prefers_dark():
+    """Тема системы Windows: 1 = тёмная (реестр AppsUseLightTheme)."""
+    try:
+        import winreg
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                             r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+        value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+        winreg.CloseKey(key)
+        return value == 0
+    except Exception:
+        return False
 
 STRINGS = {
     "i18n": {
         "ru": {
             "window_title": "Проверка отделки (Roombook) " + APP_VERSION,
-            "label_language": "Язык интерфейса:",
-            "label_port": "Экземпляр Archicad:",
+            "subtitle": "Проверка готовности проекта Archicad к ведомости отделки",
+            "label_language": "ЯЗЫК",
+            "label_theme": "ТЕМА",
+            "theme_light": "Светлая",
+            "theme_dark": "Тёмная",
+            "label_instance": "ARCHICAD",
             "checkbutton_auto": "Проверить все найденные экземпляры",
             "btn_refresh": "Обновить порты",
             "btn_run": "Запустить проверку",
-            "tab_check": "Проверка",
-            "tab_properties": "Свойства",
+            "cap_check": "ПРОВЕРКА",
+            "tab_properties": "СВОЙСТВА",
             "btn_load_props": "Загрузить свойства проекта",
             "btn_apply_props": "Применить выбранные",
             "checkbutton_overwrite": "Перезаписывать существующее описание",
-            "props_hint": "Для каждого маркера выберите свойство — его описание станет маркером.",
+            "props_hint": "Для каждого маркера выберите свойство — его описание получит понятный текст с маркером.",
             "status_ready": "Готов к работе",
             "status_scanning": "Поиск Archicad...",
             "status_running": "Проверка выполняется...",
             "status_loading_props": "Загрузка свойств...",
-            "status_props_loaded": "Свойства загружено: %d (UserDefined).",
+            "status_props_loaded": "Свойства загружены: %d (UserDefined).",
             "status_props_done": "Описания применены: %d; пропущено: %d; ошибки: %d.",
             "status_no_archicad": "Archicad не найден. Запустите Archicad и откройте проект.",
             "status_done_ok": "Проверка завершена: всё в порядке.",
@@ -683,20 +803,25 @@ STRINGS = {
             "props_set": "описание установлено",
             "props_no_selection": "свойство не выбрано",
             "props_no_guid": "GUID не найден",
+            "details": "Подробности",
         },
         "en": {
             "window_title": "Roombook setup check " + APP_VERSION,
-            "label_language": "Interface language:",
-            "label_port": "Archicad instance:",
+            "subtitle": "Check the Archicad project readiness for the Roombook finish",
+            "label_language": "LANGUAGE",
+            "label_theme": "THEME",
+            "theme_light": "Light",
+            "theme_dark": "Dark",
+            "label_instance": "ARCHICAD",
             "checkbutton_auto": "Check all detected instances",
             "btn_refresh": "Refresh ports",
             "btn_run": "Run check",
-            "tab_check": "Check",
-            "tab_properties": "Properties",
+            "cap_check": "CHECK",
+            "tab_properties": "PROPERTIES",
             "btn_load_props": "Load project properties",
             "btn_apply_props": "Apply selected",
             "checkbutton_overwrite": "Overwrite existing description",
-            "props_hint": "For each marker pick a property — its description becomes the marker.",
+            "props_hint": "For each marker pick a property — its description gets a readable text plus the marker.",
             "status_ready": "Ready",
             "status_scanning": "Scanning for Archicad...",
             "status_running": "Check in progress...",
@@ -712,6 +837,7 @@ STRINGS = {
             "props_set": "description set",
             "props_no_selection": "no property selected",
             "props_no_guid": "GUID not found",
+            "details": "Details",
         },
     },
 }
@@ -720,111 +846,256 @@ STRINGS = {
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(STRINGS["i18n"]["ru"]["window_title"])
-        self.geometry("780x560")
-        self.minsize(640, 420)
         self.lang = "ru"
+        s = STRINGS["i18n"][self.lang]
+        self.title(s["window_title"])
+        # Автовыбор темы: по теме системы Windows (AppsUseLightTheme); тёмная по умолчанию
+        self.theme = "dark" if _windows_prefers_dark() else "light"
+        self._badge_current = ("idle", "")
+        self._card_outer = []        # внешние рамки карточек — перекрашиваются при смене темы
+        self.configure(bg=THEMES[self.theme]["bg"])
+        self.minsize(820, 1)
         self.instances = []          # список экземпляров: {port, name, addon_loaded, version}
-        self._port_by_label = {}     # мапа «имя — порт» -> порт для выпадающего списка
+        self._port_by_label = {}     # метка «имя — порт» -> порт
+        self.q = queue.Queue()       # события из рабочих потоков → GUI
         self._busy = False
         self._worker_error = None
-        self._build_widgets()
+        self._setup_style()
+        self._build()
         self._apply_language()
+        self._pump()
+        self.after(200, self.refresh_ports)   # первый поиск портов сразу при запуске
 
-    # ------------------------------------------------------------------ UI
-    def _build_widgets(self):
-        pad = {"padx": 6, "pady": 4}
+    # ------------------------------------------------------------ стиль
+    def _setup_style(self):
+        s = ttk.Style(self)
+        s.theme_use("clam")
+        # Палитра берётся из выбранной темы; модульные C_* перенастраиваются,
+        # чтобы виджеты, созданные позже (_build), окрасились той же темой.
+        pal = THEMES[self.theme]
+        global C_BG, C_CARD, C_BORDER, C_TEXT, C_MUTED, C_ACCENT, C_ACCENT_DARK
+        C_BG = pal["bg"]
+        C_CARD = pal["card"]
+        C_BORDER = pal["border"]
+        C_TEXT = pal["text"]
+        C_MUTED = pal["muted"]
+        C_ACCENT = pal["accent"]
+        C_ACCENT_DARK = pal["accent_dark"]
+        s.configure(".", background=C_BG, foreground=C_TEXT, font=(FONT, 10))
+        s.configure("TFrame", background=C_BG)
+        s.configure("TLabel", background=C_BG)
+        s.configure("Card.TFrame", background=C_CARD)
+        s.configure("Card.TLabel", background=C_CARD)
+        s.configure("Muted.TLabel", foreground=C_MUTED)
+        s.configure("Title.TLabel", font=(FONT, 17, "bold"))
+        s.configure("Cap.TLabel", font=(FONT, 8, "bold"), foreground=C_MUTED, background=C_CARD)
+        s.configure("Small.TLabel", font=(FONT, 9), foreground=C_MUTED)
+        s.configure("SmallCard.TLabel", font=(FONT, 9), foreground=C_MUTED, background=C_CARD)
 
-        top = ttk.Frame(self)
-        top.pack(fill="x", **pad)
+        s.configure("TCombobox", fieldbackground=C_CARD, background=C_CARD,
+                    bordercolor=C_BORDER, lightcolor=C_CARD, darkcolor=C_CARD,
+                    arrowcolor=C_MUTED, padding=6)
+        s.map("TCombobox", fieldbackground=[("readonly", C_CARD), ("disabled", C_BG)],
+              bordercolor=[("focus", C_ACCENT)], foreground=[("disabled", C_MUTED)])
+        self.option_add("*TCombobox*Listbox.font", (FONT, 10))
+        self.option_add("*TCombobox*Listbox.selectBackground", C_ACCENT)
 
-        self.lbl_lang = ttk.Label(top, text="")
-        self.lbl_lang.pack(side="left", **pad)
-        self.cmb_lang = ttk.Combobox(top, values=["ru", "en"], state="readonly", width=5)
+        s.configure("Accent.TButton", background=C_ACCENT, foreground="white",
+                    borderwidth=0, focusthickness=0, padding=(22, 9), font=(FONT, 10, "bold"))
+        s.map("Accent.TButton",
+              background=[("disabled", pal["hover"]), ("pressed", C_ACCENT_DARK), ("active", C_ACCENT_DARK)],
+              foreground=[("disabled", "white")])
+        s.configure("Ghost.TButton", background=C_CARD, foreground=C_TEXT,
+                    bordercolor=C_BORDER, lightcolor=C_CARD, darkcolor=C_CARD,
+                    focusthickness=0, padding=(18, 8))
+        s.map("Ghost.TButton", background=[("active", pal["hover"])],
+              foreground=[("disabled", C_MUTED)])
+
+        s.configure("Horizontal.TProgressbar", troughcolor=pal["trough"], background=C_ACCENT,
+                    bordercolor=pal["trough"], borderwidth=0, lightcolor=C_ACCENT, darkcolor=C_ACCENT, thickness=6)
+
+    def _card(self, parent):
+        outer = tk.Frame(parent, bg=C_BORDER)
+        self._card_outer.append(outer)   # для перекраски при смене темы
+        inner = ttk.Frame(outer, style="Card.TFrame", padding=(18, 14))
+        inner.pack(fill="both", expand=True, padx=1, pady=1)
+        return outer, inner
+
+    # ---------------------------------------------------------- вёрстка
+    def _build(self):
+        main = ttk.Frame(self, padding=(22, 18, 22, 14))
+        main.pack(fill="both", expand=True)
+
+        # --- заголовок (справа — ссылка на сайт, как в somestuff_updater) ---
+        header = ttk.Frame(main)
+        header.pack(fill="x")
+        self.lbl_title = ttk.Label(header, text="", style="Title.TLabel")
+        self.lbl_title.pack(side="left")
+        self.lbl_site = tk.Label(header, text="Сайт ↗", font=(FONT, 10),
+                                 fg=C_ACCENT, bg=C_BG, cursor="hand2")
+        self.lbl_site.pack(side="right")
+        self.lbl_site.bind("<Button-1>", lambda _e: webbrowser.open(SITE_URL))
+        self.lbl_site.bind("<Enter>", lambda _e: self.lbl_site.config(fg=C_ACCENT_DARK))
+        self.lbl_site.bind("<Leave>", lambda _e: self.lbl_site.config(fg=C_ACCENT))
+        self.lbl_subtitle = ttk.Label(main, text="", style="Muted.TLabel")
+        self.lbl_subtitle.pack(anchor="w", pady=(0, 12))
+
+        # --- карточка: экземпляр Archicad ---
+        outer, card = self._card(main)
+        outer.pack(fill="x")
+        card.columnconfigure(1, weight=1)
+        self.lbl_port = ttk.Label(card, text="", style="Cap.TLabel")
+        self.lbl_port.grid(row=0, column=0, sticky="w", padx=(0, 18))
+        self.cmb_port = ttk.Combobox(card, values=[], state="readonly", width=40)
+        self.cmb_port.grid(row=0, column=1, sticky="ew")
+        self.lbl_lang = ttk.Label(card, text="", style="Cap.TLabel")
+        self.lbl_lang.grid(row=1, column=0, sticky="w", padx=(0, 18), pady=(10, 0))
+        self.cmb_lang = ttk.Combobox(card, values=["ru", "en"], state="readonly", width=6)
         self.cmb_lang.current(0)
-        self.cmb_lang.pack(side="left", **pad)
+        self.cmb_lang.grid(row=1, column=1, sticky="w", pady=(10, 0))
         self.cmb_lang.bind("<<ComboboxSelected>>", lambda _e: self._apply_language())
-
-        selection = ttk.Frame(self)
-        selection.pack(fill="x", **pad)
-        self.lbl_port = ttk.Label(selection, text="")
-        self.lbl_port.pack(side="left", **pad)
-        self.cmb_port = ttk.Combobox(selection, values=[], state="readonly", width=32)
-        self.cmb_port.pack(side="left", **pad)
-
-        self.btn_refresh = ttk.Button(selection, text="", command=self.refresh_ports)
-        self.btn_refresh.pack(side="left", **pad)
-
-        actions = ttk.Frame(self)
-        actions.pack(fill="x", **pad)
+        # Переключатель темы (тёмная/светлая); начальное значение — автовыбор из __init__
+        self.lbl_theme = ttk.Label(card, text="", style="Cap.TLabel")
+        self.lbl_theme.grid(row=1, column=2, sticky="e", padx=(18, 6))
+        self.cmb_theme = ttk.Combobox(card, values=[], state="readonly", width=9)
+        self.cmb_theme.grid(row=1, column=3, sticky="e", pady=(10, 0))
+        self.cmb_theme.bind("<<ComboboxSelected>>", lambda _e: self._apply_theme())
         self.var_auto = tk.BooleanVar(value=False)
-        self.chk_auto = ttk.Checkbutton(actions, text="", variable=self.var_auto)
-        self.chk_auto.pack(side="left", **pad)
+        self.chk_auto = ttk.Checkbutton(card, text="", variable=self.var_auto)
+        self.chk_auto.grid(row=2, column=1, sticky="w", pady=(10, 0))
 
-        self.btn_run = ttk.Button(actions, text="", command=self.run_check)
-        self.btn_run.pack(side="right", **pad)
+        # --- карточка: отчёт проверки (скрыта до нажатия «Проверка») ---
+        outer2, card2 = self._card(main)
+        self.report_outer = outer2
+        card2.columnconfigure(0, weight=1)
+        self.cap_check = ttk.Label(card2, text="", style="Cap.TLabel")
+        self.cap_check.grid(row=0, column=0, sticky="w")
+        self.badge = tk.Label(card2, text="", font=(FONT, 9, "bold"), padx=10, pady=4,
+                              anchor="w", justify="left")
+        self.badge.grid(row=0, column=0, sticky="e")
+        self._set_badge("idle", "")
 
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill="both", expand=True, **pad)
-        self.tab_check = ttk.Frame(self.notebook)
-        self.tab_props = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_check, text="")
-        self.notebook.add(self.tab_props, text="")
+        self.progress = ttk.Progressbar(card2, mode="indeterminate")
+        self.progress.grid(row=1, column=0, sticky="ew", pady=(10, 0))
 
-        self.txt = scrolledtext.ScrolledText(self.tab_check, wrap="word", font=("Consolas", 9))
-        self.txt.pack(fill="both", expand=True, **pad)
+        self.txt = tk.Text(card2, height=14, wrap="word", relief="flat",
+                           font=("Consolas", 9), bg=C_CARD, fg=C_TEXT, padx=10, pady=8,
+                           state="disabled", borderwidth=0, highlightthickness=0)
+        sb = ttk.Scrollbar(card2, command=self.txt.yview)
+        self.txt.configure(yscrollcommand=sb.set)
+        sb.grid(row=2, column=1, sticky="ns")
+        self.txt.grid(row=2, column=0, sticky="nsew", pady=(10, 0))
+        card2.rowconfigure(2, weight=1)
+        pal = THEMES[self.theme]
+        self.txt.tag_configure("err", foreground=pal["err_fg"])
+        self.txt.tag_configure("ok", foreground=pal["ok_fg"])
+        self.txt.tag_configure("dim", foreground=C_MUTED)
 
-        self._build_properties_tab()
-
-        self.status = tk.StringVar()
-        self.status.set("")
-        lbl_status = ttk.Label(self, textvariable=self.status, anchor="w")
-        lbl_status.pack(fill="x", **pad)
-
-    def _build_properties_tab(self):
-        """Вкладка «Свойства»: для каждого маркера — выпадающий список с поиском."""
-        pad = {"padx": 6, "pady": 2}
-
-        bar = ttk.Frame(self.tab_props)
-        bar.pack(fill="x", **pad)
-        self.lbl_props_hint = ttk.Label(bar, text="")
-        self.lbl_props_hint.pack(side="left", **pad)
-        self.btn_load_props = ttk.Button(bar, text="", command=self.load_properties)
-        self.btn_load_props.pack(side="right", **pad)
+        # --- карточка: свойства (описания маркеров) ---
+        outer3, card3 = self._card(main)
+        outer3.pack(fill="x", pady=(12, 0))
+        card3.columnconfigure(1, weight=1)
+        self.cap_props = ttk.Label(card3, text="", style="Cap.TLabel")
+        self.cap_props.grid(row=0, column=0, columnspan=2, sticky="w")
+        self.lbl_props_hint = ttk.Label(card3, text="", style="SmallCard.TLabel")
+        self.lbl_props_hint.grid(row=1, column=0, columnspan=2, sticky="w", pady=(4, 8))
 
         self.var_overwrite = tk.BooleanVar(value=False)
-        self.chk_overwrite = ttk.Checkbutton(self.tab_props, text="", variable=self.var_overwrite)
-        self.chk_overwrite.pack(anchor="w", **pad)
-
-        self.btn_apply_props = ttk.Button(self.tab_props, text="", command=self.apply_descriptions)
-        self.btn_apply_props.pack(anchor="e", **pad)
+        self.chk_overwrite = ttk.Checkbutton(card3, text="", variable=self.var_overwrite)
+        self.chk_overwrite.grid(row=2, column=0, columnspan=2, sticky="w")
 
         # Прокручиваемый список строк «маркер — свойство — статус».
-        canvas = tk.Canvas(self.tab_props, highlightthickness=0)
-        scroll = ttk.Scrollbar(self.tab_props, orient="vertical", command=canvas.yview)
-        self.props_inner = ttk.Frame(canvas)
+        canvas = tk.Canvas(card3, highlightthickness=0, bg=C_CARD, height=180)
+        scroll = ttk.Scrollbar(card3, orient="vertical", command=canvas.yview)
+        self.props_inner = ttk.Frame(canvas, style="Card.TFrame")
         self.props_inner.bind(
             "<Configure>",
             lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=self.props_inner, anchor="nw")
         canvas.configure(yscrollcommand=scroll.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        scroll.pack(side="right", fill="y")
+        canvas.grid(row=3, column=0, columnspan=2, sticky="ew")
+        scroll.grid(row=3, column=2, sticky="ns")
         self.props_canvas = canvas
+
+        self.btn_load_props = ttk.Button(card3, text="", style="Ghost.TButton", command=self.load_properties)
+        self.btn_load_props.grid(row=4, column=0, sticky="w", pady=(10, 0))
+        self.btn_apply_props = ttk.Button(card3, text="", style="Accent.TButton", command=self.apply_descriptions)
+        self.btn_apply_props.grid(row=4, column=1, sticky="e", pady=(10, 0))
 
         self._property_labels = []   # метки «Группа / Имя» для поиска
         self._property_by_label = {} # метка -> localizedName (list)
         self._prop_rows = []         # [{marker, combo, status}]
         for marker in REQUIRED_PROPERTY_MARKERS:
-            row = ttk.Frame(self.props_inner)
-            row.pack(fill="x", **pad)
-            ttk.Label(row, text=marker, width=36).pack(side="left")
+            row = ttk.Frame(self.props_inner, style="Card.TFrame")
+            row.pack(fill="x", pady=2)
+            # Человекочитаемое имя вместо технического маркера
+            # (some_stuff_fin_has_ceil → «Наличие потолка»); маркер — мелкой строкой.
+            human = MARKER_DESCRIPTIONS.get(marker, marker)
+            ttk.Label(row, text=human, width=36, style="Card.TLabel").pack(side="left")
+            ttk.Label(row, text=marker, width=28, style="SmallCard.TLabel").pack(side="left", padx=(0, 6))
             combo = ttk.Combobox(row, values=[], width=48)
             combo.pack(side="left", padx=6)
-            status = ttk.Label(row, text="", width=28)
+            status = tk.Label(row, text="", font=(FONT, 8), padx=8, pady=2, anchor="w")
             status.pack(side="left")
             combo.bind("<KeyRelease>", lambda event, r=row: self._on_property_search(r, event))
             self._prop_rows.append({"marker": marker, "combo": combo, "status": status})
+
+        # --- строка статуса ---
+        self.status = tk.StringVar(value="")
+        lbl_status = ttk.Label(main, textvariable=self.status, style="Small.TLabel", anchor="w")
+        lbl_status.pack(fill="x", pady=(10, 0))
+
+        # --- кнопки ---
+        btns = ttk.Frame(main)
+        btns.pack(fill="x", pady=(12, 0))
+        self.btn_run = ttk.Button(btns, text="", style="Accent.TButton", command=self.run_check)
+        self.btn_run.pack(side="right")
+        self.btn_refresh = ttk.Button(btns, text="", style="Ghost.TButton", command=self.refresh_ports)
+        self.btn_refresh.pack(side="right", padx=(0, 8))
+
+    # ------------------------------------------------- утилиты очереди
+    def _pump(self):
+        try:
+            while True:
+                self.q.get_nowait()()
+        except queue.Empty:
+            pass
+        except Exception as e:  # ошибка в обработчике не должна убить очередь
+            self.status.set(STRINGS["i18n"][self.lang]["status_error"] + str(e))
+        self.after(50, self._pump)
+
+    def post(self, fn, *args):
+        """Вызов функции в GUI-потоке из рабочего потока."""
+        self.q.put(lambda: fn(*args))
+
+    def _set_badge(self, kind, text):
+        self._badge_current = (kind, text)
+        bg, fg = self._badge_colors(kind)
+        self.badge.configure(text=text, bg=bg, fg=fg)
+
+    def _badge_colors(self, kind):
+        return (BADGES_DARK if self.theme == "dark" else BADGES)[kind]
+
+    def _set_busy(self, busy):
+        self._busy = busy
+        state = "disabled" if busy else "normal"
+        self.btn_run.config(state=state)
+        self.btn_refresh.config(state=state)
+        self.chk_auto.config(state=state)
+        self.btn_load_props.config(state=state)
+        self.btn_apply_props.config(state=state)
+        self.chk_overwrite.config(state=state)
+        self.cmb_port.config(state="disabled" if busy else "readonly")
+        self.cmb_lang.config(state="disabled" if busy else "readonly")
+        if busy:
+            self.progress.start(14)
+        else:
+            self.progress.stop()
+
+    def _show_worker_error(self):
+        self.status.set(STRINGS["i18n"][self.lang]["status_error"] + self._worker_error)
+        self._set_badge("err", self._worker_error)
+        self._set_busy(False)
 
     # ------------------------------------------------- вкладка «Свойства»
     def _selected_port(self):
@@ -841,37 +1112,31 @@ class App(tk.Tk):
         self._set_busy(True)
         self._worker_error = None
         self.status.set(s["status_loading_props"])
-        self._props_result = None
-        self._props_thread = threading.Thread(
-            target=self._props_worker, args=(port,), daemon=True)
-        self._props_thread.start()
-        self.after(100, self._poll_props)
+        self._set_badge("idle", s["status_loading_props"])
+        threading.Thread(target=self._props_worker, args=(port,), daemon=True).start()
 
     def _props_worker(self, port):
         try:
-            self._props_result = fetch_user_properties(port)
+            result = fetch_user_properties(port)
+            self.post(self._props_done, result)
         except Exception as exc:
             self._worker_error = str(exc)
+            self.post(self._show_worker_error)
 
-    def _poll_props(self):
-        if self._props_thread.is_alive():
-            self.after(100, self._poll_props)
-        else:
-            s = STRINGS["i18n"][self.lang]
-            props, err = self._props_result or (None, None)
-            if self._worker_error is not None:
-                self._show_worker_error()
-                return
-            if props is None:
-                self.status.set(s["status_error"] + (err or "?"))
-                self._set_busy(False)
-                return
-            self._property_labels = [label for label, _loc in props]
-            self._property_by_label = dict(props)
-            for row in self._prop_rows:
-                row["combo"]["values"] = self._property_labels
-            self.status.set(s["status_props_loaded"] % len(props))
+    def _props_done(self, result):
+        s = STRINGS["i18n"][self.lang]
+        props, err = result or (None, None)
+        if props is None:
+            self.status.set(s["status_error"] + (err or "?"))
             self._set_busy(False)
+            return
+        self._property_labels = [label for label, _loc in props]
+        self._property_by_label = dict(props)
+        for row in self._prop_rows:
+            row["combo"]["values"] = self._property_labels
+        self.status.set(s["status_props_loaded"] % len(props))
+        self._set_badge("ok", s["status_props_loaded"] % len(props))
+        self._set_busy(False)
 
     @staticmethod
     def _filter_properties(labels, typed):
@@ -895,7 +1160,7 @@ class App(tk.Tk):
                 pass
 
     def apply_descriptions(self):
-        """Ставит описание = маркер выбранным свойствам (аддонная SetPropertyDescription)."""
+        """Ставит выбранным свойствам описание «Понятный текст (маркер)»."""
         if self._busy:
             return
         port = self._selected_port()
@@ -908,11 +1173,13 @@ class App(tk.Tk):
         for row in self._prop_rows:
             label = row["combo"].get().strip()
             if not label:
-                row["status"].config(text=s["props_no_selection"])
+                bg, fg = self._badge_colors("idle")
+                row["status"].config(text=s["props_no_selection"], bg=bg, fg=fg)
                 continue
             localizedName = self._property_by_label.get(label)
             if localizedName is None:
-                row["status"].config(text=s["props_no_guid"])
+                bg, fg = self._badge_colors("warn")
+                row["status"].config(text=s["props_no_guid"], bg=bg, fg=fg)
                 continue
             tasks.append((row, localizedName))
         if not tasks:
@@ -920,11 +1187,8 @@ class App(tk.Tk):
         self._set_busy(True)
         self._worker_error = None
         self.status.set(s["status_loading_props"])
-        self._apply_result = None
-        self._apply_thread = threading.Thread(
-            target=self._apply_worker, args=(port, tasks, overwrite), daemon=True)
-        self._apply_thread.start()
-        self.after(100, self._poll_apply)
+        self._set_badge("idle", s["status_loading_props"])
+        threading.Thread(target=self._apply_worker, args=(port, tasks, overwrite), daemon=True).start()
 
     def _apply_worker(self, port, tasks, overwrite):
         try:
@@ -935,72 +1199,42 @@ class App(tk.Tk):
                     results.append((row["marker"], "failed", "GUID не найден"))
                     continue
                 # Существующее чужое описание без явного разрешения не перезаписываем.
-                if not overwrite and description and description != row["marker"]:
+                expected = build_property_description(row["marker"])
+                block = extract_format_block(description or "")
+                if block:
+                    # Блок форматирования результата { ... ; шрифт ... } сохраняем.
+                    expected = expected + "\n" + block
+                if not overwrite and description and description != expected:
                     results.append((row["marker"], "skipped", description))
                     continue
-                ok, err = set_property_description(port, guid, row["marker"])
+                ok, err = set_property_description(port, guid, expected)
                 results.append((row["marker"], "applied" if ok else "failed", err))
-            self._apply_result = results
+            self.post(self._apply_done, results)
         except Exception as exc:
             self._worker_error = str(exc)
+            self.post(self._show_worker_error)
 
-    def _poll_apply(self):
-        if self._apply_thread.is_alive():
-            self.after(100, self._poll_apply)
-        else:
-            s = STRINGS["i18n"][self.lang]
-            if self._worker_error is not None:
-                self._show_worker_error()
-                return
-            applied = skipped = failed = 0
-            status_by_marker = {}
-            for marker, state, info in self._apply_result or []:
-                if state == "applied":
-                    applied += 1
-                    status_by_marker[marker] = s["props_set"]
-                elif state == "skipped":
-                    skipped += 1
-                    status_by_marker[marker] = "%s: %s" % (s["props_already"], info)
-                else:
-                    failed += 1
-                    status_by_marker[marker] = "ошибка: %s" % info
-            for row in self._prop_rows:
-                row["status"].config(text=status_by_marker.get(row["marker"], ""))
-            self.status.set(s["status_props_done"] % (applied, skipped, failed))
-            self._set_busy(False)
-
-    def _apply_language(self):
-        self.lang = self.cmb_lang.get() or "ru"
+    def _apply_done(self, results):
         s = STRINGS["i18n"][self.lang]
-        self.title(s["window_title"])
-        self.lbl_lang.config(text=s["label_language"])
-        self.lbl_port.config(text=s["label_port"])
-        self.btn_refresh.config(text=s["btn_refresh"])
-        self.chk_auto.config(text=s["checkbutton_auto"])
-        self.btn_run.config(text=s["btn_run"])
-        self.notebook.tab(self.tab_check, text=s["tab_check"])
-        self.notebook.tab(self.tab_props, text=s["tab_properties"])
-        self.lbl_props_hint.config(text=s["props_hint"])
-        self.btn_load_props.config(text=s["btn_load_props"])
-        self.chk_overwrite.config(text=s["checkbutton_overwrite"])
-        self.btn_apply_props.config(text=s["btn_apply_props"])
-        if self.status.get() in ("", "Ready", "Готов к работе"):
-            self.status.set(s["status_ready"])
-        self._fill_port_list()
-
-    def _set_busy(self, busy):
-        self._busy = busy
-        state = "disabled" if busy else "normal"
-        self.btn_run.config(state=state)
-        self.btn_refresh.config(state=state)
-        self.chk_auto.config(state=state)
-        self.btn_load_props.config(state=state)
-        self.btn_apply_props.config(state=state)
-        self.chk_overwrite.config(state=state)
-        self.cmb_port.config(state="disabled" if busy else "readonly")
-
-    def _show_worker_error(self):
-        self.status.set(STRINGS["i18n"][self.lang]["status_error"] + self._worker_error)
+        applied = skipped = failed = 0
+        status_by_marker = {}
+        for marker, state, info in results or []:
+            if state == "applied":
+                applied += 1
+                status_by_marker[marker] = (s["props_set"], "ok")
+            elif state == "skipped":
+                skipped += 1
+                status_by_marker[marker] = ("%s: %s" % (s["props_already"], info), "info")
+            else:
+                failed += 1
+                status_by_marker[marker] = ("ошибка: %s" % info, "err")
+        for row in self._prop_rows:
+            text, kind = status_by_marker.get(row["marker"], ("", "idle"))
+            bg, fg = self._badge_colors(kind)
+            row["status"].config(text=text, bg=bg, fg=fg)
+        self.status.set(s["status_props_done"] % (applied, skipped, failed))
+        badge_kind = "ok" if failed == 0 else "err"
+        self._set_badge(badge_kind, s["status_props_done"] % (applied, skipped, failed))
         self._set_busy(False)
 
     # ----------------------------------------------------------- действия
@@ -1011,28 +1245,16 @@ class App(tk.Tk):
         self._worker_error = None
         s = STRINGS["i18n"][self.lang]
         self.status.set(s["status_scanning"])
-        self.btn_run.config(state="disabled")
-        self._scan_result = None
-        self._scan_thread = threading.Thread(
-            target=self._scan_worker, daemon=True)
-        self._scan_thread.start()
-        # after() из фонового потока в tkinter небезопасен — опрос из главного
-        self.after(100, self._poll_scan)
+        self._set_badge("idle", s["status_scanning"])
+        threading.Thread(target=self._scan_worker, daemon=True).start()
 
     def _scan_worker(self):
         try:
-            self._scan_result = discover_instances(None)
+            result = discover_instances(None)
+            self.post(self._ports_found, result)
         except Exception as exc:
             self._worker_error = str(exc)
-
-    def _poll_scan(self):
-        if self._scan_thread.is_alive():
-            self.after(100, self._poll_scan)
-        else:
-            if self._worker_error is not None:
-                self._show_worker_error()
-            else:
-                self._ports_found(self._scan_result or [])
+            self.post(self._show_worker_error)
 
     def _ports_found(self, instances):
         self.instances = instances
@@ -1041,8 +1263,10 @@ class App(tk.Tk):
         if instances:
             names = ", ".join(i["name"] for i in instances)
             self.status.set("Archicad: " + names)
+            self._set_badge("info", "Archicad: " + names)
         else:
             self.status.set(s["status_no_archicad"])
+            self._set_badge("warn", s["status_no_archicad"])
         self._set_busy(False)
 
     def _fill_port_list(self):
@@ -1072,46 +1296,49 @@ class App(tk.Tk):
                 return
         self._set_busy(True)
         self._worker_error = None
+        # Развернуть секцию проверки внизу окна (скрыта до первого запуска)
+        self.report_outer.pack(fill="both", expand=True, pady=(12, 0))
         self.status.set(s["status_running"])
-        self.btn_run.config(state="disabled")
+        self._set_badge("idle", s["status_running"])
+        self.txt.configure(state="normal")
         self.txt.delete("1.0", "end")
-        self._check_result = None
-        self._check_thread = threading.Thread(
-            target=self._check_worker, args=(port,), daemon=True)
-        self._check_thread.start()
-        self.after(100, self._poll_check)
+        self.txt.configure(state="disabled")
+        threading.Thread(target=self._check_worker, args=(port,), daemon=True).start()
 
     def _check_worker(self, port):
         try:
-            self._collect_check_result(port)
+            ports = [port] if port else discover_ports(None)
+            if not ports:
+                self.post(self._check_done, "", False, False)
+                return
+            text_parts = []
+            any_fail = False
+            any_unknown = False
+            for p in ports:
+                sections = collect_report(p)
+                self.post(self._append_report, self._format_report(p, sections))
+                if any(sec["ok"] is False for sec in sections.values()):
+                    any_fail = True
+                if any(sec["ok"] is None for sec in sections.values()):
+                    any_unknown = True
+            self.post(self._check_done, None, any_fail, any_unknown)
         except Exception as exc:
             self._worker_error = str(exc)
+            self.post(self._show_worker_error)
 
-    def _collect_check_result(self, port):
-        ports = [port] if port else discover_ports(None)
-        if not ports:
-            self._check_result = ("", False, False)
-            return
-        text_parts = []
-        any_fail = False
-        any_unknown = False
-        for p in ports:
-            sections = collect_report(p)
-            text_parts.append(self._format_report(p, sections))
-            if any(sec["ok"] is False for sec in sections.values()):
-                any_fail = True
-            if any(sec["ok"] is None for sec in sections.values()):
-                any_unknown = True
-        self._check_result = ("".join(text_parts), any_fail, any_unknown)
+    def _append_report(self, text):
+        self.txt.configure(state="normal")
+        self.txt.insert("end", text)
+        self.txt.see("end")
+        self.txt.configure(state="disabled")
 
-    def _poll_check(self):
-        if self._check_thread.is_alive():
-            self.after(100, self._poll_check)
-        else:
-            if self._worker_error is not None:
-                self._show_worker_error()
-            else:
-                self._check_done(*(self._check_result or ("", False, False)))
+    def _check_done(self, _text, any_fail=False, any_unknown=False):
+        s = STRINGS["i18n"][self.lang]
+        key = ("status_done_fail" if any_fail else
+               ("status_done_incomplete" if any_unknown else "status_done_ok"))
+        self.status.set(s[key])
+        self._set_badge("err" if any_fail else ("warn" if any_unknown else "ok"), s[key])
+        self._set_busy(False)
 
     @staticmethod
     def _format_report(port, sections):
@@ -1123,7 +1350,8 @@ class App(tk.Tk):
             lines.append("[%s] %s" % (mark, title))
             lines.append("    " + section["detail"])
             for row in section.get("rows", []):
-                label = row.get("name") or row.get("marker") or row.get("cls")
+                marker = row.get("marker")
+                label = row.get("name") or (build_property_description(marker) if marker else None) or row.get("cls")
                 found = row.get("found")
                 req = row.get("required")
                 mark = "?" if found is None else ("OK " if found else "MISS")
@@ -1132,20 +1360,46 @@ class App(tk.Tk):
         lines.append("")
         return "\n".join(lines) + "\n"
 
-    def _check_done(self, text, any_fail=False, any_unknown=False):
-        if not text:
-            self.status.set(STRINGS["i18n"][self.lang]["status_no_archicad"])
-        else:
-            self.txt.insert("1.0", text)
-            self.status.set(STRINGS["i18n"][self.lang][
-                "status_done_fail" if any_fail else (
-                    "status_done_incomplete" if any_unknown else "status_done_ok")])
-        self._set_busy(False)
+    def _apply_language(self):
+        self.lang = self.cmb_lang.get() or "ru"
+        s = STRINGS["i18n"][self.lang]
+        self.title(s["window_title"])
+        self.lbl_title.config(text=s["window_title"])
+        self.lbl_subtitle.config(text=s["subtitle"])
+        self.lbl_lang.config(text=s["label_language"])
+        self.lbl_theme.config(text=s["label_theme"])
+        self.cmb_theme.config(values=[s["theme_light"], s["theme_dark"]])
+        self.cmb_theme.current(1 if self.theme == "dark" else 0)
+        self.lbl_port.config(text=s["label_instance"])
+        self.chk_auto.config(text=s["checkbutton_auto"])
+        self.btn_refresh.config(text=s["btn_refresh"])
+        self.btn_run.config(text=s["btn_run"])
+        self.cap_check.config(text=s["cap_check"])
+        self.cap_props.config(text=s["tab_properties"])
+        self.lbl_props_hint.config(text=s["props_hint"])
+        self.btn_load_props.config(text=s["btn_load_props"])
+        self.chk_overwrite.config(text=s["checkbutton_overwrite"])
+        self.btn_apply_props.config(text=s["btn_apply_props"])
+        if self.status.get() in ("", "Ready", "Готов к работе"):
+            self.status.set(s["status_ready"])
 
+    def _apply_theme(self):
+        """Смена темы: пересобрать стиль и перекрасить «сырые» (tk) виджеты."""
+        self.theme = "dark" if self.cmb_theme.current() == 1 else "light"
+        self._setup_style()
+        pal = THEMES[self.theme]
+        self.configure(bg=pal["bg"])
+        self.lbl_site.config(bg=pal["bg"])
+        for outer in self._card_outer:
+            outer.config(bg=pal["border"])
+        self.txt.config(bg=pal["card"], fg=pal["text"])
+        self.txt.tag_configure("err", foreground=pal["err_fg"])
+        self.txt.tag_configure("ok", foreground=pal["ok_fg"])
+        self.txt.tag_configure("dim", foreground=pal["muted"])
+        self.props_canvas.config(bg=pal["card"])
+        kind, text = self._badge_current
+        self._set_badge(kind, text)
 
-# ---------------------------------------------------------------------------
-# Точка входа: без аргументов — GUI; --cli — консольный отчёт
-# ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="Проверка готовности проекта к функции отделки (Roombook).")
