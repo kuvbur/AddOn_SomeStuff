@@ -2,7 +2,7 @@
 
 #include "tests/TestFunc.hpp"
 
-#if defined(TESTING) && defined(ServerMainVers_2500)
+#if defined(TESTING)
 
     #include <cmath>
     #include <cstdlib>
@@ -18,6 +18,9 @@
     #else
         #define SMSTF_INDEX(i) (i)
     #endif
+
+    // Тесты целиком используют типы Roombook, объявленные только для AC >= 24.
+    #if defined(ServerMainVers_2400)
 
 namespace TestFunc {
     void TestFinishReuse () {
@@ -76,6 +79,8 @@ namespace TestFunc {
         API_Element beam = {};
         SetElemTypeID (beam, API_BeamID);
         beam.beam.nSegments = 1;
+        beam.beam.nSchemes = 1;
+        beam.beam.nCuts = 2;
         existing.Set (first, beam);
         API_Element multiBeam = beam;
         multiBeam.beam.nSegments = 2;
@@ -86,6 +91,41 @@ namespace TestFunc {
                "multisegment candidate is not reused");
         existing.Set (first, beam);
         check (OtdWall_TakeExistingFinish (pool, beam, existing) == first, "single segment beam can be reused");
+        pool.Add (first, true);
+        API_Element invalidBeam = beam;
+        invalidBeam.beam.nSchemes = 2;
+        existing.Set (first, invalidBeam);
+        check (OtdWall_TakeExistingFinish (pool, beam, existing) == APINULLGuid,
+               "incompatible segment scheme is not consumed");
+        pool.Add (first, true);
+        invalidBeam = beam;
+        invalidBeam.beam.nCuts = 1;
+        existing.Set (first, invalidBeam);
+        check (OtdWall_TakeExistingFinish (pool, beam, existing) == APINULLGuid,
+               "incompatible segment cuts are not consumed");
+
+        API_Element slab = {};
+        SetElemTypeID (slab, API_SlabID);
+        existing.Set (first, slab);
+        check (OtdWall_TakeExistingFinish (pool, slab, existing) == first, "surface slab can be reused");
+        pool.Add (first, true);
+        check (OtdWall_TakeExistingFinish (pool, object, existing) == APINULLGuid,
+               "slab cannot be passed to polygon object writer");
+        API_Element roof = {};
+        SetElemTypeID (roof, API_RoofID);
+        roof.roof.roofClass = API_PlaneRoofID;
+        existing.Set (first, roof);
+        check (OtdWall_TakeExistingFinish (pool, slab, existing) == APINULLGuid,
+               "mesh roof cannot be passed to slab writer");
+        API_Element polyRoof = roof;
+        polyRoof.roof.roofClass = API_PolyRoofID;
+        existing.Set (first, polyRoof);
+        check (OtdWall_TakeExistingFinish (pool, roof, existing) == APINULLGuid,
+               "multi plane roof is not converted for reuse");
+        existing.Set (first, roof);
+        check (OtdWall_TakeExistingFinish (pool, polyRoof, existing) == APINULLGuid,
+               "multi plane target is not supported");
+        check (OtdWall_TakeExistingFinish (pool, roof, existing) == first, "single plane roof can be reused");
     }
 
     void TestFinishReuseNative () {
@@ -114,61 +154,62 @@ namespace TestFunc {
                 : ACAPI_CallUndoableCommand ("Finish reuse native checks", [&] () -> GSErrCode {
                       OtdWall source;
                       source.surface_geometry = true;
-                      source.favorite.type = API_WallID;
-                      source.begC = {10000, 10000};
-                      source.endC = {10006, 10000};
-                      source.height = 3;
-                      source.material.material = 1;
+                      source.draw.favorite.type = API_WallID;
+                      source.geom.seg.begC = {10000, 10000};
+                      source.geom.seg.endC = {10006, 10000};
+                      source.geom.height = 3;
+                      source.draw.material.material = 1;
                       source.slant_angle = 90 * DEGRAD;
                       UnicElementByType links;
                       OtdWall initial = source;
                       OtdWall_Draw (stories, initial, links);
-                      check (initial.draw_error == NoError && initial.otd_guid != APINULLGuid, "native wall created");
-                      if (initial.draw_error != NoError || initial.otd_guid == APINULLGuid)
+                      check (initial.draw.draw_error == NoError && initial.draw.otd_guid != APINULLGuid,
+                             "native wall created");
+                      if (initial.draw.draw_error != NoError || initial.draw.otd_guid == APINULLGuid)
                           return APIERR_BADPARS;
-                      nativeWall = initial.otd_guid;
+                      nativeWall = initial.draw.otd_guid;
                       OtdWall changed = source;
-                      changed.otd_guid = nativeWall;
-                      changed.height = 2.5;
-                      changed.endC.x += 1;
+                      changed.draw.otd_guid = nativeWall;
+                      changed.geom.height = 2.5;
+                      changed.geom.seg.endC.x += 1;
                       OtdWall_Draw (stories, changed, links);
-                      check (changed.draw_error == NoError && changed.otd_guid == nativeWall,
+                      check (changed.draw.draw_error == NoError && changed.draw.otd_guid == nativeWall,
                              "native wall GUID preserved");
-                      if (changed.draw_error != NoError)
-                          return changed.draw_error;
+                      if (changed.draw.draw_error != NoError)
+                          return changed.draw.draw_error;
                       API_Element actual = {};
                       actual.header.guid = nativeWall;
                       const GSErrCode readErr = ACAPI_Element_Get (&actual);
                       check (readErr == NoError && std::abs (actual.wall.height - 2.5) < 1e-6 &&
-                                 std::abs (actual.wall.endC.x - changed.endC.x) < 1e-6,
+                                 std::abs (actual.wall.endC.x - changed.geom.seg.endC.x) < 1e-6,
                              "native wall geometry actually changed");
                       OtdWall invalid = changed;
-                      invalid.height = 0;
+                      invalid.geom.height = 0;
                       OtdWall_Draw (stories, invalid, links);
-                      check (invalid.draw_error != NoError && invalid.otd_guid == APINULLGuid,
+                      check (invalid.draw.draw_error != NoError && invalid.draw.otd_guid == APINULLGuid,
                              "invalid update cannot publish stale GUID");
 
                       OtdWall beamSource = source;
                       beamSource.surface_geometry = false;
-                      beamSource.favorite.type = API_BeamID;
-                      beamSource.width = 0.2;
-                      beamSource.height = 0.1;
+                      beamSource.draw.favorite.type = API_BeamID;
+                      beamSource.geom.width = 0.2;
+                      beamSource.geom.height = 0.1;
                       OtdWall initialBeam = beamSource;
                       OtdWall_Draw (stories, initialBeam, links);
-                      check (initialBeam.draw_error == NoError && initialBeam.otd_guid != APINULLGuid,
+                      check (initialBeam.draw.draw_error == NoError && initialBeam.draw.otd_guid != APINULLGuid,
                              "native beam created");
-                      if (initialBeam.draw_error != NoError || initialBeam.otd_guid == APINULLGuid)
+                      if (initialBeam.draw.draw_error != NoError || initialBeam.draw.otd_guid == APINULLGuid)
                           return APIERR_BADPARS;
-                      nativeBeam = initialBeam.otd_guid;
+                      nativeBeam = initialBeam.draw.otd_guid;
                       OtdWall changedBeam = beamSource;
-                      changedBeam.otd_guid = nativeBeam;
-                      changedBeam.endC.y += 1;
-                      changedBeam.width = 0.3;
+                      changedBeam.draw.otd_guid = nativeBeam;
+                      changedBeam.geom.seg.endC.y += 1;
+                      changedBeam.geom.width = 0.3;
                       OtdWall_Draw (stories, changedBeam, links);
-                      check (changedBeam.draw_error == NoError && changedBeam.otd_guid == nativeBeam,
+                      check (changedBeam.draw.draw_error == NoError && changedBeam.draw.otd_guid == nativeBeam,
                              "native beam GUID preserved");
-                      if (changedBeam.draw_error != NoError)
-                          return changedBeam.draw_error;
+                      if (changedBeam.draw.draw_error != NoError)
+                          return changedBeam.draw.draw_error;
                       API_ElementMemo beamMemo = {};
                       const GS::OnExit memoGuard ([&] () { ACAPI_DisposeElemMemoHdls (&beamMemo); });
                       const GSErrCode memoErr = ACAPI_Element_GetMemo (nativeBeam, &beamMemo, APIMemoMask_BeamSegment);
@@ -197,10 +238,10 @@ namespace TestFunc {
                           cutWall.openings.Push (opening);
                       }
                       OtdWall_Draw (stories, cutWall, links);
-                      check (cutWall.draw_error == NoError && cutWall.otd_guid == nativeWall,
+                      check (cutWall.draw.draw_error == NoError && cutWall.draw.otd_guid == nativeWall,
                              "two native windows created");
-                      if (cutWall.draw_error != NoError)
-                          return cutWall.draw_error;
+                      if (cutWall.draw.draw_error != NoError)
+                          return cutWall.draw.draw_error;
                       for (const auto &opening : cutWall.openings) {
                           const GSErrCode classErr =
                               ACAPI_Element_AddClassificationItem (opening.otd_guid, openingClass);
@@ -212,10 +253,10 @@ namespace TestFunc {
                       OtdWall repeatedCuts = changed;
                       repeatedCuts.openings = cutWall.openings;
                       OtdWall_Draw (stories, repeatedCuts, links);
-                      check (repeatedCuts.draw_error == NoError && repeatedCuts.otd_guid == nativeWall,
+                      check (repeatedCuts.draw.draw_error == NoError && repeatedCuts.draw.otd_guid == nativeWall,
                              "repeat with cuts preserves wall GUID");
-                      if (repeatedCuts.draw_error != NoError)
-                          return repeatedCuts.draw_error;
+                      if (repeatedCuts.draw.draw_error != NoError)
+                          return repeatedCuts.draw.draw_error;
                       for (const auto &opening : repeatedCuts.openings) {
                           check (opening.otd_guid != APINULLGuid && !removedWindows.Contains (opening.otd_guid),
                                  "repeat replaces managed window GUID");
@@ -231,10 +272,10 @@ namespace TestFunc {
                       OtdWall withoutCuts = changed;
                       withoutCuts.openings.Clear ();
                       OtdWall_Draw (stories, withoutCuts, links);
-                      check (withoutCuts.draw_error == NoError && withoutCuts.otd_guid == nativeWall,
+                      check (withoutCuts.draw.draw_error == NoError && withoutCuts.draw.otd_guid == nativeWall,
                              "zero new windows still updates same wall");
-                      if (withoutCuts.draw_error != NoError)
-                          return withoutCuts.draw_error;
+                      if (withoutCuts.draw.draw_error != NoError)
+                          return withoutCuts.draw.draw_error;
                       const auto children = ConnectedElements_Read (nativeWall, API_WindowID, APIFilt_None);
                       check (children.error == NoError && children.items.IsEmpty (),
                              "old windows removed with empty new set");
@@ -250,6 +291,9 @@ namespace TestFunc {
             check (err == APIERR_DELETED || err == APIERR_BADID, "native fixture rollback removed temporary element");
         }
     }
+
 } // namespace TestFunc
+
+    #endif // ServerMainVers_2400
 
 #endif

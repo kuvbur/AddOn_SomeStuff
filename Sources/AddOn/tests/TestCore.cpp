@@ -77,6 +77,12 @@ namespace TestFunc {
         return;
     }
 
+    // Все тесты ниже используют типы Roombook::OtdWall / OtdOpening / RoomSurface,
+    // объявленные в Roombook.hpp только для Archicad >= 24 (ветка #else
+    // #ifndef ServerMainVers_2400). Для AC 22 их исключаем, регистрации в
+    // TestFunc.cpp закрыты тем же условием.
+    #if defined(ServerMainVers_2400)
+
     void TestBuildOtdByParent () {
         const API_Guid baseGuid = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
         const API_Guid floorGuid = APIGuidFromString ("{22222222-2222-2222-2222-222222222222}");
@@ -258,9 +264,9 @@ namespace TestFunc {
         for (const Case &c : cases) {
             GS::UniString label (c.name);
             Roombook::OtdWall input;
-            input.zBottom = 0;
-            input.height = 10;
-            input.length = 77;
+            OtdLinearSegment_SetZBottom (input.geom, 0);
+            input.geom.height = 10;
+            input.geom.length = 77;
             Roombook::OtdOpening opening;
             opening.zBottom = c.openingBottom;
             opening.height = c.openingHeight;
@@ -269,7 +275,7 @@ namespace TestFunc {
             input.openings.Push (opening);
             GS::Array<Roombook::OtdWall> walls;
             Roombook::OtdWall sentinel;
-            sentinel.height = -99;
+            sentinel.geom.height = -99;
             walls.Push (sentinel);
             Roombook::OtdMaterial material;
             material.smaterial = "test material";
@@ -289,18 +295,19 @@ namespace TestFunc {
                                                       material);
             DBtest (added == c.wallAdded, label + " wall return");
             DBtest (walls.GetSize () == (c.wallAdded ? 2 : 1), label + " wall count");
-            DBtest (walls.Get (0).height, -99.0, label + " previous wall preserved");
-            DBtest (input.height == 10 && input.zBottom == 0 && input.length == 77 && input.openings.GetSize () == 1 &&
+            DBtest (walls.Get (0).geom.height, -99.0, label + " previous wall preserved");
+            DBtest (input.geom.height == 10 && OtdLinearSegment_GetZBottom (input.geom) == 0 &&
+                        input.geom.length == 77 && input.openings.GetSize () == 1 &&
                         input.openings.Get (0).lower == 99 && input.openings.Get (0).zBottom == c.openingBottom &&
                         input.openings.Get (0).height == c.openingHeight,
                     label + " source unchanged");
             if (!added || walls.GetSize () != 2)
                 continue;
             const Roombook::OtdWall &result = walls.Get (1);
-            DBtest (result.zBottom, c.bottom, label + " wall bottom");
-            DBtest (result.height, c.height, label + " wall height");
-            DBtest (result.length, 77.0, label + " wall length unchanged");
-            DBtest (result.type == Roombook::Wall_Main && result.material.smaterial == material.smaterial,
+            DBtest (OtdLinearSegment_GetZBottom (result.geom), c.bottom, label + " wall bottom");
+            DBtest (result.geom.height, c.height, label + " wall height");
+            DBtest (result.geom.length, 77.0, label + " wall length unchanged");
+            DBtest (result.draw.type == Roombook::Wall_Main && result.draw.material.smaterial == material.smaterial,
                     label + " type and material");
             DBtest (result.openings.GetSize () == (c.openingAdded ? 1 : 0), label + " opening count");
             if (!c.openingAdded || result.openings.GetSize () != 1)
@@ -333,10 +340,10 @@ namespace TestFunc {
             for (double width : {0.0, 1.0}) {
                 GS::UniString label (c.name);
                 Roombook::OtdWall input;
-                input.zBottom = 2;
-                input.height = 6;
-                input.width = width;
-                input.length = 77;
+                OtdLinearSegment_SetZBottom (input.geom, 2);
+                input.geom.height = 6;
+                input.geom.width = width;
+                input.geom.length = 77;
                 GS::Array<Roombook::OtdWall> walls;
                 Roombook::OtdMaterial material;
                 material.smaterial = "wall clipping material";
@@ -356,23 +363,24 @@ namespace TestFunc {
                                                           material);
                 DBtest (added == c.accepted, label + " intersection return");
                 DBtest (walls.GetSize () == (c.accepted ? 1 : 0), label + " intersection count");
-                DBtest (input.zBottom == 2 && input.height == 6 && input.width == width && input.length == 77,
+                DBtest (OtdLinearSegment_GetZBottom (input.geom) == 2 && input.geom.height == 6 &&
+                            input.geom.width == width && input.geom.length == 77,
                         label + " intersection source unchanged");
                 DBtest (type == Roombook::Wall_Main, label + " input type unchanged");
                 if (!added || walls.GetSize () != 1)
                     continue;
                 const Roombook::OtdWall &result = walls.Get (0);
-                DBtest (result.zBottom, c.expectedBottom, label + " intersection bottom");
-                DBtest (result.height, c.expectedHeight, label + " intersection height");
-                DBtest (result.length, width == 0 ? 77.0 : c.expectedHeight, label + " reveal length");
+                DBtest (OtdLinearSegment_GetZBottom (result.geom), c.expectedBottom, label + " intersection bottom");
+                DBtest (result.geom.height, c.expectedHeight, label + " intersection height");
+                DBtest (result.geom.length, width == 0 ? 77.0 : c.expectedHeight, label + " reveal length");
             }
         }
 
         for (bool reversed : {false, true}) {
             GS::UniString label = reversed ? "two openings reversed" : "two openings ascending";
             Roombook::OtdWall input;
-            input.zBottom = 0;
-            input.height = 10;
+            OtdLinearSegment_SetZBottom (input.geom, 0);
+            input.geom.height = 10;
             Roombook::OtdOpening low;
             low.zBottom = 1;
             low.height = 2;
@@ -403,7 +411,7 @@ namespace TestFunc {
                                                       material);
             DBtest (added && walls.GetSize () == 1, label + " wall retained");
             DBtest (input.openings.GetSize () == 2 && input.openings.Get (0).lower == 99 &&
-                        input.openings.Get (1).lower == 99 && input.height == 10,
+                        input.openings.Get (1).lower == 99 && input.geom.height == 10,
                     label + " source unchanged");
             if (!added || walls.GetSize () != 1)
                 continue;
@@ -490,77 +498,78 @@ namespace TestFunc {
         for (const Case &c : cases) {
             GS::UniString label (c.name);
             Roombook::OtdWall input;
-            input.zBottom = 0;
-            input.height = 10;
-            input.length = 77;
-            input.base_type = c.baseType;
-            input.type = c.sourceType;
+            OtdLinearSegment_SetZBottom (input.geom, 0);
+            input.geom.height = 10;
+            input.geom.length = 77;
+            input.draw.base_type = c.baseType;
+            input.draw.type = c.sourceType;
             GS::Array<Roombook::OtdWall> walls;
             Roombook::OtdWall sentinel;
-            sentinel.height = -99;
+            sentinel.geom.height = -99;
             walls.Push (sentinel);
             Roombook::OtdWall_Delim_All (
                 walls, input, 0, 2, 5, 3, 10, main, up, down, reveal, column, floor, ceil, zone);
             DBtest (walls.GetSize () == 4, label + " three bands appended");
-            DBtest (walls.Get (0).height, -99.0, label + " sentinel unchanged");
-            DBtest (input.height == 10 && input.zBottom == 0 && input.length == 77 && input.type == c.sourceType &&
-                        input.base_composite.IsEmpty (),
+            DBtest (walls.Get (0).geom.height, -99.0, label + " sentinel unchanged");
+            DBtest (input.geom.height == 10 && OtdLinearSegment_GetZBottom (input.geom) == 0 &&
+                        input.geom.length == 77 && input.draw.type == c.sourceType && input.base_composite.IsEmpty (),
                     label + " source unchanged");
             if (walls.GetSize () != 4)
                 continue;
             for (UIndex i = 0; i < 3; ++i) {
                 const Roombook::OtdWall &band = walls.Get (i + 1);
-                DBtest (band.zBottom, bottoms[i], label + " band bottom and order");
-                DBtest (band.height, heights[i], label + " band height");
-                DBtest (band.type == c.types[i], label + " band type");
-                DBtest (band.material.smaterial, GS::UniString (c.materials[i]), label + " band material");
-                DBtest (band.length, 77.0, label + " width-zero length preserved");
+                DBtest (OtdLinearSegment_GetZBottom (band.geom), bottoms[i], label + " band bottom and order");
+                DBtest (band.geom.height, heights[i], label + " band height");
+                DBtest (band.draw.type == c.types[i], label + " band type");
+                DBtest (band.draw.material.smaterial, GS::UniString (c.materials[i]), label + " band material");
+                DBtest (band.geom.length, 77.0, label + " width-zero length preserved");
             }
         }
         Roombook::OtdWall input;
-        input.zBottom = 0;
-        input.height = 10;
-        input.type = Roombook::Wall_Main;
-        input.base_type = API_WallID;
+        OtdLinearSegment_SetZBottom (input.geom, 0);
+        input.geom.height = 10;
+        input.draw.type = Roombook::Wall_Main;
+        input.draw.base_type = API_WallID;
         GS::Array<Roombook::OtdWall> walls;
         Roombook::OtdWall_Delim_All (walls, input, 0, 0, 0, 0, 10, main, up, down, reveal, column, floor, ceil, zone);
         DBtest (walls.GetSize () == 1, "zero bands fallback count");
         if (walls.GetSize () == 1) {
-            DBtest (walls.Get (0).height, 10.0, "zero bands fallback height");
-            DBtest (walls.Get (0).zBottom, 0.0, "zero bands fallback bottom");
-            DBtest (walls.Get (0).type == Roombook::Wall_Main, "zero bands fallback type");
-            DBtest (walls.Get (0).material.smaterial, main.smaterial, "zero bands fallback material");
+            DBtest (walls.Get (0).geom.height, 10.0, "zero bands fallback height");
+            DBtest (OtdLinearSegment_GetZBottom (walls.Get (0).geom), 0.0, "zero bands fallback bottom");
+            DBtest (walls.Get (0).draw.type == Roombook::Wall_Main, "zero bands fallback type");
+            DBtest (walls.Get (0).draw.material.smaterial, main.smaterial, "zero bands fallback material");
         }
 
-        input.zBottom = 5;
-        input.height = 2;
+        OtdLinearSegment_SetZBottom (input.geom, 5);
+        input.geom.height = 2;
         walls.Clear ();
         Roombook::OtdWall_Delim_All (walls, input, 0, 2, 0, 0, 10, main, up, down, reveal, column, floor, ceil, zone);
         DBtest (walls.GetSize () == 1, "rejected band fallback count");
         if (walls.GetSize () == 1) {
-            DBtest (walls.Get (0).zBottom, 5.0, "rejected band fallback source bottom");
-            DBtest (walls.Get (0).height, 2.0, "rejected band fallback source height");
+            DBtest (OtdLinearSegment_GetZBottom (walls.Get (0).geom), 5.0, "rejected band fallback source bottom");
+            DBtest (walls.Get (0).geom.height, 2.0, "rejected band fallback source height");
             // Текущий fallback сохраняет тип последней попытки, а не назначает Wall_Main.
-            DBtest (walls.Get (0).type == Roombook::Wall_Down, "rejected band fallback keeps attempted type");
-            DBtest (walls.Get (0).material.smaterial, down.smaterial, "rejected band fallback material");
+            DBtest (walls.Get (0).draw.type == Roombook::Wall_Down, "rejected band fallback keeps attempted type");
+            DBtest (walls.Get (0).draw.material.smaterial, down.smaterial, "rejected band fallback material");
         }
         walls.Clear ();
         Roombook::OtdWall_Delim_All (walls, input, 0, 2, 5, 3, 10, main, up, down, reveal, column, floor, ceil, zone);
         DBtest (walls.GetSize () == 1, "one intersecting band no fallback duplicate");
         if (walls.GetSize () == 1) {
-            DBtest (walls.Get (0).type == Roombook::Wall_Main, "one intersecting band type");
-            DBtest (walls.Get (0).height, 2.0, "one intersecting band clipped height");
+            DBtest (walls.Get (0).draw.type == Roombook::Wall_Main, "one intersecting band type");
+            DBtest (walls.Get (0).geom.height, 2.0, "one intersecting band clipped height");
         }
         walls.Clear ();
         Roombook::OtdWall_Delim_All (walls, input, 20, 1, 1, 1, 10, main, up, down, reveal, column, floor, ceil, zone);
         DBtest (walls.IsEmpty (), "bands and fallback outside source return nothing");
-        DBtest (input.zBottom == 5 && input.height == 2 && input.type == Roombook::Wall_Main,
+        DBtest (OtdLinearSegment_GetZBottom (input.geom) == 5 && input.geom.height == 2 &&
+                    input.draw.type == Roombook::Wall_Main,
                 "fallback source unchanged");
 
         for (bool reversed : {false, true}) {
             GS::UniString label = reversed ? "cross-band reversed" : "cross-band ascending";
-            input.zBottom = 0;
-            input.height = 10;
+            OtdLinearSegment_SetZBottom (input.geom, 0);
+            input.geom.height = 10;
             input.openings.Clear ();
             Roombook::OtdOpening low;
             low.zBottom = 1;
@@ -588,7 +597,7 @@ namespace TestFunc {
                     label + " clipped opening counts");
             for (UIndex bandIndex = 0; bandIndex < 3; ++bandIndex) {
                 const Roombook::OtdWall &band = walls.Get (bandIndex);
-                DBtest (band.zBottom, bottoms[bandIndex], label + " band bottom");
+                DBtest (OtdLinearSegment_GetZBottom (band.geom), bottoms[bandIndex], label + " band bottom");
                 for (const Roombook::OtdOpening &opening : band.openings) {
                     bool isLow = opening.objLoc == 11;
                     double expectedBottom = isLow ? (bandIndex == 0 ? 1 : 2) : (bandIndex == 1 ? 5 : 7);
@@ -631,44 +640,48 @@ namespace TestFunc {
             edge.c1 = {0, 0};
             edge.c2 = {c.dx, c.dy};
             Roombook::OtdWall wall;
-            wall.height = 99;
-            wall.zBottom = 88;
+            wall.geom.height = 99;
+            OtdLinearSegment_SetZBottom (wall.geom, 88);
             wall.base_th = 77;
-            wall.floorInd = 9;
-            wall.begC = {6, 7};
-            wall.endC = {8, 9};
-            wall.type = Roombook::Ceil;
-            wall.base_type = API_ColumnID;
-            wall.width = 12;
-            wall.length = 13;
-            wall.material.smaterial = "keep material";
-            wall.favorite.name = "keep favorite";
-            wall.otd_guid = guid;
+            wall.geom.floorInd = 9;
+            wall.geom.seg.begC = {6, 7};
+            wall.geom.seg.endC = {8, 9};
+            wall.draw.type = Roombook::Ceil;
+            wall.draw.base_type = API_ColumnID;
+            wall.geom.width = 12;
+            wall.geom.length = 13;
+            wall.draw.material.smaterial = "keep material";
+            wall.draw.favorite.name = "keep favorite";
+            wall.draw.otd_guid = guid;
             Roombook::OtdOpening opening;
             opening.objLoc = 42;
             wall.openings.Push (opening);
             bool accepted = Roombook::OtdWall_Add_One (guid, edge, true, c.height, -2, -3, 0.25, wall);
             DBtest (accepted == c.accepted, label + " return");
-            DBtest (wall.width == 12 && wall.length == 13 && wall.material.smaterial == "keep material" &&
-                        wall.favorite.name == "keep favorite" && wall.otd_guid == guid &&
-                        wall.openings.GetSize () == 1 && wall.openings.Get (0).objLoc == 42,
+            DBtest (wall.geom.width == 12 && wall.geom.length == 13 &&
+                        wall.draw.material.smaterial == "keep material" && wall.draw.favorite.name == "keep favorite" &&
+                        wall.draw.otd_guid == guid && wall.openings.GetSize () == 1 &&
+                        wall.openings.Get (0).objLoc == 42,
                     label + " unrelated fields preserved");
             DBtest (edge.c1.x == 0 && edge.c1.y == 0 && edge.c2.x == c.dx && edge.c2.y == c.dy,
                     label + " edge unchanged");
             if (!accepted) {
-                DBtest (wall.height == 99 && wall.zBottom == 88 && wall.base_th == 77 && wall.floorInd == 9 &&
-                            wall.begC.x == 6 && wall.begC.y == 7 && wall.endC.x == 8 && wall.endC.y == 9 &&
-                            wall.type == Roombook::Ceil && wall.base_type == API_ColumnID &&
-                            wall.base_guid == APINULLGuid && !wall.base_flipped,
+                DBtest (wall.geom.height == 99 && OtdLinearSegment_GetZBottom (wall.geom) == 88 && wall.base_th == 77 &&
+                            wall.geom.floorInd == 9 && wall.geom.seg.begC.x == 6 && wall.geom.seg.begC.y == 7 &&
+                            wall.geom.seg.endC.x == 8 && wall.geom.seg.endC.y == 9 &&
+                            wall.draw.type == Roombook::Ceil && wall.draw.base_type == API_ColumnID &&
+                            wall.draw.base_guid == APINULLGuid && !wall.base_flipped,
                         label + " rejected initialization does not mutate wall");
                 continue;
             }
             // Инициализатор сейчас проверяет только длину ребра, не знак высоты.
-            DBtest (wall.height, c.height, label + " height copied");
-            DBtest (wall.zBottom == -2 && wall.base_th == 0.25 && wall.floorInd == -3 && wall.base_flipped &&
-                        wall.base_guid == guid && wall.base_type == API_WallID && wall.type == Roombook::Wall_Main,
+            DBtest (wall.geom.height, c.height, label + " height copied");
+            DBtest (OtdLinearSegment_GetZBottom (wall.geom) == -2 && wall.base_th == 0.25 && wall.geom.floorInd == -3 &&
+                        wall.base_flipped && wall.draw.base_guid == guid && wall.draw.base_type == API_WallID &&
+                        wall.draw.type == Roombook::Wall_Main,
                     label + " initialization fields");
-            DBtest (wall.begC.x == 0 && wall.begC.y == 0 && wall.endC.x == c.dx && wall.endC.y == c.dy,
+            DBtest (wall.geom.seg.begC.x == 0 && wall.geom.seg.begC.y == 0 && wall.geom.seg.endC.x == c.dx &&
+                        wall.geom.seg.endC.y == c.dy,
                     label + " edge coordinates copied");
         }
     }
@@ -691,8 +704,7 @@ namespace TestFunc {
                               {"reveal down", Roombook::Reveal_Down, 3, Roombook::Reveal_Main, true},
                               {"column", Roombook::Column, 4, Roombook::Column, true},
                               {"floor", Roombook::Floor, 5, Roombook::Floor, false},
-                              {"ceil", Roombook::Ceil, 6, Roombook::Ceil, false},
-                              {"default sloped", Roombook::Sloped, 7, Roombook::Sloped, false}};
+                              {"ceil", Roombook::Ceil, 6, Roombook::Ceil, false}};
         const char *names[] = {"main", "up", "down", "reveal", "column", "floor", "ceil", "zone"};
         const auto sameMaterial = [] (const Roombook::OtdMaterial &a, const Roombook::OtdMaterial &b) {
             return a.material == b.material && a.smaterial == b.smaterial && a.rawname == b.rawname &&
@@ -741,12 +753,12 @@ namespace TestFunc {
                         expected.smaterial = "finish override";
                     }
                     Roombook::OtdWall wall;
-                    wall.type = c.type;
-                    wall.height = 3;
-                    wall.zBottom = -2;
-                    wall.width = 0.25;
-                    wall.length = 9;
-                    wall.floorInd = -1;
+                    wall.draw.type = c.type;
+                    wall.geom.height = 3;
+                    OtdLinearSegment_SetZBottom (wall.geom, -2);
+                    wall.geom.width = 0.25;
+                    wall.geom.length = 9;
+                    wall.geom.floorInd = -1;
                     ParamValueComposite layer;
                     layer.structype = overrideFinish ? -1 : 0;
                     layer.pos = "finish override";
@@ -771,10 +783,10 @@ namespace TestFunc {
                                                "different rawname case"};
                     GS::UniString label = GS::UniString (c.name) + " " + modeNames[mode] +
                                           (overrideFinish ? " composite finish" : " structural layer");
-                    DBtest (wall.type == expectedType, label + " result type");
-                    DBtest (sameMaterial (wall.material, expected), label + " all material fields");
-                    DBtest (wall.height == 3 && wall.zBottom == -2 && wall.width == 0.25 && wall.length == 9 &&
-                                wall.floorInd == -1,
+                    DBtest (wall.draw.type == expectedType, label + " result type");
+                    DBtest (sameMaterial (wall.draw.material, expected), label + " all material fields");
+                    DBtest (wall.geom.height == 3 && OtdLinearSegment_GetZBottom (wall.geom) == -2 &&
+                                wall.geom.width == 0.25 && wall.geom.length == 9 && wall.geom.floorInd == -1,
                             label + " wall geometry unchanged");
                     for (int i = 0; i < 8; ++i)
                         DBtest (sameMaterial (materials[i], before[i]), label + " settings unchanged");
@@ -858,28 +870,28 @@ namespace TestFunc {
             for (bool hadReveal : {false, true}) {
                 GS::UniString label (c.name);
                 Roombook::OtdWall source;
-                source.begC = {10, 20};
-                source.endC = {20, 20};
+                source.geom.seg.begC = {10, 20};
+                source.geom.seg.endC = {20, 20};
                 if (c.orientation == 1) {
-                    source.begC = {20, 20};
-                    source.endC = {10, 20};
+                    source.geom.seg.begC = {20, 20};
+                    source.geom.seg.endC = {10, 20};
                 }
                 if (c.orientation == 2)
-                    source.endC = {10, 30};
+                    source.geom.seg.endC = {10, 30};
                 if (c.orientation == 3)
-                    source.endC = source.begC;
+                    source.geom.seg.endC = source.geom.seg.begC;
                 if (c.orientation == 4)
-                    source.endC = {16, 28};
+                    source.geom.seg.endC = {16, 28};
                 if (c.orientation == 5) {
-                    source.begC = {16, 28};
-                    source.endC = {10, 20};
+                    source.geom.seg.begC = {16, 28};
+                    source.geom.seg.endC = {10, 20};
                 }
-                source.height = 10;
-                source.zBottom = c.wallBottom;
-                source.base_guid = guid;
-                source.floorInd = -1;
-                source.material.smaterial = "source material";
-                source.favorite.name = "source favorite";
+                source.geom.height = 10;
+                OtdLinearSegment_SetZBottom (source.geom, c.wallBottom);
+                source.draw.base_guid = guid;
+                source.geom.floorInd = -1;
+                source.draw.material.smaterial = "source material";
+                source.draw.favorite.name = "source favorite";
                 ParamValueComposite layer;
                 layer.structype = 0;
                 layer.val = "source layer";
@@ -938,9 +950,10 @@ namespace TestFunc {
                 DBtest (opening.objLoc == c.position && opening.width == c.width && opening.height == c.height &&
                             opening.zBottom == c.bottom && opening.base_reveal_width == c.depth,
                         label + " opening dimensions unchanged");
-                DBtest (source.height == 10 && source.zBottom == c.wallBottom && source.base_guid == guid &&
-                            source.floorInd == -1 && source.material.smaterial == "source material" &&
-                            source.favorite.name == "source favorite" && source.base_composite.GetSize () == 1 &&
+                DBtest (source.geom.height == 10 && OtdLinearSegment_GetZBottom (source.geom) == c.wallBottom &&
+                            source.draw.base_guid == guid && source.geom.floorInd == -1 &&
+                            source.draw.material.smaterial == "source material" &&
+                            source.draw.favorite.name == "source favorite" && source.base_composite.GetSize () == 1 &&
                             source.openings.GetSize () == 1,
                         label + " source preserved");
                 DBtest (slabs.GetSize () == 1 && slabs.Get (0).height == 99, label + " slab output untouched");
@@ -974,23 +987,26 @@ namespace TestFunc {
                             beg.y += perpendicular.y * c.depth;
                         }
                     }
-                    DBtest (wall.begC.x, beg.x, label + " begin x");
-                    DBtest (wall.begC.y, beg.y, label + " begin y");
-                    DBtest (wall.endC.x, end.x, label + " end x");
-                    DBtest (wall.endC.y, end.y, label + " end y");
-                    DBtest (wall.height, top ? Roombook::otd_thickness : c.resultHeight, label + " height");
-                    DBtest (wall.zBottom, top ? c.resultBottom + c.resultHeight : c.resultBottom, label + " bottom");
+                    DBtest (wall.geom.seg.begC.x, beg.x, label + " begin x");
+                    DBtest (wall.geom.seg.begC.y, beg.y, label + " begin y");
+                    DBtest (wall.geom.seg.endC.x, end.x, label + " end x");
+                    DBtest (wall.geom.seg.endC.y, end.y, label + " end y");
+                    DBtest (wall.geom.height, top ? Roombook::otd_thickness : c.resultHeight, label + " height");
+                    DBtest (OtdLinearSegment_GetZBottom (wall.geom),
+                            top ? c.resultBottom + c.resultHeight : c.resultBottom,
+                            label + " bottom");
                     // Текущая подрезка переназначает length и для верхнего откоса при ненулевом width.
-                    DBtest (wall.length, top ? Roombook::otd_thickness : c.resultHeight, label + " length");
-                    DBtest (wall.width, c.depth, label + " depth");
-                    DBtest (wall.base_guid == guid && wall.base_type == API_WindowID && wall.floorInd == -1 &&
-                                wall.draw_type == (top ? API_BeamID : API_WallID) && wall.type == Roombook::Reveal_Main,
+                    DBtest (wall.geom.length, top ? Roombook::otd_thickness : c.resultHeight, label + " length");
+                    DBtest (wall.geom.width, c.depth, label + " depth");
+                    DBtest (wall.draw.base_guid == guid && wall.draw.base_type == API_WindowID &&
+                                wall.geom.floorInd == -1 && wall.draw.draw_type == (top ? API_BeamID : API_WallID) &&
+                                wall.draw.type == Roombook::Reveal_Main,
                             label + " identity/classification fields");
-                    DBtest (wall.material.smaterial == "reveal" && wall.material.rawname == "reveal" &&
+                    DBtest (wall.draw.material.smaterial == "reveal" && wall.draw.material.rawname == "reveal" &&
                                 wall.base_composite.GetSize () == 2 &&
                                 wall.base_composite.Get (0).val == "source layer",
                             label + " material/composite");
-                    DBtest (wall.openings.IsEmpty () && wall.favorite.name.IsEmpty (),
+                    DBtest (wall.openings.IsEmpty () && wall.draw.favorite.name.IsEmpty (),
                             label + " unused fields default");
                 }
             }
@@ -1089,12 +1105,12 @@ namespace TestFunc {
                     label += emptyReveal ? " empty reveal" : " explicit reveal";
                     label += hadReveal ? " existing flag" : " unset flag";
                     Roombook::OtdWall source;
-                    source.begC = {10, 20};
-                    source.endC = {20, 20};
-                    source.height = 10;
-                    source.base_guid = guid;
-                    source.floorInd = -1;
-                    source.material.smaterial = "source material";
+                    source.geom.seg.begC = {10, 20};
+                    source.geom.seg.endC = {20, 20};
+                    source.geom.height = 10;
+                    source.draw.base_guid = guid;
+                    source.geom.floorInd = -1;
+                    source.draw.material.smaterial = "source material";
                     ParamValueComposite layer;
                     layer.structype = 0;
                     layer.val = "source layer";
@@ -1119,8 +1135,8 @@ namespace TestFunc {
                         materials[3].smaterial = EMPTYSTRING;
                     GS::Array<Roombook::OtdWall> walls;
                     Roombook::OtdWall sentinelWall;
-                    sentinelWall.height = 99;
-                    sentinelWall.material.smaterial = "sentinel wall";
+                    sentinelWall.geom.height = 99;
+                    sentinelWall.draw.material.smaterial = "sentinel wall";
                     walls.Push (sentinelWall);
                     GS::Array<Roombook::OtdSlab> slabs;
                     Roombook::OtdSlab sentinelSlab;
@@ -1148,7 +1164,7 @@ namespace TestFunc {
                     DBtest (walls.GetSize () == c.count + 1, label + " count/order");
                     // Флаг отмечает попытку построения до Delim_All, а не наличие выходных стенок.
                     DBtest (opening.has_reveal, label + " flag retained even when all outputs rejected");
-                    DBtest (walls.Get (0).height == 99 && walls.Get (0).material.smaterial == "sentinel wall",
+                    DBtest (walls.Get (0).geom.height == 99 && walls.Get (0).draw.material.smaterial == "sentinel wall",
                             label + " existing wall retained");
                     DBtest (slabs.GetSize () == 1 && slabs.Get (0).height == 98, label + " slab output untouched");
                     DBtest (bottom == c.bottom && down == c.down && main == c.main && up == c.up && height == c.total,
@@ -1156,9 +1172,9 @@ namespace TestFunc {
                     DBtest (opening.objLoc == 5 && opening.width == 2 && opening.zBottom == c.openingBottom &&
                                 opening.height == c.openingHeight && opening.base_reveal_width == 0.5,
                             label + " opening dimensions unchanged");
-                    DBtest (source.height == 10 && source.base_guid == guid && source.floorInd == -1 &&
-                                source.begC.x == 10 && source.endC.x == 20 &&
-                                source.material.smaterial == "source material" &&
+                    DBtest (source.geom.height == 10 && source.draw.base_guid == guid && source.geom.floorInd == -1 &&
+                                source.geom.seg.begC.x == 10 && source.geom.seg.endC.x == 20 &&
+                                source.draw.material.smaterial == "source material" &&
                                 source.base_composite.GetSize () == 1 &&
                                 source.base_composite.Get (0).val == "source layer" &&
                                 source.openings.GetSize () == 1 && source.openings.Get (0).has_reveal == hadReveal,
@@ -1181,26 +1197,26 @@ namespace TestFunc {
                             beg = {16, 20};
                             end = {14, 20};
                         }
-                        DBtest (wall.begC.x, beg.x, label + " begin x");
-                        DBtest (wall.begC.y, beg.y, label + " begin y");
-                        DBtest (wall.endC.x, end.x, label + " end x");
-                        DBtest (wall.endC.y, end.y, label + " end y");
-                        DBtest (wall.zBottom, piece.bottom, label + " bottom");
-                        DBtest (wall.height, piece.height, label + " height");
-                        DBtest (wall.length, piece.height, label + " length after clipping");
-                        DBtest (wall.width, 0.5, label + " depth");
-                        DBtest (wall.type == Roombook::Reveal_Main && wall.base_type == API_WindowID &&
-                                    wall.draw_type == (piece.side == 2 ? API_BeamID : API_WallID) &&
-                                    wall.base_guid == guid && wall.floorInd == -1,
+                        DBtest (wall.geom.seg.begC.x, beg.x, label + " begin x");
+                        DBtest (wall.geom.seg.begC.y, beg.y, label + " begin y");
+                        DBtest (wall.geom.seg.endC.x, end.x, label + " end x");
+                        DBtest (wall.geom.seg.endC.y, end.y, label + " end y");
+                        DBtest (OtdLinearSegment_GetZBottom (wall.geom), piece.bottom, label + " bottom");
+                        DBtest (wall.geom.height, piece.height, label + " height");
+                        DBtest (wall.geom.length, piece.height, label + " length after clipping");
+                        DBtest (wall.geom.width, 0.5, label + " depth");
+                        DBtest (wall.draw.type == Roombook::Reveal_Main && wall.draw.base_type == API_WindowID &&
+                                    wall.draw.draw_type == (piece.side == 2 ? API_BeamID : API_WallID) &&
+                                    wall.draw.base_guid == guid && wall.geom.floorInd == -1,
                                 label + " identity/classification");
                         GS::UniString material (emptyReveal ? piece.material : "reveal");
-                        DBtest (wall.material.smaterial == material && wall.material.rawname == material &&
-                                    wall.material.rawname_bytype == material,
+                        DBtest (wall.draw.material.smaterial == material && wall.draw.material.rawname == material &&
+                                    wall.draw.material.rawname_bytype == material,
                                 label + " selected material");
                         DBtest (wall.base_composite.GetSize () == 2 &&
                                     wall.base_composite.Get (0).val == "source layer",
                                 label + " copied composite and finish");
-                        DBtest (wall.openings.IsEmpty () && wall.favorite.name.IsEmpty (),
+                        DBtest (wall.openings.IsEmpty () && wall.draw.favorite.name.IsEmpty (),
                                 label + " unused fields default");
                     }
                 }
@@ -1331,8 +1347,7 @@ namespace TestFunc {
                                            Roombook::Reveal_Down,
                                            Roombook::Column,
                                            Roombook::Floor,
-                                           Roombook::Ceil,
-                                           Roombook::Sloped};
+                                           Roombook::Ceil};
 
         struct Case {
             const char *name;
@@ -1390,18 +1405,18 @@ namespace TestFunc {
                 // Пустые rawname изолируют расчёт от форматирования и записи свойств.
                 for (UInt32 i = 0; i < c.count; ++i) {
                     Roombook::OtdWall wall;
-                    wall.endC = {4, 0};
-                    wall.height = 3;
-                    wall.type = type;
+                    wall.geom.seg.endC = {4, 0};
+                    wall.geom.height = 3;
+                    wall.draw.type = type;
                     wall.isValid = c.valid;
                     if (c.geometry == 1) {
-                        wall.width = 0.5;
-                        wall.length = 4;
+                        wall.geom.width = 0.5;
+                        wall.geom.length = 4;
                     }
                     if (c.geometry == 2)
-                        wall.width = 0.5;
+                        wall.geom.width = 0.5;
                     if (c.geometry == 3)
-                        wall.height = -3;
+                        wall.geom.height = -3;
                     if (c.geometry == 4 || c.geometry == 5) {
                         Roombook::OtdOpening opening;
                         opening.height = c.geometry == 4 ? 10 : 2;
@@ -1409,13 +1424,13 @@ namespace TestFunc {
                         wall.openings.Push (opening);
                     }
                     if (c.geometry == 6)
-                        wall.endC = wall.begC;
+                        wall.geom.seg.endC = wall.geom.seg.begC;
                     if (c.geometry == 7 || c.geometry == 8) {
-                        wall.endC = {1, 0};
-                        wall.height = c.geometry == 7 ? 0.0000001 : 0.000001;
+                        wall.geom.seg.endC = {1, 0};
+                        wall.geom.height = c.geometry == 7 ? 0.0000001 : 0.000001;
                     }
                     if (c.geometry == 9)
-                        wall.height = i == 0 ? 2500000000000000.0 : 0.25;
+                        wall.geom.height = i == 0 ? 2500000000000000.0 : 0.25;
                     for (UInt32 j = 0; j < c.layerCount; ++j) {
                         ParamValueComposite layer;
                         layer.val = GS::UniString (c.layers[j], CC_UTF8);
@@ -1425,7 +1440,7 @@ namespace TestFunc {
                         room.otdwall.Push (wall);
                     } else {
                         Roombook::OtdSlab slab;
-                        slab.type = type;
+                        slab.draw.type = type;
                         slab.isValid = c.valid;
                         slab.base_composite = wall.base_composite;
                         if (c.source == 1)
@@ -1479,9 +1494,11 @@ namespace TestFunc {
                     for (UInt32 j = 0; j < room.otdwall.GetSize (); ++j) {
                         const auto &wall = room.otdwall[j];
                         const auto &original = before.otdwall[j];
-                        DBtest (wall.endC.x == original.endC.x && wall.height == original.height &&
-                                    wall.width == original.width && wall.length == original.length &&
-                                    wall.type == original.type && wall.isValid == original.isValid &&
+                        DBtest (wall.geom.seg.endC.x == original.geom.seg.endC.x &&
+                                    wall.geom.height == original.geom.height &&
+                                    wall.geom.width == original.geom.width &&
+                                    wall.geom.length == original.geom.length && wall.draw.type == original.draw.type &&
+                                    wall.isValid == original.isValid &&
                                     wall.openings.GetSize () == original.openings.GetSize (),
                                 label + " wall unchanged");
                         for (UInt32 k = 0; k < wall.base_composite.GetSize (); ++k)
@@ -1490,7 +1507,7 @@ namespace TestFunc {
                     }
                     for (UInt32 j = 0; j < room.otdslab.GetSize (); ++j)
                         DBtest (room.otdslab[j].poly.CalcArea () == before.otdslab[j].poly.CalcArea () &&
-                                    room.otdslab[j].type == before.otdslab[j].type &&
+                                    room.otdslab[j].draw.type == before.otdslab[j].draw.type &&
                                     room.otdslab[j].isValid == before.otdslab[j].isValid,
                                 label + " slab unchanged");
                 }
@@ -2113,8 +2130,7 @@ namespace TestFunc {
                                            Roombook::Reveal_Down,
                                            Roombook::Column,
                                            Roombook::Floor,
-                                           Roombook::Ceil,
-                                           Roombook::Sloped};
+                                           Roombook::Ceil};
         const char *expected[] = {"M~2.00 ",
                                   "-",
                                   "-",
@@ -2355,6 +2371,7 @@ namespace TestFunc {
                     Roombook::Param_SetToWindows (op, read, work, wall);
                     DBtest (
                         op.base_reveal_width, side.depth, "Opening reveal depth matches face independent of layers");
+                    DBtest (op.base_frame_width, .1, "Opening params preserve frame separately from reveal depth");
                     DBtest (op.width, source.width, "Opening reveal side preserves clipped width");
                     DBtest (op.height, source.height, "Opening reveal side preserves height");
                 }
@@ -2509,9 +2526,11 @@ namespace TestFunc {
                 read.Get (guids[0]).Clear ();
             const Roombook::OtdWall wall = wallFor (0.6, 3);
             Roombook::OtdOpening op = openingFor (0);
+            op.base_frame_width = .25;
             const Roombook::OtdOpening before = op;
             Roombook::Param_SetToWindows (op, read, work, wall);
             DBtest (op.base_reveal_width, mode == 0 ? 99 : 0.6, "Opening params early-return depth");
+            DBtest (op.base_frame_width, 0, "Opening params early-return clears frame depth");
             DBtest (op.width, before.width, "Opening params early-return width");
             DBtest (op.height, before.height, "Opening params early-return height");
             unchangedOpening (op, before);
@@ -2801,11 +2820,11 @@ namespace TestFunc {
             cache.property.Add (duplicate.rawName, duplicate);
             GS::UniString first;
             for (const auto &p : cache.property) {
-    #ifdef ServerMainVers_2800
+        #ifdef ServerMainVers_2800
                 first = p.value.rawName;
-    #else
+        #else
                 first = p.value->rawName;
-    #endif
+        #endif
                 break;
             }
             GS::Array<GS::UniString> token;
@@ -2882,13 +2901,13 @@ namespace TestFunc {
                     cache.property.GetSize () == original.GetSize (),
                 "Resolution cache metadata restored");
         for (const auto &p : original) {
-    #ifdef ServerMainVers_2800
+        #ifdef ServerMainVers_2800
             const GS::UniString &key = p.key;
             const ParamValue &before = p.value;
-    #else
+        #else
             const GS::UniString &key = *p.key;
             const ParamValue &before = *p.value;
-    #endif
+        #endif
             const auto *after = cache.property.GetPtr (key);
             DBtest (after != nullptr && after->rawName == before.rawName && after->isValid == before.isValid &&
                         after->definition.description == before.definition.description &&
@@ -3549,5 +3568,6 @@ namespace TestFunc {
         }
     }
 
+    #endif // ServerMainVers_2400
 } // namespace TestFunc
 #endif

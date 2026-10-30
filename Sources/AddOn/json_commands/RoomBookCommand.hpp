@@ -1,7 +1,8 @@
 #pragma once
 
-#if defined(ServerMainVers_2500)
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
 
+#if defined(ServerMainVers_2500)
     #include "json_commands/CommandBase.hpp"
 
 class RoomBookCommand : public CommandBase {
@@ -32,4 +33,13 @@ class RoomBookCommand : public CommandBase {
     GS::ObjectState Execute (const GS::ObjectState &parameters, GS::ProcessControl &processControl) const override;
 };
 
-#endif // defined (ServerMainVers_2500)
+class RoomBookGetFavoritesCommand : public ReadOnlyCommand {
+  public:
+    // Возвращает имя команды, которая перечисляет избранное Roombook.
+    GS::String GetName () const override;
+    // Входных параметров нет; контракт ответа намеренно не ограничен схемой.
+    GS::Optional<GS::UniString> GetInputParametersSchema () const override;
+    GS::Optional<GS::UniString> GetResponseSchema () const override;
+    GS::ObjectState Execute (const GS::ObjectState &parameters, GS::ProcessControl &processControl) const override;
+};
+#endif // ServerMainVers_2500

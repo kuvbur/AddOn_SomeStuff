@@ -1,6 +1,9 @@
 #pragma once
 
-#include "json_commands/CommandBase.hpp"
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
+
+#if defined(ServerMainVers_2500)
+    #include "json_commands/CommandBase.hpp"
 
 class HealthCommand : public CommandBase {
   public:
@@ -30,3 +33,5 @@ class HealthCommand : public CommandBase {
     virtual GS::ObjectState Execute (const GS::ObjectState &parameters,
                                      GS::ProcessControl &processControl) const override;
 };
+
+#endif // ServerMainVers_2500

@@ -1,10 +1,13 @@
-#include "ACAPinc.h"
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
 
-#include "api_headers/ResourceIds.hpp"
+#if defined(ServerMainVers_2500)
 
-#include "json_commands/HealthCommand.hpp"
+    #include "ACAPinc.h"
 
-#include "Constants.hpp"
+    #include "api_headers/ResourceIds.hpp"
+
+    #include "Constants.hpp"
+    #include "json_commands/HealthCommand.hpp"
 
 // -----------------------------------------------------------------------------
 // Создаёт команду проверки работоспособности аддона.
@@ -42,11 +45,11 @@ GS::ObjectState HealthCommand::Execute (const GS::ObjectState & /*parameters*/,
     // Имя открытого проекта — для выбора нужного экземпляра Archicad в GUI.
     // Документация API 25: APIEnv_ProjectID, header APIdefs_Environment.h.
     API_ProjectInfo projectInfo = {};
-#ifdef ServerMainVers_2700
+    #ifdef ServerMainVers_2700
     const GSErrCode projectError = ACAPI_ProjectOperation_Project (&projectInfo);
-#else
+    #else
     const GSErrCode projectError = ACAPI_Environment (APIEnv_ProjectID, &projectInfo);
-#endif
+    #endif
     if (projectError == NoError && !projectInfo.untitled && projectInfo.projectName != nullptr) {
         response.Add ("projectName", *projectInfo.projectName);
     } else {
@@ -55,3 +58,5 @@ GS::ObjectState HealthCommand::Execute (const GS::ObjectState & /*parameters*/,
 
     return response;
 }
+
+#endif // ServerMainVers_2500

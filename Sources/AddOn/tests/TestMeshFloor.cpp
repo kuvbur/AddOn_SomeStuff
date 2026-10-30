@@ -2,7 +2,7 @@
 
 #include "tests/TestFunc.hpp"
 
-#if defined(TESTING) && defined(ServerMainVers_2500)
+#if defined(TESTING)
 
     #include <algorithm>
     #include <cmath>
@@ -23,6 +23,9 @@
         #define SMSTF_INDEX(i) (i)
         #define SMSTF_IDX_LT(a, b) ((a) < (b))
     #endif
+
+    // Тесты используют Favorite_* и Roombook-типы, объявленные только для AC >= 24.
+    #if defined(ServerMainVers_2400)
 
 namespace Roombook {
     extern MatarialToFavoriteDict favdict;
@@ -73,11 +76,11 @@ namespace TestFunc {
                                                  current.header.index != SMSTF_INDEX (1);
                     check (identityMatches, "cleanup verifies owned layer GUID and nonprotected index");
                     if (identityMatches) {
-    #ifdef ServerMainVers_2700
+        #ifdef ServerMainVers_2600
                         const GSErrCode deleteError = ACAPI_Attribute_Delete (current.header);
-    #else
+        #else
                         const GSErrCode deleteError = ACAPI_Attribute_Delete (&current.header);
-    #endif
+        #endif
                         check (deleteError == NoError, "cleanup deletes only the new owned layer");
                         API_Attr_Head lookup = {};
                         lookup.typeID = API_LayerID;
@@ -416,7 +419,7 @@ namespace TestFunc {
             const auto coverageFor = [] (const GS::Array<OtdSlab> &floors, API_Guid owner) {
                 Geometry::MultiPolygon2D result;
                 for (const auto &floor : floors)
-                    if (floor.base_guid == owner)
+                    if (floor.draw.base_guid == owner)
                         result.Push (floor.poly);
                 result.Unify ();
                 return result;
@@ -437,8 +440,9 @@ namespace TestFunc {
             check (MeshFloorFinishes_BuildProjected (room, 0, 0, {source}, {}, floors, domain),
                    "solid sloped Mesh is admitted by its bottom");
             check (floors.GetSize () == 1 && sameCoverage (domain, room), "finite sloped Mesh covers the room exactly");
-            check (floors.GetSize () == 1 && floors[0].base_guid == ownerA && floors[0].base_type == API_MeshID &&
-                       floors[0].draw_type == API_RoofID && floors[0].type == Floor && floors[0].surface_geometry &&
+            check (floors.GetSize () == 1 && floors[0].draw.base_guid == ownerA &&
+                       floors[0].draw.base_type == API_MeshID && floors[0].draw.draw_type == API_RoofID &&
+                       floors[0].draw.type == Floor && floors[0].surface_geometry &&
                        std::fabs (floors[0].slope_x - 1) < 1e-6 &&
                        std::fabs (floors[0].zBottom - floors[0].plane_origin.x + 2) < 1e-6,
                    "Mesh output retains owner type and the actual contact plane");
@@ -469,9 +473,9 @@ namespace TestFunc {
             source = mesh (ownerA, 0, 4, -2, 1, true);
             OtdSlab support;
             support.poly = room;
-            support.base_guid = ownerB;
-            support.base_type = API_SlabID;
-            support.type = Floor;
+            support.draw.base_guid = ownerB;
+            support.draw.base_type = API_SlabID;
+            support.draw.type = Floor;
             support.surface_geometry = true;
             check (MeshFloorFinishes_BuildProjected (room, 0, 0, {source}, {support}, floors, domain),
                    "crossing Mesh and Slab heights are not an ambiguous area");
@@ -506,7 +510,7 @@ namespace TestFunc {
             domain.Push (room);
             check (!MeshFloorFinishes_BuildProjected (room, 0, 0, {flatA, flatB}, {}, floors, domain),
                    "coincident different owners reject instead of GUID tiebreak");
-            check (floors.GetSize () == 1 && floors[0].base_guid == ownerB && sameCoverage (domain, room),
+            check (floors.GetSize () == 1 && floors[0].draw.base_guid == ownerB && sameCoverage (domain, room),
                    "rejection leaves every output unchanged");
             floors.Clear ();
             high = mesh (ownerC, 0, 4, 1, 0, true);
@@ -565,6 +569,75 @@ namespace TestFunc {
             broken.surface.snapshot.guid = ownerB;
             check (!MeshFloorFinishes_BuildProjected (room, 0, 0, {broken}, {}, floors, domain),
                    "snapshot owner mismatch is rejected");
+
+            {
+                caseName = "finite Mesh provenance";
+                floors.Clear ();
+                MeshFloorProvenance provenance;
+                const auto partial = rectangle (0, 0, 2, 2);
+                check (MeshFloorFinishes_BuildProjectedWithProvenance (
+                           partial, 0, 0, {holed}, {}, floors, domain, provenance),
+                       "finite source projection is captured before room clipping");
+                check (provenance.supports.GetSize () == 1 &&
+                           std::fabs (provenance.supports[0].projected.CalcArea () - 6) < 1e-5 &&
+                           std::fabs (provenance.supports[0].admitted.CalcArea () - 6) < 1e-5 &&
+                           provenance.supports[0].projected[0].GetContourNum () == 2,
+                       "source hole survives outside the partial room");
+                check (provenance.contributions.GetSize () == 1 && provenance.contributions[0].floorIndex == 0 &&
+                           provenance.contributions[0].supportIndex == 0 &&
+                           std::fabs (provenance.contributions[0].domain.CalcArea () - 3) < 1e-5 &&
+                           provenance.contributions[0].domain[0].GetContourNum () == 1,
+                       "winner contribution opens the source hole at the room boundary");
+                check (provenance.supports.GetSize () == 1 && provenance.supports[0].ownerGuid == ownerA &&
+                           provenance.supports[0].geometryGuid == ownerA &&
+                           provenance.supports[0].ownerType == API_MeshID && provenance.supports[0].bodyIndex == 1 &&
+                           provenance.supports[0].polygonIndex == 1,
+                       "finite support keeps exact source ownership and face indexes");
+
+                floors.Clear ();
+                provenance = MeshFloorProvenance{};
+                auto adjacent = mesh (ownerA, 0, 2, -1, 0, false);
+                auto neighbour = mesh (ownerA, 2, 4, -1, 0, false);
+                neighbour.surface.snapshot.bodies[0].surfaces[0].polygonIndex = 7;
+                adjacent.surface.snapshot.bodies[0].surfaces.Append (neighbour.surface.snapshot.bodies[0].surfaces);
+                check (MeshFloorFinishes_BuildProjectedWithProvenance (
+                           room, 0, 0, {adjacent}, {}, floors, domain, provenance) &&
+                           floors.GetSize () == 1 && provenance.supports.GetSize () == 2 &&
+                           provenance.contributions.GetSize () == 2,
+                       "coplanar merge retains both original face references");
+                bool exactContributions =
+                    provenance.supports.GetSize () == 2 && provenance.contributions.GetSize () == 2;
+                for (const auto &contribution : provenance.contributions) {
+                    exactContributions = exactContributions &&
+                                         contribution.supportIndex < provenance.supports.GetSize () &&
+                                         contribution.floorIndex == 0;
+                    if (!exactContributions)
+                        break;
+                    const bool first = provenance.supports[contribution.supportIndex].polygonIndex == 1;
+                    exactContributions =
+                        sameCoverage (contribution.domain, first ? rectangle (0, 0, 2, 2) : rectangle (2, 0, 4, 2));
+                }
+                check (exactContributions, "each coplanar contribution stops at its own finite source");
+                check (MeshFloorFinishes_BuildProjectedWithProvenance (
+                           room, 0, 0, {adjacent}, {}, floors, domain, provenance) &&
+                           floors.GetSize () == 2 && provenance.supports.GetSize () == 4 &&
+                           provenance.contributions.GetSize () == 4 && provenance.contributions[2].floorIndex == 1 &&
+                           provenance.contributions[2].supportIndex >= 2,
+                       "appended provenance indexes retain the previous floor prefix");
+                check (!MeshFloorFinishes_BuildProjectedWithProvenance (
+                           room, 0, 0, {flatA, flatB}, {}, floors, domain, provenance) &&
+                           floors.GetSize () == 2 && provenance.supports.GetSize () == 4 &&
+                           provenance.contributions.GetSize () == 4 && sameCoverage (domain, room),
+                       "late ambiguity preserves existing floors domain and provenance");
+
+                floors.Clear ();
+                provenance = MeshFloorProvenance{};
+                check (MeshFloorFinishes_BuildProjectedWithProvenance (
+                           room, 0, 0, {holed}, {support}, floors, domain, provenance) &&
+                           provenance.supports.GetSize () == 1 && provenance.contributions.IsEmpty () &&
+                           floors.GetSize () == 1 && floors[0].draw.base_guid == ownerB,
+                       "hidden Mesh keeps its source but has no winner contribution");
+            }
             caseName = "settings";
         }
         const Stories stories = GetStories ();
@@ -582,20 +655,20 @@ namespace TestFunc {
 
         API_Element compositeSettings = settings;
         bool hasComposite = false;
-    #ifdef ServerMainVers_2700
+        #ifdef ServerMainVers_2700
         GS::UInt32 count = 0;
         error = ACAPI_Attribute_GetNum (API_CompWallID, count);
-    #else
+        #else
         API_AttributeIndex count = 0;
         error = ACAPI_Attribute_GetNum (API_CompWallID, &count);
-    #endif
+        #endif
         check (error == NoError, "enumerate composites");
         if (error == NoError) {
-    #ifdef ServerMainVers_2700
+        #ifdef ServerMainVers_2700
             for (GS::UInt32 index = 1; index <= count; ++index) {
-    #else
+        #else
             for (API_AttributeIndex index = 1; index <= count; ++index) {
-    #endif
+        #endif
                 API_Attribute attribute = {};
                 attribute.header.typeID = API_CompWallID;
                 attribute.header.index = SMSTF_INDEX (index);
@@ -755,8 +828,8 @@ namespace TestFunc {
                             const auto outside = Geometry::MultiPolygon2D::Substract (coverage, expected);
                             bool typed = !projected.IsEmpty ();
                             for (const auto &floor : projected)
-                                typed = typed && floor.base_guid == mesh.header.guid && floor.base_type == API_MeshID &&
-                                        floor.draw_type == API_RoofID;
+                                typed = typed && floor.draw.base_guid == mesh.header.guid &&
+                                        floor.draw.base_type == API_MeshID && floor.draw.draw_type == API_RoofID;
                             check (typed && missing.CalcArea () < 1e-6 && outside.CalcArea () < 1e-6,
                                    "native projection preserves finite footprint and mesh provenance");
                         }
@@ -798,9 +871,9 @@ namespace TestFunc {
                         const auto origin = face.contours[0].vertices[0].world;
                         for (const auto &polygon : polygons) {
                             OtdSlab floor;
-                            floor.type = Floor;
-                            floor.base_type = API_MeshID;
-                            floor.base_guid = mesh.header.guid;
+                            floor.draw.type = Floor;
+                            floor.draw.base_type = API_MeshID;
+                            floor.draw.base_guid = mesh.header.guid;
                             floor.floorInd = mesh.header.floorInd;
                             floor.poly = polygon;
                             if (scenario.hole) {
@@ -867,13 +940,13 @@ namespace TestFunc {
                             }
                         }
                         for (auto &floor : floors) {
-                            floor.otd_guid = APINULLGuid;
-                            const GSErrCode createError = OtdSlab_CreateRoof (stories, floor, slabSettings, &floors);
-                            check (createError == NoError && floor.otd_guid != APINULLGuid,
+                            floor.draw.otd_guid = APINULLGuid;
+                            const GSErrCode createError = Roof_Draw (stories, floor, slabSettings, &floors);
+                            check (createError == NoError && floor.draw.otd_guid != APINULLGuid,
                                    mode == 0 ? "create basic roof on native mesh plane"
                                              : "create composite roof on native mesh plane");
                             if (createError == NoError)
-                                created.Push (floor.otd_guid);
+                                created.Push (floor.draw.otd_guid);
                         }
                         return NoError;
                     });
@@ -890,10 +963,10 @@ namespace TestFunc {
                                "read independent slab layer bands and materials");
                     }
                     for (const auto &floor : floors) {
-                        if (floor.otd_guid == APINULLGuid)
+                        if (floor.draw.otd_guid == APINULLGuid)
                             continue;
                         API_Element native = {};
-                        native.header.guid = floor.otd_guid;
+                        native.header.guid = floor.draw.otd_guid;
                         const GSErrCode readError = ACAPI_Element_Get (&native);
                         check (readError == NoError && GetElemTypeID (native) == API_RoofID,
                                "read actual native roof type");
@@ -1112,7 +1185,7 @@ namespace TestFunc {
             const auto ownerCoverage = [] (const GS::Array<OtdSlab> &floors, const API_Guid &owner) {
                 Geometry::MultiPolygon2D area;
                 for (const auto &floor : floors)
-                    if (floor.base_guid == owner)
+                    if (floor.draw.base_guid == owner)
                         area.Push (floor.poly);
                 area.Unify ();
                 return area;
@@ -1127,13 +1200,13 @@ namespace TestFunc {
             zone.bodies.Push (roomBody);
             OtdSlab base;
             base.poly = rectangle (0, 0, 6, 2);
-            base.base_guid = slabOwner;
-            base.base_type = API_SlabID;
+            base.draw.base_guid = slabOwner;
+            base.draw.base_type = API_SlabID;
             base.zBottom = -1;
             base.height = 1;
             base.reference_z = 17;
             base.tip = "retained base metadata";
-            base.favorite.name = "retained Favorite metadata";
+            base.draw.favorite.name = "retained Favorite metadata";
             RoomSurfaceSource slabSource;
             slabSource.baseGuid = slabOwner;
             slabSource.geometryGuid = slabOwner;
@@ -1147,8 +1220,8 @@ namespace TestFunc {
             OtdSlab nominal;
             nominal.poly = base.poly;
             nominal.zBottom = -2;
-            nominal.base_guid = zoneOwner;
-            nominal.base_type = API_ZoneID;
+            nominal.draw.base_guid = zoneOwner;
+            nominal.draw.base_type = API_ZoneID;
             MeshFloorSource mesh;
             mesh.hasBottom = true;
             mesh.surface.baseGuid = meshOwner;
@@ -1192,9 +1265,10 @@ namespace TestFunc {
                    "all outside-domain components survive rather than PopLargest");
             bool metadata = true;
             for (const auto &floor : visible.floors)
-                if (floor.base_guid == slabOwner)
+                if (floor.draw.base_guid == slabOwner)
                     metadata = metadata && floor.reference_z == 17 && floor.tip == base.tip &&
-                               floor.favorite.name == base.favorite.name && floor.base_type == API_SlabID;
+                               floor.draw.favorite.name == base.draw.favorite.name &&
+                               floor.draw.base_type == API_SlabID;
             check (metadata, "split remainder retains owner reference plane and Favorite metadata");
 
             auto holed = mesh;
@@ -1214,7 +1288,7 @@ namespace TestFunc {
                    "components");
             bool meshHole = false;
             for (const auto &floor : holes.floors)
-                if (floor.base_guid == meshOwner)
+                if (floor.draw.base_guid == meshOwner)
                     meshHole = floor.poly.GetContourNum () == 2;
             check (meshHole, "Mesh winner preserves its actual hole contour");
 
@@ -1222,7 +1296,7 @@ namespace TestFunc {
             // большую часть.
             const API_Guid upperOwner = APIGuidFromString ("00000000-0000-0000-0000-00000000A004");
             auto upperBase = base;
-            upperBase.base_guid = upperOwner;
+            upperBase.draw.base_guid = upperOwner;
             upperBase.poly = rectangle (1, 0, 4, 2);
             upperBase.height = 3;
             auto upperSource = slabSource;
@@ -1330,10 +1404,10 @@ namespace TestFunc {
                    "local plane height splits Mesh Slab priority inside finite domain");
             bool inclinedMetadata = false;
             for (const auto &floor : crossing.floors)
-                if (floor.base_guid == meshOwner)
+                if (floor.draw.base_guid == meshOwner)
                     inclinedMetadata =
-                        floor.slope_x == 1 && floor.slope_y == 0 && floor.draw_type == API_RoofID &&
-                        floor.type == Floor && floor.surface_geometry &&
+                        floor.slope_x == 1 && floor.slope_y == 0 && floor.draw.draw_type == API_RoofID &&
+                        floor.draw.type == Floor && floor.surface_geometry &&
                         std::fabs (floor.zBottom + floor.slope_x * (3.5 - floor.plane_origin.x) - 0.5) <= 1.e-6;
             check (inclinedMetadata, "mixed winner retains actual Mesh plane native type and floor role");
 
@@ -1376,18 +1450,821 @@ namespace TestFunc {
                 for (UIndex i = 0; i < beforeSteps.GetSize (); ++i) {
                     const auto &a = beforeSteps[i];
                     const auto &c = independentSteps.steps[i];
-                    stepsEqual = stepsEqual && a.begC.x == c.begC.x && a.begC.y == c.begC.y && a.endC.x == c.endC.x &&
-                                 a.endC.y == c.endC.y && a.zBottom == c.zBottom && a.height == c.height &&
-                                 a.base_guid == c.base_guid && a.base_type == c.base_type && a.floorInd == c.floorInd &&
-                                 a.type == c.type && a.surface_geometry == c.surface_geometry &&
+                    stepsEqual = stepsEqual && a.geom.seg.begC.x == c.geom.seg.begC.x &&
+                                 a.geom.seg.begC.y == c.geom.seg.begC.y && a.geom.seg.endC.x == c.geom.seg.endC.x &&
+                                 a.geom.seg.endC.y == c.geom.seg.endC.y &&
+                                 OtdLinearSegment_GetZBottom (a.geom) == OtdLinearSegment_GetZBottom (c.geom) &&
+                                 a.geom.height == c.geom.height && a.draw.base_guid == c.draw.base_guid &&
+                                 a.draw.base_type == c.draw.base_type && a.geom.floorInd == c.geom.floorInd &&
+                                 a.draw.type == c.draw.type && a.surface_geometry == c.surface_geometry &&
                                  a.slab_step == c.slab_step && a.isValid == c.isValid &&
                                  a.slab_step_writer_eligible == c.slab_step_writer_eligible;
                 }
+
+            // #271-4c-c next: общий provenance, без активации production Mesh.
+            MixedFloorGeometry traced;
+            MixedFloorProvenance trace;
+            check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                       zone, sources, roles, 0, nominal, true, prepared, 0, {mesh}, traced, trace),
+                   "mixed provenance builds visible finite Mesh and both legacy components");
+            const auto contributionArea = [] (const auto &contributions) {
+                double area = 0;
+                for (const auto &c : contributions)
+                    area += c.domain.CalcArea ();
+                return area;
+            };
+            check (traced.floors.GetSize () == 3 && trace.slab.supports.GetSize () == 1 &&
+                       trace.slab.supports[0].origin == RoomSurfaceOrigin::PreparedAnalytic &&
+                       trace.slab.supports[0].preparedIndex == 0 && trace.slab.supports[0].bodyIndex == 0 &&
+                       trace.slab.supports[0].polygonIndex == 0 &&
+                       same (trace.slab.supports[0].projected, trace.slab.supports[0].admitted) &&
+                       std::fabs (trace.slab.supports[0].projected.CalcArea () - 12) <= AreaTolerance &&
+                       std::fabs (contributionArea (trace.slab.contributions) - 8) <= AreaTolerance &&
+                       std::fabs (contributionArea (trace.mesh.contributions) - 4) <= AreaTolerance,
+                   "Slab original admission 12 winner 8 and Mesh winner 4 are independent");
+            const auto refsValid = [&] (const MixedFloorGeometry &geometry, const MixedFloorProvenance &p) {
+                bool valid = true;
+                const auto checkRefs = [&] (const auto &supports, const auto &contributions) {
+                    for (const auto &c : contributions) {
+                        if (c.supportIndex >= supports.GetSize () || c.floorIndex >= geometry.floors.GetSize ()) {
+                            valid = false;
+                            continue;
+                        }
+                        const auto &s = supports[c.supportIndex];
+                        const auto &f = geometry.floors[c.floorIndex];
+                        Geometry::MultiPolygon2D winner;
+                        winner.Push (f.poly);
+                        valid = valid && s.ownerGuid == f.draw.base_guid && s.ownerType == f.draw.base_type &&
+                                same (c.domain, Geometry::MultiPolygon2D::Intersect (s.admitted, winner));
+                    }
+                };
+                checkRefs (p.mesh.supports, p.mesh.contributions);
+                checkRefs (p.slab.supports, p.slab.contributions);
+                return valid;
+            };
+            check (refsValid (traced, trace), "all mixed references point at actual owner type and finite winner");
+            const UIndex floorPrefix = traced.floors.GetSize ();
+            const UIndex meshSupportPrefix = trace.mesh.supports.GetSize ();
+            const UIndex slabSupportPrefix = trace.slab.supports.GetSize ();
+            const UIndex meshContributionPrefix = trace.mesh.contributions.GetSize ();
+            const UIndex slabContributionPrefix = trace.slab.contributions.GetSize ();
+            check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                       zone, sources, roles, 0, nominal, true, prepared, 0, {mesh}, traced, trace) &&
+                       traced.floors.GetSize () == 2 * floorPrefix && refsValid (traced, trace),
+                   "second mixed append offsets full floor destination rather than localInside");
+            bool offsets = true;
+            for (UIndex i = meshContributionPrefix; i < trace.mesh.contributions.GetSize (); ++i)
+                offsets = offsets && trace.mesh.contributions[i].floorIndex >= floorPrefix &&
+                          trace.mesh.contributions[i].supportIndex >= meshSupportPrefix;
+            for (UIndex i = slabContributionPrefix; i < trace.slab.contributions.GetSize (); ++i)
+                offsets = offsets && trace.slab.contributions[i].floorIndex >= floorPrefix &&
+                          trace.slab.contributions[i].supportIndex >= slabSupportPrefix;
+            check (offsets, "Mesh Slab support prefixes and final floor prefixes remap independently");
+            const auto floorCount = traced.floors.GetSize ();
+            const auto meshCount = trace.mesh.supports.GetSize ();
+            const auto slabCount = trace.slab.supports.GetSize ();
+            check (!OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                       zone, sources, roles, 0, nominal, true, prepared, 0, {broken}, traced, trace) &&
+                       traced.floors.GetSize () == floorCount && trace.mesh.supports.GetSize () == meshCount &&
+                       trace.slab.supports.GetSize () == slabCount && refsValid (traced, trace),
+                   "late invalid Mesh leaves mixed append destination and provenance prefixes intact");
+
+            MixedFloorGeometry hiddenTrace, holesTrace, recoveredTrace, noMeshTrace;
+            MixedFloorProvenance hiddenP, holesP, recoveredP, noMeshP;
+            auto hiddenMesh = mesh;
+            hiddenMesh.surface.snapshot.bodies[0].surfaces[0] = face (2, 0, 4, 2, -1, true);
+            check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                       zone, sources, roles, 0, nominal, true, prepared, 0, {hiddenMesh}, hiddenTrace, hiddenP) &&
+                       refsValid (hiddenTrace, hiddenP) && hiddenP.mesh.contributions.IsEmpty () &&
+                       !hiddenP.mesh.supports.IsEmpty () &&
+                       std::fabs (contributionArea (hiddenP.slab.contributions) - 12) <= AreaTolerance,
+                   "fully hidden Mesh retains support but never claims Slab winner");
+            check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                       zone, sources, roles, 0, nominal, true, prepared, 0, {holed}, holesTrace, holesP) &&
+                       refsValid (holesTrace, holesP) &&
+                       std::fabs (contributionArea (holesP.mesh.contributions) - 3) <= AreaTolerance &&
+                       std::fabs (contributionArea (holesP.slab.contributions) - 9) <= AreaTolerance,
+                   "hole interior and both exterior Slab remnants have final winner indices");
+            check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (zone,
+                                                                   suppressedSources,
+                                                                   suppressedRoles,
+                                                                   0,
+                                                                   nominal,
+                                                                   true,
+                                                                   suppressedPrepared,
+                                                                   0,
+                                                                   {leftMesh},
+                                                                   recoveredTrace,
+                                                                   recoveredP) &&
+                       refsValid (recoveredTrace, recoveredP) && recoveredP.slab.supports.GetSize () == 2 &&
+                       std::fabs (contributionArea (recoveredP.slab.contributions) - 12) <= AreaTolerance &&
+                       recoveredP.mesh.contributions.IsEmpty (),
+                   "raw Slab provenance includes restored fragment absent in lossy legacy");
+            check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (zone,
+                                                                   sources,
+                                                                   roles,
+                                                                   0,
+                                                                   nominal,
+                                                                   true,
+                                                                   prepared,
+                                                                   std::numeric_limits<double>::quiet_NaN (),
+                                                                   {},
+                                                                   noMeshTrace,
+                                                                   noMeshP) &&
+                       refsValid (noMeshTrace, noMeshP) && noMeshP.mesh.supports.IsEmpty () &&
+                       std::fabs (contributionArea (noMeshP.slab.contributions) - 12) <= AreaTolerance,
+                   "provenance no Mesh leaves Mesh roomFloor guard unevaluated");
+            auto larger = base;
+            larger.poly = rectangle (-1, -1, 7, 3);
+            MixedFloorGeometry unroomedTrace;
+            MixedFloorProvenance unroomedP;
+            check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                       zone, sources, roles, 0, nominal, true, {larger}, 0, {mesh}, unroomedTrace, unroomedP) &&
+                       refsValid (unroomedTrace, unroomedP) && unroomedP.slab.supports.GetSize () == 1 &&
+                       std::fabs (unroomedP.slab.supports[0].projected.CalcArea () - 32) <= AreaTolerance &&
+                       same (unroomedP.slab.supports[0].projected, unroomedP.slab.supports[0].admitted) &&
+                       std::fabs (contributionArea (unroomedP.slab.contributions) - 8) <= AreaTolerance,
+                   "original and admitted Slab support remain unroomed outside final winners");
+            auto nativeSource = slabSource;
+            nativeSource.origin = RoomSurfaceOrigin::Native3D;
+            RoomSurfaceBody nativeBody;
+            nativeBody.index = 7;
+            auto nativeTop = face (0, 0, 6, 2, 0, true);
+            nativeTop.bodyIndex = 7;
+            nativeTop.polygonIndex = 11;
+            nativeBody.surfaces.Push (nativeTop);
+            nativeBody.surfaces.Push (face (0, 0, 6, 2, -1, false));
+            nativeSource.snapshot.bodies.Push (nativeBody);
+            MixedFloorGeometry nativeTrace;
+            MixedFloorProvenance nativeP;
+            check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                       zone, {nativeSource}, roles, 0, nominal, true, {}, 0, {mesh}, nativeTrace, nativeP) &&
+                       refsValid (nativeTrace, nativeP) && nativeP.slab.supports.GetSize () == 1 &&
+                       nativeP.slab.supports[0].origin == RoomSurfaceOrigin::Native3D &&
+                       nativeP.slab.supports[0].bodyIndex == 7 && nativeP.slab.supports[0].polygonIndex == 11 &&
+                       std::fabs (contributionArea (nativeP.slab.contributions) - 8) <= AreaTolerance,
+                   "snapshot Slab records actual native face identity not synthetic prepared IDs");
+
+            auto twoPartZone = zone;
+            twoPartZone.bodies[0].surfaces.Push (face (8, 0, 10, 2, 0, false));
+            auto twoPartBase = base;
+            twoPartBase.poly = rectangle (0, 0, 10, 2);
+            auto spanningMesh = mesh;
+            spanningMesh.surface.snapshot.bodies[0].surfaces[0] = face (2, 0, 10, 2, 1, true);
+            spanningMesh.surface.snapshot.bodies[0].surfaces[1] = face (2, 0, 10, 2, -3, false);
+            MixedFloorGeometry twoPartTrace;
+            MixedFloorProvenance twoPartP;
+            check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (twoPartZone,
+                                                                   sources,
+                                                                   roles,
+                                                                   0,
+                                                                   nominal,
+                                                                   true,
+                                                                   {twoPartBase},
+                                                                   0,
+                                                                   {spanningMesh},
+                                                                   twoPartTrace,
+                                                                   twoPartP) &&
+                       refsValid (twoPartTrace, twoPartP) && twoPartP.mesh.contributions.GetSize () == 2 &&
+                       twoPartP.mesh.contributions[0].floorIndex != twoPartP.mesh.contributions[1].floorIndex &&
+                       std::fabs (contributionArea (twoPartP.mesh.contributions) - 12) <= AreaTolerance &&
+                       std::fabs (contributionArea (twoPartP.slab.contributions) - 4) <= AreaTolerance,
+                   "disconnected room components offset Mesh floor references before mixed merge");
+
+            {
+                // Горизонтальная опора с дугой не требует прямолинейного Mesh-представления.
+                PolyArcRec curvedArc;
+                curvedArc.begIndex = 2;
+                curvedArc.endIndex = 3;
+                curvedArc.arcAngle = .5;
+                const GS::Array<Point2D> curvedPoints = {{1, .5}, {3, .5}, {3, 1.5}, {1, 1.5}};
+                const auto curvedPolygons =
+                    Geometry::Polygon2D::Create (Geometry::PolyFlags_IsSameDirEdgeLegal,
+                                                 curvedPoints,
+                                                 GS::Array<PolyArcRec>{curvedArc},
+                                                 GS::Array<UIndex>{3},
+                                                 Geometry::PolyCreateFlags_IdxRefInContourEndFromZero |
+                                                     Geometry::PolyCreateFlags_IdxRefInArcFromZero);
+                check (curvedPolygons.GetSize () == 1, "curved Slab fixture creates one real SDK polygon");
+                if (curvedPolygons.GetSize () == 1) {
+                    auto curvedBase = base;
+                    curvedBase.poly = curvedPolygons[0];
+                    Geometry::MultiPolygon2D curvedExpected;
+                    curvedExpected.Push (curvedBase.poly);
+                    const auto containsArc = [] (const Geometry::Polygon2D &polygon) {
+                        GS::Array<Point2D> points;
+                        GS::Array<PolyArcRec> arcs;
+                        GS::Array<UIndex> ends;
+                        GS::Array<Geometry::Polygon2D::ConstContourIterator> reversed;
+                        polygon.CopyPolygonData (
+                            points, arcs, ends, reversed, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
+                        return !arcs.IsEmpty ();
+                    };
+                    GS::Array<OtdSlab> curvedLegacy;
+                    double curvedRejected = 0;
+                    const GS::Array<OtdSlab> curvedPrepared = {curvedBase};
+                    const bool curvedLegacyBuilt = OtdSlab_BuildProjectedFinishes (zone,
+                                                                                   sources,
+                                                                                   roles,
+                                                                                   Floor,
+                                                                                   0,
+                                                                                   curvedLegacy,
+                                                                                   curvedRejected,
+                                                                                   &nominal,
+                                                                                   true,
+                                                                                   nullptr,
+                                                                                   &curvedPrepared);
+                    check (curvedLegacyBuilt && curvedLegacy.GetSize () == 1 && containsArc (curvedLegacy[0].poly) &&
+                               same (FloorCoverage (curvedLegacy), curvedExpected),
+                           "legacy horizontal Slab accepts and preserves original curved "
+                           "footprint");
+                    MixedFloorGeometry curvedGeometry;
+                    MixedFloorProvenance curvedProvenance;
+                    const bool curvedBuilt = OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                        zone, sources, roles, 0, nominal, true, {curvedBase}, 0, {}, curvedGeometry, curvedProvenance);
+                    check (curvedBuilt,
+                           "Slab provenance accepts identical horizontal planes "
+                           "with curved overlap");
+                    check (curvedBuilt && curvedGeometry.floors.GetSize () == 1 &&
+                               curvedProvenance.slab.supports.GetSize () == 1 &&
+                               curvedProvenance.slab.contributions.GetSize () == 1 &&
+                               curvedProvenance.mesh.supports.IsEmpty () &&
+                               curvedProvenance.slab.contributions[0].supportIndex == 0 &&
+                               curvedProvenance.slab.contributions[0].floorIndex == 0 &&
+                               curvedProvenance.slab.supports[0].plane.slope_x == 0 &&
+                               curvedProvenance.slab.supports[0].plane.slope_y == 0 &&
+                               curvedProvenance.slab.supports[0].plane.zBottom == 0 &&
+                               containsArc (curvedGeometry.floors[0].poly) &&
+                               same (curvedProvenance.slab.supports[0].projected, curvedExpected) &&
+                               same (curvedProvenance.slab.supports[0].admitted, curvedExpected) &&
+                               same (curvedProvenance.slab.contributions[0].domain, curvedExpected),
+                           "curved support admitted and winner domains retain exact finite arc "
+                           "and indices");
+                    auto curvedOutsideMesh = mesh;
+                    curvedOutsideMesh.surface.snapshot.bodies[0].surfaces[0] = face (8, 0, 10, 2, 1, true);
+                    curvedOutsideMesh.surface.snapshot.bodies[0].surfaces[1] = face (8, 0, 10, 2, -3, false);
+                    MixedFloorGeometry curvedOutsideGeometry;
+                    MixedFloorProvenance curvedOutsideProvenance;
+                    const bool curvedOutsideBuilt =
+                        OtdSlab_BuildFiniteMixedGeometryWithProvenance (zone,
+                                                                        sources,
+                                                                        roles,
+                                                                        0,
+                                                                        nominal,
+                                                                        true,
+                                                                        {curvedBase},
+                                                                        0,
+                                                                        {curvedOutsideMesh},
+                                                                        curvedOutsideGeometry,
+                                                                        curvedOutsideProvenance);
+                    check (curvedOutsideBuilt && curvedOutsideGeometry.meshDomain.IsEmpty () &&
+                               curvedOutsideGeometry.floors.GetSize () == 1 &&
+                               !curvedOutsideProvenance.mesh.supports.IsEmpty () &&
+                               curvedOutsideProvenance.mesh.contributions.IsEmpty () &&
+                               curvedOutsideProvenance.slab.contributions.GetSize () == 1 &&
+                               same (curvedOutsideProvenance.slab.contributions[0].domain, curvedExpected),
+                           "empty Mesh domain preserves curved Slab provenance and hidden "
+                           "unroomed support");
+                }
+            }
+
+            // Дополнительные проверки перед завершающей проверкой независимых ступеней.
+            // C++14; этот блок не включает производственный Mesh-маршрут.
+            {
+                const auto exArray = [] (const auto &a, const auto &b, const auto &eq) {
+                    if (a.GetSize () != b.GetSize ())
+                        return false;
+                    for (UIndex i = 0; i < a.GetSize (); ++i)
+                        if (!eq (a[i], b[i]))
+                            return false;
+                    return true;
+                };
+                const auto exPoly = [&] (const auto &a, const auto &b) {
+                    Geometry::MultiPolygon2D aa, bb;
+                    aa.Push (a);
+                    bb.Push (b);
+                    return a.GetContourNum () == b.GetContourNum () && same (aa, bb);
+                };
+                const auto exComposite = [&] (const auto &a, const auto &b) {
+                    return a.inx == b.inx && a.fillThick == b.fillThick && a.fillThick_min == b.fillThick_min &&
+                           a.rfromstart == b.rfromstart && a.structype == b.structype && a.num == b.num &&
+                           a.val == b.val && a.area == b.area && a.area_fill == b.area_fill && a.volume == b.volume &&
+                           a.length == b.length && a.width == b.width && a.kzap == b.kzap && a.qty == b.qty &&
+                           a.unit == b.unit && a.pos == b.pos && true;
+                };
+                const auto exFavorite = [&] (const auto &a, const auto &b) {
+                    return a.name == b.name && a.type == b.type && a.is_composite_read == b.is_composite_read &&
+                           a.thickness == b.thickness && exArray (a.composite, b.composite, exComposite);
+                };
+                const auto exMaterial = [&] (const auto &a, const auto &b) {
+                    return a.material == b.material && a.smaterial == b.smaterial && a.rawname == b.rawname &&
+                           a.rawname_bytype == b.rawname_bytype && true;
+                };
+                const auto exDraw = [&] (const auto &a, const auto &b) {
+                    return a.base_guid == b.base_guid && a.otd_guid == b.otd_guid && a.base_type == b.base_type &&
+                           a.draw_type == b.draw_type && a.type == b.type && a.draw_error == b.draw_error &&
+                           exMaterial (a.material, b.material) && exFavorite (a.favorite, b.favorite);
+                };
+                const auto exFloor = [&] (const auto &a, const auto &b) {
+                    return a.zBottom == b.zBottom && a.floorInd == b.floorInd && a.height == b.height &&
+                           a.reference_z == b.reference_z && a.plane_origin.x == b.plane_origin.x &&
+                           a.plane_origin.y == b.plane_origin.y && a.slope_x == b.slope_x && a.slope_y == b.slope_y &&
+                           a.tip == b.tip && a.isValid == b.isValid && a.surface_geometry == b.surface_geometry &&
+                           exPoly (a.poly, b.poly) && exDraw (a.draw, b.draw) &&
+                           exArray (a.base_composite, b.base_composite, exComposite);
+                };
+                const auto exOpening = [&] (const auto &a, const auto &b) {
+                    return a.zBottom == b.zBottom && a.height == b.height && a.width == b.width &&
+                           a.objLoc == b.objLoc && a.lower == b.lower && a.reflected == b.reflected &&
+                           a.ref_side == b.ref_side && a.reveal_from_sill == b.reveal_from_sill &&
+                           a.has_reveal == b.has_reveal && a.create_reveal == b.create_reveal &&
+                           a.surface_geometry == b.surface_geometry && a.base_reveal_width == b.base_reveal_width &&
+                           a.base_guid == b.base_guid && a.otd_guid == b.otd_guid &&
+                           exArray (a.source_opening_guids, b.source_opening_guids, [] (const auto &x, const auto &y) {
+                               return x == y;
+                           });
+                };
+                const auto exStep = [&] (const auto &a, const auto &b) {
+                    return a.geom.seg.begC.x == b.geom.seg.begC.x && a.geom.seg.begC.y == b.geom.seg.begC.y &&
+                           a.geom.seg.begC.z == b.geom.seg.begC.z && a.geom.seg.endC.x == b.geom.seg.endC.x &&
+                           a.geom.seg.endC.y == b.geom.seg.endC.y && a.geom.seg.endC.z == b.geom.seg.endC.z &&
+                           a.geom.ang_begC == b.geom.ang_begC && a.geom.ang_endC == b.geom.ang_endC &&
+                           a.geom.height == b.geom.height && a.geom.width == b.geom.width &&
+                           a.geom.length == b.geom.length && a.geom.floorInd == b.geom.floorInd &&
+                           a.floor_core_offset == b.floor_core_offset &&
+                           a.floor_core_offset_valid == b.floor_core_offset_valid && a.base_th == b.base_th &&
+                           a.base_flipped == b.base_flipped && a.isValid == b.isValid &&
+                           a.slant_angle == b.slant_angle && a.surface_geometry == b.surface_geometry &&
+                           a.rise_x == b.rise_x && a.rise_y == b.rise_y && a.slab_step == b.slab_step &&
+                           a.slab_step_writer_eligible == b.slab_step_writer_eligible && exDraw (a.draw, b.draw) &&
+                           exArray (a.base_composite, b.base_composite, exComposite) &&
+                           exArray (a.openings, b.openings, exOpening);
+                };
+                const auto exMeshSupport = [&] (const auto &a, const auto &b) {
+                    return a.ownerGuid == b.ownerGuid && a.geometryGuid == b.geometryGuid &&
+                           a.ownerType == b.ownerType && a.bodyIndex == b.bodyIndex &&
+                           a.polygonIndex == b.polygonIndex && a.modelMaterialIndex == b.modelMaterialIndex &&
+                           exFloor (a.plane, b.plane) && same (a.projected, b.projected) &&
+                           same (a.admitted, b.admitted);
+                };
+                const auto exSlabSupport = [&] (const auto &a, const auto &b) {
+                    return a.ownerGuid == b.ownerGuid && a.geometryGuid == b.geometryGuid &&
+                           a.ownerType == b.ownerType && a.origin == b.origin && a.preparedIndex == b.preparedIndex &&
+                           a.bodyIndex == b.bodyIndex && a.polygonIndex == b.polygonIndex &&
+                           a.modelMaterialIndex == b.modelMaterialIndex && exFloor (a.plane, b.plane) &&
+                           same (a.projected, b.projected) && same (a.admitted, b.admitted);
+                };
+                const auto exContribution = [&] (const auto &a, const auto &b) {
+                    return a.supportIndex == b.supportIndex && a.floorIndex == b.floorIndex &&
+                           same (a.domain, b.domain);
+                };
+                const auto exGeometry = [&] (const MixedFloorGeometry &a, const MixedFloorGeometry &b) {
+                    return exArray (a.floors, b.floors, exFloor) && exArray (a.steps, b.steps, exStep) &&
+                           same (a.meshDomain, b.meshDomain) && same (a.changedDomain, b.changedDomain) &&
+                           a.rejectedArea == b.rejectedArea;
+                };
+                const auto exProvenance = [&] (const MixedFloorProvenance &a, const MixedFloorProvenance &b) {
+                    return exArray (a.mesh.supports, b.mesh.supports, exMeshSupport) &&
+                           exArray (a.slab.supports, b.slab.supports, exSlabSupport) &&
+                           exArray (a.mesh.contributions, b.mesh.contributions, exContribution) &&
+                           exArray (a.slab.contributions, b.slab.contributions, exContribution);
+                };
+                const auto exRect = [&] (double x0, double y0, double x1, double y1) {
+                    Geometry::MultiPolygon2D p;
+                    p.Push (rectangle (x0, y0, x1, y1));
+                    return p;
+                };
+                const auto exDomains = [&] (const auto &cs) {
+                    Geometry::MultiPolygon2D p;
+                    for (const auto &c : cs)
+                        p.Append (c.domain);
+                    p.Unify ();
+                    return p;
+                };
+                // Сравниваем упорядоченные префикс и добавленный набор, а не только суммарное покрытие.
+                const auto exAppend = [&] (const MixedFloorGeometry &before,
+                                           const MixedFloorProvenance &bp,
+                                           const MixedFloorGeometry &batch,
+                                           const MixedFloorProvenance &p,
+                                           const MixedFloorGeometry &after,
+                                           const MixedFloorProvenance &ap) {
+                    MixedFloorGeometry e = before;
+                    MixedFloorProvenance ep = bp;
+                    auto mp = p.mesh.contributions;
+                    auto sp = p.slab.contributions;
+                    for (auto &c : mp) {
+                        c.floorIndex += before.floors.GetSize ();
+                        c.supportIndex += bp.mesh.supports.GetSize ();
+                    }
+                    for (auto &c : sp) {
+                        c.floorIndex += before.floors.GetSize ();
+                        c.supportIndex += bp.slab.supports.GetSize ();
+                    }
+                    e.floors.Append (batch.floors);
+                    e.steps.Append (batch.steps);
+                    e.meshDomain.Append (batch.meshDomain);
+                    e.meshDomain.Unify ();
+                    e.changedDomain.Append (batch.changedDomain);
+                    e.changedDomain.Unify ();
+                    e.rejectedArea += batch.rejectedArea;
+                    ep.mesh.supports.Append (p.mesh.supports);
+                    ep.slab.supports.Append (p.slab.supports);
+                    ep.mesh.contributions.Append (mp);
+                    ep.slab.contributions.Append (sp);
+                    return exGeometry (e, after) && exProvenance (ep, ap);
+                };
+                MixedFloorGeometry exBatch;
+                MixedFloorProvenance exBP;
+                const bool exBuilt = OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                    zone, sources, roles, 0, nominal, true, prepared, 0, {mesh}, exBatch, exBP);
+                check (exBuilt && same (ownerCoverage (exBatch.floors, meshOwner), exRect (2, 0, 4, 2)) &&
+                           same (exDomains (exBP.mesh.contributions), exRect (2, 0, 4, 2)) &&
+                           same (exDomains (exBP.slab.contributions),
+                                 Geometry::MultiPolygon2D::Substract (exRect (0, 0, 6, 2), exRect (2, 0, 4, 2))),
+                       "extra explicit independent central winner domains");
+                MixedFloorGeometry exTwice = exBatch;
+                MixedFloorProvenance exTP = exBP;
+                check (exBuilt &&
+                           OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                               zone, sources, roles, 0, nominal, true, prepared, 0, {mesh}, exTwice, exTP) &&
+                           exAppend (exBatch, exBP, exBatch, exBP, exTwice, exTP),
+                       "extra second append preserves complete ordered prefix and exact remaps");
+                // Независимый префикс содержит разное число Mesh- и Slab-опор.
+                MixedFloorGeometry exSeed = noMeshTrace;
+                MixedFloorProvenance exSP = noMeshP;
+                OtdSlab exUnrelated = base;
+                exUnrelated.poly = rectangle (20, 20, 21, 21);
+                exUnrelated.draw.base_guid = zoneOwner;
+                exUnrelated.draw.base_type = API_ZoneID;
+                exUnrelated.reference_z = 43;
+                exUnrelated.plane_origin = {20, 20};
+                exUnrelated.slope_x = 0.125;
+                exUnrelated.tip = "unrelated prefix";
+                exUnrelated.draw.material.material = 19;
+                exUnrelated.draw.favorite.name = "prefix favorite";
+                exUnrelated.draw.favorite.thickness = 0.17;
+                exSeed.floors.Push (exUnrelated);
+                exSeed.steps.Append (beforeSteps);
+                exSeed.rejectedArea = 0.375;
+                exSeed.meshDomain = exRect (20, 20, 21, 21);
+                exSeed.changedDomain = exRect (22, 20, 23, 21);
+                const auto exSeedBefore = exSeed;
+                const auto exSPBefore = exSP;
+                check (exBuilt &&
+                           OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                               zone, sources, roles, 0, nominal, true, prepared, 0, {mesh}, exSeed, exSP) &&
+                           exAppend (exSeedBefore, exSPBefore, exBatch, exBP, exSeed, exSP),
+                       "extra unrelated nonempty prefix independent support offsets domains rejected area");
+                MixedFloorGeometry exStepBatch;
+                MixedFloorProvenance exStepP;
+                const bool exStepBuilt = OtdSlab_BuildFiniteMixedGeometryWithProvenance (zone,
+                                                                                         suppressedSources,
+                                                                                         suppressedRoles,
+                                                                                         0,
+                                                                                         stepNominal,
+                                                                                         true,
+                                                                                         suppressedPrepared,
+                                                                                         0,
+                                                                                         {rightMesh},
+                                                                                         exStepBatch,
+                                                                                         exStepP);
+                check (exStepBuilt && beforeSteps.GetSize () == 2 && exArray (exStepBatch.steps, beforeSteps, exStep) &&
+                           exArray (exStepBatch.steps, independentSteps.steps, exStep),
+                       "extra independent Slab step complete geometry metadata eligibility and endpoints");
+                const auto exBeforeStepAppend = exSeed;
+                const auto exBeforeStepP = exSP;
+                check (exStepBuilt &&
+                           OtdSlab_BuildFiniteMixedGeometryWithProvenance (zone,
+                                                                           suppressedSources,
+                                                                           suppressedRoles,
+                                                                           0,
+                                                                           stepNominal,
+                                                                           true,
+                                                                           suppressedPrepared,
+                                                                           0,
+                                                                           {rightMesh},
+                                                                           exSeed,
+                                                                           exSP) &&
+                           exAppend (exBeforeStepAppend, exBeforeStepP, exStepBatch, exStepP, exSeed, exSP),
+                       "extra Slab steps append after unrelated existing step prefix");
+                const auto exAtomic = [&] (const RoomSurfaceSnapshot &z,
+                                           const GS::Array<RoomSurfaceSource> &ss,
+                                           const GS::Array<OtdSlab> &pp,
+                                           const GS::Array<MeshFloorSource> &mm) {
+                    auto g = exSeed;
+                    auto p = exSP;
+                    return !OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                               z, ss, roles, 0, nominal, true, pp, 0, mm, g, p) &&
+                           exGeometry (g, exSeed) && exProvenance (p, exSP);
+                };
+                check (exAtomic (zone, sources, prepared, {broken}),
+                       "extra invalid Mesh atomic all outputs not only counts");
+                auto exWrongType = base;
+                exWrongType.draw.base_type = API_WallID;
+                check (exAtomic (zone, sources, {exWrongType}, {}),
+                       "extra malformed prepared base_type opt in atomic refusal");
+                MixedFloorGeometry exOldWrongType;
+                check (OtdSlab_BuildFiniteMixedGeometry (
+                           zone, sources, roles, 0, nominal, true, {exWrongType}, 0, {}, exOldWrongType),
+                       "extra nullptr route retains legacy prepared base_type acceptance");
+                auto exWrongPreparedGuid = base;
+                exWrongPreparedGuid.draw.base_guid = zoneOwner;
+                check (exAtomic (zone, sources, {exWrongPreparedGuid}, {}),
+                       "extra malformed prepared owner GUID mismatch atomic refusal");
+                auto exOldMissing = exSeed;
+                check (!OtdSlab_BuildFiniteMixedGeometry (
+                           zone, sources, roles, 0, nominal, true, {exWrongPreparedGuid}, 0, {}, exOldMissing) &&
+                           exGeometry (exOldMissing, exSeed),
+                       "extra nullptr missing prepared owner retains existing atomic refusal policy");
+                auto exWrongGuidSource = slabSource;
+                exWrongGuidSource.snapshot.guid = zoneOwner;
+                check (exAtomic (zone, {exWrongGuidSource}, prepared, {mesh}),
+                       "extra malformed owner snapshot guid mismatch opt in atomic refusal");
+                MixedFloorGeometry exOldWrongGuid;
+                check (OtdSlab_BuildFiniteMixedGeometry (
+                           zone, {exWrongGuidSource}, roles, 0, nominal, true, prepared, 0, {mesh}, exOldWrongGuid) &&
+                           exGeometry (exOldWrongGuid, visible),
+                       "extra nullptr route unchanged on owner snapshot guid mismatch");
+                auto exTie = mesh;
+                exTie.surface.snapshot.bodies[0].surfaces[0] = face (2, 0, 4, 2, 0, true);
+                check (exAtomic (zone, sources, prepared, {exTie}),
+                       "extra coplanar Mesh versus Slab ambiguity atomic refusal");
+                // В первой компоненте Mesh строго выше; во второй он совпадает с отметкой Slab.
+                auto exLate = spanningMesh;
+                exLate.surface.snapshot.bodies[0].surfaces[0] = face (2, 0, 6, 2, 1, true);
+                exLate.surface.snapshot.bodies[0].surfaces.Push (face (8, 0, 10, 2, 0, true));
+                MixedFloorGeometry exFirst;
+                MixedFloorProvenance exFirstP;
+                check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                           zone, sources, roles, 0, nominal, true, {twoPartBase}, 0, {exLate}, exFirst, exFirstP) &&
+                           same (exDomains (exFirstP.mesh.contributions), exRect (2, 0, 6, 2)),
+                       "extra late ambiguity first component independently succeeds");
+                check (exAtomic (twoPartZone, sources, {twoPartBase}, {exLate}),
+                       "extra second footprint component ambiguity leaves complete outputs atomic");
+                // Ожидаемые конечные области и индексы заданы отдельно для каждой компоненты.
+                bool exDisconnected = twoPartP.mesh.contributions.GetSize () == 2;
+                unsigned exLeft = 0, exRight = 0;
+                for (const auto &c : twoPartP.mesh.contributions) {
+                    if (c.floorIndex >= twoPartTrace.floors.GetSize ()) {
+                        exDisconnected = false;
+                        continue;
+                    }
+                    Geometry::MultiPolygon2D fp;
+                    fp.Push (twoPartTrace.floors[c.floorIndex].poly);
+                    if (same (c.domain, exRect (2, 0, 6, 2))) {
+                        ++exLeft;
+                        exDisconnected = exDisconnected && same (fp, exRect (2, 0, 6, 2));
+                    } else if (same (c.domain, exRect (8, 0, 10, 2))) {
+                        ++exRight;
+                        exDisconnected = exDisconnected && same (fp, exRect (8, 0, 10, 2));
+                    } else
+                        exDisconnected = false;
+                }
+                check (exDisconnected && exLeft == 1 && exRight == 1 &&
+                           same (exDomains (twoPartP.slab.contributions), exRect (0, 0, 2, 2)),
+                       "extra disconnected Mesh exact domains resolve to exact final floor indices");
+                // Отверстие Slab внутри D закрывает более высокий Mesh; прежняя политика отверстий не меняется.
+                auto exNativeHole = nativeSource;
+                auto exHoleContour = face (2.5, 0.5, 3.5, 1.5, 0, true).contours[0];
+                exHoleContour.hole = true;
+                exNativeHole.snapshot.bodies[0].surfaces[0].contours.Push (exHoleContour);
+                    // Проверяем перенос индекса из синтетического snapshot, а не чтение native-материала.
+        #ifdef ServerMainVers_2700
+                exNativeHole.snapshot.bodies[0].surfaces[0].modelMaterialIndex = ACAPI_CreateAttributeIndex (23);
+        #else
+                exNativeHole.snapshot.bodies[0].surfaces[0].modelMaterialIndex = 23;
+        #endif
+                MixedFloorGeometry exHoleG;
+                MixedFloorProvenance exHoleP;
+                const auto exHoleDomain =
+                    Geometry::MultiPolygon2D::Substract (exRect (0, 0, 6, 2), exRect (2.5, 0.5, 3.5, 1.5));
+                const bool exHoleOK = OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                    zone, {exNativeHole}, roles, 0, nominal, true, {}, 0, {mesh}, exHoleG, exHoleP);
+                check (exHoleOK && exHoleP.slab.supports.GetSize () == 1 && exHoleP.slab.supports[0].bodyIndex == 7 &&
+                           exHoleP.slab.supports[0].polygonIndex == 11 &&
+        #ifdef ServerMainVers_2700
+                           exHoleP.slab.supports[0].modelMaterialIndex == ACAPI_CreateAttributeIndex (23) &&
+        #else
+                           exHoleP.slab.supports[0].modelMaterialIndex == 23 &&
+        #endif
+                           same (exHoleP.slab.supports[0].projected, exHoleDomain) &&
+                           same (exHoleP.slab.supports[0].admitted, exHoleDomain) &&
+                           same (exDomains (exHoleP.slab.contributions),
+                                 Geometry::MultiPolygon2D::Substract (exHoleDomain, exRect (2, 0, 4, 2))),
+                       "extra native Slab hole original admitted and winner preserve face material identity");
+                // Перекрывающиеся грани одного владельца сохраняют оба источника provenance.
+                auto exMultiNative = nativeSource;
+                auto exSecondNative = exMultiNative.snapshot.bodies[0].surfaces[0];
+                exSecondNative.polygonIndex = 12;
+        #ifdef ServerMainVers_2700
+                exSecondNative.modelMaterialIndex = ACAPI_CreateAttributeIndex (24);
+        #else
+                exSecondNative.modelMaterialIndex = 24;
+        #endif
+                exMultiNative.snapshot.bodies[0].surfaces.Push (exSecondNative);
+                MixedFloorGeometry exMultiG;
+                MixedFloorProvenance exMultiP;
+                const bool exMultiOK = OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                    zone, {exMultiNative}, roles, 0, nominal, true, {}, 0, {mesh}, exMultiG, exMultiP);
+                bool exBothNative =
+                    exMultiOK && exMultiP.slab.supports.GetSize () == 2 && exMultiP.slab.contributions.GetSize () == 4;
+                unsigned exFace11 = 0, exFace12 = 0;
+                for (const auto &su : exMultiP.slab.supports) {
+                    exBothNative = exBothNative && su.bodyIndex == 7 && same (su.projected, exRect (0, 0, 6, 2)) &&
+                                   same (su.admitted, exRect (0, 0, 6, 2));
+                    if (su.polygonIndex == 11)
+                        ++exFace11;
+        #ifdef ServerMainVers_2700
+                    if (su.polygonIndex == 12 && su.modelMaterialIndex == ACAPI_CreateAttributeIndex (24))
+        #else
+                    if (su.polygonIndex == 12 && su.modelMaterialIndex == 24)
+        #endif
+                        ++exFace12;
+                }
+                check (exBothNative && exFace11 == 1 && exFace12 == 1 && refsValid (exMultiG, exMultiP) &&
+                           same (exDomains (exMultiP.slab.contributions),
+                                 Geometry::MultiPolygon2D::Substract (exRect (0, 0, 6, 2), exRect (2, 0, 4, 2))),
+                       "extra same owner multiple coplanar native faces retain overlapping provenance");
+                // Остаток от Zone не получает выдуманную Slab-опору.
+                MixedFloorGeometry exZoneG;
+                MixedFloorProvenance exZoneP;
+                check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                           zone, {}, {}, 0, nominal, false, {}, 0, {mesh}, exZoneG, exZoneP) &&
+                           exZoneP.slab.supports.IsEmpty () && exZoneP.slab.contributions.IsEmpty () &&
+                           same (ownerCoverage (exZoneG.floors, zoneOwner),
+                                 Geometry::MultiPolygon2D::Substract (exRect (0, 0, 6, 2), exRect (2, 0, 4, 2))) &&
+                           same (exDomains (exZoneP.mesh.contributions), exRect (2, 0, 4, 2)),
+                       "extra onlyOnSlab false nominal Zone fallback has no fake Slab provenance");
+                MixedFloorGeometry exEmptyG;
+                MixedFloorProvenance exEmptyP;
+                check (
+                    OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                        zone, sources, roles, 0, nominal, true, prepared, 0, {emptyDomainMesh}, exEmptyG, exEmptyP) &&
+                        exEmptyG.meshDomain.IsEmpty () && exEmptyP.mesh.supports.GetSize () == 1 &&
+                        exEmptyP.mesh.contributions.IsEmpty () &&
+                        same (exEmptyP.mesh.supports[0].projected, exRect (2, 0, 4, 2)) &&
+                        exEmptyP.mesh.supports[0].admitted.IsEmpty () &&
+                        same (exDomains (exEmptyP.slab.contributions), exRect (0, 0, 6, 2)),
+                    "extra empty admitted D retains rejected Mesh original support and Slab winner");
+                auto exOutside = mesh;
+                exOutside.surface.snapshot.bodies[0].surfaces[0] = face (20, 0, 22, 2, 1, true);
+                exOutside.surface.snapshot.bodies[0].surfaces[1] = face (20, 0, 22, 2, -3, false);
+                MixedFloorGeometry exOutsideG;
+                MixedFloorProvenance exOutsideP;
+                check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                           zone, sources, roles, 0, nominal, true, prepared, 0, {exOutside}, exOutsideG, exOutsideP) &&
+                           exOutsideG.meshDomain.IsEmpty () && exOutsideP.mesh.supports.GetSize () == 1 &&
+                           exOutsideP.mesh.contributions.IsEmpty () &&
+                           same (exOutsideP.mesh.supports[0].projected, exRect (20, 0, 22, 2)) &&
+                           same (exOutsideP.mesh.supports[0].admitted, exRect (20, 0, 22, 2)) &&
+                           same (exDomains (exOutsideP.slab.contributions), exRect (0, 0, 6, 2)),
+                       "extra outside room Mesh support remains unroomed despite empty D");
+                const auto exSlabCoverage = [&] (const MixedFloorGeometry &geometry,
+                                                 const MixedFloorProvenance &provenance) {
+                    USize slabCount = 0;
+                    for (UIndex i = 0; i < geometry.floors.GetSize (); ++i) {
+                        const auto &floor = geometry.floors[i];
+                        if (floor.draw.base_type != API_SlabID)
+                            continue;
+                        ++slabCount;
+                        Geometry::MultiPolygon2D covered, expected;
+                        expected.Push (floor.poly);
+                        USize count = 0;
+                        for (const auto &contribution : provenance.slab.contributions) {
+                            if (contribution.floorIndex != i)
+                                continue;
+                            if (contribution.supportIndex >= provenance.slab.supports.GetSize ())
+                                return false;
+                            const auto &support = provenance.slab.supports[contribution.supportIndex];
+                            if (support.ownerGuid != floor.draw.base_guid || support.ownerType != API_SlabID ||
+                                support.plane.slope_x != 0 || support.plane.slope_y != 0 || floor.slope_x != 0 ||
+                                floor.slope_y != 0 || std::fabs (support.plane.zBottom - floor.zBottom) > 1.e-6 ||
+                                !same (contribution.domain,
+                                       Geometry::MultiPolygon2D::Intersect (support.admitted, expected)))
+                                return false;
+                            ++count;
+                            covered.Append (contribution.domain);
+                        }
+                        covered.Unify ();
+                        if (count == 0 || !same (covered, expected))
+                            return false;
+                    }
+                    return slabCount != 0;
+                };
+                check (exBuilt && exStepBuilt && exHoleOK && exMultiOK && exSlabCoverage (exBatch, exBP) &&
+                           exSlabCoverage (exStepBatch, exStepP) && exSlabCoverage (exHoleG, exHoleP) &&
+                           exSlabCoverage (exMultiG, exMultiP) && exSlabCoverage (noMeshTrace, noMeshP),
+                       "extra every final Slab floor has full same plane finite contribution union");
+                check (twoPartP.mesh.contributions.GetSize () == 2 &&
+                           same (twoPartP.mesh.contributions[0].domain, exRect (2, 0, 6, 2)) &&
+                           same (twoPartP.mesh.contributions[1].domain, exRect (8, 0, 10, 2)),
+                       "extra actual ordered footprint visits valid left component before ambiguous right component");
+                auto exRaised = base;
+                exRaised.height = 2;
+                MixedFloorGeometry exLevelG;
+                MixedFloorProvenance exLevelP;
+                const bool exLevelsOK = OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                    zone, sources, roles, 0, nominal, true, {base, exRaised}, 0, {}, exLevelG, exLevelP);
+                check (exLevelsOK && exLevelG.floors.GetSize () == 1 && exLevelG.floors[0].zBottom == 1 &&
+                           exLevelP.slab.supports.GetSize () == 2 && exLevelP.slab.supports[0].plane.zBottom == 0 &&
+                           exLevelP.slab.supports[1].plane.zBottom == 1 &&
+                           exLevelP.slab.contributions.GetSize () == 1 &&
+                           exLevelP.slab.contributions[0].supportIndex == 1 &&
+                           exLevelP.slab.contributions[0].floorIndex == 0 && exSlabCoverage (exLevelG, exLevelP),
+                       "extra same owner identical XY at distinct Slab levels maps only the true winning plane");
+                auto exOutsideHoleSource = nativeSource;
+                auto exOutsideHoleContour = face (.5, .5, 1.5, 1.5, 0, true).contours[0];
+                exOutsideHoleContour.hole = true;
+                exOutsideHoleSource.snapshot.bodies[0].surfaces[0].contours.Push (exOutsideHoleContour);
+                const auto exOutsideHoleDomain =
+                    Geometry::MultiPolygon2D::Substract (exRect (0, 0, 6, 2), exRect (.5, .5, 1.5, 1.5));
+                MixedFloorGeometry exOutsideHoleG;
+                MixedFloorProvenance exOutsideHoleP;
+                const bool exOutsideHoleOK = OtdSlab_BuildFiniteMixedGeometryWithProvenance (zone,
+                                                                                             {exOutsideHoleSource},
+                                                                                             roles,
+                                                                                             0,
+                                                                                             nominal,
+                                                                                             true,
+                                                                                             {},
+                                                                                             0,
+                                                                                             {mesh},
+                                                                                             exOutsideHoleG,
+                                                                                             exOutsideHoleP);
+                bool exRetainedHole = false;
+                for (const auto &floor : exOutsideHoleG.floors)
+                    if (floor.draw.base_guid == slabOwner && floor.poly.GetContourNum () == 2)
+                        exRetainedHole = true;
+                check (exOutsideHoleOK && exRetainedHole && exSlabCoverage (exOutsideHoleG, exOutsideHoleP) &&
+                           same (ownerCoverage (exOutsideHoleG.floors, slabOwner),
+                                 Geometry::MultiPolygon2D::Substract (exOutsideHoleDomain, exRect (2, 0, 4, 2))),
+                       "extra legacy Slab winner retains hole outside D despite hole removal from remainder");
+                MixedFloorGeometry exOnlyHoleG;
+                MixedFloorProvenance exOnlyHoleP;
+                check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                           zone, {exOutsideHoleSource}, roles, 0, nominal, true, {}, 0, {}, exOnlyHoleG, exOnlyHoleP) &&
+                           exOnlyHoleG.floors.GetSize () == 1 && exOnlyHoleG.floors[0].poly.GetContourNum () == 2 &&
+                           exSlabCoverage (exOnlyHoleG, exOnlyHoleP) &&
+                           same (exDomains (exOnlyHoleP.slab.contributions), exOutsideHoleDomain),
+                       "extra Slab only original hole is not filled in emitted winner");
+                auto exOtherBase = base;
+                exOtherBase.draw.base_guid = upperOwner;
+                auto exOtherSource = slabSource;
+                exOtherSource.baseGuid = upperOwner;
+                exOtherSource.geometryGuid = upperOwner;
+                exOtherSource.snapshot.guid = upperOwner;
+                MixedFloorGeometry exAmbiguousLegacy, exAmbiguousG;
+                MixedFloorProvenance exAmbiguousP;
+                const bool exAmbiguousLegacyOK = OtdSlab_BuildFiniteMixedGeometry (zone,
+                                                                                   {slabSource, exOtherSource},
+                                                                                   {slabOwner, upperOwner},
+                                                                                   0,
+                                                                                   nominal,
+                                                                                   true,
+                                                                                   {base, exOtherBase},
+                                                                                   0,
+                                                                                   {},
+                                                                                   exAmbiguousLegacy);
+                check (exAmbiguousLegacyOK &&
+                           OtdSlab_BuildFiniteMixedGeometryWithProvenance (zone,
+                                                                           {slabSource, exOtherSource},
+                                                                           {slabOwner, upperOwner},
+                                                                           0,
+                                                                           nominal,
+                                                                           true,
+                                                                           {base, exOtherBase},
+                                                                           0,
+                                                                           {},
+                                                                           exAmbiguousG,
+                                                                           exAmbiguousP) &&
+                           exGeometry (exAmbiguousLegacy, exAmbiguousG) && exAmbiguousG.floors.IsEmpty () &&
+                           exAmbiguousG.rejectedArea > 0 && exAmbiguousP.slab.supports.GetSize () == 2 &&
+                           exAmbiguousP.slab.contributions.IsEmpty (),
+                       "extra Slab only ambiguity preserves legacy rejected area without invented winner");
+                auto exMixedAmbiguousG = exSeed;
+                auto exMixedAmbiguousP = exSP;
+                check (!OtdSlab_BuildFiniteMixedGeometryWithProvenance (zone,
+                                                                        {slabSource, exOtherSource},
+                                                                        {slabOwner, upperOwner},
+                                                                        0,
+                                                                        nominal,
+                                                                        true,
+                                                                        {base, exOtherBase},
+                                                                        0,
+                                                                        {hiddenMesh},
+                                                                        exMixedAmbiguousG,
+                                                                        exMixedAmbiguousP) &&
+                           exGeometry (exMixedAmbiguousG, exSeed) && exProvenance (exMixedAmbiguousP, exSP),
+                       "extra distinct Slab owners coplanar inside Mesh domain refuse atomically");
+            }
+
             check (stepsEqual,
                    "independent Slab step order geometry owner and pending writer eligibility are unchanged");
         }
     }
 
 } // namespace TestFunc
+
+    #endif // ServerMainVers_2400
 
 #endif

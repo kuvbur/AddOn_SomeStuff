@@ -1,6 +1,9 @@
 #pragma once
 
-#include "json_commands/CommandBase.hpp"
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
+
+#if defined(ServerMainVers_2500)
+    #include "json_commands/CommandBase.hpp"
 
 class SpecCommand : public CommandBase {
   public:
@@ -29,3 +32,5 @@ class SpecCommand : public CommandBase {
     // -----------------------------------------------------------------------------
     GS::ObjectState Execute (const GS::ObjectState &parameters, GS::ProcessControl &processControl) const override;
 };
+
+#endif // ServerMainVers_2500

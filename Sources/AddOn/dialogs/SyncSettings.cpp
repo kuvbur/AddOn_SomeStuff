@@ -160,28 +160,29 @@ static bool GetSyncSettingsFolderLocation (IO::Location &folderLoc) {
 // --------------------------------------------------------------------
 // Утилиты ключей JSON: отсутствующий ключ или несовместимый тип → дефолт.
 // --------------------------------------------------------------------
+// Старый rapidjson из девкита AC23: FindMember приватный, MemberEnd() нет.
+// Используем публичные HasMember + operator[] (есть и в новых версиях).
 static bool GetJsonBool (const rapidjson::Value &object, const char *key, bool defaultValue) {
-    const auto member = object.FindMember (key);
-    return (member != object.MemberEnd () && member->value.IsBool ()) ? member->value.GetBool () : defaultValue;
+    return (object.HasMember (key) && object[key].IsBool ()) ? object[key].GetBool () : defaultValue;
 }
 
 static USize GetJsonUSize (const rapidjson::Value &object, const char *key, USize defaultValue) {
-    const auto member = object.FindMember (key);
-    if (member == object.MemberEnd ())
+    if (!object.HasMember (key))
         return defaultValue;
-    if (member->value.IsUint64 ())
-        return (USize)member->value.GetUint64 ();
-    if (member->value.IsUint ())
-        return (USize)member->value.GetUint ();
+    const rapidjson::Value &value = object[key];
+    if (value.IsUint64 ())
+        return (USize)value.GetUint64 ();
+    if (value.IsUint ())
+        return (USize)value.GetUint ();
     return defaultValue;
 }
 
 static GS::UniString GetJsonUniString (const rapidjson::Value &object, const char *key) {
-    const auto member = object.FindMember (key);
-    if (member == object.MemberEnd () || !member->value.IsString ())
+    if (!object.HasMember (key) || !object[key].IsString ())
         return GS::UniString ();
+    const rapidjson::Value &value = object[key];
     // Строки JSON — UTF-8, конвертация по явно указанному коду символов.
-    return GS::UniString (member->value.GetString (), member->value.GetStringLength (), CC_UTF8);
+    return GS::UniString (value.GetString (), value.GetStringLength (), CC_UTF8);
 }
 
 // --------------------------------------------------------------------
@@ -191,7 +192,8 @@ static GS::UniString GetJsonUniString (const rapidjson::Value &object, const cha
 // --------------------------------------------------------------------
 static bool ReadSyncSettingsFromJsonText (SyncSettings &syncSettings, const std::string &jsonText) {
     rapidjson::Document document;
-    if (document.Parse (jsonText.c_str (), jsonText.size ()).HasParseError () || !document.IsObject ())
+    // Старый rapidjson из девкита AC23: Parse принимает только нультерминированную строку.
+    if (document.Parse<0> (jsonText.c_str ()).HasParseError () || !document.IsObject ())
         return false;
 
     SyncSettings tempSettings;
@@ -206,10 +208,12 @@ static bool ReadSyncSettingsFromJsonText (SyncSettings &syncSettings, const std:
     tempSettings.SetCatchSelectionChanges (GetJsonBool (document, "catchSelectionChanges", false));
     tempSettings.SetMaxSelectionCount (GetJsonUSize (document, "maxSelectionCount", 10));
 
-    const auto presetsMember = document.FindMember ("filterPresets");
-    if (presetsMember != document.MemberEnd () && presetsMember->value.IsArray ()) {
+    if (document.HasMember ("filterPresets") && document["filterPresets"].IsArray ()) {
         GS::Array<FilterPreset> presets;
-        for (const auto &entry : presetsMember->value.GetArray ()) {
+        // Старый rapidjson не имеет GetArray — обходим через Begin/End.
+        const rapidjson::Value &presetsJson = document["filterPresets"];
+        for (rapidjson::Value::ConstValueIterator it = presetsJson.Begin (); it != presetsJson.End (); ++it) {
+            const rapidjson::Value &entry = *it;
             if (!entry.IsObject ())
                 continue;
             presets.Push (FilterPreset{GetJsonUniString (entry, "label"), GetJsonUniString (entry, "query")});
@@ -263,16 +267,25 @@ static bool ReadSyncSettingsFromFile (SyncSettings &syncSettings) {
 // --------------------------------------------------------------------
 // Сериализация настроек в JSON-текст (UTF-8, человекочитаемое форматирование).
 // --------------------------------------------------------------------
+// Старый rapidjson из девкита AC23 не имеет Key() — ключ пишется как String(..., copy = true).
+static void WriteJsonKey (rapidjson::PrettyWriter<rapidjson::StringBuffer> &writer, const char *key) {
+#if !defined(ServerMainVers_2500)
+    writer.String (key, static_cast<rapidjson::SizeType> (std::strlen (key)), true);
+#else
+    writer.Key (key);
+#endif
+}
+
 static std::string SyncSettingsToJsonString (const SyncSettings &syncSettings) {
     rapidjson::StringBuffer stringBuffer;
     rapidjson::PrettyWriter<rapidjson::StringBuffer> writer (stringBuffer);
     writer.StartObject ();
 
-    writer.Key ("version");
+    WriteJsonKey (writer, "version");
     writer.Int (PreferencesVersion);
 
     auto writeBool = [&writer] (const char *key, bool value) {
-        writer.Key (key);
+        WriteJsonKey (writer, key);
         writer.Bool (value);
     };
     writeBool ("syncAll", syncSettings.GetSyncAll ());
@@ -285,23 +298,23 @@ static std::string SyncSettingsToJsonString (const SyncSettings &syncSettings) {
     writeBool ("showpalette", syncSettings.GetShowPalette ());
     writeBool ("catchSelectionChanges", syncSettings.GetCatchSelectionChanges ());
 
-    writer.Key ("maxSelectionCount");
+    WriteJsonKey (writer, "maxSelectionCount");
     writer.Uint64 ((UInt64)syncSettings.GetMaxSelectionCount ());
 
-    writer.Key ("filterPresets");
+    WriteJsonKey (writer, "filterPresets");
     writer.StartArray ();
     for (const FilterPreset &preset : syncSettings.GetFilterPresets ()) {
         writer.StartObject ();
-        writer.Key ("label");
+        WriteJsonKey (writer, "label");
         writer.String (preset.label.ToCStr (0, MaxUSize, CC_UTF8).Get ());
-        writer.Key ("query");
+        WriteJsonKey (writer, "query");
         writer.String (preset.query.ToCStr (0, MaxUSize, CC_UTF8).Get ());
         writer.EndObject ();
     }
     writer.EndArray ();
 
     writer.EndObject ();
-    return std::string (stringBuffer.GetString (), stringBuffer.GetSize ());
+    return std::string (stringBuffer.GetString ());
 }
 
 // --------------------------------------------------------------------

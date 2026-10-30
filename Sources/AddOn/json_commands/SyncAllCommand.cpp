@@ -1,12 +1,15 @@
-#include <chrono>
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
 
-#include "ACAPinc.h"
+#if defined(ServerMainVers_2500)
 
-#include "json_commands/SyncAllCommand.hpp"
+    #include <chrono>
 
-#include "dialogs/SyncSettings.hpp"
-#include "Propertycache.hpp"
-#include "Sync.hpp"
+    #include "ACAPinc.h"
+
+    #include "dialogs/SyncSettings.hpp"
+    #include "json_commands/SyncAllCommand.hpp"
+    #include "Propertycache.hpp"
+    #include "Sync.hpp"
 
 // -----------------------------------------------------------------------------
 // Создаёт JSON-команду запуска полной синхронизации.
@@ -52,3 +55,5 @@ GS::ObjectState SyncAllCommand::Execute (const GS::ObjectState & /*parameters*/,
     response.Add ("elapsedSeconds", elapsedSeconds);
     return response;
 }
+
+#endif // ServerMainVers_2500

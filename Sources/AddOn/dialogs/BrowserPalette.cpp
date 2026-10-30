@@ -632,7 +632,13 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             for (const API_Guid &elemGuid : selectedElements) {
                 API_Property property;
                 GSErrCode err = ACAPI_Element_GetPropertyValue (elemGuid, propertyGuid, property);
+#if !defined(ServerMainVers_2400)
+                // Только AC23: API_Property не имеет члена status — проверяем наличие значения через статус варианта.
+                if (err != NoError || (property.value.variantStatus != API_VariantStatusNormal &&
+                                       property.value.listVariant.variants.IsEmpty ())) {
+#else
                 if (err != NoError || property.status != API_Property_HasValue) {
+#endif
                     continue;
                 }
                 // Значение может быть одиночным или списочным — берём первый вариант
@@ -767,7 +773,12 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
                     property.isDefault = true;
                     property.value.variantStatus = API_VariantStatusNormal;
+#if !defined(ServerMainVers_2400)
+                    // Только AC23: API_Property не имеет члена status — помечаем свойство вычисленным.
+                    property.isEvaluated = true;
+#else
                     property.status = API_Property_HasValue;
+#endif
 
                     resetElementGuids.Push (elemGuid);
                     resetProperties.Push (property);
@@ -2113,7 +2124,13 @@ GSErrCode __ACENV_CALL BrowserPalette::PaletteControlCallBack (Int32,
 }
 
 GSErrCode BrowserPalette::RegisterPaletteControlCallBack () {
-    return ACAPI_RegisterModelessWindow (GS::CalculateHashValue (paletteGuid),
+#if !defined(ServerMainVers_2500)
+    // До AC25 GS::CalculateHashValue отсутствует — используем хеш GS::Guid из девкита.
+    const Int32 referenceID = static_cast<Int32> (GS::GenerateHashValue (paletteGuid));
+#else
+    const Int32 referenceID = static_cast<Int32> (GS::CalculateHashValue (paletteGuid));
+#endif
+    return ACAPI_RegisterModelessWindow (referenceID,
                                          PaletteControlCallBack,
                                          API_PalEnabled_FloorPlan + API_PalEnabled_Section + API_PalEnabled_Elevation +
                                              API_PalEnabled_InteriorElevation + API_PalEnabled_3D +

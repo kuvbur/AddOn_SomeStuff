@@ -3,18 +3,25 @@
 #include "json_commands/JsonCommandRegistrar.hpp"
 
 #include "CommonFunction.hpp"
-
-#if defined(ServerMainVers_2500)
-
-    #include "json_commands/HealthCommand.hpp"
-    #include "json_commands/RoomBookCommand.hpp"
-    #include "json_commands/SpecCommand.hpp"
-    #include "json_commands/SyncAllCommand.hpp"
+#include "json_commands/HealthCommand.hpp"
+#include "json_commands/RoomBookCommand.hpp"
+#include "json_commands/SpecCommand.hpp"
+#include "json_commands/SyncAllCommand.hpp"
 
 // -----------------------------------------------------------------------------
 // Регистрирует доступные JSON-команды аддона в Archicad.
 // -----------------------------------------------------------------------------
 void RegisterJsonCommands () {
+#if defined(ServerMainVers_2500)
+    GS::Owner<RoomBookGetFavoritesCommand> favoritesListCommand = GS::NewOwned<RoomBookGetFavoritesCommand> ();
+    #ifdef ServerMainVers_2700
+    const GSErrCode error = ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler (favoritesListCommand.Pass ());
+    #else
+    const GSErrCode error = ACAPI_Install_AddOnCommandHandler (favoritesListCommand.Pass ());
+    #endif
+    if (error != NoError)
+        DBprnt ("Failed to register FavoritesListCommand, error: " + GS::ValueToUniString (error));
+
     GS::Owner<RoomBookCommand> roomBookCommand = GS::NewOwned<RoomBookCommand> ();
     #ifdef ServerMainVers_2700
     const GSErrCode roomBookErr = ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler (roomBookCommand.Pass ());
@@ -50,13 +57,5 @@ void RegisterJsonCommands () {
     #endif
     if (healthErr != NoError)
         DBprnt ("Failed to register HealthCommand, error: " + GS::ValueToUniString (healthErr));
+#endif // ServerMainVers_2500
 }
-
-#else
-
-// -----------------------------------------------------------------------------
-// Ничего не регистрирует в версиях Archicad без поддержки JSON-команд.
-// -----------------------------------------------------------------------------
-void RegisterJsonCommands () {}
-
-#endif // defined (ServerMainVers_2500)

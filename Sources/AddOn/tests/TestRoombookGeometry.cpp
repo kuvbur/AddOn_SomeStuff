@@ -5,7 +5,12 @@
 #include "tests/RoomAnalyticChecks.hpp"
 #include "tests/TestFunc.hpp"
 
-#if defined(TESTING) && defined(ServerMainVers_2500)
+#if defined(TESTING)
+
+    // Roombook::RoomSurface и тесты объявлены только для Archicad >= 25
+    // (Roombook.hpp: тело под #else веткой #ifndef ServerMainVers_2400,
+    // регистрация тестов в TestFunc.cpp — под ServerMainVers_2500).
+    #if defined(ServerMainVers_2500)
 
     #include <cmath>
     #include <limits>
@@ -219,11 +224,10 @@ namespace TestFunc {
             checkCut ({opening, overlap}, 7, "production overlapping opening union");
             OtdWall overlapCut;
             overlapCut.surface_geometry = true;
-            overlapCut.base_guid = element.header.guid;
-            overlapCut.begC = {0, .1};
-            overlapCut.endC = {4, .1};
-            overlapCut.height = 3;
-            overlapCut.zBottom = 10;
+            overlapCut.draw.base_guid = element.header.guid;
+            overlapCut.geom.seg.begC = {0, .1, 10};
+            overlapCut.geom.seg.endC = {4, .1, 10};
+            overlapCut.geom.height = 3;
             OtdOpening combined;
             combined.objLoc = 2.5;
             combined.width = 3;
@@ -244,18 +248,18 @@ namespace TestFunc {
             std::swap (element.wall.begC, element.wall.endC);
             bases.Clear ();
             check (OtdWall_BuildPreparedSource (element, 10, {}, bases, prepared) &&
-                       std::abs (bases[0].begC.y + .1) < 1e-12,
+                       std::abs (bases[0].geom.seg.begC.y + .1) < 1e-12,
                    "production reversed axis side");
             std::swap (element.wall.begC, element.wall.endC);
             element.wall.flipped = true;
             bases.Clear ();
             check (OtdWall_BuildPreparedSource (element, 10, {opening}, bases, prepared) &&
-                       std::abs (bases[0].begC.y + .1) < 1e-12,
+                       std::abs (bases[0].geom.seg.begC.y + .1) < 1e-12,
                    "production flipped wall side");
             element.wall.relativeTopStory = 1;
             bases.Clear ();
             check (OtdWall_BuildPreparedSource (element, 10, {opening}, bases, prepared) && bases.GetSize () == 4 &&
-                       std::abs (bases[0].height - element.wall.height) < 1e-12,
+                       std::abs (bases[0].geom.height - element.wall.height) < 1e-12,
                    "top-linked wall retains resolved API height without native fallback");
             element.wall.relativeTopStory = 0;
             element.wall.modelElemStructureType = API_ProfileStructure;
@@ -306,7 +310,7 @@ namespace TestFunc {
             floorSnapshot.bodies.Push (floorBody);
             OtdSlab nominal;
             nominal.zBottom = 10;
-            nominal.material.smaterial = "material";
+            nominal.draw.material.smaterial = "material";
             GS::Array<OtdSlab> projectedBases;
             double rejected = 0;
             check (OtdSlab_BuildProjectedFinishes (floorSnapshot,
@@ -322,7 +326,7 @@ namespace TestFunc {
                                                    &slabBases) &&
                        projectedBases.GetSize () == 1 && std::abs (projectedBases[0].poly.CalcArea () - 11) < 1e-6 &&
                        std::abs (projectedBases[0].zBottom - 10.2) < 1e-12 &&
-                       projectedBases[0].material.smaterial == nominal.material.smaterial,
+                       projectedBases[0].draw.material.smaterial == nominal.draw.material.smaterial,
                    "active prepared slab route preserves hole elevation material and by_slab");
             // Два полностью перекрывающихся основания: приоритет должен зависеть от отметки, не порядка GUID.
             const auto full = Geometry::Polygon2D::Create (GS::Array<Point2D>{{-1, -1}, {5, -1}, {5, 4}, {-1, 4}}, 0);
@@ -361,7 +365,7 @@ namespace TestFunc {
                                                                true,
                                                                nullptr,
                                                                &bases) &&
-                                   finishes.GetSize () == 1 && finishes[0].base_guid == roles[0] &&
+                                   finishes.GetSize () == 1 && finishes[0].draw.base_guid == roles[0] &&
                                    std::abs (finishes[0].poly.CalcArea () - 30) < 1e-6 &&
                                    std::abs (finishes[0].zBottom - (type == Floor ? 0 : 3.3)) < 1e-6,
                                type == Floor ? "highest floor wins in both candidate orders"
@@ -722,12 +726,92 @@ namespace TestFunc {
                    closeArea (beamArea (sectionFinish, RoomSurfaceBeamFace::RightSide), 9 * 0.5 + 9.5 * 0.12) &&
                    closeArea (beamArea (sectionFinish, RoomSurfaceBeamFace::Top), 9.5 * 0.3),
                "3D zone section extends beam bottom, top and both sides beyond lower-profile beamPart");
+        // Нулевая проекция оси не исключает контакт конечной грани с полной 3D-зоной.
+        for (double extent : {0.0, 5e-7}) {
+            RoomSurfaceBeamPartitions emptyPartResult;
+            const auto emptyPart = RoomBeamFinish_Build (
+                sectionSource, beamBeg, beamEnd, 50, 50 + extent, 0, 3, emptyPartResult, &steppedZone);
+            check (emptyPartResult.errors.IsEmpty () &&
+                       closeArea (beamArea (emptyPart, RoomSurfaceBeamFace::Bottom), 9 * 0.3) &&
+                       closeArea (beamArea (emptyPart, RoomSurfaceBeamFace::Top), 9.5 * 0.3) &&
+                       closeArea (beamArea (emptyPart, RoomSurfaceBeamFace::LeftSide), 9 * 0.5 + 9.5 * 0.12) &&
+                       closeArea (beamArea (emptyPart, RoomSurfaceBeamFace::RightSide), 9 * 0.5 + 9.5 * 0.12),
+                   "degenerate beam relation retains finite zone contacts");
+            check (emptyPart.tBeg == 50 && emptyPart.tEnd == 50 + extent,
+                   "degenerate beam result retains raw SDK bounds");
+        }
+        for (double shift : {9.5, 30.0}) {
+            auto distantBeam = sectionSource;
+            for (auto &face : distantBeam.snapshot.bodies[0].surfaces) {
+                for (auto &contour : face.contours)
+                    for (auto &vertex : contour.vertices)
+                        vertex.world.x += shift;
+                if (face.contours.IsEmpty () || face.contours[0].vertices.IsEmpty ())
+                    continue;
+                const auto &p = face.contours[0].vertices[0].world;
+                face.planeOffset = -(face.normalWorld.x * p.x + face.normalWorld.y * p.y + face.normalWorld.z * p.z);
+            }
+            RoomSurfaceBeamPartitions noContactResult;
+            const auto noContact =
+                RoomBeamFinish_Build (distantBeam, beamBeg, beamEnd, 50, 50, 0, 3, noContactResult, &steppedZone);
+            check (noContactResult.errors.IsEmpty () && noContact.pieces.IsEmpty (),
+                   "degenerate beam relation with edge-only or distant contact is not a geometry error");
+        }
+        {
+            auto nearFloorBeam = sectionSource;
+            const double nearFloor = 6.968931393069866e-8;
+            for (auto &face : nearFloorBeam.snapshot.bodies[0].surfaces) {
+                for (auto &contour : face.contours)
+                    for (auto &vertex : contour.vertices)
+                        vertex.world.z += nearFloor - 2.62;
+                if (face.contours.IsEmpty () || face.contours[0].vertices.IsEmpty ())
+                    continue;
+                const auto &p = face.contours[0].vertices[0].world;
+                face.planeOffset = -(face.normalWorld.x * p.x + face.normalWorld.y * p.y + face.normalWorld.z * p.z);
+            }
+            RoomSurfaceBeamPartitions nearFloorResult;
+            const auto nearFloorFinish =
+                RoomBeamFinish_Build (nearFloorBeam, beamBeg, beamEnd, 50, 50, 0, 3, nearFloorResult, &steppedZone);
+            check (nearFloorResult.errors.IsEmpty () && nearFloorFinish.pieces.GetSize () == 1 &&
+                       closeArea (beamArea (nearFloorFinish, RoomSurfaceBeamFace::Top), 8 * 0.3),
+                   "near-floor beam retains its finite top without fabricated vertical strips");
+        }
+        for (const auto &bounds : {API_Coord{50, 49},
+                                   API_Coord{std::numeric_limits<double>::quiet_NaN (), 50},
+                                   API_Coord{0, std::numeric_limits<double>::infinity ()}}) {
+            RoomSurfaceBeamPartitions invalidPartResult;
+            const auto invalidPart = RoomBeamFinish_Build (
+                sectionSource, beamBeg, beamEnd, bounds.x, bounds.y, 0, 3, invalidPartResult, &steppedZone);
+            check (!invalidPartResult.errors.IsEmpty () && invalidPart.pieces.IsEmpty (),
+                   "invalid beam relation cannot enter complete-zone fallback");
+        }
+        {
+            auto incompleteZone = steppedZone;
+            incompleteZone.status = RoomSurfaceStatus::ReadError;
+            RoomSurfaceBeamPartitions incompleteResult;
+            const auto incompleteFinish =
+                RoomBeamFinish_Build (sectionSource, beamBeg, beamEnd, 50, 50, 0, 3, incompleteResult, &incompleteZone);
+            check (!incompleteResult.errors.IsEmpty () && incompleteFinish.pieces.IsEmpty (),
+                   "degenerate beam relation cannot use an incomplete zone");
+            RoomSurfaceBeamPartitions flatRoomResult;
+            const auto flatRoomFinish =
+                RoomBeamFinish_Build (sectionSource, beamBeg, beamEnd, 50, 50, 1, 1, flatRoomResult, &steppedZone);
+            check (!flatRoomResult.errors.IsEmpty () && flatRoomFinish.pieces.IsEmpty (),
+                   "degenerate vertical room range remains an error");
+        }
         steppedZone.bodies[0].surfaces.Delete (0);
         sectionResult.errors.Clear ();
         const auto brokenSection =
             RoomBeamFinish_Build (sectionSource, beamBeg, beamEnd, 0, 80, 0, 3, sectionResult, &steppedZone);
         check (brokenSection.pieces.IsEmpty () && !sectionResult.errors.IsEmpty (),
                "open zone section is rejected without partial beam finish");
+        {
+            RoomSurfaceBeamPartitions emptyBrokenResult;
+            const auto emptyBrokenFinish =
+                RoomBeamFinish_Build (sectionSource, beamBeg, beamEnd, 50, 50, 0, 3, emptyBrokenResult, &steppedZone);
+            check (emptyBrokenFinish.pieces.IsEmpty () && !emptyBrokenResult.errors.IsEmpty (),
+                   "degenerate beam fallback preserves atomic rejection of an open zone");
+        }
         auto beam = RoomBeamFinish_Build (beamSource, beamBeg, beamEnd, 0, 100, 0, 3, beamResult);
         check (beam.pieces.GetSize () == 4 && closeArea (beamArea (beam, RoomSurfaceBeamFace::Bottom), 10 * 0.3) &&
                    closeArea (beamArea (beam, RoomSurfaceBeamFace::Top), 10 * 0.3) &&
@@ -843,11 +927,11 @@ namespace TestFunc {
         contactContour.vertices = {{0, 0, 0}, {4, 0, 0}, {4, 0, 3}, {0, 0, 3}};
         contact.contours.Push (contactContour);
         OtdWall surfaceWall;
-        check (SurfaceWall_Build (contact, 0, surfaceWall) && surfaceWall.type == Column &&
-                   surfaceWall.base_guid == baseA && surfaceWall.surface_geometry &&
+        check (SurfaceWall_Build (contact, 0, surfaceWall) && surfaceWall.draw.type == Column &&
+                   surfaceWall.draw.base_guid == baseA && surfaceWall.surface_geometry &&
                    closeArea (OtdWall_GetArea (surfaceWall), 12),
                "surface adapter vertical column area and provenance");
-        check (surfaceWall.endC.x < surfaceWall.begC.x && surfaceWall.openings.IsEmpty (),
+        check (surfaceWall.geom.seg.endC.x < surfaceWall.geom.seg.begC.x && surfaceWall.openings.IsEmpty (),
                "Inside baseline points left-side thickness inward and has no double openings");
         contact.area = 12 + 2e-6;
         check (SurfaceWall_Build (contact, 0, surfaceWall),
@@ -877,7 +961,7 @@ namespace TestFunc {
                                   emptyMaterial,
                                   emptyMaterial,
                                   emptyMaterial) &&
-                   bands.GetSize () == 1 && closeArea (bands[0].begC.y, 0.5) &&
+                   bands.GetSize () == 1 && closeArea (bands[0].geom.seg.begC.y, 0.5) &&
                    closeArea (OtdWall_GetArea (bands[0]), 4 * std::sqrt (1.25)),
                "slanted height band stays on source plane");
         contact.contours[0].vertices[2].y = -1.5;
@@ -909,7 +993,7 @@ namespace TestFunc {
         check (SurfaceWalls_Build (notched, 0, notchedWalls) && notchedWalls.GetSize () == 1 &&
                    closeArea (wallArea (notchedWalls), 11),
                "notched contact uses one wall with net area");
-        check (notchedWalls.GetSize () == 1 && notchedWalls[0].base_guid == baseA &&
+        check (notchedWalls.GetSize () == 1 && notchedWalls[0].draw.base_guid == baseA &&
                    notchedWalls[0].openings.GetSize () == 1 && closeArea (notchedWalls[0].openings[0].objLoc, 2) &&
                    closeArea (notchedWalls[0].openings[0].width, 1) &&
                    closeArea (notchedWalls[0].openings[0].lower, 2) &&
@@ -929,8 +1013,8 @@ namespace TestFunc {
                "interior opening has a relative sill before height trim");
         OtdWall sourceOpeningWall = notchedWalls[0];
         sourceOpeningWall.surface_geometry = false;
-        sourceOpeningWall.begC = {0, 0};
-        sourceOpeningWall.endC = {4, 0};
+        sourceOpeningWall.geom.seg.begC = {0, 0};
+        sourceOpeningWall.geom.seg.endC = {4, 0};
         sourceOpeningWall.openings[0].base_guid = segment;
         OtdWall linkedWall = notchedWalls[0];
         check (SurfaceOpenings_Link (linkedWall, {sourceOpeningWall}) && linkedWall.openings.GetSize () == 1 &&
@@ -938,7 +1022,7 @@ namespace TestFunc {
                    !linkedWall.openings[0].has_reveal && closeArea (OtdWall_GetArea (linkedWall), 11),
                "surface opening retains the real opening guid without duplicate reveals");
         auto foreignOpeningWall = sourceOpeningWall;
-        foreignOpeningWall.base_guid = baseB;
+        foreignOpeningWall.draw.base_guid = baseB;
         linkedWall = notchedWalls[0];
         check (SurfaceOpenings_Link (linkedWall, {foreignOpeningWall}) &&
                    linkedWall.openings[0].base_guid == APINULLGuid,
@@ -967,8 +1051,8 @@ namespace TestFunc {
         check (mixedLinked && linkedWall.openings.GetSize () == 3 && closeArea (realCutoutArea, 0.5) &&
                    closeArea (geometricCutoutArea, 0.5) && closeArea (OtdWall_GetArea (linkedWall), 11),
                "mixed notch splits only openings to preserve real provenance and coverage");
-        sourceOpeningWall.begC = {4, 0};
-        sourceOpeningWall.endC = {0, 0};
+        sourceOpeningWall.geom.seg.begC = {4, 0};
+        sourceOpeningWall.geom.seg.endC = {0, 0};
         sourceOpeningWall.openings[0].width = 0.6;
         sourceOpeningWall.openings[0].objLoc = 1.8;
         linkedWall = notchedWalls[0];
@@ -1096,11 +1180,14 @@ namespace TestFunc {
                 bool found = false;
                 for (UIndex i = 0; i < b.GetSize (); ++i) {
                     const auto &other = b[i];
-                    if (!used[i] && wall.base_guid == other.base_guid &&
-                        std::hypot (wall.begC.x - other.begC.x, wall.begC.y - other.begC.y) < 1e-6 &&
-                        std::hypot (wall.endC.x - other.endC.x, wall.endC.y - other.endC.y) < 1e-6 &&
-                        std::fabs (wall.zBottom - other.zBottom) < 1e-6 &&
-                        std::fabs (wall.height - other.height) < 1e-6 &&
+                    if (!used[i] && wall.draw.base_guid == other.draw.base_guid &&
+                        std::hypot (wall.geom.seg.begC.x - other.geom.seg.begC.x,
+                                    wall.geom.seg.begC.y - other.geom.seg.begC.y) < 1e-6 &&
+                        std::hypot (wall.geom.seg.endC.x - other.geom.seg.endC.x,
+                                    wall.geom.seg.endC.y - other.geom.seg.endC.y) < 1e-6 &&
+                        std::fabs (OtdLinearSegment_GetZBottom (wall.geom) - OtdLinearSegment_GetZBottom (other.geom)) <
+                            1e-6 &&
+                        std::fabs (wall.geom.height - other.geom.height) < 1e-6 &&
                         std::fabs (wall.slant_angle - other.slant_angle) < 1e-6) {
                         if (wall.openings.GetSize () != other.openings.GetSize ())
                             continue;
@@ -1258,8 +1345,8 @@ namespace TestFunc {
         contact.contours.Push (contactContour);
         GS::Array<OtdSlab> surfaceSlabs;
         check (SurfaceSlabs_Build (contact, 0, surfaceSlabs) && surfaceSlabs.GetSize () == 1 &&
-                   surfaceSlabs[0].type == Ceil && closeArea (surfaceSlabs[0].poly.CalcArea (), 15) &&
-                   surfaceSlabs[0].base_type == API_BeamID,
+                   surfaceSlabs[0].draw.type == Ceil && closeArea (surfaceSlabs[0].poly.CalcArea (), 15) &&
+                   surfaceSlabs[0].draw.base_type == API_BeamID,
                "horizontal adapter preserves ceiling hole and beam parent");
         check (!SurfaceWall_Build (contact, 0, surfaceWall), "holed horizontal surface is not a wall");
         // API_WallPart: направление, углы, сторона, sentinel-границы и сохранение разрывов.
@@ -1274,13 +1361,13 @@ namespace TestFunc {
             };
             const auto contactWall = [&] (double a, double b) {
                 OtdWall wall;
-                wall.base_guid = baseA;
-                wall.base_type = API_WallID;
+                wall.draw.base_guid = baseA;
+                wall.draw.base_type = API_WallID;
                 wall.surface_geometry = true;
-                wall.begC = {a, 0};
-                wall.endC = {b, 0};
-                wall.length = std::fabs (b - a);
-                wall.height = 3;
+                wall.geom.seg.begC = {a, 0};
+                wall.geom.seg.endC = {b, 0};
+                wall.geom.length = std::fabs (b - a);
+                wall.geom.height = 3;
                 return wall;
             };
             const GS::Array<Sector> edges = {{{0, 0}, {4, 0}}, {{4, 1}, {0, 1}}};
@@ -1291,8 +1378,8 @@ namespace TestFunc {
             };
             auto wall = contactWall (4, 0);
             auto result = clamp (wall, {wallPart (1, 3)});
-            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 3) && closeArea (result[0].endC.x, 1) &&
-                       closeArea (result[0].length, 2),
+            check (result.GetSize () == 1 && closeArea (result[0].geom.seg.begC.x, 3) &&
+                       closeArea (result[0].geom.seg.endC.x, 1) && closeArea (result[0].geom.length, 2),
                    "wallPart preserves reversed surface direction");
             OtdOpening opening;
             opening.objLoc = 1.5;
@@ -1305,35 +1392,41 @@ namespace TestFunc {
                        closeArea (result[0].openings[0].objLoc, .75) && closeArea (result[0].openings[0].width, 1.5),
                    "wallPart clips opening in final direction");
             result = clamp (wall, {wallPart (0, 1), wallPart (3, 4)});
-            check (result.GetSize () == 2 && closeArea (result[0].length, 1) && closeArea (result[1].length, 1),
+            check (result.GetSize () == 2 && closeArea (result[0].geom.length, 1) &&
+                       closeArea (result[1].geom.length, 1),
                    "wallPart keeps disconnected intervals");
             result = clamp (wall, {wallPart (0, 3), wallPart (2, 4), wallPart (0, 3)});
-            check (result.GetSize () == 1 && closeArea (result[0].length, 4),
+            check (result.GetSize () == 1 && closeArea (result[0].geom.length, 4),
                    "wallPart merges overlapping and duplicate intervals");
             result = clamp (wall, {wallPart (0, 0)});
-            check (result.GetSize () == 1 && closeArea (result[0].length, 4), "wallPart preserves legacy zero bounds");
+            check (result.GetSize () == 1 && closeArea (result[0].geom.length, 4),
+                   "wallPart preserves legacy zero bounds");
             result = clamp (wall, {});
-            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 4) && result[0].openings.GetSize () == 1,
+            check (result.GetSize () == 1 && closeArea (result[0].geom.seg.begC.x, 4) &&
+                       result[0].openings.GetSize () == 1,
                    "wallPart absent keeps wall and openings");
             result = clamp (wall, {wallPart (0, 4, 2)});
             check (result.IsEmpty (), "wallPart opposite room edge cannot trim this side");
             result = clamp (wall, {wallPart (0, 4, 2), wallPart (1, 3)});
-            check (result.GetSize () == 1 && closeArea (result[0].length, 2),
+            check (result.GetSize () == 1 && closeArea (result[0].geom.length, 2),
                    "wallPart chooses matching roomEdge rather than guid alone");
             check (clamp (wall, {wallPart (0, 4, 0)}).IsEmpty () && clamp (wall, {wallPart (0, 4, 3)}).IsEmpty (),
                    "wallPart invalid edge index rejects without partial output");
             check (clamp (wall, {wallPart (5, 6)}).IsEmpty (), "wallPart nonoverlapping finite edge rejects");
             wall = contactWall (3.8, .2);
             result = clamp (wall, {wallPart (0, 4)});
-            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 4) && closeArea (result[0].endC.x, 0),
+            check (result.GetSize () == 1 && closeArea (result[0].geom.seg.begC.x, 4) &&
+                       closeArea (result[0].geom.seg.endC.x, 0),
                    "wallPart extends short outer contact to both room corners");
             auto left = contactWall (1.5, .2), right = contactWall (3.8, 2.5);
             const GS::Array<OtdWall> peers = {left, right};
             result = clamp (left, {wallPart (0, 4)}, peers);
-            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 1.5) && closeArea (result[0].endC.x, 0),
+            check (result.GetSize () == 1 && closeArea (result[0].geom.seg.begC.x, 1.5) &&
+                       closeArea (result[0].geom.seg.endC.x, 0),
                    "wallPart left contact preserves inner gap");
             result = clamp (right, {wallPart (0, 4)}, peers);
-            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 4) && closeArea (result[0].endC.x, 2.5),
+            check (result.GetSize () == 1 && closeArea (result[0].geom.seg.begC.x, 4) &&
+                       closeArea (result[0].geom.seg.endC.x, 2.5),
                    "wallPart right contact preserves inner gap");
             opening.objLoc = .5;
             opening.width = 1;
@@ -1344,31 +1437,34 @@ namespace TestFunc {
                    "wallPart extension keeps edge notch open");
             wall = contactWall (0, 4);
             result = clamp (wall, {wallPart (1, 3)});
-            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 1) && closeArea (result[0].endC.x, 3),
+            check (result.GetSize () == 1 && closeArea (result[0].geom.seg.begC.x, 1) &&
+                       closeArea (result[0].geom.seg.endC.x, 3),
                    "wallPart preserves forward surface direction");
             wall.rise_y = .5;
-            wall.zBottom = 1;
-            wall.begC.y = wall.endC.y = .5;
+            OtdLinearSegment_SetZBottom (wall.geom, 1);
+            wall.geom.seg.begC.y = wall.geom.seg.endC.y = .5;
             result = clamp (wall, {wallPart (1, 3)});
-            check (result.GetSize () == 1 && closeArea (result[0].begC.y, .5) && closeArea (result[0].rise_y, .5) &&
-                       closeArea (result[0].zBottom, 1),
+            check (result.GetSize () == 1 && closeArea (result[0].geom.seg.begC.y, .5) &&
+                       closeArea (result[0].rise_y, .5) && closeArea (OtdLinearSegment_GetZBottom (result[0].geom), 1),
                    "wallPart translates room edge to slanted contact elevation");
             wall = contactWall (3.8, .2);
             const auto vertical = SurfaceWall_ClampToParts (wall, {4, 0}, {0, 0}, {wallPart (.5, 2)}, edges, 0, {});
-            check (vertical.GetSize () == 1 && closeArea (vertical[0].begC.x, 3.5) && closeArea (vertical[0].endC.x, 2),
+            check (vertical.GetSize () == 1 && closeArea (vertical[0].geom.seg.begC.x, 3.5) &&
+                       closeArea (vertical[0].geom.seg.endC.x, 2),
                    "wallPart measures distances from reversed base start");
-            wall.begC = {4, 2.8};
-            wall.endC = {4, .2};
+            wall.geom.seg.begC = {4, 2.8};
+            wall.geom.seg.endC = {4, .2};
             const GS::Array<Sector> cornerEdges = {{{4, 0}, {4, 3}}};
             result = SurfaceWall_ClampToParts (wall, {4, 0}, {4, 3}, {wallPart (0, 3)}, cornerEdges, 0, {});
-            check (result.GetSize () == 1 && closeArea (result[0].begC.x, 4) && closeArea (result[0].endC.x, 4) &&
-                       closeArea (result[0].endC.y, 0) && closeArea (result[0].begC.y, 3),
+            check (result.GetSize () == 1 && closeArea (result[0].geom.seg.begC.x, 4) &&
+                       closeArea (result[0].geom.seg.endC.x, 4) && closeArea (result[0].geom.seg.endC.y, 0) &&
+                       closeArea (result[0].geom.seg.begC.y, 3),
                    "wallPart perpendicular wall reaches shared room corner");
             auto foreign = wallPart (1, 3);
             foreign.guid = baseB;
             wall = contactWall (4, 0);
             result = clamp (wall, {foreign});
-            check (result.GetSize () == 1 && closeArea (result[0].length, 4),
+            check (result.GetSize () == 1 && closeArea (result[0].geom.length, 4),
                    "wallPart foreign guid does not change wall");
             auto invalid = wallPart (0, 4);
             invalid.tBeg = std::numeric_limits<double>::quiet_NaN ();
@@ -1400,8 +1496,8 @@ namespace TestFunc {
         double rejected = 0;
         check (OtdSlab_BuildProjectedFinishes (floorZone, slabSources, roles, Floor, 0, projected, rejected) &&
                    projected.GetSize () == 1 && closeArea (slabArea (projected), 12) &&
-                   closeArea (projected[0].zBottom, -0.2) && projected[0].base_guid == baseA &&
-                   projected[0].type == Floor && projected[0].surface_geometry && rejected == 0,
+                   closeArea (projected[0].zBottom, -0.2) && projected[0].draw.base_guid == baseA &&
+                   projected[0].draw.type == Floor && projected[0].surface_geometry && rejected == 0,
                "discovered floor across gap uses actual upper slab face and original guid");
         auto ceilingZone = snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, 1), 2.8));
         slabSources = {source (baseB, atLevel (rectangle (0, 4, 0, 3, -1), 3.4), API_SlabID)};
@@ -1412,7 +1508,7 @@ namespace TestFunc {
         projected.Clear ();
         check (OtdSlab_BuildProjectedFinishes (ceilingZone, slabSources, roles, Ceil, 0, projected, rejected) &&
                    projected.GetSize () == 1 && closeArea (projected[0].zBottom, 3.4) &&
-                   projected[0].base_guid == baseB && projected[0].type == Ceil,
+                   projected[0].draw.base_guid == baseB && projected[0].draw.type == Ceil,
                "discovered ceiling across gap uses actual lower slab face");
         OtdSlab nominalCeiling;
         nominalCeiling.poly = projected[0].poly;
@@ -1427,7 +1523,7 @@ namespace TestFunc {
         check (OtdSlab_BuildProjectedFinishes (
                    ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominalCeiling, true) &&
                    projected.GetSize () == 1 && closeArea (projected[0].zBottom, 3.4) &&
-                   projected[0].base_guid == baseB,
+                   projected[0].draw.base_guid == baseB,
                "ceil_by_slab ignores nominal zone ceiling candidate");
         roles = {baseA};
         projected.Clear ();
@@ -1448,7 +1544,7 @@ namespace TestFunc {
                           floorZone, reverseSources, roles, Floor, 0, reversedSlabs, reverseRejected) &&
                       reversedSlabs.GetSize () == projected.GetSize ();
         for (UIndex i = 0; stable && i < projected.GetSize (); ++i)
-            stable = projected[i].base_guid == reversedSlabs[i].base_guid &&
+            stable = projected[i].draw.base_guid == reversedSlabs[i].draw.base_guid &&
                      closeArea (projected[i].zBottom, reversedSlabs[i].zBottom) &&
                      closeArea (projected[i].poly.CalcArea (), reversedSlabs[i].poly.CalcArea ());
         check (stable, "projected ownership is independent of candidate order");
@@ -1456,7 +1552,7 @@ namespace TestFunc {
         projected.Clear ();
         check (OtdSlab_BuildProjectedFinishes (floorZone, slabSources, roles, Floor, 0, projected, rejected) &&
                    closeArea (slabArea (projected), 12) && closeArea (rejected, 0) && projected.GetSize () == 2 &&
-                   projected[0].base_guid == baseA && closeArea (projected[0].poly.CalcArea (), 6),
+                   projected[0].draw.base_guid == baseA && closeArea (projected[0].poly.CalcArea (), 6),
                "unequal floor elevations use descending priority then remaining coverage");
         const auto fullUpper = source (baseA, atLevel (rectangle (0, 4, 0, 3, 1), -0.2), API_SlabID);
         const auto fullLower = source (baseB, atLevel (rectangle (0, 4, 0, 3, 1), -0.6), API_SlabID);
@@ -1471,8 +1567,8 @@ namespace TestFunc {
                 double fullRejected = 0;
                 check (OtdSlab_BuildProjectedFinishes (
                            floorZone, fullSources, fullRoles, Floor, 0, fullProjected, fullRejected) &&
-                           fullProjected.GetSize () == 1 && fullProjected[0].base_guid == baseA &&
-                           fullProjected[0].type == Floor && closeArea (fullProjected[0].zBottom, -0.2) &&
+                           fullProjected.GetSize () == 1 && fullProjected[0].draw.base_guid == baseA &&
+                           fullProjected[0].draw.type == Floor && closeArea (fullProjected[0].zBottom, -0.2) &&
                            closeArea (fullProjected[0].poly.CalcArea (), 12) && closeArea (fullRejected, 0),
                        "complete upper floor covers strict lower floor in either source and role order");
             }
@@ -1516,8 +1612,8 @@ namespace TestFunc {
         check (OtdSlab_BuildProjectedFinishes (
                    floorZone, slabSources, roles, Floor, 2, projected, rejected, &nominal, false, &steps) &&
                    projected.GetSize () == 1 && closeArea (slabArea (projected), 12) &&
-                   projected[0].base_guid == APINULLGuid && projected[0].floorInd == 2 && projected[0].zBottom == 0 &&
-                   projected[0].surface_geometry && steps.IsEmpty (),
+                   projected[0].draw.base_guid == APINULLGuid && projected[0].floorInd == 2 &&
+                   projected[0].zBottom == 0 && projected[0].surface_geometry && steps.IsEmpty (),
                "zero-source floor uses nominal residual when by-slab is disabled");
         projected.Clear ();
         check (OtdSlab_BuildProjectedFinishes (
@@ -1528,7 +1624,7 @@ namespace TestFunc {
         projected.Clear ();
         check (OtdSlab_BuildProjectedFinishes (
                    ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominalCeiling, false, &steps) &&
-                   projected.GetSize () == 1 && closeArea (projected[0].zBottom, 3.1) && projected[0].type == Ceil,
+                   projected.GetSize () == 1 && closeArea (projected[0].zBottom, 3.1) && projected[0].draw.type == Ceil,
                "zero-source ceiling residual uses supplied main-plus-down nominal plane");
         slabSources = {source (baseA, atLevel (rectangle (0, 2, 0, 3, -1), 3.2), API_SlabID),
                        source (baseB, atLevel (rectangle (1, 4, 0, 3, -1), 3.4), API_SlabID)};
@@ -1537,8 +1633,8 @@ namespace TestFunc {
         rejected = 0;
         check (OtdSlab_BuildProjectedFinishes (ceilingZone, slabSources, roles, Ceil, 0, projected, rejected) &&
                    projected.GetSize () == 2 && closeArea (slabArea (projected), 12) &&
-                   projected[0].base_guid == baseA && closeArea (projected[0].zBottom, 3.2) &&
-                   closeArea (projected[0].poly.CalcArea (), 6) && projected[1].base_guid == baseB &&
+                   projected[0].draw.base_guid == baseA && closeArea (projected[0].zBottom, 3.2) &&
+                   closeArea (projected[0].poly.CalcArea (), 6) && projected[1].draw.base_guid == baseB &&
                    closeArea (projected[1].zBottom, 3.4) && closeArea (projected[1].poly.CalcArea (), 6) &&
                    rejected == 0,
                "ceiling uses ascending lower-face priority then remaining coverage");
@@ -1560,9 +1656,10 @@ namespace TestFunc {
         check (OtdSlab_BuildProjectedFinishes (
                    floorZone, slabSources, roles, Floor, 0, projected, rejected, &nominal, false, &steps) &&
                    projected.GetSize () == 2 && closeArea (slabArea (projected), 12) &&
-                   projected[1].base_guid == APINULLGuid && closeArea (projected[1].zBottom, 0) &&
-                   steps.GetSize () == 1 && closeArea (steps[0].height, 0.2) && closeArea (steps[0].zBottom, 0) &&
-                   steps[0].base_guid == baseA && steps[0].type == Floor && steps[0].surface_geometry,
+                   projected[1].draw.base_guid == APINULLGuid && closeArea (projected[1].zBottom, 0) &&
+                   steps.GetSize () == 1 && closeArea (steps[0].geom.height, 0.2) &&
+                   closeArea (OtdLinearSegment_GetZBottom (steps[0].geom), 0) && steps[0].draw.base_guid == baseA &&
+                   steps[0].draw.type == Floor && steps[0].surface_geometry,
                "partial floor keeps source plus nominal remainder and only internal step edge");
         projected.Clear ();
         steps.Clear ();
@@ -1597,25 +1694,26 @@ namespace TestFunc {
         steps.Clear ();
         check (OtdSlab_BuildProjectedFinishes (
                    ceilingZone, slabSources, roles, Ceil, 0, projected, rejected, &nominalCeiling, false, &steps) &&
-                   projected.GetSize () == 2 && steps.GetSize () == 1 && steps[0].type == Ceil &&
-                   closeArea (steps[0].height, 0.2) && closeArea (steps[0].zBottom, 3.2),
+                   projected.GetSize () == 2 && steps.GetSize () == 1 && steps[0].draw.type == Ceil &&
+                   closeArea (steps[0].geom.height, 0.2) &&
+                   closeArea (OtdLinearSegment_GetZBottom (steps[0].geom), 3.2),
                "ceiling internal step spans source lower face to nominal plane");
         // Проверяем принятые после правил стеновые участки, не исходные прямоугольники перепадов.
         OtdWall side;
-        side.base_guid = baseA;
-        side.base_type = API_SlabID;
+        side.draw.base_guid = baseA;
+        side.draw.base_type = API_SlabID;
         side.surface_geometry = true;
-        side.begC = {0, 0};
-        side.endC = {4, 0};
-        side.height = 3;
-        side.type = Wall_Main;
-        side.material.smaterial = "Контакт";
-        side.favorite.name = "Стеновое избранное";
-        side.favorite.type = API_WallID;
+        side.geom.seg.begC = {0, 0};
+        side.geom.seg.endC = {4, 0};
+        side.geom.height = 3;
+        side.draw.type = Wall_Main;
+        side.draw.material.smaterial = "Контакт";
+        side.draw.favorite.name = "Стеновое избранное";
+        side.draw.favorite.type = API_WallID;
         OtdWall step = side;
         step.slab_step = true;
-        step.type = Floor;
-        step.material.smaterial = "Перепад";
+        step.draw.type = Floor;
+        step.draw.material.smaterial = "Перепад";
         const auto acceptedRoom = [&] (const OtdWall &contact, const OtdWall &acceptedStep) {
             OtdRoom room;
             room.create_wall_elements = true;
@@ -1633,12 +1731,13 @@ namespace TestFunc {
         check (SlabContacts_DeduplicateAccepted (accepted) && accepted.otdwall.GetSize () == 1 &&
                    accepted.otdwall[0].slab_step && closeArea (contactArea (accepted), 0),
                "принятое полное покрытие перепада убирает только дубль контакта независимо от материала");
-        step.endC = {2, 0};
-        step.height = 1;
+        step.geom.seg.endC = {2, 0};
+        step.geom.height = 1;
         accepted = acceptedRoom (side, step);
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 10) &&
-                   accepted.otdwall[0].material.smaterial == side.material.smaterial &&
-                   accepted.otdwall[0].favorite.name == side.favorite.name && accepted.otdwall[0].type == Wall_Main,
+                   accepted.otdwall[0].draw.material.smaterial == side.draw.material.smaterial &&
+                   accepted.otdwall[0].draw.favorite.name == side.draw.favorite.name &&
+                   accepted.otdwall[0].draw.type == Wall_Main,
                "частичное конечное покрытие сохраняет остаток и уже принятые правила контакта");
         step.isValid = false;
         accepted = acceptedRoom (side, step);
@@ -1650,27 +1749,26 @@ namespace TestFunc {
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 12),
                "непредставимое избранное боковины не стирает контакт");
         step.slab_step_writer_eligible = true;
-        step.base_guid = baseB;
+        step.draw.base_guid = baseB;
         accepted = acceptedRoom (side, step);
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 12),
                "другое основание не вычитается");
-        step.base_guid = baseA;
-        step.begC.y = step.endC.y = 1;
+        step.draw.base_guid = baseA;
+        step.geom.seg.begC.y = step.geom.seg.endC.y = 1;
         accepted = acceptedRoom (side, step);
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 12),
                "параллельная другая плоскость не вычитается");
-        step.begC.y = step.endC.y = 0;
-        step.type = Wall_Up;
+        step.geom.seg.begC.y = step.geom.seg.endC.y = 0;
+        step.draw.type = Wall_Up;
         accepted = acceptedRoom (side, step);
         accepted.create_wall_elements = false;
         accepted.create_reveal_elements = true;
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 12),
                "отключённый writer боковины после смены типа не стирает контакт");
-        step.type = Ceil;
-        step.begC = {1, 0};
-        step.endC = {3, 0};
-        step.zBottom = 1;
-        step.height = 1;
+        step.draw.type = Ceil;
+        step.geom.seg.begC = {1, 0, 1};
+        step.geom.seg.endC = {3, 0, 1};
+        step.geom.height = 1;
         accepted = acceptedRoom (side, step);
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 10) &&
                    accepted.otdwall[0].openings.GetSize () == 1,
@@ -1683,10 +1781,9 @@ namespace TestFunc {
         acceptedHole.lower = 1;
         acceptedHole.surface_geometry = true;
         side.openings = {acceptedHole};
-        step.begC = {0, 0};
-        step.endC = {1, 0};
-        step.zBottom = 0;
-        step.height = 3;
+        step.geom.seg.begC = {0, 0, 0};
+        step.geom.seg.endC = {1, 0, 0};
+        step.geom.height = 3;
         accepted = acceptedRoom (side, step);
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 8) &&
                    accepted.otdwall[0].openings.GetSize () == 1,
@@ -1699,26 +1796,25 @@ namespace TestFunc {
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 1),
                "отверстие принятой боковины не считается покрытием");
         step.openings.Clear ();
-        step.endC = {0.00005, 0};
+        step.geom.seg.endC = {0.00005, 0};
         accepted = acceptedRoom (side, step);
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 12),
                "конечная боковина ниже порога writer не стирает контакт");
-        step.begC = {0.00005, 0};
-        step.endC = {4, 0};
-        step.zBottom = 0;
-        step.height = 3;
+        step.geom.seg.begC = {0.00005, 0, 0};
+        step.geom.seg.endC = {4, 0, 0};
+        step.geom.height = 3;
         accepted = acceptedRoom (side, step);
         check (!SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 12),
                "непредставимый тонкий остаток сохраняется целиком и явно отвергается");
         step = side;
         step.slab_step = true;
-        step.begC = {6, 0};
-        step.endC = {8, 0};
+        step.geom.seg.begC = {6, 0};
+        step.geom.seg.endC = {8, 0};
         accepted = acceptedRoom (side, step);
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 12),
                "конечное непересекающееся покрытие в той же плоскости не вычитается");
-        step.begC = {3, 0};
-        step.endC = {1, 0};
+        step.geom.seg.begC = {3, 0};
+        step.geom.seg.endC = {1, 0};
         accepted = acceptedRoom (side, step);
         check (SlabContacts_DeduplicateAccepted (accepted) && closeArea (contactArea (accepted), 6),
                "обратное направление линии не меняет конечное покрытие боковины");
@@ -1726,11 +1822,11 @@ namespace TestFunc {
         side.slant_angle = std::atan2 (1.0, 0.5);
         step = side;
         step.slab_step = true;
-        step.height = 1;
+        step.geom.height = 1;
         accepted = acceptedRoom (side, step);
         check (SlabContacts_DeduplicateAccepted (accepted) &&
                    closeArea (contactArea (accepted), 8 * std::sqrt (1.25)) &&
-                   closeArea (accepted.otdwall[0].rise_y, 0.5) && closeArea (accepted.otdwall[0].begC.y, 0.5),
+                   closeArea (accepted.otdwall[0].rise_y, 0.5) && closeArea (accepted.otdwall[0].geom.seg.begC.y, 0.5),
                "наклонный остаток остаётся в исходной плоскости и сохраняет подъём");
         // Отделка ступеней сохраняет классификацию пола/потолка; её индексируют до удаления устаревших элементов.
         check (Otd_IsNativeTypeForFinish (Floor, API_WallID) && Otd_IsNativeTypeForFinish (Ceil, API_WallID),
@@ -1835,7 +1931,7 @@ namespace TestFunc {
         GS::Array<ParamValueComposite> coreFiltered;
         GS::UniString coreFavorite;
         OtdWall coreSource;
-        coreSource.base_type = API_WallID;
+        coreSource.draw.base_type = API_WallID;
         check (Param_SetToBase (
                    baseA, false, coreFiltered, coreRead, coreComposites, coreParam, coreFavorite, &coreSource) &&
                    coreSource.floor_core_offset_valid && closeArea (coreSource.floor_core_offset, .05) &&
@@ -1866,21 +1962,21 @@ namespace TestFunc {
             OtdRoom room;
             OtdSlab floor;
             floor.poly = corePolygon (hole);
-            floor.type = Floor;
-            floor.base_guid = baseB;
+            floor.draw.type = Floor;
+            floor.draw.base_guid = baseB;
             floor.floorInd = 7;
-            floor.favorite.name = "preserved";
-            floor.otd_guid = segment;
+            floor.draw.favorite.name = "preserved";
+            floor.draw.otd_guid = segment;
             room.otdslab.Push (floor);
-            floor.type = Ceil;
+            floor.draw.type = Ceil;
             room.otdslab.Push (floor);
             OtdWall wall;
-            wall.begC = {0, 0};
-            wall.endC = {4, 0};
-            wall.height = 3;
-            wall.type = Wall_Main;
-            wall.base_guid = baseA;
-            wall.base_type = API_WallID;
+            wall.geom.seg.begC = {0, 0, 0};
+            wall.geom.seg.endC = {4, 0, 0};
+            wall.geom.height = 3;
+            wall.draw.type = Wall_Main;
+            wall.draw.base_guid = baseA;
+            wall.draw.base_type = API_WallID;
             wall.surface_geometry = true;
             wall.floor_core_offset_valid = true;
             wall.floor_core_offset = .1;
@@ -1915,8 +2011,8 @@ namespace TestFunc {
                            sameCoverage (room.otdslab[0].poly, expectedEntrance) &&
                            sameCoverage (room.otdslab[1].poly, corePolygon (false)),
                        "floor opening exact coverage independent of both reveal flags, ceiling unchanged");
-                check (room.otdslab[0].base_guid == baseB && room.otdslab[0].otd_guid == segment &&
-                           room.otdslab[0].favorite.name == "preserved" && room.otdslab[0].floorInd == 7 &&
+                check (room.otdslab[0].draw.base_guid == baseB && room.otdslab[0].draw.otd_guid == segment &&
+                           room.otdslab[0].draw.favorite.name == "preserved" && room.otdslab[0].floorInd == 7 &&
                            closeArea (room.otdslab[0].zBottom, 0),
                        "floor opening preserves slab ownership favorite story and elevation");
                 check (FloorContour_ExtendToOpening (room, wall, floorOpening) &&
@@ -1991,13 +2087,63 @@ namespace TestFunc {
                 return openingPolygon (rotated);
             };
             room.otdslab[0].poly = transform ({{0, 0}, {4, 0}, {4, 3}, {0, 3}});
-            room.otdwall[0].begC = {10, 20};
-            room.otdwall[0].endC = {10 + dir.x * 4, 20 + dir.y * 4};
+            room.otdwall[0].geom.seg.begC = {10, 20};
+            room.otdwall[0].geom.seg.endC = {10 + dir.x * 4, 20 + dir.y * 4};
             check (FloorContour_ExtendToOpening (room, room.otdwall[0], floorOpening) &&
                        sameCoverage (
                            room.otdslab[0].poly,
                            transform ({{0, 0}, {1.5, 0}, {1.5, -.5}, {2.5, -.5}, {2.5, 0}, {4, 0}, {4, 3}, {0, 3}})),
                    "floor opening rotated reversed and oblique wall uses outward reveal direction");
+        }
+        for (const Point2D &dir : {Point2D{1, 0}, Point2D{0, 1}, Point2D{.6, .8}, Point2D{-.6, -.8}}) {
+            const auto transform = [&] (const GS::Array<Point2D> &coords) {
+                GS::Array<Point2D> rotated;
+                for (const auto &p : coords)
+                    rotated.Push ({10 + dir.x * p.x - dir.y * p.y, 20 + dir.y * p.x + dir.x * p.y});
+                return openingPolygon (rotated);
+            };
+            auto first = coreRoom (false);
+            auto second = coreRoom (false);
+            first.otdslab[0].poly = transform ({{0, 0}, {4, 0}, {4, 3}, {0, 3}});
+            second.otdslab[0].poly = transform ({{0, -.26}, {0, -3.26}, {4, -3.26}, {4, -.26}});
+            auto firstWall = first.otdwall[0];
+            auto secondWall = second.otdwall[0];
+            firstWall.geom.seg.begC = {10, 20, 0};
+            firstWall.geom.seg.endC = {10 + dir.x * 4, 20 + dir.y * 4, 0};
+            secondWall.geom.seg.begC = {10 + dir.x * 4 + dir.y * .26, 20 + dir.y * 4 - dir.x * .26, 0};
+            secondWall.geom.seg.endC = {10 + dir.y * .26, 20 - dir.x * .26, 0};
+            auto firstOpening = floorOpening;
+            auto secondOpening = floorOpening;
+            firstOpening.base_reveal_width = .12;
+            secondOpening.base_reveal_width = .04;
+            firstOpening.base_frame_width = secondOpening.base_frame_width = .1;
+            const auto firstExpected =
+                transform ({{0, 0}, {1.5, 0}, {1.5, -.17}, {2.5, -.17}, {2.5, 0}, {4, 0}, {4, 3}, {0, 3}});
+            const auto secondExpected = transform (
+                {{0, -.26}, {0, -3.26}, {4, -3.26}, {4, -.26}, {2.5, -.26}, {2.5, -.17}, {1.5, -.17}, {1.5, -.26}});
+            check (FloorContour_ExtendToOpening (first, firstWall, firstOpening) &&
+                       FloorContour_ExtendToOpening (second, secondWall, secondOpening) &&
+                       sameCoverage (first.otdslab[0].poly, firstExpected) &&
+                       sameCoverage (second.otdslab[0].poly, secondExpected),
+                   "adjacent floors meet at asymmetric frame midpoint without gap or overlap");
+            check (FloorContour_ExtendToOpening (first, firstWall, firstOpening) &&
+                       FloorContour_ExtendToOpening (second, secondWall, secondOpening) &&
+                       sameCoverage (first.otdslab[0].poly, firstExpected) &&
+                       sameCoverage (second.otdslab[0].poly, secondExpected) && firstOpening.base_reveal_width == .12 &&
+                       secondOpening.base_reveal_width == .04,
+                   "frame midpoint repeat preserves floors and independent reveal depths");
+        }
+        {
+            auto room = coreRoom (false);
+            auto op = floorOpening;
+            op.base_reveal_width = 0;
+            op.base_frame_width = .1;
+            check (
+                FloorContour_ExtendToOpening (room, room.otdwall[0], op) &&
+                    sameCoverage (room.otdslab[0].poly,
+                                  openingPolygon (
+                                      {{0, 0}, {1.5, 0}, {1.5, -.05}, {2.5, -.05}, {2.5, 0}, {4, 0}, {4, 3}, {0, 3}})),
+                "flush frame extends floor by half frame even without reveal depth");
         }
         auto core = coreRoom (false);
         {
@@ -2012,8 +2158,8 @@ namespace TestFunc {
                                              Geometry::PolyCreateFlags_IdxRefInContourEndFromZero)[0];
             check (core.otdslab[1].poly.GetVertexNum () == 5 && FloorContours_ExtendToCore (core) &&
                        core.otdslab[1].poly.GetVertexNum () == 4 && closeArea (core.otdslab[1].poly.CalcArea (), 12) &&
-                       core.otdslab[1].base_guid == baseB && core.otdslab[1].otd_guid == segment &&
-                       core.otdslab[1].floorInd == 7 && core.otdslab[1].favorite.name == "preserved",
+                       core.otdslab[1].draw.base_guid == baseB && core.otdslab[1].draw.otd_guid == segment &&
+                       core.otdslab[1].floorInd == 7 && core.otdslab[1].draw.favorite.name == "preserved",
                    "polygon cleanup ceiling removes redundant vertex without floor extension or link changes");
             check (FloorContours_ExtendToCore (core) && core.otdslab[1].poly.GetVertexNum () == 4 &&
                        closeArea (core.otdslab[1].poly.CalcArea (), 12),
@@ -2022,37 +2168,37 @@ namespace TestFunc {
         core = coreRoom (false);
         check (FloorContours_ExtendToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12.4),
                "SDK finite floor union moves outward");
-        check (closeArea (core.otdslab[1].poly.CalcArea (), 12) && core.otdwall[0].begC.x == 0 &&
-                   core.otdwall[0].begC.y == 0 && core.otdwall[0].endC.x == 4 && core.otdwall[0].endC.y == 0 &&
-                   core.otdwall[0].height == 3,
+        check (closeArea (core.otdslab[1].poly.CalcArea (), 12) && core.otdwall[0].geom.seg.begC.x == 0 &&
+                   core.otdwall[0].geom.seg.begC.y == 0 && core.otdwall[0].geom.seg.endC.x == 4 &&
+                   core.otdwall[0].geom.seg.endC.y == 0 && core.otdwall[0].geom.height == 3,
                "SDK ceiling and wall geometry unchanged");
-        check (core.otdslab[0].base_guid == baseB && core.otdslab[0].otd_guid == segment &&
-                   core.otdslab[0].floorInd == 7 && core.otdslab[0].favorite.name == "preserved",
+        check (core.otdslab[0].draw.base_guid == baseB && core.otdslab[0].draw.otd_guid == segment &&
+                   core.otdslab[0].floorInd == 7 && core.otdslab[0].draw.favorite.name == "preserved",
                "SDK floor ownership favorite and existing link retained");
         check (FloorContours_ExtendToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12.4),
                "SDK repeated correction is stable");
         core = coreRoom (false);
-        core.otdwall[0].begC.x = 1;
-        core.otdwall[0].endC.x = 3;
+        core.otdwall[0].geom.seg.begC.x = 1;
+        core.otdwall[0].geom.seg.endC.x = 3;
         check (FloorContours_ExtendToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12.2),
                "SDK unmatched finite edge portions retained");
         core = coreRoom (false);
         auto cornerWall = core.otdwall[0];
-        cornerWall.begC = {4, 0};
-        cornerWall.endC = {4, 3};
-        cornerWall.base_guid = segment;
+        cornerWall.geom.seg.begC = {4, 0};
+        cornerWall.geom.seg.endC = {4, 3};
+        cornerWall.draw.base_guid = segment;
         cornerWall.floor_core_offset = .2;
         core.otdwall.Push (cornerWall);
         check (FloorContours_ExtendToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 13.02),
                "SDK unequal adjacent depths preserve exact corner");
         core = coreRoom (true);
-        core.otdwall[0].begC = {1, 1};
-        core.otdwall[0].endC = {1, 2};
+        core.otdwall[0].geom.seg.begC = {1, 1};
+        core.otdwall[0].geom.seg.endC = {1, 2};
         check (FloorContours_ExtendToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 11.1) &&
                    core.otdslab[0].poly.GetContourNum () == 2,
                "SDK hole extends only matched side and remains a hole");
         core = coreRoom (false);
-        core.otdwall[0].zBottom = .5;
+        OtdLinearSegment_SetZBottom (core.otdwall[0].geom, .5);
         check (FloorContours_ExtendToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12),
                "SDK wall above floor excluded");
         core = coreRoom (false);
@@ -2061,7 +2207,7 @@ namespace TestFunc {
                "SDK undefined offset unchanged");
         core = coreRoom (false);
         auto coreConflict = core.otdwall[0];
-        coreConflict.base_guid = segment;
+        coreConflict.draw.base_guid = segment;
         core.otdwall.Push (coreConflict);
         check (FloorContours_ExtendToCore (core) && closeArea (core.otdslab[0].poly.CalcArea (), 12),
                "SDK ambiguous base contact unchanged");
@@ -2093,8 +2239,126 @@ namespace TestFunc {
                    coreBands.GetSize () == 1 && coreBands[0].floor_core_offset_valid &&
                    closeArea (coreBands[0].floor_core_offset, .1),
                "height split carries independent offset");
+
+        // Сечение профильной стены берётся по низу зоны, не по отметке покрытия.
+        {
+            const auto rectangle = [] (double x0, double y0, double x1, double y1) {
+                GS::Array<Point2D> points = {{x0, y0}, {x1, y0}, {x1, y1}, {x0, y1}};
+                return Geometry::Polygon2D::Create (points, 0)[0];
+            };
+            const auto one = [] (const Geometry::Polygon2D &polygon) {
+                Geometry::MultiPolygon2D result;
+                result.Push (polygon);
+                return result;
+            };
+            const auto equalCoverage = [] (const Geometry::MultiPolygon2D &a, const Geometry::MultiPolygon2D &b) {
+                return Geometry::MultiPolygon2D::Substract (a, b).CalcArea () < 1.e-6 &&
+                       Geometry::MultiPolygon2D::Substract (b, a).CalcArea () < 1.e-6;
+            };
+            API_WallType wall = {};
+            wall.type = APIWtyp_Normal;
+            wall.begC = {0, 0};
+            wall.endC = {4, 0};
+            wall.flipped = true;
+            wall.offset = 123;
+            wall.offsetFromOutside = 456;
+            Geometry::MultiPolygon2D profile, exclusion;
+            profile.Push (rectangle (-.3, -.5, -.1, .5));
+            profile.Push (rectangle (.1, -.5, .2, .5));
+            check (ProfileWall_BuildFloorExclusion (profile, wall, 7, 7.2, {}, exclusion),
+                   "profile section with nonzero story and origin");
+            auto expected = one (rectangle (0, -.3, 4, -.1));
+            expected.Push (rectangle (0, .1, 4, .2));
+            check (equalCoverage (exclusion, expected),
+                   "profile disconnected intervals preserved without double offset");
+            wall.flipped = false;
+            check (ProfileWall_BuildFloorExclusion (profile, wall, 7, 7.2, {}, exclusion), "profile mirrored section");
+            expected = one (rectangle (0, .1, 4, .3));
+            expected.Push (rectangle (0, -.2, 4, -.1));
+            check (equalCoverage (exclusion, expected), "profile unflipped signed placement");
+            wall.flipped = true;
+            wall.begC = {2, 3};
+            wall.endC = {2, 7};
+            check (ProfileWall_BuildFloorExclusion (profile, wall, 7, 7.2, {}, exclusion),
+                   "profile rotated and translated section");
+            expected = one (rectangle (2.1, 3, 2.3, 7));
+            expected.Push (rectangle (1.8, 3, 1.9, 7));
+            check (equalCoverage (exclusion, expected), "profile rotation uses finite wall axis");
+            wall.begC = {0, 0};
+            wall.endC = {4, 0};
+            profile = one (rectangle (-.3, -.5, .2, .5));
+            OtdOpening opening;
+            opening.objLoc = 2;
+            opening.width = 1;
+            opening.zBottom = 7.1;
+            opening.height = 2;
+            check (ProfileWall_BuildFloorExclusion (profile, wall, 7, 7.2, {opening}, exclusion),
+                   "profile preserves opening on zone bottom");
+            expected = one (rectangle (0, -.3, 1.5, .2));
+            expected.Push (rectangle (2.5, -.3, 4, .2));
+            check (equalCoverage (exclusion, expected), "profile door passage not subtracted");
+            opening.zBottom = 7.3;
+            check (ProfileWall_BuildFloorExclusion (profile, wall, 7, 7.2, {opening}, exclusion) &&
+                       equalCoverage (exclusion, one (rectangle (0, -.3, 4, .2))),
+                   "profile window above cut does not preserve wall strip");
+            opening.zBottom = 5.2;
+            check (ProfileWall_BuildFloorExclusion (profile, wall, 7, 7.2, {opening}, exclusion) &&
+                       equalCoverage (exclusion, one (rectangle (0, -.3, 4, .2))),
+                   "profile opening top is not an open passage");
+            check (ProfileWall_BuildFloorExclusion (profile, wall, 7, 8, {}, exclusion) && exclusion.IsEmpty (),
+                   "profile cut above geometry is empty");
+            wall.angle = .1;
+            check (!ProfileWall_BuildFloorExclusion (profile, wall, 7, 7.2, {}, exclusion) && exclusion.IsEmpty (),
+                   "profile curved wall refused explicitly");
+            wall.angle = 0;
+            check (!ProfileWall_BuildFloorExclusion (
+                       profile, wall, 7, std::numeric_limits<double>::quiet_NaN (), {}, exclusion),
+                   "profile invalid elevation refused");
+
+            OtdRoom room;
+            OtdSlab floor;
+            floor.draw.type = Floor;
+            floor.draw.base_guid = baseB;
+            floor.draw.favorite.name = "profile-floor";
+            floor.draw.otd_guid = baseB;
+            floor.floorInd = 7;
+            floor.zBottom = 6.8;
+            floor.poly = rectangle (0, 0, 4, 3);
+            room.otdslab.Push (floor);
+            floor.draw.type = Ceil;
+            room.otdslab.Push (floor);
+            exclusion = one (rectangle (1, -1, 2, 4));
+            check (FloorContours_SubtractProfileWalls (room, exclusion) && room.otdslab.GetSize () == 3,
+                   "profile subtraction keeps both disconnected floor parts and ceiling");
+            expected = one (rectangle (0, 0, 1, 3));
+            expected.Push (rectangle (2, 0, 4, 3));
+            Geometry::MultiPolygon2D actual;
+            for (const auto &part : room.otdslab)
+                if (part.draw.type == Floor) {
+                    actual.Push (part.poly);
+                    check (part.draw.base_guid == baseB && part.draw.favorite.name == "profile-floor" &&
+                               part.floorInd == 7 && part.zBottom == 6.8,
+                           "profile subtraction preserves floor metadata");
+                }
+            check (equalCoverage (actual, expected), "profile subtraction exact disconnected coverage");
+            check (room.otdslab.GetSize () > 1 && room.otdslab[0].draw.otd_guid == baseB &&
+                       room.otdslab[1].draw.otd_guid == APINULLGuid,
+                   "profile split reuses existing floor only once");
+            check (room.otdslab.GetSize () > 2 && equalCoverage (one (room.otdslab[2].poly), one (floor.poly)),
+                   "profile subtraction ceiling unchanged");
+            check (FloorContours_SubtractProfileWalls (room, exclusion) && room.otdslab.GetSize () == 3,
+                   "profile subtraction repeat is stable");
+            room.otdslab.Clear ();
+            floor.draw.type = Floor;
+            floor.slope_x = .1;
+            room.otdslab.Push (floor);
+            check (FloorContours_SubtractProfileWalls (room, exclusion) && room.otdslab.GetSize () == 1 &&
+                       equalCoverage (one (room.otdslab[0].poly), one (floor.poly)),
+                   "profile subtraction leaves sloped floor unchanged");
+        }
     }
 
 } // namespace TestFunc
 
+#endif
 #endif

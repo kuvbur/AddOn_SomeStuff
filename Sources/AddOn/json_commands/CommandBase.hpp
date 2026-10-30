@@ -1,11 +1,14 @@
 #pragma once
 
-#include "ACAPinc.h"
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
 
-#include "api_headers/APIEnvir.h"
+#if defined(ServerMainVers_2500)
+    #include "ACAPinc.h"
 
-#include "ObjectState.hpp"
-#include "OnExit.hpp"
+    #include "api_headers/APIEnvir.h"
+
+    #include "ObjectState.hpp"
+    #include "OnExit.hpp"
 
 // ВАЖНО: ACAPI_CallUndoableCommand объявлен в ACAPinc.h
 // Он принимает GS::UniString и лямбду, возвращающую GSErrCode
@@ -29,7 +32,7 @@ class CommandBase : public API_AddOnCommand {
     // -----------------------------------------------------------------------------
     virtual API_AddOnCommandExecutionPolicy GetExecutionPolicy () const override final;
 
-#ifdef ServerMainVers_2600
+    #ifdef ServerMainVers_2600
     // -----------------------------------------------------------------------------
     // Сообщает Archicad, показывать ли окно процесса во время выполнения команды.
     // В AC26 метод добавлен в API_AddOnCommand как чистый виртуальный; команды
@@ -37,7 +40,7 @@ class CommandBase : public API_AddOnCommand {
     // (как в DevKit-примере AddOnCommandTest для ScheduleForExecutionOnMainThread).
     // -----------------------------------------------------------------------------
     virtual bool IsProcessWindowVisible () const override final;
-#endif
+    #endif
 
     // -----------------------------------------------------------------------------
     // Обрабатывает ошибку проверки ответа команды.
@@ -125,3 +128,5 @@ GS::ObjectState CreateErrorResponse (GSErrCode errorCode, const GS::UniString &e
 // Формирует успешный ответ команды.
 // -----------------------------------------------------------------------------
 GS::ObjectState CreateSuccessResponse ();
+
+#endif // ServerMainVers_2500

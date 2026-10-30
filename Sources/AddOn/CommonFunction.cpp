@@ -2535,7 +2535,7 @@ bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult 
     // меняет модель и требует undo-контекста, но собственная транзакция на
     // каждый вызов даёт отдельную запись в истории Undo. Вызывающий обязан
     // обеспечить undo-контекст сам - тогда запись в истории одна на операцию.
-#ifdef ServerMainVers_2700
+#if defined(ServerMainVers_2700)
     err = ACAPI_Grouping_Tool (reserv, APITool_Unlock, nullptr);
 #else
     err = ACAPI_Element_Tool (reserv, APITool_Unlock, nullptr);
@@ -2546,13 +2546,21 @@ bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult 
         return false;
     }
 
-#ifdef ServerMainVers_2700
+#if defined(ServerMainVers_2700)
     if (ACAPI_Teamwork_HasConnection () && !reserv.IsEmpty ()) {
         err = ACAPI_Teamwork_ReserveElements (reserv, &conflicts, true);
     }
-#else
+#elif defined(ServerMainVers_2500)
     if (ACAPI_TeamworkControl_HasConnection () && !reserv.IsEmpty ()) {
         err = ACAPI_TeamworkControl_ReserveElements (reserv, &conflicts);
+    }
+#else
+    // В AC23/24 ReserveElements принимает const GS::PagedArray<API_Guid> — конвертируем.
+    if (ACAPI_TeamworkControl_HasConnection () && !reserv.IsEmpty ()) {
+        GS::PagedArray<API_Guid> pagedReserv;
+        for (const API_Guid &guid : reserv)
+            pagedReserv.Push (guid);
+        err = ACAPI_TeamworkControl_ReserveElements (pagedReserv, &conflicts);
     }
 #endif
     if (err != NoError) {

@@ -1,14 +1,17 @@
-#include <algorithm>
-#include <chrono>
-#include <vector>
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
 
-#include "ACAPinc.h"
+#if defined(ServerMainVers_2500)
 
-#include "json_commands/SpecCommand.hpp"
+    #include <algorithm>
+    #include <chrono>
+    #include <vector>
 
-#include "dialogs/SyncSettings.hpp"
-#include "spec/Spec.hpp"
-#include "spec/SpecCompat.hpp"
+    #include "ACAPinc.h"
+
+    #include "dialogs/SyncSettings.hpp"
+    #include "json_commands/SpecCommand.hpp"
+    #include "spec/Spec.hpp"
+    #include "spec/SpecCompat.hpp"
 
 // -----------------------------------------------------------------------------
 // Создаёт JSON-команду запуска построения спецификации.
@@ -154,11 +157,11 @@ static void AddDumpedValues (GS::ObjectState &target,
     std::vector<GS::UniString> names;
     for (GS::HashTable<GS::UniString, GS::UniString>::ConstPairIterator cIt = values.EnumeratePairs (); cIt != NULL;
          ++cIt) {
-#ifdef ServerMainVers_2800
+    #ifdef ServerMainVers_2800
         names.push_back (cIt->key);
-#else
+    #else
         names.push_back (*cIt->key);
-#endif
+    #endif
     }
     std::sort (names.begin (), names.end (), [] (const GS::UniString &a, const GS::UniString &b) { return a < b; });
     // Поле добавляется даже при пустом словаре - тогда в JSON будет [] ,
@@ -287,3 +290,5 @@ GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
     }
     return response;
 }
+
+#endif // ServerMainVers_2500
