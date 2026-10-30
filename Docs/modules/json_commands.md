@@ -39,11 +39,11 @@
 ## Файлы
 
 - `CommandBase.cpp/hpp` — базовые классы команд, общие хелперы ответов
-- `RoomBookCommand.cpp/hpp` — команда `SomeStuffCommand.RoomBook` (#205)
+- `RoomBookCommand.cpp/hpp` — команды `SomeStuffCommand.RoomBook`, `FavoritesList`, `Favorite_CreateOtd`, `Roombook_CheckFinishConfiguration` (RoomBook #205 + четыре класса: RoomBookCommand.hpp:8/36/46/61)
 - `SpecCommand.cpp/hpp` — команда `SomeStuffCommand.Spec` (#207/#208)
 - `SyncAllCommand.cpp/hpp` — команда `SomeStuffCommand.SyncAll` (#213)
-- `HealthCommand.cpp/hpp` — read-only шаблон `SomeStuffCommand.Health` (в регистратор НЕ включён, см. #205 / How JSON Commands work.md:149)
-- `JsonCommandRegistrar.cpp/hpp` — `RegisterJsonCommands()`, вызывается из `Initialize` (SomeStuff_Main.cpp:569)
+- `HealthCommand.cpp/hpp` — read-only `SomeStuffCommand.Health`; регистрируется в `RegisterJsonCommands` (JsonCommandRegistrar.cpp:74–81; до рефакторинга roombook 2026-10-30 был шаблоном вне регистратора, решение #205)
+- `JsonCommandRegistrar.cpp/hpp` — `RegisterJsonCommands()` (def `JsonCommandRegistrar.cpp:14`), вызывается из `Initialize` (SomeStuff_Main.cpp:565)
 - `How JSON Commands work.md` — внутренняя справка [из файла]
 
 ## Ключевые типы
@@ -51,9 +51,12 @@
 | Тип | Где | Назначение |
 |-----|-----|-----------|
 | `CommandBase` | CommandBase.hpp:17 | Базовый `API_AddOnCommand`: namespace `SomeStuffCommand` (CommandBase.cpp:8), политика `ScheduleForExecutionOnMainThread` (CommandBase.cpp:23) [по коду] |
-| `ReadOnlyCommand` | CommandBase.hpp:68 | Подкласс без undo; унаследован только `HealthCommand` (не зарегистрирован) [по коду] |
+| `ReadOnlyCommand` | CommandBase.hpp:68 | Подкласс без undo; унаследован `HealthCommand` (зарегистрирован с 2026-10-30), `RoomBookGetFavoritesCommand` и `RoomBookCheckFinishConfigCommand` [по коду] |
 | `ModifyCommand` | CommandBase.hpp:87 | Подкласс с поддержкой undo; в актуальном коде не используется — команды-изменения наследуют `CommandBase` напрямую [по коду] |
-| `RoomBookCommand` | RoomBookCommand.hpp:7 | Команда без параметров, free-form ответ [по коду] |
+| `RoomBookCommand` | RoomBookCommand.hpp:8 | Команда без параметров, free-form ответ: rooms → types → elements [по коду] |
+| `RoomBookGetFavoritesCommand` | RoomBookCommand.hpp:36 | Read-only команда `FavoritesList`: словарь избранного (имя и тип каждого элемента) [по коду] |
+| `RoomBookCreateFavoriteCommand` | RoomBookCommand.hpp:46 | Команда `Favorite_CreateOtd`: создаёт избранное (параметры `type`/`name`/`folder`) [по коду] |
+| `RoomBookCheckFinishConfigCommand` | RoomBookCommand.hpp:61 | Read-only команда `Roombook_CheckFinishConfiguration`: проверка классов отделки и свойств Sync_GUID [по коду] |
 | `SpecCommand` | SpecCommand.hpp:7 | Команда со схемой параметров (обязательный `placementPoint`) [по коду] |
 | `SyncAllCommand` | SyncAllCommand.hpp:7 | Команда без параметров, free-form ответ (`SyncAll`) [по коду] |
 | `HealthCommand` | HealthCommand.hpp:7 | Команда статуса/версии, read-only [по коду] |
@@ -63,12 +66,15 @@
 
 | Функция/метод | .cpp:строка | Назначение |
 |---------------|-------------|-----------|
-| `RegisterJsonCommands()` | JsonCommandRegistrar.cpp:20 | Регистрирует RoomBook/Spec/SyncAll через версионный SDK-вызов; дополнительно RoomGeometryDiagnostic под TESTING && ServerMainVers_2500 (:21–30), ошибка — DBprnt. Вне ServerMainVers_2500 пустая заглушка (:65). [по коду] |
+| `RegisterJsonCommands()` | JsonCommandRegistrar.cpp:14 | Регистрирует 7 команд (RoomBook, FavoritesList, Favorite_CreateOtd, Roombook_CheckFinishConfiguration, Spec, SyncAll, Health) через версионный SDK-вызов, ошибка — DBprnt. RoomGeometryDiagnostic больше не регистрируется (TESTING-блок удалён при рефакторинге roombook). Вне ServerMainVers_2500 пустая заглушка (:82–83). [по коду] |
 | `CommandBase::GetNamespace` | CommandBase.cpp:18 | Возвращает `SomeStuffCommand` [из комментария] |
 | `CommandBase::GetExecutionPolicy` | CommandBase.cpp:23 | `ScheduleForExecutionOnMainThread` — модифицирующие команды только в главном потоке [из комментария] |
 | `CommandBase::IsProcessWindowVisible` | CommandBase.cpp:32 | AC26+ (`#ifdef ServerMainVers_2600`): сообщает Archicad о показе окна процесса — `true` (команды длительные, в главном потоке) [по коду; DevKit-пример AddOnCommandTest] |
-| `RoomBookCommand::GetName` | RoomBookCommand.cpp:19 | Имя команды `RoomBook` [по коду] |
-| `RoomBookCommand::Execute` | RoomBookCommand.cpp:34 | Запускает `Roombook::RoomBook()`; ответ `{status:"returned", elapsedSeconds}` — `void`-функция не сообщает ошибку/отмену [по коду; IDEA.md Decisions #205] |
+| `RoomBookCommand::GetName` | RoomBookCommand.cpp:18 | Имя команды `RoomBook` [по коду] |
+| `RoomBookCommand::Execute` | RoomBookCommand.cpp:33 | Запускает `Roombook::RoomBook_Run(&results)` (:37); ответ `{status:"returned", rooms:[{zone_guid, types:[{TypeOtd, elements:[{otd_guid, base_guid, write_succeeded, was_created, length, area, material, bmaterial, structtype}]}]}]}` — группировка по комнате/типу (:36–93) [по коду] |
+| `RoomBookGetFavoritesCommand::Execute` | RoomBookCommand.cpp:105 | Собирает словарь избранного через `Roombook::Favorite_GetDict` (:108) и возвращает имя и тип каждого элемента [по коду] |
+| `RoomBookCreateFavoriteCommand::Execute` | RoomBookCommand.cpp:154 | Требует `type`/`name`/`folder` (иначе `CreateErrorResponse(APIERR_BADPARS)`); создаёт избранное через `Roombook::Favorite_CreateOtd` (:167) [по коду] |
+| `RoomBookCheckFinishConfigCommand::Execute` | RoomBookCommand.cpp:189 | Вызывает `Roombook::Roombook_CheckFinishConfiguration(errors)` (:192); ответ `{succeeded, errors}` (по одной ошибке на строку) [по коду] |
 | `SpecCommand::GetName` | SpecCommand.cpp:20 | Имя команды `Spec` [по коду] |
 | `SpecCommand::GetInputParametersSchema` | SpecCommand.cpp:25 | JSON-схема: `placementPoint{x,y}` обязательна, `ruleNames[]` опциональна (minItems 1) [по коду] |
 | `SpecCommand::Execute` | SpecCommand.cpp:57 | Без `placementPoint` — ошибка `APIERR_BADPARS`; иначе `LoadSyncSettingsFromPreferences` → `Spec::SpecAll(syncSettings, ruleNames?, &placementPoint, &runResult)`; ответ: `status` completed/failed, `resultCode`, счётчики `elementsToCreate/Modify/Delete`, `elapsedSeconds` [по коду] |
@@ -81,12 +87,12 @@
 ## Карточки
 
 ### `RegisterJsonCommands() -> void`
-- Расположение: `Sources/AddOn/json_commands/JsonCommandRegistrar.cpp:20`
-- Назначение: установка обработчиков RoomBook/Spec/SyncAll и дополнительной read-only RoomGeometryDiagnostic под TESTING && ServerMainVers_2500. Диагностический endpoint не запускается в TestKit и сам не создаёт отделку; production читает общий RoomSurfaces. [по коду]
-- Контракт: вызывается один раз из `Initialize` (SomeStuff_Main.cpp:569), до `BrowserPalette::RegisterPaletteControlCallBack`. `#include "ACAPinc.h"` обязан предшествовать проверке версии (макрос даёт этот заголовок) — иначе пустая единица трансляции и ошибка на линковке [из How JSON Commands work.md:17-18].
+- Расположение: `Sources/AddOn/json_commands/JsonCommandRegistrar.cpp:14`
+- Назначение: установка обработчиков RoomBook, FavoritesList, Favorite_CreateOtd, Roombook_CheckFinishConfiguration, Spec, SyncAll и Health. RoomGeometryDiagnostic больше не регистрируется (TESTING-блок удалён при рефакторинге roombook 2026-10-30). [по коду]
+- Контракт: вызывается один раз из `Initialize` (SomeStuff_Main.cpp:565). `#include "ACAPinc.h"` обязан предшествовать проверке версии (макрос даёт этот заголовок) — иначе пустая единица трансляции и ошибка на линковке [из How JSON Commands work.md:17-18].
 - Побочные эффекты: регистрация HTTP-эндпоинтов на порту экземпляра Archicad; `DBprnt` при ошибке установки.
-- Вызывает: SDK-регистрацию трёх обычных команд; под TESTING && ServerMainVers_2500 также регистрацию RoomGeometryDiagnostic. Для всех четырёх сохранена развилка имён SDK AC27+; DBprnt при отказах. [по коду]
-- Вызывается из: `Initialize` (SomeStuff_Main.cpp:569). [grep]
+- Вызывает: SDK-регистрацию 7 команд; для всех сохранена развилка имён SDK AC27+ (`ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler` / `ACAPI_Install_AddOnCommandHandler`); DBprnt при отказах. [по коду]
+- Вызывается из: `Initialize` (SomeStuff_Main.cpp:565). [grep]
 
 ### `SyncAllCommand::Execute(parameters, processControl) -> GS::ObjectState`
 - Расположение: `Sources/AddOn/json_commands/SyncAllCommand.cpp:36`
@@ -98,11 +104,11 @@
 - Runtime: AC25, test_25.pln, порт 19723 — `{"succeeded":true,"result":{"addOnCommandResponse":{"status":"returned","elapsedSeconds":4.1818899}}}`; корректность синхронизации и отмена — not verified. AC26–29 — not verified.
 
 ### `RoomBookCommand::Execute(parameters, processControl) -> GS::ObjectState`
-- Расположение: `Sources/AddOn/json_commands/RoomBookCommand.cpp:34`
+- Расположение: `Sources/AddOn/json_commands/RoomBookCommand.cpp:33`
 - Назначение: запускает полное построение отделки без UI. [из комментария]
-- Контракт: параметров нет (`GetInputParametersSchema` — `NoValue`); `processControl` игнорируется — отмена не поддерживается. Ответ `status:"returned"` означает только возврат из `RoomBook` (функция `void`) [по коду; IDEA.md Decisions #205].
+- Контракт: параметров нет (`GetInputParametersSchema` — `NoValue`); `processControl` игнорируется — отмена не поддерживается. Ответ `status:"returned"` + `rooms[]` (уникальные `zone_guid`, внутри — `types[]` по `draw.type`, внутри — `elements[]` с `otd_guid`/`base_guid`/`write_succeeded`/`was_created`/`length`/`area`/`material`/`bmaterial`/`structtype`); элементы с `otd_guid == APINULLGuid` (не созданные) в ответ не попадают [по коду; #205].
 - Побочные эффекты: модификация БД (создание/пересоздание элементов отделки) в главном потоке; длительность ~15–318 с (замеры runtime AC25: 15.09 с и 318.39 с, #205/#206).
-- Вызывает: `Roombook::RoomBook` (Roombook.cpp, см. Docs/modules/Roombook.md).
+- Вызывает: `Roombook::RoomBook_Run` (Roombook.cpp:102; см. Docs/modules/Roombook.md).
 - Вызывается из: диспетчеризации Archicad по имени команды (внешний HTTP-вызов); в коде вызовов нет. [по коду]
 
 ### `SpecCommand::Execute(parameters, processControl) -> GS::ObjectState`
@@ -132,7 +138,7 @@
 - Все `.cpp` под `#if defined(ServerMainVers_2500)`; на AC22–24 `RegisterJsonCommands()` — пустая функция, модуль не компилируется. [по коду]
 - Каждый JSON API HTTP-порт соответствует конкретному запущенному экземпляру Archicad — выбор «куда» делает вызывающий через порт, параметром не передаётся. [IDEA.md Decisions #205]
 - Не реинтродуцировать JSON-команды «в ствол» через BrowserPalette-мост: мост и JSON-команды — разные каналы (мост = инлайн-функции `RegisterACAPIJavaScriptObject`), см. ARCHITECTURE.md §JS Bridge. [по коду]
-- `HealthCommand` намеренно не регистрируется — остаётся шаблоном read-only команды (решение #205). [из How JSON Commands work.md:149]
+- `HealthCommand` исторически не регистрировался (решение #205); с 2026-10-30 регистрируется в `RegisterJsonCommands` (JsonCommandRegistrar.cpp:74–81) [по коду]
 - `SyncAllCommand` вызывает `SyncAndMonAll` as-is: прогресс-окно и фазы не подавляются и `Sync.cpp` не правится — осознанное решение #213, а не недоделка; не «оптимизировать» его без отдельной задачи. [по коду; #213]
 - Конфликт имен: `CreateErrorResponse`/`CreateSuccessResponse` существуют и как свободные (CommandBase.cpp:58/68), и как protected-методы `ReadOnlyCommand`/`ModifyCommand` — дублирование API; актуальные команды используют свободные. [по коду]
-- AC26 добавил в `API_AddOnCommand` чистый виртуальный `IsProcessWindowVisible` — без его реализации команды не инстанцируются (`GS::NewOwned<…>` в `JsonCommandRegistrar.cpp:17/22/27`); реализация — в `CommandBase` под `#ifdef ServerMainVers_2600`, AC25–24 её не компилируют. [по коду; сборка AC26]
+- AC26 добавил в `API_AddOnCommand` чистый виртуальный `IsProcessWindowVisible` — без его реализации команды не инстанцируются (`GS::NewOwned<…>` в `JsonCommandRegistrar.cpp:16/25/34/45/56/65/74`); реализация — в `CommandBase` под `#ifdef ServerMainVers_2600`, AC25–24 её не компилируют. [по коду; сборка AC26]

@@ -241,44 +241,47 @@ sequenceDiagram
     Note over RP: AC27+: ResetProperty возвращает false — неработоспособна (контракт в pk.md)
 ```
 
-## 11. Спецификация отделки (RoomBook)
+## 11. Спецификация отделки (RoomBook) — обновлено 2026-10-30 после `b199125`
 
 ```mermaid
 sequenceDiagram
     participant UI as ArchiCAD (меню/HTTP)
     participant Main as MenuCommandHandler
     participant JC as RoomBookCommand (JSON)
-    participant RB as RoomBook
-    participant GTZ as GetTargetZones
-    participant CTX as PrepareRoomProcessingContext
-    participant PEF as ProcessElementsForRoomData
-    participant PRP as PrepareRoomPartitions
-    participant PS as PrepareSource
+    participant RB as Roombook::RoomBook_Run
+    participant GTZ as Zone_CollectTargets
+    participant CTX as RoomProcessingContext_Prepare
+    participant PEF as RoomProcessingContext_ProcessElementsForRoomData
+    participant PRP as RoomProcessingContext_PreparePartitions
+    participant PF as RoomProcessingContext_ReadElementParameters
+    participant OTD as Otd_GetOtd_ByZone
+    participant FIN as OtdRooms_ProcessFinishes
+    participant DR as OtdRooms_Draw
     participant APP as AdvanceProcessPhase
-    participant RRC as ReportRoomReadCounters
     participant PEU as PrepareElementsForUpdate
 
-    UI->>Main: команда RoomBook (SomeStuff_Main.cpp:478)
+    UI->>Main: команда RoomBook (SomeStuff_Main.cpp:458)
     UI->>JC: SomeStuffCommand.RoomBook (JSON API, AC25+)
-    JC->>JC: Execute (RoomBookCommand.cpp:38)<br/>→ ScheduleForExecutionOnMainThread
-    Main->>RB: RoomBook (Roombook.cpp:1545)
-    JC->>RB: RoomBook
-    RB->>GTZ: GetTargetZones (:47, вызов :1554)
-    RB->>CTX: PrepareRoomProcessingContext (:529, вызов :1560)
-    Note over CTX: Class_FindFinClass → GetStories → Floor_FindAll
-    CTX->>CTX: CollectRoomInfo (:2255, вызов :546)
-    CTX->>CTX: SearchCoordinate (:90, CoordinateSearchCache,<br/>вызов :2347 — поиск стен/проёмов по серединам рёбер)
-    RB->>PEF: ProcessElementsForRoomData (:606, вызов :1564)
-    PEF->>PEF: ReadRoomSurfaces (RoomSurfaces.cpp:234, :486/:523)
-    PEF->>PEF: PartitionRoomSurfaces (RoomSurfacePartition.cpp:327, :703)
-    PEF->>PEF: BuildSurfaceWalls (RoomSurfaceFinish.cpp:369, :1153)<br/>/ BuildSurfaceSlabs (:934, :1178)
-    RB->>PRP: PrepareRoomPartitions (:662, вызов :1564)
-    PRP->>PS: PrepareSource (:470, вызов :688)
-    PS->>PS: BuildPreparedWallSource (:217, :489) / BuildPreparedSlabSource (:372, :501)
-    PS->>PS: AppendAnalyticRectangles (:164, :334/:352) / AnalyticFace (:141, :436)
-    PRP->>PRP: BuildSurfaceWall (:184, :1376) — финишные стены
-    RB->>APP: AdvanceProcessPhase (CommonFunction.cpp:2653, вызов :1570)
-    RB->>RRC: ReportRoomReadCounters (:716, вызов :1586)
-    RB->>PEU: PrepareElementsForUpdate (CommonFunction.cpp:2531, вызов :1607)
-    Note over RB: неполный partition останавливает RoomBook<br/>до записи модели
+    JC->>JC: Execute (RoomBookCommand.cpp:33)
+    Main->>RB: RoomBook_Run (Roombook.cpp:102)
+    JC->>RB: RoomBook_Run (RoomBookCommand.cpp:37)
+    RB->>RB: LayerCombination_ApplyFinishIfExists (:68, вызов :110)
+    RB->>GTZ: Zone_CollectTargets (:25, вызов :113)
+    RB->>CTX: RoomProcessingContext_Prepare (RoombookData.cpp:4810, вызов :120)
+    Note over CTX: BuildElementReadIndex (:4835) →<br/>ProcessElementsForRoomData (:4907) →<br/>PreparePartitions (:4973) → ReadElementParameters (:5028)
+    CTX->>CTX: surface-pipeline внутри RoombookData.cpp<br/>(RoomSurfaces → Partition → Finish)
+    RB->>APP: AdvanceProcessPhase (CommonFunction.cpp:2651, вызов :132)
+    RB->>RB: ElementsRead (Helpers.cpp:5583, вызов :137) — мемо всех элементов
+    RB->>RB: Favorite_GetDict (RoombookData.cpp:8933, вызов :139)
+    RB->>OTD: Otd_GetOtd_ByZone (RoombookData.cpp:5888, вызов :144)
+    RB->>FIN: OtdRooms_ProcessFinishes (RoombookData.cpp:5711, вызов :147)
+    RB->>RB: OtdData_AddRoomToMaterialSummary / OtdData_WriteRoomMaterialData<br/>(RoombookQuantities.cpp:61/:137, вызовы :167/:169)
+    RB->>RB: Roombook_CheckFinishConfiguration (RoombookData.cpp:9448, вызов :174)
+    RB->>DR: OtdRooms_Draw (RoombookDraw.cpp:2670, вызов :178)
+    DR->>DR: RoofBatch_Validate (:2007) → OtdRooms_AssignExistingWallFinishes (:444)
+    DR->>PEU: PrepareElementsForUpdate (CommonFunction.cpp:2511, вызов :2705)
+    DR->>AC: ACAPI_Element_Delete (deletelist, вызов :2709)
+    DR->>DR: OtdRoom_Draw (:2535) → Wall/Slab/Beam/Object/Roof_Draw + Class_Set
+    DR->>DR: CollectRoomFinishes (:2654) → OtdElements_SetSync (:645)
+    Note over RB: результат — GS::Array<Roombook::RoomBookFinishResult>
 ```

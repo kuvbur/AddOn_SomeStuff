@@ -1,10 +1,28 @@
 ﻿# Current Task Roombook: исправление плинтусов и surface skips (#270/#252)
 
+## #304 — JSON-команда SetPropertyDescription (описание свойства)
+
+Scope: AC25 Windows; новая add-on JSON-команда RoomBookSetPropertyDescriptionCommand ("SetPropertyDescription") в json_commands/RoomBookCommand.hpp/.cpp, регистрация в JsonCommandRegistrar.cpp. Поиск свойства максимально через PropertyCache (cache.property → ReadPropertyDefinition → запасной FindPropertyGuidByGroups по всем группам с дозаполнением кэша); перед записью определение перечитывается по GUID (Change пишет структуру целиком); запись в ACAPI_CallUndoableCommand; после записи — UpdatePropertyDescriptionInCache (обновление ParamValue.definition + GetPropertyRuleFlag (сам пересобирает propertyRuleFlags/addonrulesbytype) + ReadFileFromDefinition); read-back в ответе. Без изменения PLN, commit/push/закрытия issue. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/304.
+Status: WAITING_FOR_TEST — код внесён, clang-format/LSP 0 diagnostics; AC25 build: компиляция OK, линковка LNK1168 (SomeStuff.apx занят запущенным Archicad) — требуется перезапуск Archicad по решению владельца.
+Plan: [x] проверка штатного JSON API (редактирования описания нет) и SDK-контракта (ChangePropertyDefinition, Property_Test, HTML AC25); [x] issue #304; [x] команда + регистрация + clang-format; [x] LSP 0; [/] AC25 build (LNK1168 — занятый .apx); [ ] runtime через JSON-порт (запись, read-back, idempotent no-op, ошибка несуществующего имени).
+Next Step: перезапустить Archicad (с согласия владельца), собрать, проверить SetPropertyDescription на живом порту.
+Last Checkpoint: нет; коммит не запрошен.
+
+
+## #303 — создание классов отделки: аддонная JSON-команда + режим --create-classes
+Scope: AC25 Windows; новая JSON-команда создания элемента классификации (обёртка ACAPI_Classification_CreateClassificationItem) в RoomBookCommand.hpp; режим --create-classes в python_scripts/roombook_setup.py: выбор существующей системы и родительской ветви, создание 13 классов из RoombookConstants.hpp. id = маркер, name = человекочитаемое, description = маркер. Систему не создаём. Без изменения PLN, без commit/push/закрытия issue. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/303.
+Status: WAITING_FOR_TEST — команда CreateClassificationItem и режим --create-classes реализованы и проверены на живом AC25; коммит 21e84ca (Refs: #303, #300, #301), push не выполнялся.
+Plan: [x] исследование штатного JSON API (menutree AC30, Tapir: создания классификаций нет) и SDK-контракта; [x] issue #303; [x] аддонная команда + регистрация; [x] build + runtime; [x] python-режим и Readme; [x] idempotent-проверка.
+Last Completed: runtime AC25 (порт 19723, test_25): IsAddOnCommandAvailable=true; создание тестового элемента под «АР/Отделка» (21D00C33…) прочитано обратно штатным GetAllClassificationsInSystem; --create-classes idempotent (13/13, создано 0); негативные ветки: без параметров 4002, несуществующая система — ошибка API возвращена; read-only проверка не задета. Тестовый элемент только в памяти (PLN не сохранялся).
+Next Step: реальный сценарий с недостающими классами на проекте пользователя; при необходимости — проверка выбора родительской ветви не из корня.
+Last Checkpoint: 21e84ca.
+
 ## Docs: полная регенерация документации Roombook (2026-10-30)
 
 Scope: AC25 Windows; Docs/ и Docs/_generated/ только. Снимок кода — коммит b199125 (Sources/AddOn/roombook, C3-WIP). Без правок C++, без push. Документация переписывается с нуля: только актуальное состояние, без истории изменений; ключевая секция — карта создания/изменения отделочных элементов от входа до ACAPI_Element_Create/Change.
-Status: IN_PROGRESS.
-Plan: [x] коммит-снимок roombook + свежий compile_commands (--lsp AC25); [/] регенерация symbols.json (clangd MCP, делегировано 4 субагентам, батчи в scratch/docregen); [ ] пересбор callgraph roombook-среза; [ ] карта create/change (субагент, scratch/docregen/create-change-map.md); [ ] Roombook.md с нуля; [ ] сопутствующие карточки (Helpers/CommonFunction/json_commands), DISCREPANCIES; [ ] ARCHITECTURE/REPOMAP/SEQUENCES; [ ] _progress.md, архив истории в IDEA_ARCHIVE, [docs]-коммит.
+Status: IN_PROGRESS — docs переписаны (Roombook.md с нуля: конвейер, карта вызовов, 7 Create/6 Change/3 Delete/2 Classification с дисковыми строками; symbols.json 1128 записей, callgraph roombook-срез 807 рёбер; Helpers/json_commands/DISCREPANCIES/ARCHITECTURE/REPOMAP/SEQUENCES актуализированы; удалена карточка удалённого dialogs/CommandHelpers). docs-коммит ожидает решения владельца (AGENTS §17: Docs ведутся в master, текущая ветвь roombook_refactor).
+Plan: [x] коммит-снимок roombook + свежий compile_commands (--lsp AC25); [x] регенерация symbols.json (clangd MCP, батчи, слияние + дисковая привязка строк); [x] пересбор callgraph roombook-среза (grep-метод + входные рёбра Main/JSON); [x] карта create/change (scratch/docregen/create-change-map.md); [x] Roombook.md с нуля; [x] сопутствующие карточки (Helpers/CommonFunction/json_commands), DISCREPANCIES; [x] ARCHITECTURE/REPOMAP/SEQUENCES; [/] _progress.md переписан (компактное текущее состояние); [ ] [docs]-коммит.
+Next Step: [docs]-коммит (в master или откладывается до мержа roombook_refactor — по решению владельца).
 Last Checkpoint: b199125 [C3-WIP] снимок roombook-кода.
 
 ## #302 — пустые beamPart и предупреждения Surface finish
@@ -20,10 +38,10 @@ Last Checkpoint: нового нет; commit не запрошен.
 
 ## #301 — создание недостающего избранного отделки
 Scope: AC25 Windows; новая JSON-команда Roombook в общем RoomBookCommand.hpp, не изменять существующее избранное; без запуска на пользовательском проекте или прерывания отладки. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/301.
-Status: BLOCKED — требуется определить источник параметров для отсутствующих избранных и fallback без шаблона; базовая сборка #300 ещё не проверена, отладка активна.
-Plan: [x] проверить доступный код и зарегистрировать запрос; [/] уточнить политику шаблонов; [ ] подтвердить базовую сборку и SDK-контракты; [ ] реализовать команду и адресные тесты; [ ] сборка и runtime на согласованном проекте.
-Last Completed: Favorite_GetDict пропускает ошибки перечисления типов; отсутствие в его словаре не доказывает отсутствие записи. TestMeshFloor.cpp содержит пример создания и read-back.
-Next Step: получить правило выбора шаблонов, затем продолжить без вмешательства в активную отладку.
+Status: IN_PROGRESS — 2026-10-30 владелец запросил JSON-команды Favorite_CreateOtd (имя/тип/папка) и Roombook_CheckFinishConfiguration; добавлены и собраны AC25, runtime не проверен.
+Plan: [x] проверить доступный код и зарегистрировать запрос; [/] уточнить политику шаблонов; [x] подтвердить базовую сборку и SDK-контракты (LightRAG: Favorite_Test Do_ExportReadCreateFavorites); [x] команды Favorite_CreateOtd и Roombook_CheckFinishConfiguration добавлены в RoomBookCommand.cpp/.hpp, регистрация в JsonCommandRegistrar.cpp, clang-format/LSP/canonical AC25 build OK; [ ] runtime на согласованном проекте; [ ] политика шаблонов для автосоздания недостающих.
+Last Completed: команды добавлены поверх staged-функций RoombookData (Favorite_CreateOtd 3-арг получила объявление в hpp и guard пустой папки; объявлена 3-арг CheckFinishConfiguration); исправлен ConstPairIterator по const finclass (HashTable §6).
+Next Step: runtime-проверка обоих вызовов через JSON-порт, затем политика шаблонов для недостающих.
 Last Checkpoint: нет; коммит не запрошен.
 
 ## #300 — Python Roombook setup: имена избранного и классов

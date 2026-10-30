@@ -1,6 +1,6 @@
 # Архитектура AddOn_SomeStuff
 
-> Обновлено 2026-10-15 (HEAD `68efad7`, ветвь `roombook_refactor`): `roombook/` — отдельный каталог (13 файлов), завершены выносы функций (#275/#272/#274/#267, см. карточку `modules/Roombook.md`); статистика `_generated/`: `symbols.json` 1471 → 1578, `callgraph.json` 696 → 699 рёбер (roombook-срез; `call_sites` не пересобирались). Предыдущая ревизия: 2026-09-25 (рабочее дерево `llm_test`, HEAD `13c1948`).
+> Обновлено 2026-10-30 (коммит `b199125` `[C3-WIP]`, ветвь `roombook_refactor`): `roombook/` сжат до 9 файлов — surface-модули (RoomSurfaces / RoomSurfaceCandidates / RoomSurfacePartition / RoomSurfaceFinish) слиты в `RoombookData.cpp`, писатели вынесены в `RoombookDraw.cpp`/`RoombookQuantities.cpp`, вход разделён `RoomBook_Run` (`Roombook.cpp:102`). Карта вызовов и точки Create/Change — в карточке `modules/Roombook.md`; `_generated/`: `symbols.json` 1128 записей (roombook-файлы пересобраны по диску), `callgraph.json` 1329 рёбер (roombook-срез 807, пересобран 2026-10-30). Предыдущая ревизия: 2026-10-15 (`68efad7`).
 
 ## Обзор
 
@@ -17,13 +17,15 @@ Sources/AddOn/
 ├── Summ.*                   — Суммирование свойств
 ├── ReNum.*                  — Перенумерация
 ├── Dimensions.*             — Размеры (см. AGENTS.md §16: pen_original не менять)
-├── roombook/               — Спецификация отделки, 13 файлов:
-│   │                          Roombook (оркестратор), RoomSurfaces
-│   │                          (чтение граней), RoomSurfaceCandidates
-│   │                          (кандидаты), RoomSurfacePartition
-│   │                          (планарное разбиение), RoomSurfaceFinish
-│   │                          (финишные стены/плиты) — .cpp/.hpp,
-│   │                          + CoordinateSearchCache / FloorCoreGeometry /
+├── roombook/               — Спецификация отделки, 9 файлов:
+│   │                          Roombook.cpp (оркестратор RoomBook_Run),
+│   │                          RoombookData.cpp (чтение данных, surface-
+│   │                          pipeline, контекст, избранное),
+│   │                          RoombookDraw.cpp (писатели Create/Change/
+│   │                          Delete, классификация, синхронизация),
+│   │                          RoombookQuantities.cpp (сводка площадей),
+│   │                          + Roombook / RoombookConstants /
+│   │                          CoordinateSearchCache / FloorCoreGeometry /
 │   │                          RoomAnalyticGeometry (.hpp)
 ├── ClassificationFunction.* — Авто-классификация
 ├── MEPv1.*                  — MEP
@@ -35,7 +37,6 @@ Sources/AddOn/
 ├── Constants.hpp            — Справочник констант
 ├── dialogs/                 — DG-диалоги, HTML-интерфейс
 │   ├── BrowserPalette.*     — Браузер-палитра (HTML из RFIX/HTML/)
-│   ├── CommandHelpers.*
 │   ├── DG4rule.*
 │   ├── SyncSettings.*       — Настройки синхронизации (SyncSettings.dat)
 │   └── OtherDbDialog.*      — Выбор базы/этажа для связанных элементов (#210)
@@ -115,27 +116,23 @@ graph TD
     Helpers --> SL[spec/Spec_libpart]
     Helpers --> SS
     PC --> Helpers
-    PC --> CH[dialogs/CommandHelpers]
+
     PC --> CFu
     MEPv1 --> Helpers
     MEPv1 --> PC
     Dim[Dimensions] --> Helpers
     Dim --> SS
-    RB[roombook/Roombook] --> Helpers
+    RB[roombook/] --> Helpers
     RB --> CF
     RB --> PC[Propertycache]
     RB --> Sync
-    RB --> RBS[roombook/RoomSurfaces]
-    RB --> RBP[roombook/RoomSurfacePartition]
-    RB --> RBF[roombook/RoomSurfaceFinish]
-    RB --> RBC[roombook/RoomSurfaceCandidates]
     PK[pk: AutomateFunction/ResetProperty/Revision] --> Helpers
     PK --> CF
     TR[table/TableRenderer] --> CF
     TN[table/TablesNavigator]
     BP --> Sync
     BP --> Helpers
-    CH[dialogs/CommandHelpers] --> Helpers
+
     SS --> CF
 
     subgraph SPEC[spec/ — 6 .cpp, движок спецификаций]
@@ -177,7 +174,7 @@ graph TD
 
 ### JSON-команды (AC25+)
 
-- `RegisterJsonCommands()` из `Initialize` (SomeStuff_Main.cpp:585): `RoomBookCommand` и `SpecCommand`; `HealthCommand` — шаблон, не регистрируется (решение #205)
+- `RegisterJsonCommands()` из `Initialize` (SomeStuff_Main.cpp:565): 7 команд — RoomBook, FavoritesList, Favorite_CreateOtd, Roombook_CheckFinishConfiguration, Spec, SyncAll, Health (Health исторически был шаблоном без регистрации, решение #205; регистрация добавлена 2026-10-30)
 - Выполнение: `ScheduleForExecutionOnMainThread` — модифицирующие операции только в главном потоке
 - `#include "ACAPinc.h"` ДО проверки `ServerMainVers_2500` в каждом `.cpp` (макрос версии даёт именно этот заголовок), иначе пустая единица трансляции
 - Выбор экземпляра Archicad — через HTTP-порт вызывающего, параметром не передаётся
@@ -232,6 +229,6 @@ Sequence-диаграммы: `Docs/SEQUENCES.md` (набор согласова�
 8. Ревизии: SetRevision → обход маркеров → ChangeMarkerText
 9. Выравнивание чертежей: AlignDrawingsByPoints → AlignOneDrawingsByPoints
 10. Сброс свойств: ResetProperty → ResetPropertyElement2Defult → обход БД
-11. Спецификация отделки: RoomBook (Roombook.cpp:1545) → GetTargetZones (:47) → PrepareRoomProcessingContext (:529) → CollectRoomInfo (:2255) → SearchCoordinate (:90, CoordinateSearchCache) → ProcessElementsForRoomData (:606) → ReadRoomSurfaces (RoomSurfaces.cpp:234) → PartitionRoomSurfaces (RoomSurfacePartition.cpp:327) → PrepareRoomPartitions (:662) → PrepareSource (:470: BuildPreparedWallSource :217 / BuildPreparedSlabSource :372) → AnalyticFace (:141) / AppendAnalyticRectangles (:164) → BuildSurfaceWall (RoomSurfaceFinish.cpp:184) → запись свойств; прогресс — AdvanceProcessPhase (CommonFunction.cpp:2653)
+11. Спецификация отделки: RoomBook_Run (Roombook.cpp:102) → Zone_CollectTargets (:25) → RoomProcessingContext_Prepare (RoombookData.cpp:4810) → ProcessElementsForRoomData (:4907) → SearchCoordinate (CoordinateSearchCache) → ReadElementParameters (:5028) → Otd_GetOtd_ByZone (:5888) → OtdRooms_ProcessFinishes (:5711, surface-pipeline внутри RoombookData) → OtdRooms_Draw (RoombookDraw.cpp:2670) → писатели Wall/Slab/Beam/Object/Roof_Draw + Class_Set → OtdElements_SetSync (:645) → запись свойств; прогресс — AdvanceProcessPhase (CommonFunction.cpp:2651)
 
 **Диаграммы: `Docs/SEQUENCES.md`** — 11 sequence-диаграмм (построены из `callgraph.json` и `body_scan.json`; в самом файле ARCHITECTURE.md не дублируются).
