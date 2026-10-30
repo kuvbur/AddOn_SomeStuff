@@ -31,6 +31,28 @@ void RegisterJsonCommands () {
     if (roomBookErr != NoError)
         DBprnt ("Failed to register RoomBookCommand, error: " + GS::ValueToUniString (roomBookErr));
 
+    GS::Owner<RoomBookCreateFavoriteCommand> createFavoriteCommand = GS::NewOwned<RoomBookCreateFavoriteCommand> ();
+    #ifdef ServerMainVers_2700
+    const GSErrCode createFavoriteErr =
+        ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler (createFavoriteCommand.Pass ());
+    #else
+    const GSErrCode createFavoriteErr = ACAPI_Install_AddOnCommandHandler (createFavoriteCommand.Pass ());
+    #endif
+    if (createFavoriteErr != NoError)
+        DBprnt ("Failed to register Favorite_CreateOtdCommand, error: " + GS::ValueToUniString (createFavoriteErr));
+
+    GS::Owner<RoomBookCheckFinishConfigCommand> checkFinishConfigCommand =
+        GS::NewOwned<RoomBookCheckFinishConfigCommand> ();
+    #ifdef ServerMainVers_2700
+    const GSErrCode checkFinishConfigErr =
+        ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler (checkFinishConfigCommand.Pass ());
+    #else
+    const GSErrCode checkFinishConfigErr = ACAPI_Install_AddOnCommandHandler (checkFinishConfigCommand.Pass ());
+    #endif
+    if (checkFinishConfigErr != NoError)
+        DBprnt ("Failed to register Roombook_CheckFinishConfigurationCommand, error: " +
+                GS::ValueToUniString (checkFinishConfigErr));
+
     GS::Owner<SpecCommand> specCommand = GS::NewOwned<SpecCommand> ();
     #ifdef ServerMainVers_2700
     const GSErrCode specErr = ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler (specCommand.Pass ());
@@ -57,5 +79,18 @@ void RegisterJsonCommands () {
     #endif
     if (healthErr != NoError)
         DBprnt ("Failed to register HealthCommand, error: " + GS::ValueToUniString (healthErr));
+
+    GS::Owner<RoomBookCreateClassificationItemCommand> createClassificationItemCommand =
+        GS::NewOwned<RoomBookCreateClassificationItemCommand> ();
+    #ifdef ServerMainVers_2700
+    const GSErrCode createClassificationItemErr =
+        ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler (createClassificationItemCommand.Pass ());
+    #else
+    const GSErrCode createClassificationItemErr =
+        ACAPI_Install_AddOnCommandHandler (createClassificationItemCommand.Pass ());
+    #endif
+    if (createClassificationItemErr != NoError)
+        DBprnt ("Failed to register RoomBookCreateClassificationItemCommand, error: " +
+                GS::ValueToUniString (createClassificationItemErr));
 #endif // ServerMainVers_2500
 }

@@ -5,7 +5,7 @@
 Проверяет через JSON-порт Archicad (порт 19723+):
   1. Доступность порта (автопоиск среди запущенных экземпляров).
   2. Загружен ли аддон SomeStuff (команда Health в namespace SomeStuffCommand).
-  3. Наличие избранных: smstf wall / floor / ceil / window / reveal side / reveal up.
+  3. Наличие рекомендуемых избранных, включая плинтус и карниз.
   4. Наличие свойств зон с маркерами some_stuff_fin_* в описаниях.
   5. Наличие классификационных классов some_stuff_fin_*.
 
@@ -38,9 +38,8 @@ TIMEOUT = 15
 
 ADDON_NAMESPACE = "SomeStuffCommand"  # CommandBase.cpp:8
 
-# Избранные, наличие которых проверяет Favorite_GetDict (RoombookData.cpp:7454-7476).
-# required=True  — отсутствие приводит к использованию настроек инструмента по умолчанию.
-# required=False — отсутствие допустимо, используется fallback ('smstf wall' для откосов).
+# Имена по умолчанию из FavoriteDefaultOtd (RoombookConstants.hpp).
+# Первые четыре проверяет Favorite_GetDict; остальные зависят от вида отделки.
 REQUIRED_FAVORITES = [
     ("smstf wall", True),
     ("smstf floor", True),
@@ -48,6 +47,10 @@ REQUIRED_FAVORITES = [
     ("smstf window", True),
     ("smstf reveal side", False),
     ("smstf reveal up", False),
+    ("smstf ceil side", False),
+    ("smstf floor side", False),
+    ("smstf skirting", False),
+    ("smstf cornice", False),
 ]
 
 # Маркеры в описаниях свойств зон (RoombookData.cpp:5370-5539).
@@ -80,7 +83,29 @@ REQUIRED_PROPERTY_MARKERS = [
     "some_stuff_fin_reveal_result_bytype",
 ]
 
-# Классы классификации (Roombook.hpp:323-332).
+# Комбинация слоёв ищется по суффиксу smstf_fin (Roombook.cpp:69-83).
+LAYER_COMBINATION_SUFFIX = "smstf_fin"
+
+# Классы отделки: (маркер = id = description, человекочитаемое имя).
+# id и description обязаны содержать маркер: Class_FindFinClass (RoombookData.cpp)
+# ищет some_stuff_fin_* в описании элемента классификации.
+FINISH_CLASSES = [
+    ("some_stuff_fin_class", "Отделка"),
+    ("some_stuff_fin_walls", "Отделка стен"),
+    ("some_stuff_fin_down_walls", "Отделка стен, нижняя часть"),
+    ("some_stuff_fin_reveals", "Отделка откосов"),
+    ("some_stuff_fin_windows_reveals", "Отделка откосов окон"),
+    ("some_stuff_fin_doors_reveals", "Отделка откосов дверей"),
+    ("some_stuff_fin_columns", "Отделка колонн"),
+    ("some_stuff_fin_ceil_beams", "Отделка балок в потолке"),
+    ("some_stuff_fin_wall_beams", "Отделка балок в стенах"),
+    ("some_stuff_fin_floors", "Отделка пола"),
+    ("some_stuff_fin_skirting", "Плинтус пола"),
+    ("some_stuff_fin_cornice", "Карниз потолка"),
+    ("some_stuff_fin_ceils", "Отделка потолка"),
+]
+
+# Маркеры ClassOtd (RoombookConstants.hpp); поиск идёт в описаниях классов.
 REQUIRED_CLASSES = [
     "some_stuff_fin_class",
     "some_stuff_fin_walls",
@@ -90,12 +115,12 @@ REQUIRED_CLASSES = [
     "some_stuff_fin_doors_reveals",
     "some_stuff_fin_columns",
     "some_stuff_fin_floors",
-    "some_stuff_fin_beams",
+    "some_stuff_fin_ceil_beams",
+    "some_stuff_fin_wall_beams",
+    "some_stuff_fin_skirting",
+    "some_stuff_fin_cornice",
     "some_stuff_fin_ceils",
 ]
-
-# Комбинация слоёв ищется по суффиксу (Roombook.cpp:69-83).
-LAYER_COMBINATION_SUFFIX = "smstf_fin"
 
 
 # ---------------------------------------------------------------------------
@@ -206,23 +231,26 @@ def check_addon(port):
 def check_favorites(port):
     """Проверяет наличие рекомендуемых избранных.
 
-    Штатный JSON API AC25 не имеет команды перечисления избранного (см. исследование:
-    отсутствует и GetAllFavorites, и команда аддона). Проверяем через аддонную
-    команду RoomBook-подобного доступа невозможно, поэтому честно сообщаем, что
-    проверка требует аддонной команды (запланирована).
+    FavoritesList использует тот же словарь, что и Roombook.
     """
     data, err = addon_call(port, "FavoritesList")
     if data is not None and data.get("succeeded"):
-        names = [n.lower().strip() for n in data.get("result", {}).get("addOnCommandResponse", {}).get("favorites", [])]
-        rows = []
-        for name, required in REQUIRED_FAVORITES:
-            rows.append({"name": name, "required": required, "found": name in names})
-        return {"ok": all(not r["required"] or r["found"] for r in rows), "rows": rows, "detail": "проверено аддонной командой FavoritesList"}
-    # Команды нет (2002/4010) — сообщаем о невозможности проверки штатными средствами.
+        response = data.get("result", {}).get("addOnCommandResponse", {})
+        favorites = response.get("favorites") if isinstance(response, dict) else None
+        if isinstance(favorites, list) and all(
+            isinstance(item, dict) and isinstance(item.get("name"), str) for item in favorites
+        ):
+            names = {item["name"].lower().strip() for item in favorites}
+            rows = [{"name": name, "required": required, "found": True if name in names else None}
+                    for name, required in REQUIRED_FAVORITES]
+            complete = all(r["found"] is True for r in rows)
+            return {"ok": True if complete else None, "rows": rows,
+                    "detail": "FavoritesList не сообщает об ошибках чтения отдельных типов; ненайденные имена не подтверждены"}
+    # При отсутствии команды показываем имена, не выдавая их за отсутствующие.
     return {
         "ok": None,
-        "rows": [],
-        "detail": "штатный JSON API AC25 не умеет перечислять избранное; требуется аддонная команда (todo)",
+        "rows": [{"name": name, "required": required, "found": None} for name, required in REQUIRED_FAVORITES],
+        "detail": "избранное не проверено: команда FavoritesList недоступна или вернула ошибку",
     }
 
 
@@ -319,35 +347,38 @@ def check_classifications(port):
 
     found = set()
     system_names = []
+    incomplete = False
     for system in systems:
         guid = ((system.get("classificationSystemId") or {}).get("guid"))
         if not guid:
+            incomplete = True
             continue
         system_names.append(system.get("name", "?"))
         items, _ = raw_post(port, "API.GetAllClassificationsInSystem", {
             "classificationSystemId": {"guid": guid}})
         if not (items and items.get("succeeded")):
+            incomplete = True
             continue
         for root in items.get("result", {}).get("classificationItems", []) or []:
             _collect_classification_ids(root, found)
-    rows = [{"cls": c, "found": c.lower() in found} for c in REQUIRED_CLASSES]
-    missing = [r["cls"] for r in rows if not r["found"]]
-    matched = sum(1 for r in rows if r["found"])
+    rows = [{"cls": c, "found": True if c in found else (None if incomplete else False)} for c in REQUIRED_CLASSES]
+    matched = sum(1 for r in rows if r["found"] is True)
     return {
-        "ok": len(missing) == 0,
+        "ok": None if incomplete else matched == len(REQUIRED_CLASSES),
         "rows": rows,
-        "detail": "системы: %s; классов some_stuff_fin_* найдено %d из %d (элементов в дереве: %d)" % (
-            ", ".join(system_names) or "—", matched, len(REQUIRED_CLASSES), len(found)),
+        "detail": "системы: %s; маркеров в описаниях найдено %d из %d%s; наличие маркера не подтверждает его использование аддоном" % (
+            ", ".join(system_names) or "—", matched, len(REQUIRED_CLASSES),
+            "; часть систем не прочитана" if incomplete else ""),
     }
 
 
 def _collect_classification_ids(node, found):
-    """Рекурсивно собирает id/name/description из дерева классификации."""
+    """Ищет маркеры во всём описании, как Class_FindFinClass."""
     item = node.get("classificationItem") or node
-    for key in ("id", "name", "description"):
-        value = item.get(key)
-        if value:
-            found.add(value.lower())
+    description = (item.get("description") or "").lower()
+    for marker in REQUIRED_CLASSES:
+        if marker in description:
+            found.add(marker)
     for child in item.get("children", []) or []:
         _collect_classification_ids(child, found)
 
@@ -359,6 +390,158 @@ def check_layer_combination(port):
     """
     return {"ok": None, "rows": [], "detail": "штатный JSON API AC25 не отдаёт комбинации слоёв; требуется аддонная команда (todo)"}
 
+
+# ---------------------------------------------------------------------------
+# Создание классов отделки (режим --create-classes, только CLI)
+# ---------------------------------------------------------------------------
+
+def fetch_classification_systems(port):
+    """Возвращает список систем классификации: [(guid, name)] или (None, ошибка)."""
+    data, err = raw_post(port, "API.GetAllClassificationSystems", {})
+    if data is None:
+        return None, "нет ответа: %s" % err
+    if not data.get("succeeded"):
+        return None, "API.GetAllClassificationSystems: код %s" % data.get("error", {}).get("code")
+    systems = []
+    for system in data.get("result", {}).get("classificationSystems") or []:
+        guid = (system.get("classificationSystemId") or {}).get("guid")
+        if guid:
+            systems.append((guid, system.get("name", "?")))
+    return systems, None
+
+
+def fetch_class_tree(port, system_guid):
+    """Читает дерево элементов классификации системы в плоский список кортежей
+    (guid, уровень, id, имя, описание) в порядке обхода в глубину."""
+    data, err = raw_post(port, "API.GetAllClassificationsInSystem", {
+        "classificationSystemId": {"guid": system_guid}})
+    if data is None:
+        return None, "нет ответа: %s" % err
+    if not data.get("succeeded"):
+        return None, "API.GetAllClassificationsInSystem: код %s" % data.get("error", {}).get("code")
+    flat = []
+
+    def walk(nodes, level):
+        for node in nodes:
+            item = node.get("classificationItem") or node
+            flat.append(((item.get("classificationItemId") or {}).get("guid") or "",
+                         level, item.get("id", ""), item.get("name", ""),
+                         item.get("description", "")))
+            walk(item.get("children", []) or [], level + 1)
+
+    walk(data.get("result", {}).get("classificationItems") or [], 0)
+    return flat, None
+
+
+def collect_tree_markers(tree):
+    """Маркеры some_stuff_fin_*, найденные в описаниях элементов дерева."""
+    found = set()
+    for _guid, _level, _iid, _name, description in tree:
+        for marker in REQUIRED_CLASSES:
+            if marker_matches((description or "").lower(), marker):
+                found.add(marker)
+    return found
+
+
+def create_classification_item(port, system_guid, parent_guid, item_id, item_name, item_description):
+    """Создаёт элемент классификации командой аддона CreateClassificationItem.
+
+    Возвращает (True, guid_или_None, None) или (False, None, текст_ошибки).
+    """
+    parameters = {
+        "systemGuid": system_guid,
+        "itemId": item_id,
+        "itemName": item_name,
+        "itemDescription": item_description,
+    }
+    if parent_guid:
+        parameters["parentItemGuid"] = parent_guid
+    data, err = addon_call(port, "CreateClassificationItem", parameters)
+    if data is None:
+        return False, None, "нет ответа: %s" % err
+    if not data.get("succeeded"):
+        error = data.get("error", {})
+        return False, None, "код %s: %s" % (error.get("code"), error.get("message"))
+    guid = data.get("result", {}).get("addOnCommandResponse", {}).get("itemGuid")
+    return True, guid, None
+
+
+def run_create_classes(port):
+    """Интерактивное создание классов отделки: выбор системы и родительской ветви,
+    создание только отсутствующих классов из FINISH_CLASSES."""
+    systems, err = fetch_classification_systems(port)
+    if systems is None:
+        print("Не удалось прочитать системы классификации: %s" % err)
+        return 4
+    if not systems:
+        print("В проекте нет систем классификации — создайте систему вручную и повторите.")
+        return 4
+    print("\nСистемы классификации:")
+    for i, (_guid, name) in enumerate(systems, 1):
+        print("  %2d. %s" % (i, name))
+    try:
+        choice = int(input("Номер системы [1]: ").strip() or 1)
+    except ValueError:
+        print("Отменено: номер системы не введён.")
+        return 4
+    if not 1 <= choice <= len(systems):
+        print("Отменено: нет такой системы.")
+        return 4
+    system_guid, system_name = systems[choice - 1]
+
+    tree, err = fetch_class_tree(port, system_guid)
+    if tree is None:
+        print("Не удалось прочитать дерево классификации (%s): %s" % (system_name, err))
+        return 4
+    print("\nВетви системы «%s»:" % system_name)
+    print("   0. — корень системы —")
+    for i, (guid, level, iid, name, description) in enumerate(tree, 1):
+        marker = " [some_stuff_fin_*]" if collect_tree_markers([(guid, 0, iid, name, description)]) else ""
+        print("  %2d. %s%s%s" % (i, "  " * level, name or iid, marker))
+    try:
+        parent_choice = int(input("Номер родительской ветви [0]: ").strip() or 0)
+    except ValueError:
+        print("Отменено: номер ветви не введён.")
+        return 4
+    parent_guid = ""
+    if parent_choice:
+        if not 1 <= parent_choice <= len(tree):
+            print("Отменено: нет такой ветви.")
+            return 4
+        parent_guid = tree[parent_choice - 1][0]
+
+    existing = collect_tree_markers(tree)
+    missing = [(marker, name) for marker, name in FINISH_CLASSES if marker not in existing]
+    print("\nНайдено маркеров: %d из %d. Будет создано: %d." % (
+        len(existing), len(REQUIRED_CLASSES), len(missing)))
+    for marker, name in missing:
+        print("  + %s (%s)" % (marker, name))
+    if not missing:
+        print("Все классы отделки уже есть — создавать нечего.")
+        return 0
+    answer = input("Создать отсутствующие классы? [y/N]: ").strip().lower()
+    if answer not in ("y", "yes", "д", "да"):
+        print("Отменено пользователем.")
+        return 0
+
+    created = 0
+    failed = []
+    for marker, name in missing:
+        ok, guid, err = create_classification_item(port, system_guid, parent_guid, marker, name, marker)
+        if ok:
+            created += 1
+            print("  создан %s -> %s" % (marker, guid))
+        else:
+            failed.append(marker)
+            print("  ОШИБКА %s: %s" % (marker, err))
+    print("\nСоздано %d из %d%s." % (created, len(missing), "; ошибки: " + ", ".join(failed) if failed else ""))
+
+    # Повторная read-only проверка: подтверждает, что маркеры видны аддону.
+    section = check_classifications(port)
+    print("\n[%s] Классификационные классы после создания" % (
+        "OK" if section["ok"] else ("?" if section["ok"] is None else "FAIL")))
+    print("    %s" % section["detail"])
+    return 0 if not failed else 4
 
 # ---------------------------------------------------------------------------
 # Отчёт
@@ -376,8 +559,8 @@ def report(port, sections):
             label = row.get("name") or row.get("marker") or row.get("cls")
             found = row.get("found")
             req = row.get("required")
-            mark = "OK " if found else "MISS"
-            extra = " (обяз.)" if req else " (опц.)"
+            mark = "?" if found is None else ("OK " if found else "MISS")
+            extra = (" (обяз.)" if req else " (опц.)") if "required" in row else ""
             print("    %-6s %s%s" % (mark, label, extra))
     print()
 
@@ -643,8 +826,8 @@ class App(tk.Tk):
                 label = row.get("name") or row.get("marker") or row.get("cls")
                 found = row.get("found")
                 req = row.get("required")
-                mark = "OK " if found else "MISS"
-                extra = " (обяз.)" if req else " (опц.)"
+                mark = "?" if found is None else ("OK " if found else "MISS")
+                extra = (" (обяз.)" if req else " (опц.)") if "required" in row else ""
                 lines.append("    %-6s %s%s" % (mark, label, extra))
         lines.append("")
         return "\n".join(lines) + "\n"
@@ -670,7 +853,20 @@ def main():
                         help="консольный режим: проверить только указанный порт")
     parser.add_argument("--cli", action="store_true",
                         help="консольный режим (по умолчанию открывается GUI)")
+    parser.add_argument("--create-classes", action="store_true",
+                        help="интерактивное создание классов отделки (выбор системы, родителя и создание отсутствующих some_stuff_fin_*); только CLI")
     args = parser.parse_args()
+
+    if args.create_classes:
+        ports = discover_ports(args.port)
+        if not ports:
+            print("Archicad не найден на портах %d..%d. Запустите Archicad и откройте проект." % (
+                PORT_RANGE.start, PORT_RANGE.stop - 1))
+            return 1
+        if len(ports) > 1:
+            print("Найдено несколько экземпляров: %s. Укажите один ключом --port." % ", ".join(map(str, ports)))
+            return 1
+        return run_create_classes(ports[0])
 
     if not args.cli and args.port is None:
         App().mainloop()

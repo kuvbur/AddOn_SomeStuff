@@ -41,6 +41,7 @@ Roombook finishing function? It verifies:
 python python_scripts/roombook_setup.py                    # GUI, select a project and port
 python python_scripts/roombook_setup.py --cli              # all running instances
 python python_scripts/roombook_setup.py --cli --port 19723 # one port
+python python_scripts/roombook_setup.py --create-classes --port 19723
 ```
 
 GUI checks the selected instance by default; checking all instances is an
@@ -48,7 +49,26 @@ explicit option. Refresh and Run are disabled while a task is active.
 Worker errors are displayed separately from an empty instance list.
 
 CLI exit codes: `0` — all checks passed; `1` — no Archicad found;
-`2` — at least one check failed; `3` — checks incomplete (no explicit failures).
+`2` — at least one check failed; `3` — checks incomplete (no explicit failures);
+`4` — class creation failed (system not readable, no confirmation, or creation errors).
+
+### Creating finish classes (--create-classes)
+
+Interactive CLI mode backed by the add-on command `CreateClassificationItem`
+(namespace `SomeStuffCommand`, issue #303). The stock AC25/AC30 JSON API has no
+classification-creation commands, so creation goes through the add-on:
+
+1. Lists existing classification systems (`GetAllClassificationSystems`).
+2. Reads the tree of the chosen system (`GetAllClassificationsInSystem`,
+   nodes carry item GUIDs) and lets you pick the parent branch (`0` = root).
+3. Compares `FINISH_CLASSES` (13 items from `RoombookConstants.hpp`:
+   id = marker = description, name = human-readable Russian) against markers
+   found in descriptions and creates **only the missing ones**; existing
+   classes are never touched, a repeated run is a no-op.
+4. Re-runs the read-only classification check and prints the result.
+
+The add-on finds finish classes by searching `some_stuff_fin_*` in item
+*descriptions* (`Class_FindFinClass`), so `description` carries the marker.
 
 ### Notes
 
@@ -58,10 +78,11 @@ CLI exit codes: `0` — all checks passed; `1` — no Archicad found;
 
 ### What it does NOT do
 
-The script is read-only: it never creates or modifies definitions.
-Creating missing properties/classifications/favorites is a separate command
-(pending owner decision) and will require an add-on command for favorites
-and layer combinations.
+The read-only check mode never creates or modifies definitions.
+The only modifying path is the explicit `--create-classes` mode (above): it
+creates missing classification items and nothing else. It does not create
+properties, favorites, layer combinations, or classification systems — the
+system itself must already exist (owner decision, issue #303).
 
 ### Output
 
