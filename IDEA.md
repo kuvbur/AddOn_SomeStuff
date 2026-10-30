@@ -1,10 +1,27 @@
 ﻿# Current Task Roombook: исправление плинтусов и surface skips (#270/#252)
 
+## #306 — GUI roombook_setup.py в дизайне somestuff_updater
+
+Scope: только GUI-слой python_scripts/roombook_setup.py (класс App переписан по образцу somestuff_updater: палитра C_BG/C_CARD/C_ACCENT, карточки, badge-статусы, clam, кнопки Accent/Ghost, очередь queue.Queue/_pump вместо after-опроса, DPI-awareness не добавлялся — tk.Tk сам, smoke прошёл). Логика проверок и вкладка «Свойства» (#305: «Текст (маркер)» + сохранение блока {...}) не менялись. Добавлены импорты ctypes/queue. CLI (--cli, --create-classes) не тронут. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/306.
+Status: WAITING_FOR_TEST — py_compile OK, GUI smoke 2 c OK (24 строки маркеров), --cli на живом порту 19723 отработал (результат как до правки: FAIL из-за отсутствующих зон-свойств, не связано с правкой).
+Дополнение 2026-10-30 (запрос владельца): добавлены (1) автовыбор темы по реестру Windows (AppsUseLightTheme) + переключатель «ТЕМА» в шапке, палитра THEMES light/dark, _apply_theme перекрашивает живые tk-виджеты; (2) секция проверки скрыта по умолчанию, разворачивается внизу окна после нажатия «Проверка» (report_outer.pack в run_check); (3) человекочитаемые имена свойств в GUI и в отчётах (MARKER_DESCRIPTIONS, «Наличие потолка» вместо some_stuff_fin_has_ceil, маркер — мелкой строкой). Smoke2 прошёл.
+Next Step: визуальная проверка владельцем.
+Last Checkpoint: aaa8276 [python-setup] GUI: тема, скрытая секция проверки, человекочитаемые имена, ссылка на сайт.
+
+
+## #305 — понятные описания свойств отделки в roombook_setup.py
+
+Scope: AC25; только python_scripts/roombook_setup.py (+Readme.md); описания ставятся через SetPropertyDescription (#304). Маркер обязан остаться в описании (аддон ищет по Contains(marker)), формат: «Понятный текст (маркер)», тексты из wiki/ru/Finishing-ru.md (MARKER_DESCRIPTIONS, 24 маркера); блок форматирования результата «{ 30 ; 15 ; ... }» сохраняется (extract_format_block). Классы --create-classes не тронуты. Без commit/push/закрытия issue. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/305.
+Status: WAITING_FOR_TEST — правка внесена, py_compile OK; runtime на живом test_25 (порт 19723): 8 найденных result-свойств получили понятные описания, read-back OK, штатная проверка check_properties находит те же 8 маркеров, перекрёстных совпадений нет; блоки форматирования сохранены. Остальные 16 маркеров в тест-проекте свойств не имеют (создание свойств — вне скоупа).
+Next Step: (по желанию владельца) прогнать GUI «Применить выбранные» на своём проекте; коммит по запросу.
+Last Checkpoint: нет; коммит не запрошен.
+
+
 ## #304 — JSON-команда SetPropertyDescription (описание свойства)
 
 Scope: AC25 Windows; новая add-on JSON-команда RoomBookSetPropertyDescriptionCommand ("SetPropertyDescription") в json_commands/RoomBookCommand.hpp/.cpp, регистрация в JsonCommandRegistrar.cpp. Поиск свойства максимально через PropertyCache (cache.property → ReadPropertyDefinition → запасной FindPropertyGuidByGroups по всем группам с дозаполнением кэша); перед записью определение перечитывается по GUID (Change пишет структуру целиком); запись в ACAPI_CallUndoableCommand; после записи — UpdatePropertyDescriptionInCache (обновление ParamValue.definition + GetPropertyRuleFlag (сам пересобирает propertyRuleFlags/addonrulesbytype) + ReadFileFromDefinition); read-back в ответе. Без изменения PLN, commit/push/закрытия issue. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/304.
-Status: WAITING_FOR_TEST — код внесён, clang-format/LSP 0 diagnostics; AC25 build: компиляция OK, линковка LNK1168 (SomeStuff.apx занят запущенным Archicad) — требуется перезапуск Archicad по решению владельца.
-Plan: [x] проверка штатного JSON API (редактирования описания нет) и SDK-контракта (ChangePropertyDefinition, Property_Test, HTML AC25); [x] issue #304; [x] команда + регистрация + clang-format; [x] LSP 0; [/] AC25 build (LNK1168 — занятый .apx); [ ] runtime через JSON-порт (запись, read-back, idempotent no-op, ошибка несуществующего имени).
+Status: WAITING_FOR_TEST — код внесён, clang-format/LSP 0; AC25 canonical build OK (16:25, restart_archicad_for_test.ps1; «203 failed» в CXX_TESTS — отчёт предыдущего прогона 16:15, mtime-ловушка). Runtime на живом порту 19723 (test_25) проверено: schema-reject 4002; неизвестное имя → APIERR_BADID; запись по GUID и по имени (через кэш PropertyCache) → changed:true + read-back "#304 test"; idempotent-повторы → changed:false; возврат исходного пустого описания и повтор → changed:false. Модель возвращена в исходное состояние (свойство Спецификации общестрой/Поз, GUID 409302A5-560C-424C-8C73-44B7D616C017), in-memory, без save.
+Plan: [x] проверка штатного JSON API (редактирования описания нет) и SDK-контракта (ChangePropertyDefinition, Property_Test, HTML AC25); [x] issue #304; [x] команда + регистрация + clang-format; [x] LSP 0; [x] AC25 build; [x] runtime через JSON-порт (запись, read-back, idempotent no-op, ошибка несуществующего имени, restore).
 Next Step: перезапустить Archicad (с согласия владельца), собрать, проверить SetPropertyDescription на живом порту.
 Last Checkpoint: нет; коммит не запрошен.
 
@@ -20,10 +37,10 @@ Last Checkpoint: 21e84ca.
 ## Docs: полная регенерация документации Roombook (2026-10-30)
 
 Scope: AC25 Windows; Docs/ и Docs/_generated/ только. Снимок кода — коммит b199125 (Sources/AddOn/roombook, C3-WIP). Без правок C++, без push. Документация переписывается с нуля: только актуальное состояние, без истории изменений; ключевая секция — карта создания/изменения отделочных элементов от входа до ACAPI_Element_Create/Change.
-Status: IN_PROGRESS — docs переписаны (Roombook.md с нуля: конвейер, карта вызовов, 7 Create/6 Change/3 Delete/2 Classification с дисковыми строками; symbols.json 1128 записей, callgraph roombook-срез 807 рёбер; Helpers/json_commands/DISCREPANCIES/ARCHITECTURE/REPOMAP/SEQUENCES актуализированы; удалена карточка удалённого dialogs/CommandHelpers). docs-коммит ожидает решения владельца (AGENTS §17: Docs ведутся в master, текущая ветвь roombook_refactor).
-Plan: [x] коммит-снимок roombook + свежий compile_commands (--lsp AC25); [x] регенерация symbols.json (clangd MCP, батчи, слияние + дисковая привязка строк); [x] пересбор callgraph roombook-среза (grep-метод + входные рёбра Main/JSON); [x] карта create/change (scratch/docregen/create-change-map.md); [x] Roombook.md с нуля; [x] сопутствующие карточки (Helpers/CommonFunction/json_commands), DISCREPANCIES; [x] ARCHITECTURE/REPOMAP/SEQUENCES; [/] _progress.md переписан (компактное текущее состояние); [ ] [docs]-коммит.
-Next Step: [docs]-коммит (в master или откладывается до мержа roombook_refactor — по решению владельца).
-Last Checkpoint: b199125 [C3-WIP] снимок roombook-кода.
+Status: DONE — docs переписаны и закоммичены `c40954f` `[docs]` в ветви roombook_refactor (базовый снимок кода `b199125`; при мерже в master Docs уедут вместе с кодом).
+Plan: [x] коммит-снимок roombook + свежий compile_commands (--lsp AC25); [x] регенерация symbols.json (clangd MCP, батчи, слияние + дисковая привязка строк); [x] пересбор callgraph roombook-среза (grep-метод + входные рёбра Main/JSON); [x] карта create/change (scratch/docregen/create-change-map.md); [x] Roombook.md с нуля; [x] сопутствующие карточки (Helpers/CommonFunction/json_commands), DISCREPANCIES; [x] ARCHITECTURE/REPOMAP/SEQUENCES; [x] _progress.md переписан (компактное текущее состояние); [x] [docs]-коммит c40954f.
+Next Step: задача завершена. Хвосты — вне Scope: не-spec срезы callgraph (140 устаревших рёбер), MEPv1.cpp в symbols.json.
+Last Checkpoint: c40954f [docs] регенерация документации roombook-среза.
 
 ## #302 — пустые beamPart и предупреждения Surface finish
 
@@ -38,10 +55,10 @@ Last Checkpoint: нового нет; commit не запрошен.
 
 ## #301 — создание недостающего избранного отделки
 Scope: AC25 Windows; новая JSON-команда Roombook в общем RoomBookCommand.hpp, не изменять существующее избранное; без запуска на пользовательском проекте или прерывания отладки. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/301.
-Status: IN_PROGRESS — 2026-10-30 владелец запросил JSON-команды Favorite_CreateOtd (имя/тип/папка) и Roombook_CheckFinishConfiguration; добавлены и собраны AC25, runtime не проверен.
-Plan: [x] проверить доступный код и зарегистрировать запрос; [/] уточнить политику шаблонов; [x] подтвердить базовую сборку и SDK-контракты (LightRAG: Favorite_Test Do_ExportReadCreateFavorites); [x] команды Favorite_CreateOtd и Roombook_CheckFinishConfiguration добавлены в RoomBookCommand.cpp/.hpp, регистрация в JsonCommandRegistrar.cpp, clang-format/LSP/canonical AC25 build OK; [ ] runtime на согласованном проекте; [ ] политика шаблонов для автосоздания недостающих.
-Last Completed: команды добавлены поверх staged-функций RoombookData (Favorite_CreateOtd 3-арг получила объявление в hpp и guard пустой папки; объявлена 3-арг CheckFinishConfiguration); исправлен ConstPairIterator по const finclass (HashTable §6).
-Next Step: runtime-проверка обоих вызовов через JSON-порт, затем политика шаблонов для недостающих.
+Status: CLOSED — 2026-10-30. Решение: массовое создание недостающего делает roombook_setup.py (python); C++ — одна запись за вызов. Команды Favorite_CreateOtd и Roombook_CheckFinishConfiguration добавлены и собраны AC25; финальная проверка ранером: build OK, Archicad запущен.
+Plan: [x] проверить доступный код и зарегистрировать запрос; [x] подтвердить базовую сборку и SDK-контракты (LightRAG: Favorite_Test Do_ExportReadCreateFavorites); [x] команды Favorite_CreateOtd и Roombook_CheckFinishConfiguration добавлены в RoomBookCommand.cpp/.hpp, регистрация в JsonCommandRegistrar.cpp, clang-format/LSP/canonical AC25 build OK; [x] финальная проверка restart_archicad_for_test.ps1 (build OK, 203 провала в 4 сьюитах вне скоупа — TestClearZoneGuid/TestOtdWallAddOne/TestOpeningRevealsCreateOne/TestRoomSurfacePartition, грязный worktree); [x] закрыть issue.
+Last Completed: issue закрыт с комментарием; массовое создание отдано python-скрипту.
+Next Step: нет.
 Last Checkpoint: нет; коммит не запрошен.
 
 ## #300 — Python Roombook setup: имена избранного и классов
