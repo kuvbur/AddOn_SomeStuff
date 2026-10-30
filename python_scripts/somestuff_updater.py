@@ -36,6 +36,8 @@ import tempfile
 import time
 import urllib.request
 import urllib.error
+import urllib.parse
+import webbrowser
 import winreg
 import zipfile
 from pathlib import Path
@@ -45,6 +47,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 REPO = "kuvbur/AddOn_SomeStuff"
+SITE_URL = "https://kuvbur.org/go/archicad"
 GITHUB_API = "https://api.github.com/repos/%s/releases" % REPO
 GITHUB_LATEST_REDIRECT = "https://github.com/%s/releases/latest" % REPO
 GITHUB_TAG = "https://github.com/%s/releases/tag/%%s" % REPO
@@ -171,6 +174,114 @@ def find_installed_addon(addons_dir):
     if len(found) == 1:
         return found[0], []
     return None, found  # два экземпляра — конфликт, вернём все
+
+
+# ---------------------------------------------------------------------------
+# Реестр: пользовательские пути аддонов (Add-On Manager\Include)
+# ---------------------------------------------------------------------------
+
+def _decode_lan_flat(value):
+    """'lan.flat:///C:/Program%20Files/x.apx' → 'C:/Program Files/x.apx' (или None)."""
+    if not isinstance(value, str) or not value:
+        return None
+    prefix = "lan.flat:///"
+    if value.startswith(prefix):
+        return urllib.parse.unquote(value[len(prefix):])
+    return None  # незнакомая схема (lan.dev, lan.hts и т.п.) — не сетевой путь
+
+
+def find_registry_custom_addons(ac_version):
+    """Ищет SomeStuff*.apx в реестре HKCU: Add-On Manager (Include + Actual Path).
+
+    Ключи вида HKCU\\Software\\GRAPHISOFT\\ARCHICAD\\ARCHICAD <N>... <язык>...;
+    Include — значения '#N.' = lan.flat:///URL-encoded/путь.apx;
+    'Actual Path' под Add-On Manager — папка, назначенная пользователем в
+    диспетчере аддонов (аддоны из неё тоже грузятся).
+    Возвращает список путей к найденным SomeStuff*.apx.
+    """
+    name_pat = re.compile(r"^ARCHICAD\s+%d(\D|$)" % ac_version)
+    result = []
+    key = _open_key(winreg.HKEY_CURRENT_USER, r"Software\GRAPHISOFT\ARCHICAD", wow64_64=False)
+    if key is None:
+        return result
+    try:
+        i = 0
+        while True:
+            try:
+                subkey_name = winreg.EnumKey(key, i)
+            except OSError:
+                break
+            i += 1
+            if not name_pat.match(subkey_name):
+                continue
+            am_path = r"Software\GRAPHISOFT\ARCHICAD\%s\Add-On Manager" % subkey_name
+            # 1. значения Include — пути к конкретным .apx
+            inc = _open_key(winreg.HKEY_CURRENT_USER, am_path + r"\Include", wow64_64=False)
+            if inc is not None:
+                try:
+                    j = 0
+                    while True:
+                        try:
+                            name, value, _ = winreg.EnumValue(inc, j)
+                        except OSError:
+                            break
+                        j += 1
+                        if name.startswith("Include "):  # счётчики вида 'Include Number'
+                            continue
+                        decoded = _decode_lan_flat(value)
+                        if not decoded:
+                            continue
+                        p = Path(decoded)
+                        if p.is_file() and p.name.lower().startswith("somestuff") and p.suffix.lower() == ".apx":
+                            result.append(p)
+                finally:
+                    winreg.CloseKey(inc)
+            # 2. Actual Path — пользовательская папка аддонов
+            am = _open_key(winreg.HKEY_CURRENT_USER, am_path, wow64_64=False)
+            if am is not None:
+                try:
+                    actual, _ = winreg.QueryValueEx(am, "Actual Path")
+                except (FileNotFoundError, OSError):
+                    actual = None
+                finally:
+                    winreg.CloseKey(am)
+                if actual:
+                    d = Path(actual)
+                    if d.is_dir():
+                        result.extend(d.glob("SomeStuff*.apx"))
+    finally:
+        winreg.CloseKey(key)
+    # уникальные, с сохранением порядка
+    seen = set()
+    unique = []
+    for p in result:
+        s = str(p).lower()
+        if s not in seen:
+            seen.add(s)
+            unique.append(p)
+    return unique
+
+
+def find_installed_addon_any(inst, addons_dir):
+    """Расширенный поиск установленного SomeStuff: стандартная папка → реестр.
+
+    Возвращает (apx, target_dir, dupes):
+      apx — найденный файл или None при конфликте; target_dir — куда ставить
+      новый apx (родитель найденного файла либо стандартная папка аддонов);
+      dupes — список конфликтующих файлов (если >1).
+    """
+    apx, dupes = find_installed_addon(addons_dir)
+    if apx is not None:
+        return apx, apx.parent, []
+    if dupes:
+        return None, addons_dir, dupes
+    # стандартной папки нет/пуста — смотрим пути из реестра
+    reg_found = find_registry_custom_addons(inst["version"])
+    if not reg_found:
+        return None, addons_dir, []
+    if len(reg_found) == 1:
+        return reg_found[0], reg_found[0].parent, []
+    return None, reg_found[0].parent, reg_found
 
 
 # ---------------------------------------------------------------------------
@@ -527,7 +638,7 @@ def do_update_flow(addons_dir, downloaded_zip, installed_stamp, log_cb=None):
         log("Версия нового apx: %s (дата %s, коммит %s)" % (info["version"], info["date"], info["commit"]))
 
         target = addons_dir / ADDON_NAME
-        backup_name = ADDON_NAME + ".apx._old_version_%s" % (installed_stamp or "unknown")
+        backup_name = ADDON_NAME + "._old_version_%s" % (installed_stamp or "unknown")
         backup = addons_dir / backup_name
 
         # решающая проверка: попытка переименования (если файл заблокирован — Archicad открыт)
@@ -587,14 +698,14 @@ def cli_main(args):
     # простейший сценарий: берём первую установку и проверяем канал
     inst = installs[0]
     addons = find_addons_dir(inst["install_root"])
-    apx, dupes = find_installed_addon(addons)
+    apx, target_dir, dupes = find_installed_addon_any(inst, addons)
     if dupes:
         print("Найдено несколько SomeStuff.apx (конфликт):")
         for d in dupes:
             print("  " + str(d))
         return 2
     if apx is None:
-        print("SomeStuff не установлен в %s" % addons)
+        print("SomeStuff не установлен (стандартная папка и реестр): %s" % addons)
         return 0
     info = read_apx_version_info(apx)
     print("Установлен: %s (дата %s, коммит %s, PE %s)" % (
@@ -627,296 +738,523 @@ def main():
 # GUI (tkinter)
 # ---------------------------------------------------------------------------
 
+# Палитра
+C_BG = "#f4f5f8"
+C_CARD = "#ffffff"
+C_BORDER = "#e0e3ea"
+C_TEXT = "#1f2430"
+C_MUTED = "#6b7385"
+C_ACCENT = "#2563eb"
+C_ACCENT_DARK = "#1d4ed8"
+# вид плашки статуса: (фон, текст)
+BADGES = {
+    "idle": ("#eceff4", "#6b7385"),
+    "info": ("#dbeafe", "#1d4ed8"),
+    "ok": ("#dcfce7", "#15803d"),
+    "warn": ("#fef3c7", "#b45309"),
+    "err": ("#fee2e2", "#b91c1c"),
+}
+FONT = "Segoe UI"
+
+
+def fetch_remote(channel):
+    """Последняя версия на канале → dict {err, tag, asset_name, commit, stamp, label, sub}."""
+    if channel == "Test":
+        asset_name, tag, commit, err = get_test_channel()
+        if err:
+            return {"err": err}
+        stamp = parse_stamp_from_asset_name(asset_name)
+        return {"err": None, "tag": tag, "asset_name": asset_name, "commit": commit,
+                "stamp": stamp, "label": stamp or "—",
+                "sub": ("коммит %s" % commit) if commit else ""}
+    tag, err = get_release_channel()
+    if err:
+        return {"err": err}
+    return {"err": None, "tag": tag, "asset_name": None, "commit": None, "stamp": None,
+            "label": tag, "sub": "релиз"}
+
+
+def remote_is_newer(channel, info, remote):
+    if channel == "Test":
+        return is_test_newer(info["date"], info["commit"], remote["stamp"], remote["commit"])
+    return is_newer(info["version"], remote["tag"])
+
+
+def find_asset(tag, asset_name, ac_ver):
+    """Ищет ассет релиза под нужную версию Archicad. Возвращает (имя, url, ошибка)."""
+    data, _, status = _http_get(GITHUB_API)
+    if data is None:
+        return None, None, "API недоступен: %s" % status
+    try:
+        releases = json.loads(data)
+    except json.JSONDecodeError as e:
+        return None, None, "Не удалось разобрать ответ API: %s" % e
+    # тестовый канал: штамп общий для всех AC, подставляем свою версию
+    needed = re.sub(r"AC\d+", "AC%d" % ac_ver, asset_name) if asset_name else None
+    for rel in releases:
+        if rel.get("tag_name") != tag:
+            continue
+        for a in rel.get("assets", []):
+            name = a.get("name", "")
+            if needed:
+                ok = name == needed
+            else:
+                ok = name.startswith("SomeStuff.AC%d.Win." % ac_ver) and name.endswith(".zip")
+            if ok and a.get("browser_download_url"):
+                return name, a["browser_download_url"], None
+    return None, None, "Сборка под AC%d не найдена в релизе %s" % (ac_ver, tag)
+
+
+def download_file(url, dest, progress_cb=None):
+    """Скачивание с прогрессом: progress_cb(скачано_байт, всего_байт)."""
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=60) as r, open(dest, "wb") as f:
+        total = int(r.headers.get("Content-Length") or 0)
+        done = 0
+        while True:
+            chunk = r.read(64 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
+            done += len(chunk)
+            if progress_cb:
+                progress_cb(done, total)
+
+
 def gui_main():
+    import queue
+    import threading
     import tkinter as tk
-    from tkinter import scrolledtext, ttk
+    from tkinter import ttk
+
+    try:  # чёткий текст на мониторах с масштабом 125–150 %
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
 
     class UpdaterGUI:
         def __init__(self, root):
             self.root = root
-            root.title("SomeStuff Updater")
-            root.geometry("640x520")
             self.installs = find_archicad_installs()
-            self.busy = False
+            self.q = queue.Queue()          # события из рабочих потоков → GUI
+            self.cancel_evt = threading.Event()
+            self.phase = "idle"             # idle | check | wait | download | install
+            self.can_update = False
+            self._last_pct = -1
 
-            frm = ttk.Frame(root, padding=10)
-            frm.pack(fill=tk.BOTH, expand=True)
+            root.title("SomeStuff Updater")
+            root.configure(bg=C_BG)
+            root.minsize(540, 1)
+            root.resizable(True, False)
+            self._setup_style()
+            self._build()
+            self._pump()
+            root.after(150, self.start_check)   # проверяем сразу при запуске
 
-            # --- строка 1: канал ---
-            ttk.Label(frm, text="Канал обновления:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        # ------------------------------------------------------------ стиль
+        def _setup_style(self):
+            s = ttk.Style(self.root)
+            s.theme_use("clam")
+            s.configure(".", background=C_BG, foreground=C_TEXT, font=(FONT, 10))
+            s.configure("TFrame", background=C_BG)
+            s.configure("TLabel", background=C_BG)
+            s.configure("Card.TFrame", background=C_CARD)
+            s.configure("Card.TLabel", background=C_CARD)
+            s.configure("Muted.TLabel", foreground=C_MUTED)
+            s.configure("Title.TLabel", font=(FONT, 17, "bold"))
+            s.configure("Big.TLabel", font=(FONT, 22, "bold"), background=C_CARD)
+            s.configure("Cap.TLabel", font=(FONT, 8, "bold"), foreground=C_MUTED, background=C_CARD)
+            s.configure("Small.TLabel", font=(FONT, 9), foreground=C_MUTED, background=C_CARD)
+
+            s.configure("TCombobox", fieldbackground=C_CARD, background=C_CARD,
+                        bordercolor=C_BORDER, lightcolor=C_CARD, darkcolor=C_CARD,
+                        arrowcolor=C_MUTED, padding=6)
+            s.map("TCombobox", fieldbackground=[("readonly", C_CARD), ("disabled", C_BG)],
+                  bordercolor=[("focus", C_ACCENT)], foreground=[("disabled", C_MUTED)])
+            self.root.option_add("*TCombobox*Listbox.font", (FONT, 10))
+            self.root.option_add("*TCombobox*Listbox.selectBackground", C_ACCENT)
+
+            s.configure("Accent.TButton", background=C_ACCENT, foreground="white",
+                        borderwidth=0, focusthickness=0, padding=(22, 9), font=(FONT, 10, "bold"))
+            s.map("Accent.TButton",
+                  background=[("disabled", "#b8c6ea"), ("pressed", C_ACCENT_DARK), ("active", C_ACCENT_DARK)],
+                  foreground=[("disabled", "white")])
+            s.configure("Ghost.TButton", background=C_CARD, foreground=C_TEXT,
+                        bordercolor=C_BORDER, lightcolor=C_CARD, darkcolor=C_CARD,
+                        focusthickness=0, padding=(18, 8))
+            s.map("Ghost.TButton", background=[("active", "#eef1f6")],
+                  foreground=[("disabled", C_MUTED)])
+
+            # «сегментированный» переключатель канала
+            s.configure("Seg.Toolbutton", background=C_BG, foreground=C_TEXT,
+                        bordercolor=C_BORDER, lightcolor=C_BG, darkcolor=C_BG,
+                        padding=(18, 6), focusthickness=0, focuscolor=C_BG, relief="flat")
+            s.map("Seg.Toolbutton",
+                  background=[("selected", C_ACCENT), ("active", "#e6eaf2")],
+                  foreground=[("selected", "white"), ("disabled", C_MUTED)])
+
+            s.configure("Horizontal.TProgressbar", troughcolor="#e3e7ef", background=C_ACCENT,
+                        bordercolor="#e3e7ef", borderwidth=0, lightcolor=C_ACCENT, darkcolor=C_ACCENT, thickness=6)
+
+        def _card(self, parent):
+            outer = tk.Frame(parent, bg=C_BORDER)
+            inner = ttk.Frame(outer, style="Card.TFrame", padding=(18, 16))
+            inner.pack(fill="both", expand=True, padx=1, pady=1)
+            return outer, inner
+
+        # ---------------------------------------------------------- вёрстка
+        def _build(self):
+            main = ttk.Frame(self.root, padding=(22, 20, 22, 18))
+            main.pack(fill="both", expand=True)
+
+            # --- заголовок ---
+            header = ttk.Frame(main)
+            header.pack(fill="x")
+            ttk.Label(header, text="SomeStuff Updater", style="Title.TLabel").pack(side="left")
+            site_link = ttk.Label(header, text="Сайт ↗", style="Muted.TLabel", cursor="hand2")
+            site_link.pack(side="right")
+            site_link.bind("<Button-1>", lambda e: webbrowser.open(SITE_URL))
+            ttk.Label(main, text="Обновление аддона SomeStuff для ARCHICAD",
+                      style="Muted.TLabel").pack(anchor="w", pady=(0, 14))
+
+            # --- карточка: куда ставим ---
+            outer, card = self._card(main)
+            outer.pack(fill="x")
+            card.columnconfigure(1, weight=1)
+
+            ttk.Label(card, text="ARCHICAD", style="Cap.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 18))
+            self.labels = ["Archicad %d  ·  %s" % (i["version"], i["lang"]) for i in self.installs]
+            self.inst_var = tk.StringVar(value=self.labels[-1] if self.labels else "не найден")
+            self.inst_box = ttk.Combobox(card, textvariable=self.inst_var, values=self.labels,
+                                         state="readonly" if self.labels else "disabled")
+            self.inst_box.grid(row=0, column=1, sticky="ew")
+            self.inst_box.bind("<<ComboboxSelected>>", lambda e: self._on_changed())
+            self.path_var = tk.StringVar()
+            ttk.Label(card, textvariable=self.path_var, style="Small.TLabel").grid(
+                row=1, column=1, sticky="w", pady=(4, 0))
+
+            ttk.Label(card, text="КАНАЛ", style="Cap.TLabel").grid(
+                row=2, column=0, sticky="w", pady=(16, 0), padx=(0, 18))
+            seg = ttk.Frame(card, style="Card.TFrame")
+            seg.grid(row=2, column=1, sticky="w", pady=(16, 0))
             self.channel_var = tk.StringVar(value="Release")
-            self.channel_box = ttk.Combobox(frm, textvariable=self.channel_var,
-                                            values=["Release", "Test"], state="readonly", width=18)
-            self.channel_box.grid(row=0, column=1, sticky=tk.W, pady=2)
+            self.seg_buttons = []
+            for text, val in (("Релиз", "Release"), ("Тестовый", "Test")):
+                b = ttk.Radiobutton(seg, text=text, value=val, variable=self.channel_var,
+                                    style="Seg.Toolbutton", command=self._on_changed)
+                b.pack(side="left")
+                self.seg_buttons.append(b)
 
-            # --- строка 2: версия Archicad ---
-            ttk.Label(frm, text="Версия Archicad:").grid(row=1, column=0, sticky=tk.W, pady=2)
-            versions = ["AC%d" % i["version"] for i in self.installs]
-            self.version_var = tk.StringVar(value=versions[0] if versions else "")
-            self.version_box = ttk.Combobox(frm, textvariable=self.version_var,
-                                            values=versions, state="readonly" if versions else "disabled",
-                                            width=18)
-            self.version_box.grid(row=1, column=1, sticky=tk.W, pady=2)
+            # --- карточка: статус ---
+            outer2, card2 = self._card(main)
+            outer2.pack(fill="x", pady=(12, 0))
+            card2.columnconfigure(0, weight=1, uniform="v")
+            card2.columnconfigure(2, weight=1, uniform="v")
 
-            # --- строка 3: язык ---
-            ttk.Label(frm, text="Язык Archicad:").grid(row=2, column=0, sticky=tk.W, pady=2)
-            langs = sorted({i["lang"] for i in self.installs}) or ["INT"]
-            self.lang_var = tk.StringVar(value=langs[0])
-            self.lang_box = ttk.Combobox(frm, textvariable=self.lang_var,
-                                         values=langs, state="readonly", width=18)
-            self.lang_box.grid(row=2, column=1, sticky=tk.W, pady=2)
+            self.inst_ver = tk.StringVar(value="—")
+            self.inst_sub = tk.StringVar(value="")
+            self.new_ver = tk.StringVar(value="—")
+            self.new_sub = tk.StringVar(value="")
+            for col, cap, v, sub in ((0, "УСТАНОВЛЕНА", self.inst_ver, self.inst_sub),
+                                     (2, "ДОСТУПНА", self.new_ver, self.new_sub)):
+                ttk.Label(card2, text=cap, style="Cap.TLabel").grid(row=0, column=col, sticky="w")
+                ttk.Label(card2, textvariable=v, style="Big.TLabel").grid(row=1, column=col, sticky="w", pady=(2, 0))
+                ttk.Label(card2, textvariable=sub, style="Small.TLabel").grid(row=2, column=col, sticky="w")
+            ttk.Label(card2, text="→", style="Big.TLabel", foreground=C_BORDER).grid(
+                row=1, column=1, padx=14)
+
+            self.badge = tk.Label(card2, text="", font=(FONT, 9, "bold"), padx=10, pady=4,
+                                  anchor="w", justify="left")
+            self.badge.grid(row=3, column=0, columnspan=3, sticky="w", pady=(14, 0))
+            self._set_badge("idle", "Проверка...")
+
+            self.progress = ttk.Progressbar(card2, mode="determinate", maximum=100)
+            self.progress.grid(row=4, column=0, columnspan=3, sticky="ew", pady=(14, 0))
+            self.status_var = tk.StringVar(value="")
+            ttk.Label(card2, textvariable=self.status_var, style="Small.TLabel").grid(
+                row=5, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
             # --- кнопки ---
-            btns = ttk.Frame(frm)
-            btns.grid(row=3, column=0, columnspan=2, pady=(10, 4))
-            self.check_btn = ttk.Button(btns, text="Проверить", command=self.on_check)
-            self.check_btn.pack(side=tk.LEFT, padx=4)
-            self.update_btn = ttk.Button(btns, text="Обновить", command=self.on_update)
-            self.update_btn.pack(side=tk.LEFT, padx=4)
+            btns = ttk.Frame(main)
+            btns.pack(fill="x", pady=(14, 0))
+            self.update_btn = ttk.Button(btns, text="Обновить", style="Accent.TButton",
+                                         command=self.on_action)
+            self.update_btn.pack(side="right")
+            self.check_btn = ttk.Button(btns, text="Проверить", style="Ghost.TButton",
+                                        command=self.start_check)
+            self.check_btn.pack(side="right", padx=(0, 8))
 
-            # --- лог ---
-            self.log = scrolledtext.ScrolledText(frm, height=18, width=76, state=tk.DISABLED)
-            self.log.grid(row=4, column=0, columnspan=2, sticky=tk.NSEW, pady=(6, 0))
-            frm.rowconfigure(4, weight=1)
-            frm.columnconfigure(0, weight=1)
-            frm.columnconfigure(1, weight=1)
+            # --- подробности (журнал) ---
+            self.details_open = False
+            self.toggle = ttk.Label(main, text="▸  Подробности", style="Muted.TLabel", cursor="hand2")
+            self.toggle.pack(anchor="w", pady=(12, 0))
+            self.toggle.bind("<Button-1>", lambda e: self._toggle_details())
+            self.log_frame = tk.Frame(main, bg=C_BORDER)
+            self.log = tk.Text(self.log_frame, height=10, wrap="word", relief="flat",
+                               font=("Consolas", 9), bg=C_CARD, fg=C_TEXT, padx=10, pady=8,
+                               state="disabled", borderwidth=0, highlightthickness=0)
+            sb = ttk.Scrollbar(self.log_frame, command=self.log.yview)
+            self.log.configure(yscrollcommand=sb.set)
+            sb.pack(side="right", fill="y", padx=(0, 1), pady=1)
+            self.log.pack(side="left", fill="both", expand=True, padx=(1, 0), pady=1)
+            self.log.tag_configure("err", foreground="#b91c1c")
+            self.log.tag_configure("ok", foreground="#15803d")
+            self.log.tag_configure("dim", foreground=C_MUTED)
 
-            self._write_log("Установленные Archicad:")
-            for i in self.installs:
-                self._write_log("  AC%d %s — %s" % (i["version"], i["lang"], i["install_root"]))
-            if not self.installs:
-                self._write_log("Archicad в реестре не найден.")
+            if self.installs:
+                self._log("Найдено установок Archicad: %d" % len(self.installs), "dim")
+                for i in self.installs:
+                    self._log("  AC%d %s — %s" % (i["version"], i["lang"], i["install_root"]), "dim")
+                self._on_install_selected()
+            else:
+                self._set_badge("err", "Archicad не найден в реестре")
+                self._log("Archicad в реестре не найден.", "err")
+            self._set_phase("idle")
 
-        def _write_log(self, msg):
-            self.log.configure(state=tk.NORMAL)
-            self.log.insert(tk.END, msg + "\n")
-            self.log.see(tk.END)
-            self.log.configure(state=tk.DISABLED)
+        # ---------------------------------------------------------- утилиты
+        def _toggle_details(self, force=None):
+            self.details_open = (not self.details_open) if force is None else force
+            if self.details_open:
+                self.toggle.configure(text="▾  Подробности")
+                self.log_frame.pack(fill="x", pady=(6, 0))
+            else:
+                self.toggle.configure(text="▸  Подробности")
+                self.log_frame.pack_forget()
+            self.root.geometry("")  # подогнать высоту окна под содержимое
+
+        def _log(self, msg, tag=None):
+            self.log.configure(state="normal")
+            self.log.insert("end", msg + "\n", tag or ())
+            self.log.see("end")
+            self.log.configure(state="disabled")
+
+        def _set_badge(self, kind, text):
+            bg, fg = BADGES[kind]
+            self.badge.configure(text=text, bg=bg, fg=fg)
+
+        def post(self, fn, *args):
+            """Вызов функции в GUI-потоке из рабочего потока."""
+            self.q.put(lambda: fn(*args))
+
+        def log_t(self, msg, tag=None):
+            self.post(self._log, msg, tag)
+
+        def _pump(self):
+            try:
+                while True:
+                    self.q.get_nowait()()
+            except queue.Empty:
+                pass
+            except Exception as e:  # ошибка в обработчике не должна убить очередь
+                self._log("Внутренняя ошибка интерфейса: %s" % e, "err")
+            self.root.after(50, self._pump)
 
         def _selected_install(self):
-            ver_text = self.version_var.get()
-            m = re.match(r"AC(\d+)", ver_text)
-            if not m:
-                return None
-            ver = int(m.group(1))
-            for i in self.installs:
-                if i["version"] == ver:
-                    return i
-            return None
+            idx = self.inst_box.current()
+            return self.installs[idx] if 0 <= idx < len(self.installs) else None
 
-        def _set_busy(self, busy):
-            self.busy = busy
-            state = tk.DISABLED if busy else tk.NORMAL
-            self.check_btn.configure(state=state)
-            self.update_btn.configure(state=state)
-            self.channel_box.configure(state=state)
-            self.version_box.configure(state=state)
-            self.lang_box.configure(state=state)
-
-        def on_check(self):
-            if self.busy:
-                return
-            self._set_busy(True)
-            self._write_log("--- Проверка ---")
-            self.root.after(50, self._run_check_worker)
-
-        def _run_check_worker(self):
-            try:
+        def _on_install_selected(self):
+            inst = self._selected_install()
+            if inst is None and self.installs:
+                self.inst_box.current(len(self.installs) - 1)
                 inst = self._selected_install()
-                if inst is None:
-                    self._write_log("Установка не найдена.")
-                    return
+            self.path_var.set(inst["install_root"] if inst else "")
+
+        def _on_changed(self):
+            self._on_install_selected()
+            self.start_check()
+
+        def _set_phase(self, phase):
+            self.phase = phase
+            busy = phase != "idle"
+            sel_state = "disabled" if busy or not self.installs else "readonly"
+            self.inst_box.configure(state=sel_state)
+            for b in self.seg_buttons:
+                b.configure(state="disabled" if busy else "normal")
+            self.check_btn.configure(state="disabled" if busy or not self.installs else "normal")
+            if phase == "wait":
+                self.update_btn.configure(text="Отмена", state="normal")
+            else:
+                self.update_btn.configure(text="Обновить",
+                                          state="normal" if (self.can_update and not busy) else "disabled")
+            if phase in ("check", "wait", "install"):
+                self.progress.configure(mode="indeterminate")
+                self.progress.start(14)
+            else:
+                self.progress.stop()
+                self.progress.configure(mode="determinate")
+                self.progress["value"] = 0
+            if phase == "idle":
+                self.status_var.set("")
+
+        def _render(self, info, remote, kind, text, can_update):
+            self.inst_ver.set((info or {}).get("version") or "—")
+            sub = []
+            if info and info.get("date"):
+                sub.append(info["date"])
+            if info and info.get("commit"):
+                sub.append("#" + info["commit"])
+            self.inst_sub.set("  ·  ".join(sub))
+            self.new_ver.set((remote or {}).get("label") or "—")
+            self.new_sub.set((remote or {}).get("sub") or "")
+            self._set_badge(kind, text)
+            self.can_update = can_update
+            self._set_phase("idle")
+
+        def _fail(self, text, info=None, remote=None):
+            self._render(info, remote, "err", text, False)
+            self._log(text, "err")
+            self._toggle_details(True)
+
+        # --------------------------------------------------------- проверка
+        def start_check(self):
+            if self.phase != "idle":
+                return
+            inst = self._selected_install()
+            if inst is None:
+                return
+            self.can_update = False
+            self._set_phase("check")
+            self._set_badge("idle", "Проверяем...")
+            self.status_var.set("Читаем установленную версию и запрашиваем GitHub")
+            self._log("--- Проверка (%s) ---" % self.channel_var.get(), "dim")
+            threading.Thread(target=self._check_worker, args=(inst, self.channel_var.get()),
+                             daemon=True).start()
+
+        def _check_worker(self, inst, channel):
+            try:
                 addons = find_addons_dir(inst["install_root"])
-                apx, dupes = find_installed_addon(addons)
+                if addons is None:
+                    self.post(self._fail, "Папка аддонов не найдена в %s" % inst["install_root"])
+                    return
+                apx, target_dir, dupes = find_installed_addon_any(inst, addons)
                 if dupes:
-                    self._write_log("Несколько SomeStuff.apx (конфликт):")
                     for d in dupes:
-                        self._write_log("  " + str(d))
+                        self.log_t("  " + str(d))
+                    self.post(self._fail, "Найдено несколько SomeStuff.apx — оставьте один")
                     return
                 if apx is None:
-                    self._write_log("SomeStuff не установлен в %s" % addons)
+                    self.post(self._render, None, None, "warn",
+                              "SomeStuff не установлен в эту версию Archicad", False)
+                    self.log_t("SomeStuff не найден в %s (и в реестре Add-On Manager)" % addons)
                     return
                 info = read_apx_version_info(apx)
-                self._write_log("Установлен: %s (дата %s, коммит %s, PE %s)" % (
+                self.log_t("Установлено: %s (дата %s, коммит %s, PE %s)" % (
                     info["version"], info["date"], info["commit"], info["pe_version"]))
-                channel = self.channel_var.get()
-                if channel == "Test":
-                    # тестовая сборка: сравнение по дате и коммиту (версия не меняется)
-                    asset_name, tag, commit, err = get_test_channel()
-                    if err:
-                        self._write_log("Ошибка получения тестовой сборки: %s" % err)
-                        return
-                    stamp = parse_stamp_from_asset_name(asset_name)
-                    self._write_log("Последняя тестовая сборка: %s (коммит %s)" % (stamp, commit))
-                    if is_test_newer(info["date"], info["commit"], stamp, commit):
-                        self._write_log("→ доступно обновление")
-                    else:
-                        self._write_log("→ обновление не требуется (та же дата/коммит)")
+                remote = fetch_remote(channel)
+                if remote.get("err"):
+                    self.post(self._fail, "Не удалось получить версию с GitHub: %s" % remote["err"], info)
+                    return
+                self.log_t("На канале: %s %s" % (remote["label"], remote["sub"]))
+                if remote_is_newer(channel, info, remote):
+                    self.post(self._render, info, remote, "info", "Доступно обновление", True)
                 else:
-                    # релизный канал: сравнение по версии
-                    tag, err = get_release_channel()
-                    if err:
-                        self._write_log("Ошибка получения release-версии: %s" % err)
-                        return
-                    self._write_log("Последний релиз: %s" % tag)
-                    if is_newer(info["version"], tag):
-                        self._write_log("→ доступно обновление")
-                    else:
-                        self._write_log("→ обновление не требуется")
+                    self.post(self._render, info, remote, "ok", "Установлена актуальная версия", False)
             except Exception as e:
-                self._write_log("Ошибка проверки: %s" % e)
-            finally:
-                self.root.after(0, lambda: self._set_busy(False))
+                self.post(self._fail, "Ошибка проверки: %s" % e)
 
-        def on_update(self):
-            if self.busy:
+        # ------------------------------------------------------- обновление
+        def on_action(self):
+            if self.phase == "wait":       # кнопка «Отмена» во время ожидания закрытия Archicad
+                self.cancel_evt.set()
                 return
-            self._set_busy(True)
-            self._write_log("--- Обновление ---")
-            self.root.after(50, self._run_update_worker)
+            if self.phase != "idle" or not self.can_update:
+                return
+            inst = self._selected_install()
+            if inst is None:
+                return
+            self.cancel_evt.clear()
+            self._set_phase("install")
+            self._set_badge("idle", "Подготовка...")
+            self._log("--- Обновление ---", "dim")
+            threading.Thread(target=self._update_worker, args=(inst, self.channel_var.get()),
+                             daemon=True).start()
 
-        def _run_update_worker(self):
+        def _phase(self, phase, badge_kind, badge_text, status=""):
+            self._set_phase(phase)
+            self._set_badge(badge_kind, badge_text)
+            self.status_var.set(status)
+
+        def _on_progress(self, done, total):
+            if total <= 0:
+                self.status_var.set("Скачано %.1f МБ" % (done / 1048576.0))
+                return
+            pct = int(done * 100 / total)
+            if pct == self._last_pct:
+                return
+            self._last_pct = pct
+            self.progress["value"] = pct
+            self.status_var.set("%d %%  ·  %.1f / %.1f МБ" % (pct, done / 1048576.0, total / 1048576.0))
+
+        def _update_worker(self, inst, channel):
             try:
-                inst = self._selected_install()
-                if inst is None:
-                    self._write_log("Установка не найдена.")
+                addons = find_addons_dir(inst["install_root"])
+                apx, target_dir, dupes = find_installed_addon_any(inst, addons)
+                if dupes:
+                    for d in dupes:
+                        self.log_t("  " + str(d))
+                    self.post(self._fail, "Найдено несколько SomeStuff.apx — оставьте один")
                     return
-                # проверка процессов Archicad
+                if apx is None:
+                    self.post(self._fail, "SomeStuff не найден (стандартная папка и реестр) — обновление невозможно")
+                    return
+                self.log_t("Установлено: %s" % apx)
+                old = read_apx_version_info(apx)
+                remote = fetch_remote(channel)
+                if remote.get("err"):
+                    self.post(self._fail, "Не удалось получить версию с GitHub: %s" % remote["err"], old)
+                    return
+                if not remote_is_newer(channel, old, remote):
+                    self.post(self._render, old, remote, "ok", "Обновление не требуется", False)
+                    return
+
+                # 1. ждём закрытия Archicad
                 if get_archicad_processes(inst["install_root"]):
-                    self._write_log("Archicad запущен. Закройте его и нажмите «Продолжить» в диалоге.")
-                    self.root.after(0, self._ask_close_archicad, inst)
+                    self.post(self._phase, "wait", "warn",
+                              "Закройте Archicad — обновление продолжится автоматически",
+                              "Ожидание закрытия Archicad (до 5 минут)")
+                    start = time.time()
+                    while get_archicad_processes(inst["install_root"]):
+                        if self.cancel_evt.is_set():
+                            self.log_t("Отменено пользователем.")
+                            self.post(self._render, old, remote, "idle", "Обновление отменено", True)
+                            return
+                        if time.time() - start > 300:
+                            self.post(self._fail, "Archicad не закрылся за 5 минут — обновление отменено",
+                                      old, remote)
+                            return
+                        time.sleep(1)
+                    self.log_t("Archicad закрыт.")
+
+                # 2. скачиваем
+                name, url, err = find_asset(remote["tag"], remote["asset_name"], inst["version"])
+                if err:
+                    self.post(self._fail, err, old, remote)
                     return
-                self._perform_update(inst)
+                self._last_pct = -1
+                self.post(self._phase, "download", "info", "Скачивание обновления", "Подключение...")
+                self.log_t("Скачиваем %s" % url)
+                dest = Path(tempfile.gettempdir()) / name
+                try:
+                    download_file(url, dest, lambda d, t: self.post(self._on_progress, d, t))
+                except Exception as e:
+                    self.post(self._fail, "Ошибка скачивания: %s" % e, old, remote)
+                    return
+
+                # 3. устанавливаем
+                self.post(self._phase, "install", "info", "Установка...", "Копируем файл в папку аддонов")
+                new_stamp, err = do_update_flow(target_dir, dest, old["version"], log_cb=self.log_t)
+                if err:
+                    self.post(self._fail, "Ошибка установки: %s" % err, old, remote)
+                    return
+                new_info = read_apx_version_info(apx)
+                self.log_t("Обновление завершено: %s" % new_stamp, "ok")
+                self.post(self._render, new_info, remote, "ok", "Обновление установлено", False)
             except Exception as e:
-                self._write_log("Ошибка обновления: %s" % e)
-            finally:
-                self.root.after(0, lambda: self._set_busy(False))
-
-        def _ask_close_archicad(self, inst):
-            """Диалог «Закройте Archicad» + ожидание закрытия в отдельном потоке."""
-            dlg = tk.Toplevel(self.root)
-            dlg.title("Archicad запущен")
-            dlg.transient(self.root)
-            dlg.grab_set()
-            ttk.Label(dlg, text="Закройте все окна Archicad и нажмите «Продолжить».",
-                      padding=10).pack()
-            result = {"cancelled": False}
-
-            def on_continue():
-                dlg.destroy()
-                self._wait_worker(inst, result)
-
-            def on_cancel():
-                result["cancelled"] = True
-                dlg.destroy()
-
-            btns = ttk.Frame(dlg)
-            btns.pack(pady=(0, 10))
-            ttk.Button(btns, text="Продолжить", command=on_continue).pack(side=tk.LEFT, padx=6)
-            ttk.Button(btns, text="Отмена", command=on_cancel).pack(side=tk.LEFT, padx=6)
-
-            self.root.wait_window(dlg)
-            if not result["cancelled"]:
-                self.root.after(100, self._wait_close_then_update, inst)
-
-        def _wait_close_then_update(self, inst):
-            self._write_log("Ожидание закрытия Archicad...")
-
-            def cb(msg):
-                self.root.after(0, lambda m=msg: self._write_log(m))
-
-            closed = wait_for_archicad_close(inst["install_root"], timeout_sec=300, poll_sec=2, progress_cb=cb)
-            if closed:
-                self._write_log("Archicad закрыт.")
-                self._perform_update(inst)
-            else:
-                self._write_log("Таймаут: Archicad не закрылся за 5 минут. Обновление отменено.")
-
-        def _perform_update(self, inst):
-            """Скачивает и устанавливает обновление. Выполняется в GUI-потоке."""
-            addons = find_addons_dir(inst["install_root"])
-            apx, dupes = find_installed_addon(addons)
-            if apx is None:
-                self._write_log("SomeStuff не найден — обновление невозможно.")
-                return
-            old_info = read_apx_version_info(apx)
-            self._write_log("Текущая версия: %s (дата %s)" % (old_info["version"], old_info["date"]))
-
-            channel = self.channel_var.get()
-            if channel == "Test":
-                asset_name, tag, commit, err = get_test_channel()
-                if err:
-                    self._write_log("Ошибка получения тестовой сборки: %s" % err)
-                    return
-                stamp = parse_stamp_from_asset_name(asset_name)
-                self._write_log("Новая тестовая сборка: %s (коммит %s)" % (stamp, commit))
-                if not is_test_newer(old_info["date"], old_info["commit"], stamp, commit):
-                    self._write_log("Обновление не требуется.")
-                    return
-            else:
-                tag, err = get_release_channel()
-                if err:
-                    self._write_log("Ошибка получения релиза: %s" % err)
-                    return
-                self._write_log("Новый релиз: %s" % tag)
-                if not is_newer(old_info["version"], tag):
-                    self._write_log("Обновление не требуется.")
-                    return
-                asset_name = None  # подберём при скачивании
-
-            self._write_log("Скачивание %s..." % (asset_name or "zip"))
-            zip_path, err = self._download_asset(tag, asset_name)
-            if err:
-                self._write_log("Ошибка скачивания: %s" % err)
-                return
-            new_stamp, err = do_update_flow(addons, Path(zip_path), old_info["version"],
-                                            log_cb=lambda m: self.root.after(0, lambda x=m: self._write_log(x)))
-            if err:
-                self._write_log("Ошибка обновления: %s" % err)
-            else:
-                self._write_log("Обновление завершено: %s" % new_stamp)
-
-        def _download_asset(self, tag, asset_name):
-            """Скачивает zip-ассет релиза в temp. Возвращает (путь, None) или (None, ошибка).
-
-            asset_name — точное имя ассета (тестовый канал); для релизного канала
-            подбирается ассет SomeStuff.AC{ver}.Win.*.zip из релиза с тегом tag.
-            """
-            ver = self._selected_install()["version"] if self._selected_install() else 25
-            data, _, status = _http_get(GITHUB_API)
-            if data is None:
-                return None, "API недоступен: %s" % status
-            try:
-                releases = json.loads(data)
-            except json.JSONDecodeError as e:
-                return None, "Не удалось разобрать API: %s" % e
-            for rel in releases:
-                if rel.get("tag_name") != tag:
-                    continue
-                for a in rel.get("assets", []):
-                    name = a.get("name", "")
-                    # тестовый канал: имя ассета пришло из релиза с произвольной
-                    # версией AC (штамп у всех ассетов общий) — подставляем свою
-                    if asset_name:
-                        name_needed = re.sub(r"AC\d+", "AC%d" % ver, asset_name)
-                    else:
-                        name_needed = None
-                    matched = (name == name_needed) if name_needed else \
-                        (name.startswith("SomeStuff.AC%d.Win." % ver) and name.endswith(".zip"))
-                    if matched:
-                        url = a.get("browser_download_url")
-                        if url:
-                            dest = Path(tempfile.gettempdir()) / name
-                            self._write_log("  скачиваем %s" % url)
-                            try:
-                                urllib.request.urlretrieve(url, dest)
-                            except Exception as e:
-                                return None, "Ошибка скачивания %s: %s" % (name, e)
-                            return dest, None
-            return None, "Ассет под AC%d не найден в релизе %s" % (ver, tag)
+                self.post(self._fail, "Ошибка обновления: %s" % e)
 
     root = tk.Tk()
-    app = UpdaterGUI(root)
+    UpdaterGUI(root)
     root.mainloop()
 
 
