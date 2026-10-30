@@ -32,21 +32,6 @@
 
 namespace Roombook {
 
-    // Ключевые имена классов, которыми помечаются элементы отделки.
-    // Они используются для поиска и последующей привязки созданных элементов к нужной группе.
-    struct ClassOtd {
-        const GS::UniString otdwall_class = "some_stuff_fin_walls";
-        const GS::UniString otdwall_down_class = "some_stuff_fin_down_walls";
-        const GS::UniString reveal_class = "some_stuff_fin_reveals";
-        const GS::UniString reveal_windows_class = "some_stuff_fin_windows_reveals";
-        const GS::UniString reveal_doors_class = "some_stuff_fin_doors_reveals";
-        const GS::UniString column_class = "some_stuff_fin_columns";
-        const GS::UniString floor_class = "some_stuff_fin_floors";
-        const GS::UniString beam_class = "some_stuff_fin_beams";
-        const GS::UniString ceil_class = "some_stuff_fin_ceils";
-        const GS::UniString all_class = "some_stuff_fin_class";
-    };
-
     struct GuidByZ {
         double r = 0;
         double zBottom = 0;
@@ -120,9 +105,6 @@ namespace Roombook {
                                     UnicGUIDByType &guidselementToRead,
                                     RoomSurfaceCache *cache = nullptr);
 
-    // -----------------------------------------------------------------------------
-    // Получение очищенного полигона зоны, включая стены, колонны
-    // -----------------------------------------------------------------------------
     static void OtdRoom_GetEdges (const API_ElementMemo &zonememo,
                                   API_Element &zoneelement,
                                   GS::Array<Sector> &walledges,
@@ -137,6 +119,7 @@ namespace Roombook {
                                          UnicGUIDByType &guidselementToRead);
 
     API_ElemTypeID Favorite_GetType (const GS::UniString &favorite_name);
+    bool Favorite_ReadByName (const GS::UniString &favorite_name, API_Element &element);
 
     static UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd> &otd_elements, bool &has_base_element);
     static void Param_GetForBase (ParamDictValue &paramDict, ParamValue &param_composite);
@@ -154,17 +137,30 @@ namespace Roombook {
                                    ParamValue &param_composite,
                                    GS::UniString &tip);
 
-    static const API_ElemTypeID typeinzone[] = {
-        API_WindowID, API_DoorID, API_WallID, API_ColumnID, API_SlabID, API_ZoneID};
+    static bool OtdBeam_ProcessFinishes (OtdRoom &room, ParamDictValue &favoriteParams, ParamValue &compositeParam);
 
     RoomEdges *reducededges = nullptr; // Указатель для обработки полигонов зоны
-
-    static const ClassOtd cls;
 
     // Словарь избранного нужен для выбора подходящего шаблона отделки по материалу и типу поверхности.
     MatarialToFavoriteDict favdict;
 
-    // Чтение снимков и кэши до записи модели.
+    void OtdLinearSegment_SetZBottom (OtdLinearElement &el, double zBottom) {
+        el.seg.begC.z = zBottom;
+        el.seg.endC.z = zBottom;
+    }
+
+    double OtdLinearSegment_GetZBottom (const OtdLinearElement &el) {
+        if (is_equal (el.seg.begC.z, el.seg.endC.z)) {
+            return el.seg.begC.z;
+        } else {
+            return (el.seg.begC.z + el.seg.endC.z) / 2;
+        }
+    }
+
+    double GetOffsetFromStory (const OtdLinearElement &el, const Stories &stories) {
+        const double zBottom = OtdLinearSegment_GetZBottom (el);
+        return GetOffsetFromStory (zBottom, el.floorInd, stories);
+    }
 
     bool RoomSurface_Transform (const API_Tranmat &matrix, RoomSurface &surface) {
         if (surface.contours.IsEmpty () || surface.contours[0].hole || surface.contours[0].vertices.GetSize () < 3)
@@ -638,11 +634,6 @@ namespace Roombook {
 
     // Конечные контакты зоны с основаниями и балками.
     namespace {
-        constexpr double DistanceTolerance = 1.0e-6;
-        // Допуск плоскости 0,1 мм равен минимальному размеру отделочного элемента.
-        constexpr double PlaneTolerance = 1.0e-4;
-        constexpr double AreaTolerance = 1.0e-6;
-
         using Polygons = Geometry::MultiPolygon2D;
 
         API_Coord3D Coord3D_Subtract (const API_Coord3D &a, const API_Coord3D &b) {
@@ -1189,6 +1180,7 @@ namespace Roombook {
                                   double zBottom,
                                   double zTop,
                                   RoomSurfaceBeamFace face,
+                                  bool wholeZoneContact,
                                   GS::Array<RoomSurfaceBeamPiece> &pieces) {
             Frame frame;
             Polygons original, section;
@@ -1247,7 +1239,7 @@ namespace Roombook {
                     piece.vertices.Push (point);
                 }
                 // beamPart выбирает связную часть; её реальные границы задаёт 3D-зона на высоте грани.
-                if (std::min (tMax, tEnd) - std::max (tMin, tBeg) > DistanceTolerance &&
+                if ((wholeZoneContact || std::min (tMax, tEnd) - std::max (tMin, tBeg) > DistanceTolerance) &&
                     piece.area > DistanceTolerance * DistanceTolerance)
                     own.Push (std::move (piece));
             }
@@ -1335,18 +1327,36 @@ namespace Roombook {
         }
         finish.tBeg = tBeg;
         finish.tEnd = tEnd;
+        if (!std::isfinite (tBeg) || !std::isfinite (tEnd) || !std::isfinite (zBottom) || !std::isfinite (zTop) ||
+            tEnd < tBeg || zTop < zBottom) {
+            RoomSurfaceReadError error;
+            error.stage = "beamInvalidPart";
+            error.code = APIERR_BADPARS;
+            result.errors.Push (error);
+            return finish;
+        }
         // В AC25 beamPart возвращает проекции на ненормированный вектор оси:
         // проверено по пересечениям границы зоны для двух балок разной длины и направления.
         // В отличие от wallPart, расстояние вдоль единичной оси равно t / length.
         tBeg /= axis.length;
         tEnd /= axis.length;
-        if (tEnd - tBeg <= DistanceTolerance || zTop - zBottom <= DistanceTolerance) {
+        const bool wholeZoneContact = zone != nullptr && tEnd - tBeg <= DistanceTolerance;
+        if (!std::isfinite (tBeg) || !std::isfinite (tEnd) || (!wholeZoneContact && tEnd - tBeg <= DistanceTolerance) ||
+            zTop - zBottom <= DistanceTolerance) {
             RoomSurfaceReadError error;
             error.stage = "beamEmptyPart";
             error.code = APIERR_BADPARS;
             result.errors.Push (error);
             return finish;
         }
+        if (zone != nullptr && !zone->IsComplete ()) {
+            RoomSurfaceReadError error;
+            error.stage = "beamZoneSnapshot";
+            error.code = APIERR_BADPARS;
+            result.errors.Push (error);
+            return finish;
+        }
+        // Пустая проекция оси не исключает контакт конечной грани; его проверяет полная 3D-зона.
         // Низ — грань с нормалью вниз; бока — вертикальные грани, параллельные оси. Прямые балки с
         // постоянным сечением; наклонные/кривые балки не распознаются и остаются не отделанными.
         for (const auto &body : beamSource.snapshot.bodies) {
@@ -1379,8 +1389,16 @@ namespace Roombook {
                         continue;
                     piece.face = n.z > 0 ? RoomSurfaceBeamFace::Top : RoomSurfaceBeamFace::Bottom;
                     if (zone != nullptr) {
-                        if (!BeamFace_ClipToZone (
-                                surface, *zone, axis, tBeg, tEnd, zBottom, zTop, piece.face, finish.pieces)) {
+                        if (!BeamFace_ClipToZone (surface,
+                                                  *zone,
+                                                  axis,
+                                                  tBeg,
+                                                  tEnd,
+                                                  zBottom,
+                                                  zTop,
+                                                  piece.face,
+                                                  wholeZoneContact,
+                                                  finish.pieces)) {
                             RoomSurfaceReadError error;
                             error.stage = "beamZoneSection";
                             error.code = APIERR_BADPARS;
@@ -1400,8 +1418,16 @@ namespace Roombook {
                     if (zone != nullptr) {
                         piece.face = (n.x * axis.perp.x + n.y * axis.perp.y) > 0 ? RoomSurfaceBeamFace::RightSide
                                                                                  : RoomSurfaceBeamFace::LeftSide;
-                        if (!BeamFace_ClipToZone (
-                                surface, *zone, axis, tBeg, tEnd, zBottom, zTop, piece.face, finish.pieces)) {
+                        if (!BeamFace_ClipToZone (surface,
+                                                  *zone,
+                                                  axis,
+                                                  tBeg,
+                                                  tEnd,
+                                                  zBottom,
+                                                  zTop,
+                                                  piece.face,
+                                                  wholeZoneContact,
+                                                  finish.pieces)) {
                             RoomSurfaceReadError error;
                             error.stage = "beamZoneSection";
                             error.code = APIERR_BADPARS;
@@ -1442,6 +1468,7 @@ namespace Roombook {
     }
 
     // Подготовка геометрии стен, проёмов, полов и потолков.
+
     bool FloorSkirtingSegments_Build (OtdRoom &room) {
         constexpr double tolerance = FloorCoreGeometry::Tolerance;
         room.otdbeam_floor.Clear ();
@@ -1454,23 +1481,24 @@ namespace Roombook {
             const OtdWall &wall = room.otdwall[i];
             if (!wall.isValid)
                 continue;
-            const bool supportsFloorSkirting =
-                wall.type == Wall_Main || wall.type == Wall_Down || wall.type == Wall_Up || wall.type == Column;
+            const bool supportsFloorSkirting = wall.draw.type == Wall_Main || wall.draw.type == Wall_Down ||
+                                               wall.draw.type == Wall_Up || wall.draw.type == Column;
             if (!supportsFloorSkirting)
                 continue;
-            if (wall.type != Column && !room.create_wall_elements)
+            if (wall.draw.type != Column && !room.create_wall_elements)
                 continue;
-            if (wall.type == Column && !room.create_column_elements)
+            if (wall.draw.type == Column && !room.create_column_elements)
                 continue;
-            if (!std::isfinite (wall.zBottom))
+            if (!std::isfinite (OtdLinearSegment_GetZBottom (wall.geom)))
                 return false;
-            if (std::fabs (wall.zBottom - room.zBottom) > tolerance)
+            if (std::fabs (OtdLinearSegment_GetZBottom (wall.geom) - room.zBottom) > tolerance)
                 continue;
-            const double dx = wall.endC.x - wall.begC.x;
-            const double dy = wall.endC.y - wall.begC.y;
+            const double dx = wall.geom.seg.endC.x - wall.geom.seg.begC.x;
+            const double dy = wall.geom.seg.endC.y - wall.geom.seg.begC.y;
             const double length = std::hypot (dx, dy);
-            if (!std::isfinite (length) || length <= tolerance || !std::isfinite (wall.begC.x) ||
-                !std::isfinite (wall.begC.y) || !std::isfinite (wall.endC.x) || !std::isfinite (wall.endC.y))
+            if (!std::isfinite (length) || length <= tolerance || !std::isfinite (wall.geom.seg.begC.x) ||
+                !std::isfinite (wall.geom.seg.begC.y) || !std::isfinite (wall.geom.seg.endC.x) ||
+                !std::isfinite (wall.geom.seg.endC.y))
                 return false;
             std::vector<AnalyticGeometry::Rect> openings;
             openings.reserve (wall.openings.GetSize ());
@@ -1480,23 +1508,302 @@ namespace Roombook {
                                      opening.objLoc + opening.width / 2,
                                      opening.zBottom + opening.height});
             std::vector<std::pair<double, double>> segments;
-            if (!AnalyticGeometry::CutWallBottom (
-                    {0, wall.zBottom, length, wall.zBottom + wall.height}, openings, tolerance, segments))
+            if (!AnalyticGeometry::CutWallBottom ({0,
+                                                   OtdLinearSegment_GetZBottom (wall.geom),
+                                                   length,
+                                                   OtdLinearSegment_GetZBottom (wall.geom) + wall.geom.height},
+                                                  openings,
+                                                  tolerance,
+                                                  segments))
                 return false;
             for (const auto &segment : segments) {
                 OtdBeam beam;
-                beam.begC = {wall.begC.x + dx * (segment.first / length), wall.begC.y + dy * (segment.first / length)};
-                beam.endC = {wall.begC.x + dx * (segment.second / length),
-                             wall.begC.y + dy * (segment.second / length)};
-                beam.zBottom = wall.zBottom;
-                beam.floorInd = wall.floorInd;
-                beam.base_guid = wall.base_guid;
-                beam.base_type = wall.base_type;
+                beam.geom.seg.begC = {wall.geom.seg.begC.x + dx * (segment.first / length),
+                                      wall.geom.seg.begC.y + dy * (segment.first / length),
+                                      OtdLinearSegment_GetZBottom (wall.geom)};
+                beam.geom.seg.endC = {wall.geom.seg.begC.x + dx * (segment.second / length),
+                                      wall.geom.seg.begC.y + dy * (segment.second / length),
+                                      OtdLinearSegment_GetZBottom (wall.geom)};
+
+                beam.geom.floorInd = wall.geom.floorInd;
+                beam.draw.base_guid = wall.draw.base_guid;
+                beam.draw.base_type = wall.draw.base_type;
                 beam.wallIndex = static_cast<Int32> (i);
                 prepared.Push (beam);
             }
         }
         room.otdbeam_floor.Swap (prepared);
+        return true;
+    }
+
+    // slabFaces — комнатные плоскости с толщиной выбранного избранного, индексы исходного otdslab.
+    bool SkirtingSegments_Build (OtdRoom &room, const GS::Array<OtdSlab> &slabFaces) {
+        room.otdbeam_floor.Clear ();
+        room.otdbeam_ceil.Clear ();
+        if (!room.isValid)
+            return true;
+        GS::Array<OtdBeam> floors, ceilings;
+        const auto rectangle = [] (double left, double right, double bottom, double top) {
+            GS::Array<Point2D> points = {{left, bottom}, {right, bottom}, {right, top}, {left, top}};
+            GS::Array<PolyArcRec> arcs;
+            GS::Array<UIndex> ends = {3};
+            return Geometry::Polygon2D::Create (
+                points, arcs, ends, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
+        };
+        for (UIndex wi = 0; wi < room.otdwall.GetSize (); ++wi) {
+            const auto &wall = room.otdwall[wi];
+            if (!wall.isValid || (wall.draw.type != Wall_Main && wall.draw.type != Wall_Down &&
+                                  wall.draw.type != Wall_Up && wall.draw.type != Column))
+                continue;
+            if (wall.draw.type == Column ? !room.create_column_elements : !room.create_wall_elements)
+                continue;
+            const double length =
+                std::hypot (wall.geom.seg.endC.x - wall.geom.seg.begC.x, wall.geom.seg.endC.y - wall.geom.seg.begC.y);
+            if (!std::isfinite (length) || length <= DistanceTolerance || !std::isfinite (wall.geom.seg.begC.x) ||
+                !std::isfinite (wall.geom.seg.begC.y) || !std::isfinite (wall.geom.seg.endC.x) ||
+                !std::isfinite (wall.geom.seg.endC.y) || !std::isfinite (OtdLinearSegment_GetZBottom (wall.geom)) ||
+                !std::isfinite (wall.geom.height) || wall.geom.height <= DistanceTolerance ||
+                !std::isfinite (wall.rise_x) || !std::isfinite (wall.rise_y))
+                return false;
+            const double ux = (wall.geom.seg.endC.x - wall.geom.seg.begC.x) / length;
+            const double uy = (wall.geom.seg.endC.y - wall.geom.seg.begC.y) / length;
+            Polygons wallPolygons = rectangle (0,
+                                               length,
+                                               OtdLinearSegment_GetZBottom (wall.geom),
+                                               OtdLinearSegment_GetZBottom (wall.geom) + wall.geom.height);
+            for (const auto &opening : wall.openings) {
+                if (!std::isfinite (opening.objLoc) || !std::isfinite (opening.width) ||
+                    !std::isfinite (opening.zBottom) || !std::isfinite (opening.height) || opening.width <= 0 ||
+                    opening.height <= 0)
+                    return false;
+                wallPolygons = Polygons::Substract (wallPolygons,
+                                                    rectangle (opening.objLoc - opening.width / 2,
+                                                               opening.objLoc + opening.width / 2,
+                                                               opening.zBottom,
+                                                               opening.zBottom + opening.height));
+            }
+            for (UIndex si = 0; si < slabFaces.GetSize (); ++si) {
+                const auto &slab = slabFaces[si];
+                if (!slab.isValid || (slab.draw.type != Floor && slab.draw.type != Ceil) || slab.poly.IsEmpty ())
+                    continue;
+                if (slab.draw.type == Floor ? (!room.has_floor || !room.create_floor_elements)
+                                            : (!room.has_ceil || !room.create_ceil_elements))
+                    continue;
+                if (!std::isfinite (slab.zBottom) || !std::isfinite (slab.plane_origin.x) ||
+                    !std::isfinite (slab.plane_origin.y) || !std::isfinite (slab.slope_x) ||
+                    !std::isfinite (slab.slope_y))
+                    return false;
+                // Применяем rise лишь при переходе от готового низа стены к другой отметке стыка.
+                const double divisor = 1 - slab.slope_x * wall.rise_x - slab.slope_y * wall.rise_y;
+                if (!std::isfinite (divisor) || std::fabs (divisor) <= DistanceTolerance)
+                    return false;
+                const double z0 = OtdLinearSegment_GetZBottom (wall.geom) +
+                                  (slab.zBottom - OtdLinearSegment_GetZBottom (wall.geom) +
+                                   slab.slope_x * (wall.geom.seg.begC.x - slab.plane_origin.x) +
+                                   slab.slope_y * (wall.geom.seg.begC.y - slab.plane_origin.y)) /
+                                      divisor;
+                const double dz = (slab.slope_x * ux + slab.slope_y * uy) / divisor;
+                if (!std::isfinite (z0) || !std::isfinite (dz))
+                    return false;
+                const auto world = [&] (const Point2D &p) -> API_Coord3D {
+                    return {
+                        wall.geom.seg.begC.x + ux * p.x + wall.rise_x * (p.y - OtdLinearSegment_GetZBottom (wall.geom)),
+                        wall.geom.seg.begC.y + uy * p.x + wall.rise_y * (p.y - OtdLinearSegment_GetZBottom (wall.geom)),
+                        p.y};
+                };
+                const Sector line (Point2D (0, z0), Point2D (length, z0 + dz * length));
+                for (const auto &polygon : wallPolygons) {
+                    for (const auto &part : polygon.CutElem (line, Geometry::Boundary_Closed)) {
+                        const auto beg = world (part.c1), end = world (part.c2);
+                        const double dx = end.x - beg.x, dy = end.y - beg.y;
+                        const double planSquared = dx * dx + dy * dy;
+                        if (!std::isfinite (planSquared) || planSquared <= DistanceTolerance * DistanceTolerance)
+                            continue;
+                        const Sector plan (Point2D (beg.x, beg.y), Point2D (end.x, end.y));
+                        // Не распрямляем дуги и не теряем отверстия итогового пола/потолка.
+                        for (const auto &cut : slab.poly.CutElem (plan, Geometry::Boundary_Closed)) {
+                            OtdBeam beam;
+                            const auto height = [&] (const Point2D &p) {
+                                const double t = ((p.x - beg.x) * dx + (p.y - beg.y) * dy) / planSquared;
+                                return beg.z + t * (end.z - beg.z);
+                            };
+                            beam.geom.seg.begC = {cut.c1.x, cut.c1.y, height (cut.c1)};
+                            beam.geom.seg.endC = {cut.c2.x, cut.c2.y, height (cut.c2)};
+                            if (!std::isfinite (beam.geom.seg.begC.z) || !std::isfinite (beam.geom.seg.endC.z))
+                                return false;
+                            if (std::hypot (std::hypot (beam.geom.seg.endC.x - beam.geom.seg.begC.x,
+                                                        beam.geom.seg.endC.y - beam.geom.seg.begC.y),
+                                            beam.geom.seg.endC.z - beam.geom.seg.begC.z) <= DistanceTolerance)
+                                continue;
+                            beam.geom.floorInd = wall.geom.floorInd;
+                            beam.draw.base_guid = wall.draw.base_guid;
+                            beam.draw.base_type = wall.draw.base_type;
+                            beam.wallIndex = static_cast<Int32> (wi);
+                            beam.slabIndex = static_cast<Int32> (si);
+                            beam.draw.type = slab.draw.type == Floor ? Floor_Skirting : Ceil_Cornice;
+                            auto &output = slab.draw.type == Floor ? floors : ceilings;
+                            const API_Coord3D origin = {
+                                beam.geom.seg.begC.x, beam.geom.seg.begC.y, beam.geom.seg.begC.z};
+                            const API_Coord3D axis = {beam.geom.seg.endC.x - origin.x,
+                                                      beam.geom.seg.endC.y - origin.y,
+                                                      beam.geom.seg.endC.z - origin.z};
+                            const double squared = Coord3D_Dot (axis, axis);
+                            const double tolerance = DistanceTolerance / std::sqrt (squared);
+                            std::vector<std::pair<double, double>> remaining = {{0, 1}};
+                            // Смежные конечные участки могут вернуть один стык на общем шве дважды.
+                            for (const auto &previous : output) {
+                                if (previous.draw.base_guid != beam.draw.base_guid ||
+                                    previous.draw.base_type != beam.draw.base_type)
+                                    continue;
+                                const API_Coord3D p = {
+                                    previous.geom.seg.begC.x, previous.geom.seg.begC.y, previous.geom.seg.begC.z};
+                                const API_Coord3D q = {
+                                    previous.geom.seg.endC.x, previous.geom.seg.endC.y, previous.geom.seg.endC.z};
+                                const double a = Coord3D_Dot (Coord3D_Subtract (p, origin), axis) / squared;
+                                const double b = Coord3D_Dot (Coord3D_Subtract (q, origin), axis) / squared;
+                                const auto pointAt = [&] (double t) -> API_Coord3D {
+                                    return {origin.x + axis.x * t, origin.y + axis.y * t, origin.z + axis.z * t};
+                                };
+                                const auto onLine = [&] (const API_Coord3D &p, double t) {
+                                    const auto projected = pointAt (t);
+                                    return std::hypot (std::hypot (p.x - projected.x, p.y - projected.y),
+                                                       p.z - projected.z) <= DistanceTolerance;
+                                };
+                                if (!onLine (p, a) || !onLine (q, b))
+                                    continue;
+                                std::vector<std::pair<double, double>> next;
+                                for (const auto &interval : remaining) {
+                                    const double lo = std::max (interval.first, std::min (a, b));
+                                    const double hi = std::min (interval.second, std::max (a, b));
+                                    if (hi - lo <= tolerance) {
+                                        next.push_back (interval);
+                                        continue;
+                                    }
+                                    if (lo - interval.first > tolerance)
+                                        next.push_back ({interval.first, lo});
+                                    if (interval.second - hi > tolerance)
+                                        next.push_back ({hi, interval.second});
+                                }
+                                remaining.swap (next);
+                            }
+                            for (const auto &interval : remaining) {
+                                OtdBeam fragment = beam;
+                                fragment.geom.seg.begC = {origin.x + axis.x * interval.first,
+                                                          origin.y + axis.y * interval.first};
+                                fragment.geom.seg.endC = {origin.x + axis.x * interval.second,
+                                                          origin.y + axis.y * interval.second};
+                                fragment.geom.seg.begC.z = origin.z + axis.z * interval.first;
+                                fragment.geom.seg.endC.z = origin.z + axis.z * interval.second;
+                                output.Push (std::move (fragment));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        room.otdbeam_floor.Swap (floors);
+        room.otdbeam_ceil.Swap (ceilings);
+        return true;
+    }
+
+    // Конечный стык выбранных граней. SDK-модель и подготовленные кандидаты не изменяет.
+    bool SkirtingContact_Build (const RoomSurface &wallFace,
+                                const RoomSurface &slabFace,
+                                GS::Array<OtdLinearSegment> &segments) {
+        segments.Clear ();
+        Frame wallFrame, slabFrame;
+        if (!wallFrame.Frame_Set (wallFace) || !slabFrame.Frame_Set (slabFace))
+            return false;
+        // У partition допуск плоскости шире; здесь зазор не должен превращаться в контакт.
+        for (const auto *face : {&wallFace, &slabFace}) {
+            const auto &origin = face->contours[0].vertices[0].world;
+            if (std::fabs (Coord3D_Dot (face->normalWorld, origin) + face->planeOffset) > DistanceTolerance)
+                return false;
+            for (const auto &contour : face->contours)
+                for (const auto &vertex : contour.vertices)
+                    if (!Coord3D_IsFinite (vertex.world) ||
+                        std::fabs (Coord3D_Dot (face->normalWorld, Coord3D_Subtract (vertex.world, origin))) >
+                            DistanceTolerance)
+                        return false;
+        }
+        Polygons wallPolygons, slabPolygons;
+        if (!RoomSurface_Project (wallFace, wallFrame, wallPolygons) ||
+            !RoomSurface_Project (slabFace, slabFrame, slabPolygons))
+            return false;
+        API_Coord3D direction = Coord3D_Cross (wallFrame.normal, slabFrame.normal);
+        const double squaredLength = Coord3D_Dot (direction, direction);
+        if (!std::isfinite (squaredLength) || squaredLength <= DistanceTolerance * DistanceTolerance)
+            return false; // Нет устойчиво определённой единственной линии стыка.
+        const double directionLength = std::sqrt (squaredLength);
+        direction = {direction.x / directionLength, direction.y / directionLength, direction.z / directionLength};
+        // Начало берём около стены, а не около мирового нуля: сохраняем точность удалённых комнат.
+        const double cosine = Coord3D_Dot (wallFrame.normal, slabFrame.normal);
+        const double distance = Coord3D_Dot (slabFrame.normal, Coord3D_Subtract (wallFrame.origin, slabFrame.origin));
+        const double shift = -distance / squaredLength;
+        const API_Coord3D origin = {wallFrame.origin.x + shift * (slabFrame.normal.x - cosine * wallFrame.normal.x),
+                                    wallFrame.origin.y + shift * (slabFrame.normal.y - cosine * wallFrame.normal.y),
+                                    wallFrame.origin.z + shift * (slabFrame.normal.z - cosine * wallFrame.normal.z)};
+        if (!Coord3D_IsFinite (origin))
+            return false;
+        const auto pointAt = [&] (double t) -> API_Coord3D {
+            return {origin.x + direction.x * t, origin.y + direction.y * t, origin.z + direction.z * t};
+        };
+        double first = 0, last = 0;
+        bool hasVertex = false;
+        for (const auto &contour : wallFace.contours)
+            for (const auto &vertex : contour.vertices) {
+                const double t = Coord3D_Dot (Coord3D_Subtract (vertex.world, origin), direction);
+                if (!std::isfinite (t))
+                    return false;
+                first = hasVertex ? std::min (first, t) : t;
+                last = hasVertex ? std::max (last, t) : t;
+                hasVertex = true;
+            }
+        if (last - first <= DistanceTolerance)
+            return true;
+        std::vector<std::pair<double, double>> intervals;
+        const Sector wallLine (wallFrame.Frame_Project (pointAt (first)), wallFrame.Frame_Project (pointAt (last)));
+        for (const auto &wallPolygon : wallPolygons) {
+            for (const auto &wallPart : wallPolygon.CutElem (wallLine, Geometry::Boundary_Closed)) {
+                const Sector slabLine (slabFrame.Frame_Project (wallFrame.Frame_Restore (wallPart.c1)),
+                                       slabFrame.Frame_Project (wallFrame.Frame_Restore (wallPart.c2)));
+                for (const auto &slabPolygon : slabPolygons) {
+                    for (const auto &part : slabPolygon.CutElem (slabLine, Geometry::Boundary_Closed)) {
+                        const double a =
+                            Coord3D_Dot (Coord3D_Subtract (slabFrame.Frame_Restore (part.c1), origin), direction);
+                        const double b =
+                            Coord3D_Dot (Coord3D_Subtract (slabFrame.Frame_Restore (part.c2), origin), direction);
+                        if (!std::isfinite (a) || !std::isfinite (b))
+                            return false;
+                        const double lo = std::max (first, std::min (a, b));
+                        const double hi = std::min (last, std::max (a, b));
+                        if (hi - lo > DistanceTolerance)
+                            intervals.push_back ({lo, hi});
+                    }
+                }
+            }
+        }
+        std::sort (intervals.begin (), intervals.end ());
+        // Regularize может разбить грань на несколько полигонов; их общий шов не удваивает длину.
+        GS::Array<OtdLinearSegment> prepared;
+        bool hasInterval = false;
+        double begin = 0, end = 0;
+        for (const auto &interval : intervals) {
+            if (hasInterval && interval.first > end + DistanceTolerance) {
+                prepared.Push ({pointAt (begin), pointAt (end)});
+                hasInterval = false;
+            }
+            if (!hasInterval) {
+                begin = interval.first;
+                end = interval.second;
+                hasInterval = true;
+            } else {
+                end = std::max (end, interval.second);
+            }
+        }
+        if (hasInterval)
+            prepared.Push ({pointAt (begin), pointAt (end)});
+        segments.Swap (prepared);
         return true;
     }
 
@@ -1510,7 +1817,8 @@ namespace Roombook {
 
     bool FloorContour_ExtendToOpening (OtdRoom &room, const OtdWall &wall, const OtdOpening &opening) {
         constexpr double tolerance = FloorCoreGeometry::Tolerance;
-        const double dx = wall.endC.x - wall.begC.x, dy = wall.endC.y - wall.begC.y;
+        const double depth = opening.base_reveal_width + opening.base_frame_width / 2;
+        const double dx = wall.geom.seg.endC.x - wall.geom.seg.begC.x, dy = wall.geom.seg.endC.y - wall.geom.seg.begC.y;
         const double length = std::hypot (dx, dy);
         if (!wall.isValid || opening.base_guid == APINULLGuid)
             return true;
@@ -1518,7 +1826,7 @@ namespace Roombook {
             return true;
         if (!std::isfinite (opening.objLoc) || !std::isfinite (opening.width) || opening.width <= tolerance)
             return true;
-        if (!std::isfinite (opening.base_reveal_width) || opening.base_reveal_width <= tolerance)
+        if (!std::isfinite (depth) || depth <= tolerance)
             return true;
         if (!std::isfinite (opening.zBottom) || !std::isfinite (opening.height) || opening.height <= tolerance)
             return true;
@@ -1529,14 +1837,15 @@ namespace Roombook {
         const double right = std::min (length, opening.objLoc + opening.width / 2);
         if (right - left <= tolerance)
             return true;
-        const Sector entrance = {{wall.begC.x + dx * left / length, wall.begC.y + dy * left / length},
-                                 {wall.begC.x + dx * right / length, wall.begC.y + dy * right / length}};
-        const double shiftX = dy / length * opening.base_reveal_width;
-        const double shiftY = -dx / length * opening.base_reveal_width;
+        const Sector entrance = {
+            {wall.geom.seg.begC.x + dx * left / length, wall.geom.seg.begC.y + dy * left / length},
+            {wall.geom.seg.begC.x + dx * right / length, wall.geom.seg.begC.y + dy * right / length}};
+        const double shiftX = dy / length * depth;
+        const double shiftY = -dx / length * depth;
         bool complete = true;
         for (auto &floor : room.otdslab) {
-            if (!floor.isValid || floor.type != Floor || floor.poly.IsEmpty () ||
-                opening.zBottom > floor.zBottom + tolerance ||
+            if (floor.draw.base_type == API_MeshID || !floor.isValid || floor.draw.type != Floor ||
+                floor.poly.IsEmpty () || opening.zBottom > floor.zBottom + tolerance ||
                 opening.zBottom + opening.height <= floor.zBottom + tolerance)
                 continue;
             Geometry::MultiPolygon2D united;
@@ -1571,26 +1880,28 @@ namespace Roombook {
         GS::Array<OtdSlab> result;
         bool complete = true;
         for (const auto &floor : room.otdslab) {
-            if (!floor.isValid || floor.type != Floor || floor.poly.IsEmpty ()) {
+            if (floor.draw.base_type == API_MeshID || !floor.isValid || floor.draw.type != Floor ||
+                floor.poly.IsEmpty ()) {
                 result.Push (floor);
                 continue;
             }
             std::vector<Contact> contacts;
             std::vector<API_Guid> owners;
             for (const auto &wall : room.otdwall) {
-                if (!wall.isValid || wall.base_guid == APINULLGuid || wall.type == Reveal_Main ||
-                    wall.type == Reveal_Up || wall.type == Reveal_Down || floor.zBottom < wall.zBottom - Tolerance ||
-                    floor.zBottom >= wall.zBottom + wall.height - Tolerance)
+                if (!wall.isValid || wall.draw.base_guid == APINULLGuid || wall.draw.type == Reveal_Main ||
+                    wall.draw.type == Reveal_Up || wall.draw.type == Reveal_Down ||
+                    floor.zBottom < OtdLinearSegment_GetZBottom (wall.geom) - Tolerance ||
+                    floor.zBottom >= OtdLinearSegment_GetZBottom (wall.geom) + wall.geom.height - Tolerance)
                     continue;
-                auto owner = std::find (owners.begin (), owners.end (), wall.base_guid);
+                auto owner = std::find (owners.begin (), owners.end (), wall.draw.base_guid);
                 if (owner == owners.end ()) {
-                    owners.push_back (wall.base_guid);
+                    owners.push_back (wall.draw.base_guid);
                     owner = owners.end () - 1;
                 }
                 const std::size_t ownerIndex = static_cast<std::size_t> (owner - owners.begin ());
-                const double dz = floor.zBottom - wall.zBottom;
-                const Point begin = {wall.begC.x + dz * wall.rise_x, wall.begC.y + dz * wall.rise_y};
-                const Point end = {wall.endC.x + dz * wall.rise_x, wall.endC.y + dz * wall.rise_y};
+                const double dz = floor.zBottom - OtdLinearSegment_GetZBottom (wall.geom);
+                const Point begin = {wall.geom.seg.begC.x + dz * wall.rise_x, wall.geom.seg.begC.y + dz * wall.rise_y};
+                const Point end = {wall.geom.seg.endC.x + dz * wall.rise_x, wall.geom.seg.endC.y + dz * wall.rise_y};
                 const double length = Length (end - begin);
                 if (length <= Tolerance)
                     continue;
@@ -1618,9 +1929,10 @@ namespace Roombook {
                     }
                     ranges = std::move (next);
                 }
-                const double offset = wall.base_type == API_WallID && !wall.slab_step && wall.floor_core_offset_valid
-                                          ? wall.floor_core_offset
-                                          : 0;
+                const double offset =
+                    wall.draw.base_type == API_WallID && !wall.slab_step && wall.floor_core_offset_valid
+                        ? wall.floor_core_offset
+                        : 0;
                 for (const auto &range : ranges)
                     contacts.push_back ({begin + dir * range.first, begin + dir * range.second, offset, ownerIndex});
             }
@@ -1664,7 +1976,7 @@ namespace Roombook {
             result.Push (std::move (extended));
         }
         for (auto &slab : result)
-            if (slab.isValid && (slab.type == Floor || slab.type == Ceil))
+            if (slab.isValid && (slab.draw.type == Floor || slab.draw.type == Ceil))
                 PolygonVertices_RemoveCollinear (slab.poly);
         room.otdslab = std::move (result);
         return complete;
@@ -1770,10 +2082,10 @@ namespace Roombook {
         const Sector edge = {{a.x, a.y}, {b.x, b.y}};
         if (!OtdWall_Add_One (piece.baseGuid, edge, false, height, a.z, floorInd, 0, result))
             return false;
-        result.length = length;
-        result.base_guid = piece.baseGuid;
-        result.base_type = piece.baseType;
-        result.type = piece.baseType == API_ColumnID ? Column : Wall_Main;
+        result.geom.height = height;
+        result.draw.base_guid = piece.baseGuid;
+        result.draw.base_type = piece.baseType;
+        result.draw.type = piece.baseType == API_ColumnID ? Column : Wall_Main;
         // В AC25 положительный котангенс slantAlpha наклоняет влево от линии.
         // Отрицательная проекция подъёма на правый бок сохраняет заданную контактную плоскость.
         result.slant_angle = std::atan2 (1.0, -(riseX * rightX + riseY * rightY));
@@ -1795,24 +2107,27 @@ namespace Roombook {
         GS::Array<OtdWall> result;
         const double dx = wallEnd.x - wallBeg.x, dy = wallEnd.y - wallBeg.y;
         const double length = std::hypot (dx, dy);
-        const double ex = wall.endC.x - wall.begC.x, ey = wall.endC.y - wall.begC.y;
+        const double ex = wall.geom.seg.endC.x - wall.geom.seg.begC.x, ey = wall.geom.seg.endC.y - wall.geom.seg.begC.y;
         const double span = std::hypot (ex, ey);
         if (!std::isfinite (length) || !std::isfinite (span) || !std::isfinite (roomBottom) ||
-            !std::isfinite (wall.zBottom) || !std::isfinite (wall.height) || !std::isfinite (wall.rise_x) ||
-            !std::isfinite (wall.rise_y) || length < min_dim || span < min_dim || wall.height < min_dim)
+            !std::isfinite (OtdLinearSegment_GetZBottom (wall.geom)) || !std::isfinite (wall.geom.height) ||
+            !std::isfinite (wall.rise_x) || !std::isfinite (wall.rise_y) || length < min_dim || span < min_dim ||
+            wall.geom.height < min_dim)
             return result;
         const double ux = dx / length, uy = dy / length, vx = ex / span, vy = ey / span;
         if (std::fabs (ux * vy - uy * vx) > DistanceTolerance)
             return result;
-        const auto along = [&] (double x, double y) { return (x - wall.begC.x) * vx + (y - wall.begC.y) * vy; };
+        const auto along = [&] (double x, double y) {
+            return (x - wall.geom.seg.begC.x) * vx + (y - wall.geom.seg.begC.y) * vy;
+        };
         const auto onLine = [&] (double x, double y) {
-            return std::fabs ((x - wall.begC.x) * vy - (y - wall.begC.y) * vx) <= DistanceTolerance;
+            return std::fabs ((x - wall.geom.seg.begC.x) * vy - (y - wall.geom.seg.begC.y) * vx) <= DistanceTolerance;
         };
 
         std::vector<std::pair<double, double>> intervals;
         bool hasParts = false;
         for (const auto &part : parts) {
-            if (part.guid != wall.base_guid)
+            if (part.guid != wall.draw.base_guid)
                 continue;
             hasParts = true;
             if (part.roomEdge <= 0 || static_cast<USize> (part.roomEdge) > roomEdges.GetSize () ||
@@ -1820,7 +2135,7 @@ namespace Roombook {
                 return {};
             const auto &edge = roomEdges[part.roomEdge - 1];
             // Ребро зоны переносим с отметки пола на низ наклонного контакта.
-            const double dz = wall.zBottom - roomBottom;
+            const double dz = OtdLinearSegment_GetZBottom (wall.geom) - roomBottom;
             const double ax = edge.c1.x + wall.rise_x * dz, ay = edge.c1.y + wall.rise_y * dz;
             const double bx = edge.c2.x + wall.rise_x * dz, by = edge.c2.y + wall.rise_y * dz;
             if (!onLine (ax, ay) || !onLine (bx, by))
@@ -1856,17 +2171,21 @@ namespace Roombook {
         for (const auto &interval : merged) {
             double firstContact = 0, lastContact = span;
             for (const auto &other : contacts) {
-                if (!other.surface_geometry || other.base_guid != wall.base_guid || other.base_type != API_WallID ||
-                    other.slab_step ||
-                    std::min (wall.zBottom + wall.height, other.zBottom + other.height) -
-                            std::max (wall.zBottom, other.zBottom) <=
+                if (!other.surface_geometry || other.draw.base_guid != wall.draw.base_guid ||
+                    other.draw.base_type != API_WallID || other.slab_step ||
+                    std::min (OtdLinearSegment_GetZBottom (wall.geom) + wall.geom.height,
+                              OtdLinearSegment_GetZBottom (other.geom) + other.geom.height) -
+                            std::max (OtdLinearSegment_GetZBottom (wall.geom),
+                                      OtdLinearSegment_GetZBottom (other.geom)) <=
                         DistanceTolerance ||
                     std::fabs (wall.rise_x - other.rise_x) > DistanceTolerance ||
                     std::fabs (wall.rise_y - other.rise_y) > DistanceTolerance)
                     continue;
-                const double dz = wall.zBottom - other.zBottom;
-                const double ax = other.begC.x + other.rise_x * dz, ay = other.begC.y + other.rise_y * dz;
-                const double bx = other.endC.x + other.rise_x * dz, by = other.endC.y + other.rise_y * dz;
+                const double dz = OtdLinearSegment_GetZBottom (wall.geom) - OtdLinearSegment_GetZBottom (other.geom);
+                const double ax = other.geom.seg.begC.x + other.rise_x * dz,
+                             ay = other.geom.seg.begC.y + other.rise_y * dz;
+                const double bx = other.geom.seg.endC.x + other.rise_x * dz,
+                             by = other.geom.seg.endC.y + other.rise_y * dz;
                 if (!onLine (ax, ay) || !onLine (bx, by) || (bx - ax) * vx + (by - ay) * vy <= DistanceTolerance)
                     continue;
                 if (std::min (std::max (along (ax, ay), along (bx, by)), interval.second) -
@@ -1884,9 +2203,11 @@ namespace Roombook {
             if (end - begin < min_dim)
                 return {};
             OtdWall trimmed = wall;
-            trimmed.begC = {wall.begC.x + vx * begin, wall.begC.y + vy * begin};
-            trimmed.endC = {wall.begC.x + vx * end, wall.begC.y + vy * end};
-            trimmed.length = end - begin;
+            trimmed.geom.seg.begC = {
+                wall.geom.seg.begC.x + vx * begin, wall.geom.seg.begC.y + vy * begin, wall.geom.seg.begC.z};
+            trimmed.geom.seg.endC = {
+                wall.geom.seg.begC.x + vx * end, wall.geom.seg.begC.y + vy * end, wall.geom.seg.endC.z};
+            trimmed.geom.length = end - begin;
             trimmed.openings.Clear ();
             for (const auto &op : wall.openings) {
                 const double a = op.objLoc - op.width / 2, b = op.objLoc + op.width / 2;
@@ -2016,7 +2337,9 @@ namespace Roombook {
         if (std::fabs (area - piece.area) > std::max (AreaTolerance, 2 * perimeter * DistanceTolerance))
             return false;
         const double wallLength = rightBound - leftBound;
-        const bool reversed = (single.endC.x - single.begC.x) * along.x + (single.endC.y - single.begC.y) * along.y < 0;
+        const bool reversed = (single.geom.seg.endC.x - single.geom.seg.begC.x) * along.x +
+                                  (single.geom.seg.endC.y - single.geom.seg.begC.y) * along.y <
+                              0;
         for (const auto &cutout : cutouts) {
             // Не допускам молчаливого заполнения выреза из-за порога штатного writer.
             if (cutout.right - cutout.left <= min_dim || cutout.top - cutout.bottom <= min_dim)
@@ -2025,8 +2348,9 @@ namespace Roombook {
             opening.width = cutout.right - cutout.left;
             opening.height = cutout.top - cutout.bottom;
             opening.objLoc = (cutout.left + cutout.right) / 2 - leftBound;
-            opening.lower = cutout.bottom - single.zBottom;
-            OtdOpening_Add (opening, reversed, single.zBottom, 0, wallLength, wallLength, single);
+            opening.lower = cutout.bottom - OtdLinearSegment_GetZBottom (single.geom);
+            OtdOpening_Add (
+                opening, reversed, OtdLinearSegment_GetZBottom (single.geom), 0, wallLength, wallLength, single);
             single.openings.GetLast ().lower = opening.lower;
             single.openings.GetLast ().surface_geometry = true;
         }
@@ -2040,11 +2364,12 @@ namespace Roombook {
     bool SurfaceOpenings_Link (OtdWall &wall, const GS::Array<OtdWall> &openingWalls, bool analyticOverlap) {
         if (!wall.surface_geometry || wall.openings.IsEmpty ())
             return true;
-        const double length = std::hypot (wall.endC.x - wall.begC.x, wall.endC.y - wall.begC.y);
+        const double length =
+            std::hypot (wall.geom.seg.endC.x - wall.geom.seg.begC.x, wall.geom.seg.endC.y - wall.geom.seg.begC.y);
         if (length <= min_dim)
             return false;
-        const double ux = (wall.endC.x - wall.begC.x) / length;
-        const double uy = (wall.endC.y - wall.begC.y) / length;
+        const double ux = (wall.geom.seg.endC.x - wall.geom.seg.begC.x) / length;
+        const double uy = (wall.geom.seg.endC.y - wall.geom.seg.begC.y) / length;
 
         struct SourceOpening {
             double left, right, bottom, top;
@@ -2053,19 +2378,19 @@ namespace Roombook {
 
         std::vector<SourceOpening> sources;
         for (const auto &sourceWall : openingWalls) {
-            if (sourceWall.base_guid != wall.base_guid)
+            if (sourceWall.draw.base_guid != wall.draw.base_guid)
                 continue;
-            const double dx = sourceWall.endC.x - sourceWall.begC.x;
-            const double dy = sourceWall.endC.y - sourceWall.begC.y;
+            const double dx = sourceWall.geom.seg.endC.x - sourceWall.geom.seg.begC.x;
+            const double dy = sourceWall.geom.seg.endC.y - sourceWall.geom.seg.begC.y;
             const double sourceLength = std::hypot (dx, dy);
             if (sourceLength <= min_dim || std::fabs (dx * uy - dy * ux) > DistanceTolerance * sourceLength)
                 continue;
             for (const auto &opening : sourceWall.openings) {
                 if (opening.base_guid == APINULLGuid)
                     continue;
-                const double x = sourceWall.begC.x + dx * opening.objLoc / sourceLength;
-                const double y = sourceWall.begC.y + dy * opening.objLoc / sourceLength;
-                const double center = (x - wall.begC.x) * ux + (y - wall.begC.y) * uy;
+                const double x = sourceWall.geom.seg.begC.x + dx * opening.objLoc / sourceLength;
+                const double y = sourceWall.geom.seg.begC.y + dy * opening.objLoc / sourceLength;
+                const double center = (x - wall.geom.seg.begC.x) * ux + (y - wall.geom.seg.begC.y) * uy;
                 sources.push_back ({center - opening.width / 2,
                                     center + opening.width / 2,
                                     opening.zBottom,
@@ -2119,7 +2444,7 @@ namespace Roombook {
                     opening.width = xs[x] - xs[x - 1];
                     opening.zBottom = zs[z - 1];
                     opening.height = zs[z] - zs[z - 1];
-                    opening.lower = opening.zBottom - wall.zBottom;
+                    opening.lower = opening.zBottom - OtdLinearSegment_GetZBottom (wall.geom);
                     opening.source_opening_guids = sourceGuids;
                     opening.base_guid = sourceGuids.GetSize () == 1 ? sourceGuids[0] : APINULLGuid;
                     // Только привязка к реальному проёму; откосы создаются отдельным legacy-путём.
@@ -2135,7 +2460,7 @@ namespace Roombook {
         for (const auto &opening : linked)
             linkedArea += opening.width * opening.height;
         if (std::fabs (originalArea - linkedArea) >
-            std::max (AreaTolerance, 2 * (length + wall.height) * DistanceTolerance))
+            std::max (AreaTolerance, 2 * (length + wall.geom.height) * DistanceTolerance))
             return false;
         wall.openings = std::move (linked);
         return true;
@@ -2312,36 +2637,41 @@ namespace Roombook {
             if (!room.isValid || !w.isValid ||
                 !(room.create_wall_elements || room.create_column_elements || room.create_reveal_elements))
                 return false;
-            if ((w.type == Wall_Main || w.type == Wall_Up || w.type == Wall_Down) && !room.create_wall_elements)
+            if ((w.draw.type == Wall_Main || w.draw.type == Wall_Up || w.draw.type == Wall_Down) &&
+                !room.create_wall_elements)
                 return false;
-            if (w.type == Column && !room.create_column_elements)
+            if (w.draw.type == Column && !room.create_column_elements)
                 return false;
-            if ((w.type == Reveal_Main || w.type == Reveal_Up || w.type == Reveal_Down) && !room.create_reveal_elements)
+            if ((w.draw.type == Reveal_Main || w.draw.type == Reveal_Up || w.draw.type == Reveal_Down) &&
+                !room.create_reveal_elements)
                 return false;
-            return w.surface_geometry && w.draw_type == API_WallID && (!w.slab_step || w.slab_step_writer_eligible);
+            return w.surface_geometry && w.draw.draw_type == API_WallID &&
+                   (!w.slab_step || w.slab_step_writer_eligible);
         };
         GS::Array<OtdWall> output;
         bool complete = true;
         for (const auto &wall : room.otdwall) {
-            if (wall.base_type != API_SlabID || wall.slab_step || !enabled (wall)) {
+            if (wall.draw.base_type != API_SlabID || wall.slab_step || !enabled (wall)) {
                 output.Push (wall);
                 continue;
             }
-            const double length = std::hypot (wall.endC.x - wall.begC.x, wall.endC.y - wall.begC.y);
-            if (!std::isfinite (length) || length <= min_dim || !std::isfinite (wall.height) ||
-                wall.height <= min_dim || !std::isfinite (wall.zBottom) || !std::isfinite (wall.rise_x) ||
-                !std::isfinite (wall.rise_y)) {
+            const double length =
+                std::hypot (wall.geom.seg.endC.x - wall.geom.seg.begC.x, wall.geom.seg.endC.y - wall.geom.seg.begC.y);
+            if (!std::isfinite (length) || length <= min_dim || !std::isfinite (wall.geom.height) ||
+                wall.geom.height <= min_dim || !std::isfinite (OtdLinearSegment_GetZBottom (wall.geom)) ||
+                !std::isfinite (wall.rise_x) || !std::isfinite (wall.rise_y)) {
                 output.Push (wall);
                 complete = false;
                 continue;
             }
-            const double ux = (wall.endC.x - wall.begC.x) / length, uy = (wall.endC.y - wall.begC.y) / length;
+            const double ux = (wall.geom.seg.endC.x - wall.geom.seg.begC.x) / length,
+                         uy = (wall.geom.seg.endC.y - wall.geom.seg.begC.y) / length;
             API_Coord3D normal = {uy, -ux, -(uy * wall.rise_x - ux * wall.rise_y)};
             const double norm = Coord3D_GetLength (normal);
             normal = {normal.x / norm, normal.y / norm, normal.z / norm};
             const auto point = [&] (double x, double z) -> API_Coord3D {
-                return {wall.begC.x + ux * x + wall.rise_x * (z - wall.zBottom),
-                        wall.begC.y + uy * x + wall.rise_y * (z - wall.zBottom),
+                return {wall.geom.seg.begC.x + ux * x + wall.rise_x * (z - OtdLinearSegment_GetZBottom (wall.geom)),
+                        wall.geom.seg.begC.y + uy * x + wall.rise_y * (z - OtdLinearSegment_GetZBottom (wall.geom)),
                         z};
             };
             const auto rectangle = [] (double left, double right, double bottom, double top) {
@@ -2352,22 +2682,29 @@ namespace Roombook {
                     coords, arcs, ends, Geometry::PolyCreateFlags_IdxRefInContourEndFromZero);
             };
             const auto coverage = [&] (const OtdWall &w, Polygons &polys) {
-                const double l = std::hypot (w.endC.x - w.begC.x, w.endC.y - w.begC.y);
-                if (!std::isfinite (l) || l <= min_dim || !std::isfinite (w.height) || w.height <= min_dim ||
-                    !std::isfinite (w.zBottom) || !std::isfinite (w.rise_x) || !std::isfinite (w.rise_y))
+                const double l =
+                    std::hypot (w.geom.seg.endC.x - w.geom.seg.begC.x, w.geom.seg.endC.y - w.geom.seg.begC.y);
+                if (!std::isfinite (l) || l <= min_dim || !std::isfinite (w.geom.height) || w.geom.height <= min_dim ||
+                    !std::isfinite (OtdLinearSegment_GetZBottom (w.geom)) || !std::isfinite (w.rise_x) ||
+                    !std::isfinite (w.rise_y))
                     return false;
-                const double dx = (w.endC.x - w.begC.x) / l, dy = (w.endC.y - w.begC.y) / l;
+                const double dx = (w.geom.seg.endC.x - w.geom.seg.begC.x) / l,
+                             dy = (w.geom.seg.endC.y - w.geom.seg.begC.y) / l;
                 if (std::fabs (dx * uy - dy * ux) > DistanceTolerance ||
                     std::fabs (w.rise_x - wall.rise_x) > DistanceTolerance ||
                     std::fabs (w.rise_y - wall.rise_y) > DistanceTolerance)
                     return false;
-                const double x = (w.begC.x - wall.begC.x) * ux + (w.begC.y - wall.begC.y) * uy;
-                const auto restored = point (x, w.zBottom);
-                if (!Coord3D_AreNear (restored, {w.begC.x, w.begC.y, w.zBottom}))
+                const double x =
+                    (w.geom.seg.begC.x - wall.geom.seg.begC.x) * ux + (w.geom.seg.begC.y - wall.geom.seg.begC.y) * uy;
+                const auto restored = point (x, OtdLinearSegment_GetZBottom (w.geom));
+                if (!Coord3D_AreNear (restored,
+                                      {w.geom.seg.begC.x, w.geom.seg.begC.y, OtdLinearSegment_GetZBottom (w.geom)}))
                     return false;
                 const double direction = dx * ux + dy * uy;
-                polys = rectangle (
-                    std::min (x, x + direction * l), std::max (x, x + direction * l), w.zBottom, w.zBottom + w.height);
+                polys = rectangle (std::min (x, x + direction * l),
+                                   std::max (x, x + direction * l),
+                                   OtdLinearSegment_GetZBottom (w.geom),
+                                   OtdLinearSegment_GetZBottom (w.geom) + w.geom.height);
                 for (const auto &opening : w.openings) {
                     if (!std::isfinite (opening.objLoc) || !std::isfinite (opening.width) ||
                         !std::isfinite (opening.zBottom) || !std::isfinite (opening.height) ||
@@ -2390,8 +2727,8 @@ namespace Roombook {
             }
             Polygons remainder = original;
             for (const auto &step : room.otdwall) {
-                if (!step.slab_step || step.base_guid != wall.base_guid || step.base_guid == APINULLGuid ||
-                    step.base_type != API_SlabID || !enabled (step))
+                if (!step.slab_step || step.draw.base_guid != wall.draw.base_guid ||
+                    step.draw.base_guid == APINULLGuid || step.draw.base_type != API_SlabID || !enabled (step))
                     continue;
                 Polygons accepted;
                 if (coverage (step, accepted))
@@ -2410,10 +2747,10 @@ namespace Roombook {
             Polygons rebuilt;
             for (const auto &polygon : remainder) {
                 RoomSurfacePiece piece;
-                piece.baseGuid = wall.base_guid;
-                piece.baseType = wall.base_type;
+                piece.baseGuid = wall.draw.base_guid;
+                piece.baseType = wall.draw.base_type;
                 piece.normal = normal;
-                piece.planeOffset = -Coord3D_Dot (normal, point (0, wall.zBottom));
+                piece.planeOffset = -Coord3D_Dot (normal, point (0, OtdLinearSegment_GetZBottom (wall.geom)));
                 piece.area = polygon.CalcArea () * norm;
                 GS::Array<Point2D> coords;
                 GS::Array<PolyArcRec> arcs;
@@ -2435,18 +2772,17 @@ namespace Roombook {
                     first = ends[i] + 1;
                 }
                 GS::Array<OtdWall> adapted;
-                if (!SurfaceWalls_Build (piece, wall.floorInd, adapted)) {
+                if (!SurfaceWalls_Build (piece, wall.geom.floorInd, adapted)) {
                     representable = false;
                     break;
                 }
                 for (const auto &geometry : adapted) {
                     // Копируем принятые правила, меняя только конечное покрытие; правила повторно не вызываются.
                     OtdWall fragment = wall;
-                    fragment.begC = geometry.begC;
-                    fragment.endC = geometry.endC;
-                    fragment.zBottom = geometry.zBottom;
-                    fragment.height = geometry.height;
-                    fragment.length = geometry.length;
+                    fragment.geom.seg.begC = geometry.geom.seg.begC;
+                    fragment.geom.seg.endC = geometry.geom.seg.endC;
+                    fragment.geom.height = geometry.geom.height;
+                    fragment.geom.length = geometry.geom.length;
                     fragment.openings = geometry.openings;
                     Polygons checked;
                     if (!coverage (fragment, checked)) {
@@ -2523,9 +2859,9 @@ namespace Roombook {
             slab.poly = polygon;
             slab.zBottom = elevation;
             slab.floorInd = floorInd;
-            slab.base_guid = piece.baseGuid;
-            slab.base_type = piece.baseType;
-            slab.type = piece.normal.z < 0 ? Floor : Ceil;
+            slab.draw.base_guid = piece.baseGuid;
+            slab.draw.base_type = piece.baseType;
+            slab.draw.type = piece.normal.z < 0 ? Floor : Ceil;
             slab.surface_geometry = true;
             results.Push (slab);
         }
@@ -2659,14 +2995,18 @@ namespace Roombook {
         }
     } // namespace
 
-    bool MeshFloorFinishes_BuildProjected (const Geometry::Polygon2D &footprint,
-                                           double roomFloor,
-                                           short floorInd,
-                                           const GS::Array<MeshFloorSource> &meshes,
-                                           const GS::Array<OtdSlab> &slabSupports,
-                                           GS::Array<OtdSlab> &floors,
-                                           Geometry::MultiPolygon2D &meshCoverage) {
+    static bool MeshFloorFinishes_BuildProjectedImpl (const Geometry::Polygon2D &footprint,
+                                                      double roomFloor,
+                                                      short floorInd,
+                                                      const GS::Array<MeshFloorSource> &meshes,
+                                                      const GS::Array<OtdSlab> &slabSupports,
+                                                      GS::Array<OtdSlab> &floors,
+                                                      Geometry::MultiPolygon2D &meshCoverage,
+                                                      MeshFloorProvenance *provenance) {
+        MeshFloorProvenance staged = provenance != nullptr ? *provenance : MeshFloorProvenance{};
         if (meshes.IsEmpty ()) {
+            if (provenance != nullptr)
+                *provenance = std::move (staged);
             meshCoverage.Clear ();
             return true;
         }
@@ -2677,6 +3017,7 @@ namespace Roombook {
             OtdSlab plane;
             FloorPolygons domain;
             std::vector<OtdSlab> members;
+            std::vector<UIndex> supports;
         };
 
         std::vector<Patch> patches;
@@ -2714,6 +3055,32 @@ namespace Roombook {
                     Patch patch;
                     if (!FloorFace_Project (face, patch.plane, patch.domain))
                         return false;
+                    // Сохраняем исходную и допустимую опору отдельно от room clipping.
+                    if (provenance != nullptr) {
+                        MeshFloorFiniteSupport support;
+                        support.ownerGuid = source.baseGuid;
+                        support.geometryGuid = source.geometryGuid;
+                        support.ownerType = source.baseType;
+                        support.bodyIndex = face.bodyIndex;
+                        support.polygonIndex = face.polygonIndex;
+                        support.modelMaterialIndex = face.modelMaterialIndex;
+                        support.plane = patch.plane;
+                        support.plane.draw.base_guid = source.baseGuid;
+                        support.plane.draw.base_type = API_MeshID;
+                        support.plane.draw.draw_type = API_RoofID;
+                        support.plane.draw.type = Floor;
+                        support.plane.floorInd = floorInd;
+                        support.plane.surface_geometry = true;
+                        support.projected = patch.domain;
+                        if (mesh.hasBottom) {
+                            if (!hasBottom)
+                                return false;
+                            support.admitted = FloorPolygons::Intersect (support.projected, bottom);
+                        } else if (!FloorPolygons_ClipBelow (support.projected, patch.plane, level, support.admitted))
+                            return false;
+                        patch.supports.push_back (staged.supports.GetSize ());
+                        staged.supports.Push (support);
+                    }
                     FloorPolygons room;
                     room.Push (footprint);
                     patch.domain = FloorPolygons::Intersect (patch.domain, room);
@@ -2731,11 +3098,11 @@ namespace Roombook {
                     }
                     if (patch.domain.IsEmpty ())
                         continue;
-                    patch.plane.base_guid = source.baseGuid;
-                    patch.plane.base_type = API_MeshID;
-                    patch.plane.draw_type = API_RoofID;
+                    patch.plane.draw.base_guid = source.baseGuid;
+                    patch.plane.draw.base_type = API_MeshID;
+                    patch.plane.draw.draw_type = API_RoofID;
                     patch.plane.surface_geometry = true;
-                    patch.plane.type = Floor;
+                    patch.plane.draw.type = Floor;
                     patch.plane.floorInd = floorInd;
                     domain.Append (patch.domain);
                     patches.push_back (patch);
@@ -2744,17 +3111,19 @@ namespace Roombook {
         }
         domain.Unify ();
         if (domain.IsEmpty ()) {
+            if (provenance != nullptr)
+                *provenance = std::move (staged);
             meshCoverage.Clear ();
             return true;
         }
         for (const auto &support : slabSupports) {
-            if (!support.isValid || support.base_guid == APINULLGuid || support.base_type != API_SlabID ||
+            if (!support.isValid || support.draw.base_guid == APINULLGuid || support.draw.base_type != API_SlabID ||
                 support.poly.IsEmpty () || !std::isfinite (support.zBottom) || support.slope_x != 0 ||
                 support.slope_y != 0)
                 return false;
             Patch patch;
             patch.plane = support;
-            patch.plane.type = Floor;
+            patch.plane.draw.type = Floor;
             patch.plane.floorInd = floorInd;
             patch.plane.surface_geometry = true;
             FloorPolygons projected;
@@ -2775,7 +3144,11 @@ namespace Roombook {
         for (const auto &patch : patches) {
             bool merged = false;
             for (auto &group : groups) {
-                if (group.plane.base_guid != patch.plane.base_guid || group.plane.base_type != patch.plane.base_type)
+                // Грани Mesh остаются отдельными заготовками даже в одной плоскости.
+                if (patch.plane.draw.base_type == API_MeshID)
+                    continue;
+                if (group.plane.draw.base_guid != patch.plane.draw.base_guid ||
+                    group.plane.draw.base_type != patch.plane.draw.base_type)
                     continue;
                 auto combined = group.domain;
                 combined.Append (patch.domain);
@@ -2787,6 +3160,7 @@ namespace Roombook {
                 group.domain = combined;
                 group.domain.Unify ();
                 group.members.push_back (patch.plane);
+                group.supports.insert (group.supports.end (), patch.supports.begin (), patch.supports.end ());
                 merged = true;
                 break;
             }
@@ -2817,8 +3191,8 @@ namespace Roombook {
                 const auto overlap = FloorPolygons::Intersect (visible[i], visible[j]);
                 if (overlap.CalcArea () <= AreaTolerance)
                     continue;
-                if (groups[i].plane.base_guid != groups[j].plane.base_guid ||
-                    groups[i].plane.base_type != groups[j].plane.base_type)
+                if (groups[i].plane.draw.base_guid != groups[j].plane.draw.base_guid ||
+                    groups[i].plane.draw.base_type != groups[j].plane.draw.base_type)
                     return false;
                 visible[i] = FloorPolygons::Substract (visible[i], visible[j]);
             }
@@ -2828,6 +3202,18 @@ namespace Roombook {
             for (const auto &polygon : visible[i]) {
                 auto floor = groups[i].plane;
                 floor.poly = polygon;
+                if (provenance != nullptr) {
+                    FloorPolygons winner;
+                    winner.Push (polygon);
+                    for (const UIndex supportIndex : groups[i].supports) {
+                        MeshFloorWinnerContribution contribution;
+                        contribution.supportIndex = supportIndex;
+                        contribution.floorIndex = floors.GetSize () + results.GetSize ();
+                        contribution.domain = FloorPolygons::Intersect (staged.supports[supportIndex].admitted, winner);
+                        if (!contribution.domain.IsEmpty ())
+                            staged.contributions.Push (contribution);
+                    }
+                }
                 results.Push (floor);
                 complete.Push (polygon);
             }
@@ -2835,9 +3221,34 @@ namespace Roombook {
         if (FloorPolygons::Substract (complete, domain).CalcArea () > AreaTolerance ||
             FloorPolygons::Substract (domain, complete).CalcArea () > AreaTolerance)
             return false;
+        if (provenance != nullptr)
+            *provenance = std::move (staged);
         floors.Append (results);
         meshCoverage = domain;
         return true;
+    }
+
+    bool MeshFloorFinishes_BuildProjected (const Geometry::Polygon2D &footprint,
+                                           double roomFloor,
+                                           short floorInd,
+                                           const GS::Array<MeshFloorSource> &meshes,
+                                           const GS::Array<OtdSlab> &slabSupports,
+                                           GS::Array<OtdSlab> &floors,
+                                           Geometry::MultiPolygon2D &meshCoverage) {
+        return MeshFloorFinishes_BuildProjectedImpl (
+            footprint, roomFloor, floorInd, meshes, slabSupports, floors, meshCoverage, nullptr);
+    }
+
+    bool MeshFloorFinishes_BuildProjectedWithProvenance (const Geometry::Polygon2D &footprint,
+                                                         double roomFloor,
+                                                         short floorInd,
+                                                         const GS::Array<MeshFloorSource> &meshes,
+                                                         const GS::Array<OtdSlab> &slabSupports,
+                                                         GS::Array<OtdSlab> &floors,
+                                                         Geometry::MultiPolygon2D &meshCoverage,
+                                                         MeshFloorProvenance &provenance) {
+        return MeshFloorFinishes_BuildProjectedImpl (
+            footprint, roomFloor, floorInd, meshes, slabSupports, floors, meshCoverage, &provenance);
     }
 
     namespace {
@@ -2847,14 +3258,15 @@ namespace Roombook {
         };
 
         // Общие исходные контакты до выбора победителя и ограничения числа компонент.
-        bool OtdSlab_CollectProjectedInputs (const RoomSurfaceSnapshot &zone,
-                                             const GS::Array<RoomSurfaceSource> &sources,
-                                             const GS::Array<API_Guid> &roles,
-                                             TypeOtd type,
-                                             short floorInd,
-                                             const GS::Array<OtdSlab> *prepared,
-                                             Geometry::MultiPolygon2D &footprint,
-                                             std::vector<ProjectedSlabCandidate> &candidates) {
+        bool OtdSlab_CollectProjectedInputsImpl (const RoomSurfaceSnapshot &zone,
+                                                 const GS::Array<RoomSurfaceSource> &sources,
+                                                 const GS::Array<API_Guid> &roles,
+                                                 TypeOtd type,
+                                                 short floorInd,
+                                                 const GS::Array<OtdSlab> *prepared,
+                                                 Geometry::MultiPolygon2D &footprint,
+                                                 std::vector<ProjectedSlabCandidate> &candidates,
+                                                 SlabFloorProvenance *provenance) {
             if (!zone.IsComplete () || (type != Floor && type != Ceil))
                 return false;
             const double normal = type == Floor ? -1 : 1;
@@ -2907,6 +3319,35 @@ namespace Roombook {
                 return false;
             footprint.Unify ();
 
+            const auto recordSupport = [&] (const RoomSurfaceSource &source,
+                                            const OtdSlab &slab,
+                                            const RoomSurface *face,
+                                            UIndex preparedIndex) {
+                if (provenance == nullptr)
+                    return true;
+                if (source.baseGuid == APINULLGuid || source.baseType != API_SlabID ||
+                    source.geometryGuid == APINULLGuid || source.snapshot.guid != source.geometryGuid ||
+                    slab.draw.base_guid != source.baseGuid || slab.draw.base_type != API_SlabID || !slab.isValid ||
+                    slab.poly.IsEmpty () || !std::isfinite (slab.zBottom) || slab.slope_x != 0 || slab.slope_y != 0)
+                    return false;
+                SlabFloorFiniteSupport support;
+                support.ownerGuid = source.baseGuid;
+                support.geometryGuid = source.geometryGuid;
+                support.ownerType = source.baseType;
+                support.origin = source.origin;
+                support.preparedIndex = preparedIndex;
+                if (face != nullptr) {
+                    support.bodyIndex = face->bodyIndex;
+                    support.polygonIndex = face->polygonIndex;
+                    support.modelMaterialIndex = face->modelMaterialIndex;
+                }
+                support.plane = slab;
+                support.projected.Push (slab.poly);
+                // roles уже задают admission Slab. Не добавлять Mesh roomFloor-policy.
+                support.admitted = support.projected;
+                provenance->supports.Push (support);
+                return true;
+            };
             GS::Array<API_Guid> visited;
             for (const auto &guid : roles) {
                 bool duplicate = false;
@@ -2924,16 +3365,19 @@ namespace Roombook {
                         return false;
                     if (source.origin == RoomSurfaceOrigin::PreparedAnalytic && prepared != nullptr) {
                         bool hasBase = false;
-                        for (const auto &base : *prepared) {
-                            if (base.base_guid != guid)
+                        for (UIndex preparedIndex = 0; preparedIndex < prepared->GetSize (); ++preparedIndex) {
+                            const auto &base = (*prepared)[preparedIndex];
+                            if (base.draw.base_guid != guid)
                                 continue;
                             hasBase = true;
                             OtdSlab slab = base;
-                            slab.type = type;
+                            slab.draw.type = type;
                             slab.floorInd = floorInd;
                             slab.surface_geometry = true;
                             const double bottom = base.zBottom, top = bottom + base.height;
                             slab.zBottom = type == Floor ? top : bottom;
+                            if (provenance != nullptr && !recordSupport (source, slab, nullptr, preparedIndex))
+                                return false;
                             candidates.push_back ({slab, bottom, top});
                         }
                         if (!hasBase)
@@ -2981,8 +3425,11 @@ namespace Roombook {
                             GS::Array<OtdSlab> selected;
                             if (!SurfaceSlabs_Build (piece, floorInd, selected))
                                 return false;
-                            for (const auto &slab : selected)
+                            for (const auto &slab : selected) {
+                                if (provenance != nullptr && !recordSupport (source, slab, &face, 0))
+                                    return false;
                                 candidates.push_back ({slab, bottom, top});
+                            }
                         }
                     }
                 }
@@ -2991,6 +3438,19 @@ namespace Roombook {
             }
             return true;
         }
+
+        bool OtdSlab_CollectProjectedInputs (const RoomSurfaceSnapshot &zone,
+                                             const GS::Array<RoomSurfaceSource> &sources,
+                                             const GS::Array<API_Guid> &roles,
+                                             TypeOtd type,
+                                             short floorInd,
+                                             const GS::Array<OtdSlab> *prepared,
+                                             Geometry::MultiPolygon2D &footprint,
+                                             std::vector<ProjectedSlabCandidate> &candidates) {
+            return OtdSlab_CollectProjectedInputsImpl (
+                zone, sources, roles, type, floorInd, prepared, footprint, candidates, nullptr);
+        }
+
     } // namespace
 
     bool OtdSlab_BuildProjectedFinishes (const RoomSurfaceSnapshot &zone,
@@ -3015,7 +3475,7 @@ namespace Roombook {
         if (zoneCeilingCandidate) {
             Candidate zoneCeiling;
             zoneCeiling.slab = *nominal;
-            zoneCeiling.slab.type = type;
+            zoneCeiling.slab.draw.type = type;
             zoneCeiling.slab.floorInd = floorInd;
             zoneCeiling.slab.surface_geometry = true;
             zoneCeiling.slab.zBottom = nominal->zBottom;
@@ -3052,7 +3512,7 @@ namespace Roombook {
             // std::sort не задавал владельца при равных отметках; не выбираем его по
             // GUID/порядку.
             for (UIndex j = 0; j < candidates.size (); ++j) {
-                if (j == i || candidates[j].slab.base_guid == candidate.slab.base_guid ||
+                if (j == i || candidates[j].slab.draw.base_guid == candidate.slab.draw.base_guid ||
                     std::fabs (candidates[j].slab.zBottom - candidate.slab.zBottom) > DistanceTolerance)
                     continue;
                 Geometry::MultiPolygon2D next;
@@ -3068,7 +3528,7 @@ namespace Roombook {
                 OtdSlab slab = candidate.slab;
                 slab.poly = accepted.PopLargest ();
                 if (nominal != nullptr)
-                    slab.material = nominal->material;
+                    slab.draw.material = nominal->draw.material;
                 results.Push (slab);
                 Geometry::Polygon2D sidePolygon = slab.poly;
                 sidePolygon.RemoveHoles ();
@@ -3104,18 +3564,18 @@ namespace Roombook {
                                 if (std::hypot (edge.c1.x - edge.c2.x, edge.c1.y - edge.c2.y) <= DistanceTolerance)
                                     continue;
                                 OtdWall wall;
-                                wall.begC = {edge.c2.x, edge.c2.y};
-                                wall.endC = {edge.c1.x, edge.c1.y};
-                                wall.zBottom = type == Floor ? nominal->zBottom : slab.zBottom;
-                                wall.height = height;
-                                wall.base_guid = slab.base_guid;
-                                wall.base_type = API_SlabID;
-                                wall.type = type;
-                                wall.floorInd = floorInd;
-                                wall.material = nominal->material;
+                                const double z = type == Floor ? nominal->zBottom : slab.zBottom;
+                                wall.geom.seg.begC = {edge.c2.x, edge.c2.y, z};
+                                wall.geom.seg.endC = {edge.c1.x, edge.c1.y, z};
+                                wall.geom.height = height;
+                                wall.draw.base_guid = slab.draw.base_guid;
+                                wall.draw.base_type = API_SlabID;
+                                wall.draw.type = type;
+                                wall.geom.floorInd = floorInd;
+                                wall.draw.material = nominal->draw.material;
                                 wall.surface_geometry = true;
                                 wall.slab_step = true;
-                                steps.Push (wall);
+                                steps.Push (std::move (wall));
                             }
                         }
                     }
@@ -3138,7 +3598,7 @@ namespace Roombook {
             OtdSlab residual = *nominal;
             residual.poly = remainder.PopLargest ();
             residual.floorInd = floorInd;
-            residual.type = type;
+            residual.draw.type = type;
             residual.surface_geometry = true;
             results.Push (residual);
         }
@@ -3159,7 +3619,7 @@ namespace Roombook {
         }
 
         bool OtdSlab_HasSameOwner (const OtdSlab &a, const OtdSlab &b) {
-            return a.base_guid == b.base_guid && a.base_type == b.base_type;
+            return a.draw.base_guid == b.draw.base_guid && a.draw.base_type == b.draw.base_type;
         }
 
         // Положительная площадь с прежним owner и той же плоскостью не меняет
@@ -3221,16 +3681,17 @@ namespace Roombook {
         }
     } // namespace
 
-    bool OtdSlab_BuildFiniteMixedGeometry (const RoomSurfaceSnapshot &zone,
-                                           const GS::Array<RoomSurfaceSource> &sources,
-                                           const GS::Array<API_Guid> &roles,
-                                           short floorInd,
-                                           const OtdSlab &nominal,
-                                           bool onlyOnSlab,
-                                           const GS::Array<OtdSlab> &prepared,
-                                           double roomFloor,
-                                           const GS::Array<MeshFloorSource> &meshes,
-                                           MixedFloorGeometry &result) {
+    static bool OtdSlab_BuildFiniteMixedGeometryImpl (const RoomSurfaceSnapshot &zone,
+                                                      const GS::Array<RoomSurfaceSource> &sources,
+                                                      const GS::Array<API_Guid> &roles,
+                                                      short floorInd,
+                                                      const OtdSlab &nominal,
+                                                      bool onlyOnSlab,
+                                                      const GS::Array<OtdSlab> &prepared,
+                                                      double roomFloor,
+                                                      const GS::Array<MeshFloorSource> &meshes,
+                                                      MixedFloorGeometry &result,
+                                                      MixedFloorProvenance *provenance) {
         MixedFloorGeometry staged;
         // Та же функция, аргументы и error-policy; никаких новых проверок для
         // Slab-only.
@@ -3246,20 +3707,70 @@ namespace Roombook {
                                              &staged.steps,
                                              &prepared))
             return false;
+        Geometry::MultiPolygon2D provenanceFootprint;
+        std::vector<ProjectedSlabCandidate> provenanceRaw;
+        if (provenance != nullptr && !OtdSlab_CollectProjectedInputsImpl (zone,
+                                                                          sources,
+                                                                          roles,
+                                                                          Floor,
+                                                                          floorInd,
+                                                                          &prepared,
+                                                                          provenanceFootprint,
+                                                                          provenanceRaw,
+                                                                          &provenance->slab))
+            return false;
+        const auto recordSlabWinners = [&] () {
+            if (provenance == nullptr)
+                return true;
+            for (UIndex i = 0; i < staged.floors.GetSize (); ++i) {
+                const auto &floor = staged.floors[i];
+                if (floor.draw.base_type != API_SlabID)
+                    continue; // nominal Zone residual никогда не получает ложного Slab-owner.
+                Geometry::MultiPolygon2D winner, covered;
+                winner.Push (floor.poly);
+                for (UIndex j = 0; j < provenance->slab.supports.GetSize (); ++j) {
+                    const auto &support = provenance->slab.supports[j];
+                    if (support.ownerGuid != floor.draw.base_guid || support.ownerType != floor.draw.base_type)
+                        continue;
+                    auto overlap = Geometry::MultiPolygon2D::Intersect (support.admitted, winner);
+                    // Slab здесь горизонтальны; сравнение плоскостей не зависит от дуг XY-контура.
+                    if (overlap.IsEmpty () || floor.slope_x != 0 || floor.slope_y != 0 ||
+                        !std::isfinite (floor.zBottom) ||
+                        std::fabs (support.plane.zBottom - floor.zBottom) > DistanceTolerance)
+                        continue;
+                    SlabFloorWinnerContribution contribution;
+                    contribution.supportIndex = j;
+                    contribution.floorIndex = i;
+                    contribution.domain = overlap;
+                    provenance->slab.contributions.Push (contribution);
+                    covered.Append (overlap);
+                }
+                covered.Unify ();
+                if (Geometry::MultiPolygon2D::Substract (winner, covered).CalcArea () > AreaTolerance ||
+                    Geometry::MultiPolygon2D::Substract (covered, winner).CalcArea () > AreaTolerance)
+                    return false;
+            }
+            return true;
+        };
         if (meshes.IsEmpty ()) {
+            if (provenance != nullptr && !recordSlabWinners ())
+                return false;
             result = staged;
             return true;
         }
         Geometry::MultiPolygon2D footprint;
         std::vector<ProjectedSlabCandidate> raw;
-        if (!OtdSlab_CollectProjectedInputs (zone, sources, roles, Floor, floorInd, &prepared, footprint, raw))
+        if (provenance != nullptr) {
+            footprint = provenanceFootprint;
+            raw = provenanceRaw;
+        } else if (!OtdSlab_CollectProjectedInputs (zone, sources, roles, Floor, floorInd, &prepared, footprint, raw))
             return false;
         GS::Array<OtdSlab> supports;
         for (const auto &candidate : raw) {
             auto support = candidate.slab;
             // Как и в legacy: material задаётся номиналом, base provenance не
             // подменяется.
-            support.material = nominal.material;
+            support.draw.material = nominal.draw.material;
             supports.Push (support);
         }
         GS::Array<OtdSlab> inside;
@@ -3267,19 +3778,28 @@ namespace Roombook {
         for (const auto &component : footprint) {
             Geometry::MultiPolygon2D localDomain;
             GS::Array<OtdSlab> localInside;
-            if (!MeshFloorFinishes_BuildProjected (
-                    component, roomFloor, floorInd, meshes, supports, localInside, localDomain))
-                return false;
-            inside.Append (localInside);
+            if (provenance != nullptr) {
+                // Общий inside сохраняет индексы всех уже обработанных компонент комнаты.
+                if (!MeshFloorFinishes_BuildProjectedWithProvenance (
+                        component, roomFloor, floorInd, meshes, supports, inside, localDomain, provenance->mesh))
+                    return false;
+            } else {
+                if (!MeshFloorFinishes_BuildProjected (
+                        component, roomFloor, floorInd, meshes, supports, localInside, localDomain))
+                    return false;
+                inside.Append (localInside);
+            }
             domain.Append (localDomain);
         }
         domain.Unify ();
         if (domain.IsEmpty ()) {
+            if (provenance != nullptr && !recordSlabWinners ())
+                return false;
             result = staged;
             return true;
         }
         for (auto &floor : inside)
-            floor.material = nominal.material;
+            floor.draw.material = nominal.draw.material;
         GS::Array<OtdSlab> merged;
         if (!OtdSlab_MergeMixedDomains (staged.floors, inside, domain, merged))
             return false;
@@ -3287,7 +3807,624 @@ namespace Roombook {
 
         staged.floors = merged;
         staged.meshDomain = domain;
+        if (provenance != nullptr && !recordSlabWinners ())
+            return false;
         result = staged;
+        return true;
+    }
+
+    bool OtdSlab_BuildFiniteMixedGeometry (const RoomSurfaceSnapshot &zone,
+                                           const GS::Array<RoomSurfaceSource> &sources,
+                                           const GS::Array<API_Guid> &roles,
+                                           short floorInd,
+                                           const OtdSlab &nominal,
+                                           bool onlyOnSlab,
+                                           const GS::Array<OtdSlab> &prepared,
+                                           double roomFloor,
+                                           const GS::Array<MeshFloorSource> &meshes,
+                                           MixedFloorGeometry &result) {
+        return OtdSlab_BuildFiniteMixedGeometryImpl (
+            zone, sources, roles, floorInd, nominal, onlyOnSlab, prepared, roomFloor, meshes, result, nullptr);
+    }
+
+    bool OtdSlab_BuildFiniteMixedGeometryWithProvenance (const RoomSurfaceSnapshot &zone,
+                                                         const GS::Array<RoomSurfaceSource> &sources,
+                                                         const GS::Array<API_Guid> &roles,
+                                                         short floorInd,
+                                                         const OtdSlab &nominal,
+                                                         bool onlyOnSlab,
+                                                         const GS::Array<OtdSlab> &prepared,
+                                                         double roomFloor,
+                                                         const GS::Array<MeshFloorSource> &meshes,
+                                                         MixedFloorGeometry &result,
+                                                         MixedFloorProvenance &provenance) {
+        MixedFloorGeometry local;
+        MixedFloorProvenance localProvenance;
+        if (!OtdSlab_BuildFiniteMixedGeometryImpl (zone,
+                                                   sources,
+                                                   roles,
+                                                   floorInd,
+                                                   nominal,
+                                                   onlyOnSlab,
+                                                   prepared,
+                                                   roomFloor,
+                                                   meshes,
+                                                   local,
+                                                   &localProvenance))
+            return false;
+        MixedFloorGeometry staged = result;
+        MixedFloorProvenance stagedProvenance = provenance;
+        const UIndex floorOffset = staged.floors.GetSize ();
+        const UIndex meshOffset = stagedProvenance.mesh.supports.GetSize ();
+        const UIndex slabOffset = stagedProvenance.slab.supports.GetSize ();
+        for (auto &c : localProvenance.mesh.contributions) {
+            c.floorIndex += floorOffset;
+            c.supportIndex += meshOffset;
+        }
+        for (auto &c : localProvenance.slab.contributions) {
+            c.floorIndex += floorOffset;
+            c.supportIndex += slabOffset;
+        }
+        staged.floors.Append (local.floors);
+        staged.steps.Append (local.steps);
+        staged.meshDomain.Append (local.meshDomain);
+        staged.meshDomain.Unify ();
+        staged.changedDomain.Append (local.changedDomain);
+        staged.changedDomain.Unify ();
+        staged.rejectedArea += local.rejectedArea;
+        stagedProvenance.mesh.supports.Append (localProvenance.mesh.supports);
+        stagedProvenance.mesh.contributions.Append (localProvenance.mesh.contributions);
+        stagedProvenance.slab.supports.Append (localProvenance.slab.supports);
+        stagedProvenance.slab.contributions.Append (localProvenance.slab.contributions);
+        result = std::move (staged);
+        provenance = std::move (stagedProvenance);
+        return true;
+    }
+
+    namespace MeshDemand {
+        constexpr double E = DistanceTolerance;
+        using MP = Geometry::MultiPolygon2D;
+        constexpr double ParallelTolerance = 1.e-6; // Безразмерный определитель, не расстояние.
+        constexpr double SlopeTolerance = 1.e-6;
+
+        double Z (const OtdSlab &f, Point2D p) {
+            return f.zBottom + f.slope_x * (p.x - f.plane_origin.x) + f.slope_y * (p.y - f.plane_origin.y);
+        }
+
+        MP One (const Geometry::Polygon2D &p) {
+            MP r;
+            r.Push (p);
+            return r;
+        }
+
+        double AT (const MP &a) { return AreaTolerance * (1.0 + 0.05 * std::fabs (a.CalcArea ())); }
+
+        bool Subset (const MP &a, const MP &b) { return MP::Substract (a, b).CalcArea () <= AT (a); }
+
+        bool Same (const OtdSlab &a, const OtdSlab &b, const MP &d) {
+            if (!std::isfinite (a.slope_x) || !std::isfinite (a.slope_y) || !std::isfinite (a.zBottom))
+                return false;
+            if (std::fabs (a.slope_x - b.slope_x) > SlopeTolerance ||
+                std::fabs (a.slope_y - b.slope_y) > SlopeTolerance)
+                return false;
+            for (const auto &p : d)
+                for (auto v = p.BeginVertex (); v != p.EndVertex (); ++v) {
+                    const auto q = p.GetCoord (v);
+                    if (!std::isfinite (Z (a, q)) || !std::isfinite (Z (b, q)) || std::fabs (Z (a, q) - Z (b, q)) > E)
+                        return false;
+                }
+            return true;
+        }
+
+        bool Covered (const OtdRoom &r, const OtdSlab &plane, MP demand) {
+            const double allowedArea = AT (demand);
+            for (const auto &f : r.otdslab)
+                if (f.isValid && f.draw.type == Floor && Same (plane, f, demand))
+                    demand = MP::Substract (demand, One (f.poly));
+            return demand.CalcArea () <= allowedArea;
+        }
+
+        // Линейная отсечка по локальной отметке; верхняя граница открыта.
+        bool Band (double z0, double z1, double low, double high, double &a, double &b) {
+            const double dz = z1 - z0;
+            if (std::fabs (dz) <= 1.e-14)
+                return z0 >= low - E && z0 < high - E;
+            double x = (low - E - z0) / dz, y = (high - E - z0) / dz;
+            if (x > y)
+                std::swap (x, y);
+            a = std::max (a, x);
+            b = std::min (b, y);
+            return b > a; // Параметр безразмерный; длину контакта проверяет caller.
+        }
+
+        bool Axis (const OtdWall &w, const OtdSlab &f, Sector &s) {
+            double base = OtdLinearSegment_GetZBottom (w.geom);
+            const double den = 1 - f.slope_x * w.rise_x - f.slope_y * w.rise_y;
+            if (!std::isfinite (den) || std::fabs (den) < ParallelTolerance)
+                return false;
+            auto point = [&] (const API_Coord3D &p) {
+                double dz = (Z (f, {p.x, p.y}) - base) / den;
+                return Point2D{p.x + w.rise_x * dz, p.y + w.rise_y * dz};
+            };
+            s = {point (w.geom.seg.begC), point (w.geom.seg.endC)};
+            return std::isfinite (s.c1.x) && std::isfinite (s.c1.y) && std::isfinite (s.c2.x) && std::isfinite (s.c2.y);
+        }
+
+        Point2D At (const Sector &s, double t) {
+            return {s.c1.x + (s.c2.x - s.c1.x) * t, s.c1.y + (s.c2.y - s.c1.y) * t};
+        }
+
+        MP Strip (Point2D a, Point2D b, double x, double y) {
+            return Geometry::Polygon2D::Create (GS::Array<Point2D>{a, b, {b.x + x, b.y + y}, {a.x + x, a.y + y}}, 0);
+        }
+
+        // Консервативный отказ допустим лишь при возможном конечном контакте.
+        bool NoFiniteContact (const OtdWall &w, const OtdSlab &f, const MP &domain) {
+            const double base = OtdLinearSegment_GetZBottom (w.geom);
+            double lo = std::numeric_limits<double>::infinity (), hi = -lo;
+            for (const auto &p : {w.geom.seg.begC, w.geom.seg.endC})
+                for (double h : {0.0, w.geom.height}) {
+                    const double q = Z (f, {p.x + w.rise_x * h, p.y + w.rise_y * h}) - base - h;
+                    if (!std::isfinite (q))
+                        return false;
+                    lo = std::min (lo, q);
+                    hi = std::max (hi, q);
+                }
+            if (lo > E || hi < -E)
+                return true;
+            Point2D a{w.geom.seg.begC.x, w.geom.seg.begC.y}, b{w.geom.seg.endC.x, w.geom.seg.endC.y};
+            const double x = w.rise_x * w.geom.height, y = w.rise_y * w.geom.height;
+            if (std::fabs (x * (b.y - a.y) - y * (b.x - a.x)) > E * E &&
+                MP::Intersect (Strip (a, b, x, y), domain).CalcArea () > AreaTolerance)
+                return false;
+            const Point2D c{b.x + x, b.y + y}, d{a.x + x, a.y + y};
+            for (const auto &edge : {Sector{a, b}, Sector{b, c}, Sector{c, d}, Sector{d, a}})
+                for (const auto &poly : domain)
+                    for (const auto &cut : poly.CutElem (edge, Geometry::Boundary_Closed))
+                        if (std::hypot (cut.c2.x - cut.c1.x, cut.c2.y - cut.c1.y) > E)
+                            return false;
+            return true;
+        }
+    } // namespace MeshDemand
+
+    // Профиль уже растянут для экземпляра; origin и знаковые координаты штриховок не нормализуем.
+    bool ProfileWall_BuildFloorExclusion (const Geometry::MultiPolygon2D &profile,
+                                          const API_WallType &wall,
+                                          double wallBase,
+                                          double zoneBottom,
+                                          const GS::Array<OtdOpening> &openings,
+                                          Geometry::MultiPolygon2D &exclusion) {
+        exclusion.Clear ();
+        constexpr double eps = 1.e-6;
+        const double dx = wall.endC.x - wall.begC.x, dy = wall.endC.y - wall.begC.y;
+        const double length = std::hypot (dx, dy), cutY = zoneBottom - wallBase;
+        if (wall.type != APIWtyp_Normal || !std::isfinite (wall.angle) || std::fabs (wall.angle) > eps ||
+            !std::isfinite (wall.begC.x) || !std::isfinite (wall.begC.y) || !std::isfinite (length) || length <= eps ||
+            !std::isfinite (cutY))
+            return false;
+        std::vector<std::pair<double, double>> runs = {{0, length}};
+        for (const auto &opening : openings) {
+            if (!std::isfinite (opening.zBottom) || !std::isfinite (opening.height) || !std::isfinite (opening.width) ||
+                !std::isfinite (opening.objLoc) || !std::isfinite (opening.zBottom + opening.height))
+                return false;
+            if (opening.height <= eps || opening.width <= eps || opening.zBottom > zoneBottom + eps ||
+                opening.zBottom + opening.height <= zoneBottom + eps)
+                continue;
+            const double left = std::max (0.0, opening.objLoc - opening.width / 2);
+            const double right = std::min (length, opening.objLoc + opening.width / 2);
+            std::vector<std::pair<double, double>> next;
+            for (const auto &run : runs) {
+                if (right <= run.first || left >= run.second)
+                    next.push_back (run);
+                else {
+                    if (left > run.first)
+                        next.push_back ({run.first, left});
+                    if (right < run.second)
+                        next.push_back ({right, run.second});
+                }
+            }
+            runs = std::move (next);
+        }
+        // Неразвёрнутый профиль смотрит вправо от beg→end; flipped отражает его относительно оси.
+        const double sign = wall.flipped ? 1.0 : -1.0;
+        const Vector2D normal = {-dy / length * sign, dx / length * sign};
+        Geometry::MultiPolygon2D result;
+        for (const auto &polygon : profile) {
+            GS::Array<Sector> sections;
+            polygon.Intersect (Point2D{0, cutY}, Vector2D{1, 0}, &sections);
+            for (const auto &section : sections) {
+                const double left = std::min (section.c1.x, section.c2.x);
+                const double right = std::max (section.c1.x, section.c2.x);
+                if (!std::isfinite (left) || !std::isfinite (right))
+                    return false;
+                if (right - left <= eps)
+                    continue;
+                for (const auto &run : runs) {
+                    if (run.second - run.first <= eps)
+                        continue;
+                    const auto at = [&] (double along, double across) -> Point2D {
+                        return {wall.begC.x + dx / length * along + normal.x * across,
+                                wall.begC.y + dy / length * along + normal.y * across};
+                    };
+                    GS::Array<Point2D> coords = {
+                        at (run.first, left), at (run.second, left), at (run.second, right), at (run.first, right)};
+                    result.Append (Geometry::Polygon2D::Create (coords, 0));
+                }
+            }
+        }
+        result.Unify ();
+        exclusion = std::move (result);
+        return true;
+    }
+
+    bool FloorContours_SubtractProfileWalls (OtdRoom &room, const Geometry::MultiPolygon2D &exclusion) {
+        if (exclusion.IsEmpty ())
+            return true;
+        GS::Array<OtdSlab> result;
+        for (const auto &floor : room.otdslab) {
+            if (!floor.isValid || floor.draw.type != Floor || floor.draw.base_type == API_MeshID ||
+                std::fabs (floor.slope_x) > 1.e-6 || std::fabs (floor.slope_y) > 1.e-6) {
+                result.Push (floor);
+                continue;
+            }
+            Geometry::MultiPolygon2D original;
+            original.Push (floor.poly);
+            if (Geometry::MultiPolygon2D::Intersect (original, exclusion).IsEmpty ()) {
+                result.Push (floor);
+                continue;
+            }
+            const auto remainder = Geometry::MultiPolygon2D::Substract (original, exclusion);
+            bool firstPart = true;
+            for (const auto &polygon : remainder) {
+                OtdSlab part = floor;
+                part.poly = polygon;
+                // Один существующий элемент нельзя обновлять несколькими раздельными частями.
+                if (!firstPart)
+                    part.draw.otd_guid = APINULLGuid;
+                firstPart = false;
+                result.Push (std::move (part));
+            }
+        }
+        room.otdslab = std::move (result);
+        return true;
+    }
+
+    static bool ProfileWalls_ReadFloorExclusion (const OtdRoom &room,
+                                                 RoomProcessingContext &context,
+                                                 Geometry::MultiPolygon2D &exclusion) {
+        exclusion.Clear ();
+        bool horizontalFloor = false;
+        for (const auto &floor : room.otdslab)
+            horizontalFloor =
+                horizontalFloor || (floor.isValid && floor.draw.type == Floor && floor.draw.base_type != API_MeshID &&
+                                    std::fabs (floor.slope_x) <= 1.e-6 && std::fabs (floor.slope_y) <= 1.e-6);
+        if (!horizontalFloor)
+            return true;
+        for (const auto &source : room.surfaceCandidates.sources) {
+            if (source.baseType != API_WallID)
+                continue;
+            const ElementRead read = Element_Read (source.baseGuid, &context.surfaceCache);
+            if (read.error != NoError)
+                return false;
+            const auto &wall = read.element.wall;
+            if (wall.modelElemStructureType != API_ProfileStructure)
+                continue;
+            bool foundStory = false;
+            double wallBase = 0;
+            for (const auto &story : context.storyLevels)
+                if (story.index == read.element.header.floorInd) {
+                    wallBase = story.level + wall.bottomOffset;
+                    foundStory = true;
+                    break;
+                }
+            if (!foundStory || !std::isfinite (wallBase))
+                return false;
+            API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
+            if (ACAPI_Element_GetMemo (source.baseGuid, &memo, APIMemoMask_StretchedProfile) != NoError ||
+                memo.stretchedProfile == nullptr)
+                return false;
+            Geometry::MultiPolygon2D profile;
+            ConstProfileVectorImageIterator it (*memo.stretchedProfile);
+            while (!it.IsEOI ()) {
+                if (it->item_Typ == SyHatch) {
+                    const HatchObject &hatch = it;
+                    Geometry::MultiPolygon2D polygons;
+                    if (hatch.ToPolygon2D (polygons, HatchObject::VertexAndEdgeData::Omit) != NoError)
+                        return false;
+                    profile.Append (polygons);
+                }
+                ++it;
+            }
+            GS::Array<OtdOpening> openings;
+            if (const auto *raw = context.openinginwall.GetPtr (source.baseGuid)) {
+                openings = *raw;
+                for (auto &opening : openings)
+                    opening.zBottom = wallBase + opening.lower;
+            }
+            Geometry::MultiPolygon2D wallExclusion;
+            if (profile.IsEmpty () ||
+                !ProfileWall_BuildFloorExclusion (profile, wall, wallBase, room.zBottom, openings, wallExclusion))
+                return false;
+            exclusion.Append (wallExclusion);
+        }
+        exclusion.Unify ();
+        return true;
+    }
+
+    bool MeshFloor_ValidateFinalDomains (const OtdRoom &room, const MixedFloorProvenance &p) {
+        using namespace MeshDemand;
+        if (p.mesh.contributions.IsEmpty ()) {
+            for (const auto &f : room.otdslab)
+                if (f.draw.type == Floor && f.draw.base_type == API_MeshID)
+                    return false;
+            return true;
+        }
+        for (const auto &c : p.mesh.contributions) {
+            if (c.supportIndex >= p.mesh.supports.GetSize () || c.floorIndex >= room.otdslab.GetSize () ||
+                c.domain.IsEmpty ())
+                return false;
+            const auto &s = p.mesh.supports[c.supportIndex];
+            const auto &f = room.otdslab[c.floorIndex];
+            if (s.ownerType != API_MeshID || s.ownerGuid == APINULLGuid || s.geometryGuid == APINULLGuid ||
+                s.bodyIndex <= 0 || s.polygonIndex <= 0 || f.draw.type != Floor || f.draw.base_type != API_MeshID ||
+                f.draw.base_guid != s.ownerGuid || !Same (s.plane, f, c.domain) || !Subset (s.admitted, s.projected) ||
+                !Subset (c.domain, s.admitted) || !Subset (c.domain, One (f.poly)))
+                return false;
+        }
+        for (const auto &c : p.slab.contributions) {
+            if (c.supportIndex >= p.slab.supports.GetSize () || c.floorIndex >= room.otdslab.GetSize () ||
+                c.domain.IsEmpty ())
+                return false;
+            const auto &s = p.slab.supports[c.supportIndex];
+            const auto &f = room.otdslab[c.floorIndex];
+            if (s.ownerType != API_SlabID || s.ownerGuid == APINULLGuid || f.draw.base_type != API_SlabID ||
+                f.draw.base_guid != s.ownerGuid || f.draw.type != Floor || !Same (s.plane, f, c.domain) ||
+                !Subset (s.admitted, s.projected) || !Subset (c.domain, s.admitted) || !Subset (c.domain, One (f.poly)))
+                return false;
+        }
+        for (UIndex i = 0; i < room.otdslab.GetSize (); ++i) {
+            const auto &f = room.otdslab[i];
+            if (f.draw.type != Floor)
+                continue;
+            MP expected;
+            for (const auto &c : p.mesh.contributions)
+                if (c.floorIndex == i)
+                    expected.Append (c.domain);
+            if (expected.IsEmpty () && f.draw.base_type == API_MeshID)
+                return false;
+            if (!expected.IsEmpty ()) {
+                expected.Unify ();
+                if (!Subset (One (f.poly), expected))
+                    return false;
+            }
+            for (const auto &c : p.mesh.contributions)
+                if (c.floorIndex != i && MP::Intersect (One (f.poly), c.domain).CalcArea () > AT (c.domain))
+                    return false;
+        }
+        return true;
+    }
+
+    bool MeshFloor_OpeningDemandIsCovered (const OtdRoom &room,
+                                           const OtdWall &wall,
+                                           const OtdOpening &o,
+                                           const MixedFloorProvenance &p) {
+        using namespace MeshDemand;
+        const double depth = o.base_reveal_width + o.base_frame_width / 2;
+        if (!room.has_floor || !room.create_floor_elements)
+            return true;
+        if (!MeshFloor_ValidateFinalDomains (room, p))
+            return false;
+        if (p.mesh.contributions.IsEmpty ())
+            return true;
+        const double dx = wall.geom.seg.endC.x - wall.geom.seg.begC.x, dy = wall.geom.seg.endC.y - wall.geom.seg.begC.y,
+                     L = std::hypot (dx, dy);
+        if (!wall.isValid || o.base_guid == APINULLGuid || !std::isfinite (L) || L <= E || !std::isfinite (o.width) ||
+            o.width <= E || !std::isfinite (o.objLoc) || !std::isfinite (depth) || depth <= E ||
+            !std::isfinite (o.zBottom) || !std::isfinite (o.height) || o.height <= E || o.zBottom > room.zBottom + E)
+            return true;
+        for (const auto &c : p.mesh.contributions) {
+            const auto &f = room.otdslab[c.floorIndex];
+            if (!f.isValid || f.draw.type != Floor)
+                continue;
+            Sector axis;
+            if (!Axis (wall, f, axis)) {
+                const double base = OtdLinearSegment_GetZBottom (wall.geom);
+                const double lo = std::max (0.0, o.zBottom - base);
+                const double hi = std::min (wall.geom.height, o.zBottom + o.height - base);
+                const double left = std::max (0.0, (o.objLoc - o.width / 2) / L);
+                const double right = std::min (1.0, (o.objLoc + o.width / 2) / L);
+                if (hi - lo <= E || (right - left) * L <= E)
+                    continue;
+                OtdWall finite = wall;
+                finite.geom.seg.begC = {wall.geom.seg.begC.x + dx * left + wall.rise_x * lo,
+                                        wall.geom.seg.begC.y + dy * left + wall.rise_y * lo,
+                                        base + lo};
+                finite.geom.seg.endC = {wall.geom.seg.begC.x + dx * right + wall.rise_x * lo,
+                                        wall.geom.seg.begC.y + dy * right + wall.rise_y * lo,
+                                        base + lo};
+                finite.geom.height = hi - lo;
+                if (NoFiniteContact (finite, f, c.domain))
+                    continue;
+                return false;
+            }
+            double a = std::max (0.0, (o.objLoc - o.width / 2) / L), b = std::min (1.0, (o.objLoc + o.width / 2) / L);
+            const double base = OtdLinearSegment_GetZBottom (wall.geom);
+            if ((b - a) * L <= E || !Band (Z (f, axis.c1), Z (f, axis.c2), o.zBottom, o.zBottom + o.height, a, b) ||
+                !Band (Z (f, axis.c1), Z (f, axis.c2), base, base + wall.geom.height, a, b))
+                continue;
+            Sector entrance = {At (axis, a), At (axis, b)};
+            for (const auto &d : c.domain)
+                for (const auto &contact : d.CutElem (entrance, Geometry::Boundary_Closed)) {
+                    if (std::hypot (contact.c2.x - contact.c1.x, contact.c2.y - contact.c1.y) <= E)
+                        continue;
+                    if (!Covered (room, f, Strip (contact.c1, contact.c2, dy / L * depth, -dx / L * depth)))
+                        return false;
+                }
+        }
+        return true;
+    }
+
+    bool MeshFloor_CoreDemandIsCovered (const OtdRoom &room, const MixedFloorProvenance &p) {
+        using namespace MeshDemand;
+        using namespace FloorCoreGeometry;
+        if (!room.has_floor || !room.create_floor_elements)
+            return true;
+        if (!MeshFloor_ValidateFinalDomains (room, p))
+            return false;
+        if (p.mesh.contributions.IsEmpty ())
+            return true;
+        for (UIndex fi = 0; fi < room.otdslab.GetSize (); ++fi) {
+            bool mesh = false;
+            for (const auto &c : p.mesh.contributions)
+                mesh = mesh || c.floorIndex == fi;
+            if (!mesh)
+                continue;
+            const auto &f = room.otdslab[fi];
+            if (!f.isValid || f.draw.type != Floor)
+                continue;
+            std::vector<Contact> contacts;
+            std::vector<API_Guid> owners;
+            for (const auto &w : room.otdwall) {
+                if (!w.isValid || w.draw.base_guid == APINULLGuid || w.draw.type == Reveal_Main ||
+                    w.draw.type == Reveal_Up || w.draw.type == Reveal_Down)
+                    continue;
+                const double offset = w.draw.base_type == API_WallID && !w.slab_step && w.floor_core_offset_valid
+                                          ? w.floor_core_offset
+                                          : 0;
+                Sector s;
+                if (!Axis (w, f, s)) {
+                    if (offset > E && !NoFiniteContact (w, f, One (f.poly)))
+                        return false;
+                    continue;
+                }
+                double a = 0, b = 1;
+                const double z0 = Z (f, s.c1), z1 = Z (f, s.c2), base = OtdLinearSegment_GetZBottom (w.geom);
+                if (!Band (z0, z1, base, base + w.geom.height, a, b))
+                    continue;
+                std::vector<std::pair<double, double>> ranges = {{a, b}};
+                const double L =
+                    std::hypot (w.geom.seg.endC.x - w.geom.seg.begC.x, w.geom.seg.endC.y - w.geom.seg.begC.y);
+                if (L <= E)
+                    continue;
+                for (const auto &o : w.openings) {
+                    double x = std::max (0.0, (o.objLoc - o.width / 2) / L),
+                           y = std::min (1.0, (o.objLoc + o.width / 2) / L);
+                    if (y <= x || !Band (z0, z1, o.zBottom, o.zBottom + o.height, x, y))
+                        continue;
+                    std::vector<std::pair<double, double>> next;
+                    for (const auto &r : ranges) {
+                        if (y <= r.first || x >= r.second)
+                            next.push_back (r);
+                        else {
+                            if (x > r.first)
+                                next.push_back ({r.first, x});
+                            if (y < r.second)
+                                next.push_back ({y, r.second});
+                        }
+                    }
+                    ranges = next;
+                }
+                auto owner = std::find (owners.begin (), owners.end (), w.draw.base_guid);
+                if (owner == owners.end ()) {
+                    owners.push_back (w.draw.base_guid);
+                    owner = owners.end () - 1;
+                }
+                for (const auto &r : ranges) {
+                    auto x = At (s, r.first), y = At (s, r.second);
+                    contacts.push_back (
+                        {{x.x, x.y}, {y.x, y.y}, offset, static_cast<size_t> (owner - owners.begin ())});
+                }
+            }
+            for (auto contour = f.poly.BeginContour (); contour != f.poly.EndContour (); ++contour) {
+                std::vector<Edge> edges;
+                for (auto e = contour->BeginEdge (); e != contour->EndEdge (); ++e) {
+                    Point2D a, b;
+                    double angle = 0;
+                    f.poly.GetSector (e, a, b, angle);
+                    edges.push_back ({{a.x, a.y}, {b.x, b.y}, std::fabs (angle) <= E});
+                }
+                for (const auto &patch : Extensions (edges, contacts)) {
+                    GS::Array<Point2D> coords;
+                    for (const auto &q : patch)
+                        coords.Push ({q.x, q.y});
+                    if (!Covered (room, f, Geometry::Polygon2D::Create (coords, 0)))
+                        return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    // Один раз на комнату: сверка исходного снимка без host-чтений и повторного поиска победителя.
+    bool MeshFloor_ValidateSourceIdentity (const OtdRoom &room, const MixedFloorProvenance &p) {
+        using namespace MeshDemand;
+        for (const auto &support : p.mesh.supports) {
+            const MeshFloorSource *matched = nullptr;
+            for (const auto &mesh : room.meshFloorSources)
+                if (mesh.surface.baseGuid == support.ownerGuid) {
+                    if (matched != nullptr)
+                        return false;
+                    matched = &mesh;
+                }
+            if (matched == nullptr)
+                return false;
+            const auto &source = matched->surface;
+            if (source.baseType != API_MeshID || source.baseGuid == APINULLGuid ||
+                source.geometryGuid != source.baseGuid || source.snapshot.guid != source.baseGuid ||
+                !source.snapshot.IsComplete () || support.ownerType != source.baseType ||
+                support.geometryGuid != source.geometryGuid || support.bodyIndex <= 0 || support.polygonIndex <= 0)
+                return false;
+            const RoomSurfaceBody *body = nullptr;
+            const RoomSurface *face = nullptr;
+            for (const auto &b : source.snapshot.bodies)
+                if (b.index == support.bodyIndex) {
+                    if (body != nullptr)
+                        return false;
+                    body = &b;
+                }
+            if (body == nullptr)
+                return false;
+            for (const auto &f : body->surfaces)
+                if (f.bodyIndex == support.bodyIndex && f.polygonIndex == support.polygonIndex) {
+                    if (face != nullptr)
+                        return false;
+                    face = &f;
+                }
+            if (face == nullptr || face->origin != RoomSurfaceOrigin::Native3D ||
+                face->normalWorld.z <= DistanceTolerance || face->modelMaterialIndex != support.modelMaterialIndex)
+                return false;
+            OtdSlab plane, level;
+            level.zBottom = room.zBottom;
+            MP projected, admitted;
+            if (!FloorFace_Project (*face, plane, projected))
+                return false;
+            if (matched->hasBottom) {
+                MP bottoms;
+                bool found = false;
+                for (const auto &f : body->surfaces) {
+                    if (!Coord3D_IsFinite (f.normalWorld))
+                        return false;
+                    if (f.normalWorld.z >= -DistanceTolerance)
+                        continue;
+                    found = true;
+                    OtdSlab bottomPlane;
+                    MP bottom;
+                    if (!FloorFace_Project (f, bottomPlane, bottom) ||
+                        !FloorPolygons_ClipBelow (bottom, bottomPlane, level, bottoms))
+                        return false;
+                }
+                if (!found)
+                    return false;
+                bottoms.Unify ();
+                admitted = MP::Intersect (projected, bottoms);
+            } else if (!FloorPolygons_ClipBelow (projected, plane, level, admitted))
+                return false;
+            if (!Same (plane, support.plane, projected) || !Subset (projected, support.projected) ||
+                !Subset (support.projected, projected) || !Subset (admitted, support.admitted) ||
+                !Subset (support.admitted, admitted))
+                return false;
+        }
         return true;
     }
 
@@ -3476,15 +4613,14 @@ namespace Roombook {
             const double sign = wall.flipped ? -1 : 1;
             const API_Coord3D normal = {-(end.y - beg.y) / sideLength * sign, (end.x - beg.x) / sideLength * sign, 0};
             OtdWall base;
-            base.begC = {beg.x, beg.y};
-            base.endC = {end.x, end.y};
-            base.height = wall.height;
-            base.zBottom = bottom;
-            base.floorInd = element.header.floorInd;
+            base.geom.seg.begC = {beg.x, beg.y, bottom};
+            base.geom.seg.endC = {end.x, end.y, bottom};
+            base.geom.height = wall.height;
+            base.geom.floorInd = element.header.floorInd;
             base.base_th = wall.thickness;
-            base.base_guid = source.baseGuid;
-            base.base_type = API_WallID;
-            base.type = Wall_Main;
+            base.draw.base_guid = source.baseGuid;
+            base.draw.base_type = API_WallID;
+            base.draw.type = Wall_Main;
             base.base_flipped = side == 1;
             if (side < 2)
                 for (const auto &op : openings)
@@ -3615,8 +4751,8 @@ namespace Roombook {
         slab.zBottom = bottom;
         slab.height = top - bottom;
         slab.reference_z = reference;
-        slab.base_guid = source.baseGuid;
-        slab.base_type = API_SlabID;
+        slab.draw.base_guid = source.baseGuid;
+        slab.draw.base_type = API_SlabID;
         slab.floorInd = element.header.floorInd;
         bases.Push (slab);
         source.origin = RoomSurfaceOrigin::PreparedAnalytic;
@@ -3734,6 +4870,8 @@ namespace Roombook {
                     if (source.baseType == API_WallID || source.baseType == API_SlabID)
                         Param_AddUnicElementByType (source.baseGuid, zoneGuid, source.baseType, context.elementToRead);
                 }
+                for (const auto &mesh : roominfo.meshFloorSources)
+                    Param_AddUnicGUIDByType (mesh.surface.baseGuid, API_MeshID, context.guidselementToRead);
                 context.roomsinfo.Add (zoneGuid, std::move (roominfo));
             }
         }
@@ -3930,7 +5068,7 @@ namespace Roombook {
         for (OtdSlab &otdslab : otd.otdslab) {
             bool base_flipped = false;
             GS::UniString fav_name;
-            if (!Param_SetToBase (otdslab.base_guid,
+            if (!Param_SetToBase (otdslab.draw.base_guid,
                                   base_flipped,
                                   otdslab.base_composite,
                                   paramToRead,
@@ -3940,38 +5078,44 @@ namespace Roombook {
                 otdslab.isValid = false;
             if (!otdslab.isValid)
                 continue;
-            if (otdslab.type == Ceil)
+            if (otdslab.draw.type == Ceil)
                 otdslab.tip = otd.tip_pot;
-            if (otdslab.type == Floor)
+            if (otdslab.draw.type == Floor)
                 otdslab.tip = otd.tip_pol;
-            otdslab.favorite.name = fav_name;
-            OtdMaterial_SetFinish (otdslab.material, otdslab.base_composite);
-            Favorite_FindName (otdslab.favorite,
-                               otdslab.material,
-                               otdslab.type,
-                               otdslab.draw_type,
+            otdslab.draw.favorite.name = fav_name;
+            OtdMaterial_SetFinish (otdslab.draw.material, otdslab.base_composite);
+            Favorite_FindName (otdslab.draw.favorite,
+                               otdslab.draw.material,
+                               otdslab.draw.type,
+                               otdslab.draw.base_type == API_MeshID ? API_SlabID : otdslab.draw.draw_type,
                                paramDict_favorite,
                                param_composite,
                                otdslab.tip);
+            // Roof сохраняет выбранный Slab-состав и тот же материальный результат, что стеновой маршрут.
+            if (otdslab.draw.base_type == API_MeshID && otdslab.draw.favorite.is_composite_read &&
+                !otdslab.draw.favorite.composite.IsEmpty ()) {
+                OtdMaterial_SetFinishByComposite (otdslab.draw.material, otdslab.draw.favorite.composite);
+                otdslab.base_composite.Append (otdslab.draw.favorite.composite);
+            }
             // Ищем существующие элементы по GUID базового элемента
             if (!otdslab.surface_geometry && exsistot_byzone.ContainsKey (zoneGuid) && has_base_element) {
                 UnicGuidByBase &exsistot_byparent = exsistot_byzone.Get (zoneGuid);
-                if (exsistot_byparent.ContainsKey (otdslab.base_guid)) {
-                    UnicGuidByTypeOtd &exsistype = exsistot_byparent.Get (otdslab.base_guid);
-                    if (exsistype.ContainsKey (otdslab.type)) {
-                        UnicGuid &exsistot = exsistype.Get (otdslab.type);
+                if (exsistot_byparent.ContainsKey (otdslab.draw.base_guid)) {
+                    UnicGuidByTypeOtd &exsistype = exsistot_byparent.Get (otdslab.draw.base_guid);
+                    if (exsistype.ContainsKey (otdslab.draw.type)) {
+                        UnicGuid &exsistot = exsistype.Get (otdslab.draw.type);
                         GS::Optional<API_Guid> v = exsistot.FindValue (true);
                         if (v.HasValue ()) {
-                            otdslab.otd_guid = v.Get ();
-                            exsistot.Delete (otdslab.otd_guid);
+                            otdslab.draw.otd_guid = v.Get ();
+                            exsistot.Delete (otdslab.draw.otd_guid);
                         }
                     } else {
                         if (exsistype.ContainsKey (NoSet)) {
                             UnicGuid &exsistot = exsistype.Get (NoSet);
                             GS::Optional<API_Guid> v = exsistot.FindValue (true);
                             if (v.HasValue ()) {
-                                otdslab.otd_guid = v.Get ();
-                                exsistot.Delete (otdslab.otd_guid);
+                                otdslab.draw.otd_guid = v.Get ();
+                                exsistot.Delete (otdslab.draw.otd_guid);
                             }
                         }
                     }
@@ -3989,24 +5133,30 @@ namespace Roombook {
         for (OtdWall &otdw : opw) {
             if (!otdw.isValid)
                 continue;
-            Favorite_FindName (
-                otdw.favorite, otdw.material, otdw.type, otdw.draw_type, paramDict_favorite, param_composite, tip);
-            if (otdw.favorite.is_composite_read && !otdw.favorite.composite.IsEmpty ()) {
-                OtdMaterial_SetFinishByComposite (otdw.material, otdw.favorite.composite);
-                otdw.base_composite.Append (otdw.favorite.composite);
+            Favorite_FindName (otdw.draw.favorite,
+                               otdw.draw.material,
+                               otdw.draw.type,
+                               otdw.draw.draw_type,
+                               paramDict_favorite,
+                               param_composite,
+                               tip);
+            if (otdw.draw.favorite.is_composite_read && !otdw.draw.favorite.composite.IsEmpty ()) {
+                OtdMaterial_SetFinishByComposite (otdw.draw.material, otdw.draw.favorite.composite);
+                otdw.base_composite.Append (otdw.draw.favorite.composite);
             }
         } // Назначение избранного
     }
 
     // Читает состав стен, рассчитывает откосы проёмов и разбивает стены по высотным участкам помещения.
     // Назначает избранное и заменяет исходный массив стен рассчитанными участками.
-    static void OtdWall_ProcessFinishes (OtdRoom &otd,
+    static bool OtdWall_ProcessFinishes (OtdRoom &otd,
                                          const GS::Array<OtdWall> &openingWalls,
                                          ParamDictElement &paramToRead,
                                          ParamValue &param_composite,
                                          ParamDictValue &paramDict_favorite,
                                          ReadParams &windowParams,
-                                         ParamDictCompositeElement &paramCompositeToRead) {
+                                         ParamDictCompositeElement &paramCompositeToRead,
+                                         const MixedFloorProvenance &floorProvenance) {
 
         GS::Array<OtdWall> opw; // Подготовленные стены и откосы; native-элементы ещё не созданы.
         // Состав оснований и исходные участки стен.
@@ -4014,11 +5164,13 @@ namespace Roombook {
         openingOwners.Append (otd.preparedWalls);
         // Legacy-участки нужны только для откосов; отверстия surface-стен уже вырезаны.
         GS::Array<OtdWall> wallsForRules = otd.otdwall;
+        const USize finishWallCount = wallsForRules.GetSize ();
         wallsForRules.Append (openingWalls);
-        for (OtdWall &otdw : wallsForRules) {
+        for (UIndex wallIndex = 0; wallIndex < wallsForRules.GetSize (); ++wallIndex) {
+            OtdWall &otdw = wallsForRules[wallIndex];
             // Заполняем данные для отделочных стен (состав)
             GS::UniString fav_name;
-            if (!Param_SetToBase (otdw.base_guid,
+            if (!Param_SetToBase (otdw.draw.base_guid,
                                   otdw.base_flipped,
                                   otdw.base_composite,
                                   paramToRead,
@@ -4029,12 +5181,12 @@ namespace Roombook {
                 otdw.isValid = false;
             if (!otdw.isValid)
                 continue;
-            otdw.favorite.name = fav_name;
+            otdw.draw.favorite.name = fav_name;
             // Параметры проёмов, расширение пола и подготовка откосов.
             if (otdw.openings.IsEmpty () || otdw.surface_geometry)
                 continue;
-            Point2D wbegC = {otdw.begC.x, otdw.begC.y};
-            Point2D wendC = {otdw.endC.x, otdw.endC.y};
+            Point2D wbegC = {otdw.geom.seg.begC.x, otdw.geom.seg.begC.y};
+            Point2D wendC = {otdw.geom.seg.endC.x, otdw.geom.seg.endC.y};
             Sector walledge = {wbegC, wendC};
             GS::Optional<UnitVector_2D> walldir = walledge.GetDirection ();
             Geometry::Vector2<double> walldir_perp;
@@ -4052,6 +5204,9 @@ namespace Roombook {
                 // общая копия тянула бы флаги первого проёма во все остальные.
                 ReadParams windowParamsWork = windowParams;
                 Param_SetToWindows (op, paramToRead, windowParamsWork, otdw);
+                // Параметры нужны обеим копиям стены; откосы и расширение пола выпускает только исходный владелец.
+                if (wallIndex < finishWallCount && !openingWalls.IsEmpty ())
+                    continue;
                 // Пол расширяется до проверки флага откосов: выключенный откос не отменяет расширение.
                 if (!FloorContour_ExtendToOpening (otd, otdw, op))
                     msg_rep ("Floor opening extension",
@@ -4085,16 +5240,18 @@ namespace Roombook {
         // рассчитанную глубину legacy-стены того же основания/направления.
         // Материальные правила и геометрию surface-стены не меняем.
         for (auto &target : wallsForRules) {
-            if (!target.surface_geometry || target.base_type != API_WallID || target.slab_step)
+            if (!target.surface_geometry || target.draw.base_type != API_WallID || target.slab_step)
                 continue;
             bool offsetFound = false, offsetAmbiguous = false;
             double matchedOffset = 0;
-            const double targetDx = target.endC.x - target.begC.x, targetDy = target.endC.y - target.begC.y;
+            const double targetDx = target.geom.seg.endC.x - target.geom.seg.begC.x,
+                         targetDy = target.geom.seg.endC.y - target.geom.seg.begC.y;
             for (const auto &source : wallsForRules) {
                 if (source.surface_geometry || !source.isValid || !source.floor_core_offset_valid ||
-                    source.base_guid != target.base_guid)
+                    source.draw.base_guid != target.draw.base_guid)
                     continue;
-                const double sourceDx = source.endC.x - source.begC.x, sourceDy = source.endC.y - source.begC.y;
+                const double sourceDx = source.geom.seg.endC.x - source.geom.seg.begC.x,
+                             sourceDy = source.geom.seg.endC.y - source.geom.seg.begC.y;
                 const double directionLengthProduct = std::hypot (targetDx, targetDy) * std::hypot (sourceDx, sourceDy);
                 if (directionLengthProduct <= 1.e-12)
                     continue;
@@ -4113,8 +5270,9 @@ namespace Roombook {
             target.floor_core_offset_valid = offsetFound && !offsetAmbiguous;
             target.floor_core_offset = target.floor_core_offset_valid ? matchedOffset : 0;
         }
-        // Отверстия и высотные полосы основной отделки.
-        for (OtdWall &otdw : wallsForRules) {
+        // Отверстия и высотные полосы основной отделки; служебные владельцы проёмов не создают стены.
+        for (UIndex wallIndex = 0; wallIndex < finishWallCount; ++wallIndex) {
+            OtdWall &otdw = wallsForRules[wallIndex];
             // Основную отделку строим по поверхностям (для сложных стен/балок) или по аналитическим участкам (для
             // обычных стен).
             if (!otdw.isValid)
@@ -4122,14 +5280,14 @@ namespace Roombook {
             if (otdw.surface_geometry) {
                 bool analytic = false;
                 for (const auto &source : otd.surfaceCandidates.sources)
-                    analytic = analytic || (source.baseGuid == otdw.base_guid &&
+                    analytic = analytic || (source.baseGuid == otdw.draw.base_guid &&
                                             source.origin == RoomSurfaceOrigin::PreparedAnalytic);
                 if (!SurfaceOpenings_Link (otdw, openingOwners, analytic)) {
                     otdw.isValid = false;
                     msg_rep ("Surface finish",
                              "Opening ownership is ambiguous or unrepresentable",
                              APIERR_BADPARS,
-                             otdw.base_guid);
+                             otdw.draw.base_guid);
                     continue;
                 }
             }
@@ -4157,11 +5315,13 @@ namespace Roombook {
             if (!wall.slab_step || !wall.isValid)
                 continue;
             API_Element settings = {};
-            wall.slab_step_writer_eligible = OtdWall_GetDefault_Wall (wall.favorite.name, settings) &&
-                                             settings.wall.modelElemStructureType != API_ProfileStructure;
+            wall.slab_step_writer_eligible =
+                Wall_GetDefault (wall.draw.favorite.name, wall.draw.type, settings, false) &&
+                settings.wall.modelElemStructureType != API_ProfileStructure;
         }
         // Окончательный массив подготовленной отделки; создание в модели выполняется позже.
         otd.otdwall = opw;
+        return true;
     }
 
     // Вырезы контакта представлены проёмами; legacy-проёмы повторно не добавляются.
@@ -4184,8 +5344,8 @@ namespace Roombook {
                 if (piece.baseType == API_WallID) {
                     const double dx = base.wall.endC.x - base.wall.begC.x;
                     const double dy = base.wall.endC.y - base.wall.begC.y;
-                    const double wx = wall.endC.x - wall.begC.x;
-                    const double wy = wall.endC.y - wall.begC.y;
+                    const double wx = wall.geom.seg.endC.x - wall.geom.seg.begC.x;
+                    const double wy = wall.geom.seg.endC.y - wall.geom.seg.begC.y;
                     // Торец не имеет стороны многослойки; боковая грань использует исходное направление.
                     if (std::fabs (dx * wy - dy * wx) > 1e-6 * std::hypot (dx, dy) * std::hypot (wx, wy))
                         continue; // Из-за одной ошибки нельзя прерывать всю работу
@@ -4193,7 +5353,7 @@ namespace Roombook {
                     wall.base_th = base.wall.thickness;
                 }
                 if (forceType != NoSet)
-                    wall.type = forceType;
+                    wall.draw.type = forceType;
             }
             room.otdwall.Append (walls);
             return true;
@@ -4203,23 +5363,26 @@ namespace Roombook {
             return false;
         for (auto &slab : slabs) {
             if (forceType != NoSet)
-                slab.type = forceType;
-            if ((slab.type == Floor && !room.has_floor) || (slab.type == Ceil && !room.has_ceil))
+                slab.draw.type = forceType;
+            if ((slab.draw.type == Floor && !room.has_floor) || (slab.draw.type == Ceil && !room.has_ceil))
                 continue;
-            slab.material = slab.type == Floor ? room.om_floor : room.om_ceil;
+            slab.draw.material = slab.draw.type == Floor ? room.om_floor : room.om_ceil;
             room.otdslab.Push (std::move (slab));
         }
         return true;
     }
 
     // Подготавливает геометрию для прежних материальных правил и writers; элементы здесь не создаются.
-    static bool OtdRoom_BuildSurfaceFinishes (OtdRoom &room, RoomSurfaceCache *cache) {
+    static bool OtdRoom_BuildSurfaceFinishes (OtdRoom &room,
+                                              const UnicGuid &finclassguids,
+                                              RoomSurfaceCache *cache,
+                                              MixedFloorProvenance &floorProvenance) {
         // Обычные (не профильные) стены сохраняем из аналитического расчёта по wallPart (как в v1.77).
         // 3D-поверхности строятся только для сложных стен (профили, наклонные, дуги) и балок.
         GS::Array<OtdWall> ordinaryWalls;
         for (const auto &wall : room.otdwall) {
-            if (wall.base_type == API_WallID) {
-                const auto base = Element_Read (wall.base_guid, cache);
+            if (wall.draw.base_type == API_WallID) {
+                const auto base = Element_Read (wall.draw.base_guid, cache);
                 if (base.error == NoError && OtdWall_IsOrdinary (base.element)) {
                     ordinaryWalls.Push (wall);
                 }
@@ -4229,6 +5392,7 @@ namespace Roombook {
         room.otdwall.Clear ();
         room.otdslab.Clear ();
         bool hasSkippedPieces = false;
+        bool hasAmbiguousPieces = false;
         GS::Array<OtdSlab> slabFinishes;
         auto slabSources = room.slabSources;
         auto floors = room.floorslab;
@@ -4254,40 +5418,60 @@ namespace Roombook {
         }
         OtdSlab nominalFloor = room.poly;
         nominalFloor.zBottom = room.zBottom;
-        nominalFloor.material = room.om_floor;
+        nominalFloor.draw.material = room.om_floor;
         OtdSlab nominalCeiling = room.poly;
         nominalCeiling.zBottom = room.zBottom + room.height_ceil;
-        nominalCeiling.material = room.om_ceil;
+        nominalCeiling.draw.material = room.om_ceil;
         double rejectedSlabArea = 0;
-        if ((room.has_floor && !OtdSlab_BuildProjectedFinishes (room.surfaceSnapshot,
-                                                                slabSources,
-                                                                floors,
-                                                                Floor,
-                                                                room.floorInd,
-                                                                slabFinishes,
-                                                                rejectedSlabArea,
-                                                                &nominalFloor,
-                                                                room.floor_by_slab,
-                                                                &room.otdwall,
-                                                                &room.preparedSlabs)) ||
-            (room.has_ceil && !OtdSlab_BuildProjectedFinishes (room.surfaceSnapshot,
-                                                               slabSources,
-                                                               ceilings,
-                                                               Ceil,
-                                                               room.floorInd,
-                                                               slabFinishes,
-                                                               rejectedSlabArea,
-                                                               &nominalCeiling,
-                                                               room.ceil_by_slab,
-                                                               &room.otdwall,
-                                                               &room.preparedSlabs))) {
+        if (room.has_floor && !room.meshFloorSources.IsEmpty ()) {
+            MixedFloorGeometry mixed;
+            if (!OtdSlab_BuildFiniteMixedGeometryWithProvenance (room.surfaceSnapshot,
+                                                                 slabSources,
+                                                                 floors,
+                                                                 room.floorInd,
+                                                                 nominalFloor,
+                                                                 room.floor_by_slab,
+                                                                 room.preparedSlabs,
+                                                                 room.zBottom,
+                                                                 room.meshFloorSources,
+                                                                 mixed,
+                                                                 floorProvenance))
+                return false;
+            slabFinishes.Append (mixed.floors);
+            room.otdwall.Append (mixed.steps);
+            rejectedSlabArea += mixed.rejectedArea;
+        } else if (room.has_floor && !OtdSlab_BuildProjectedFinishes (room.surfaceSnapshot,
+                                                                      slabSources,
+                                                                      floors,
+                                                                      Floor,
+                                                                      room.floorInd,
+                                                                      slabFinishes,
+                                                                      rejectedSlabArea,
+                                                                      &nominalFloor,
+                                                                      room.floor_by_slab,
+                                                                      &room.otdwall,
+                                                                      &room.preparedSlabs)) {
+            msg_rep ("Surface finish", "Invalid original slab projection", APIERR_BADPARS, room.zone_guid);
+            return false;
+        }
+        if (room.has_ceil && !OtdSlab_BuildProjectedFinishes (room.surfaceSnapshot,
+                                                              slabSources,
+                                                              ceilings,
+                                                              Ceil,
+                                                              room.floorInd,
+                                                              slabFinishes,
+                                                              rejectedSlabArea,
+                                                              &nominalCeiling,
+                                                              room.ceil_by_slab,
+                                                              &room.otdwall,
+                                                              &room.preparedSlabs)) {
             msg_rep ("Surface finish", "Invalid original slab projection", APIERR_BADPARS, room.zone_guid);
             return false;
         }
         if (rejectedSlabArea > 1e-6)
             msg_rep ("Surface finish", "Ambiguous projected slab ownership skipped", APIERR_BADPARS, room.zone_guid);
         for (auto &slab : slabFinishes) {
-            slab.material = slab.type == Floor ? room.om_floor : room.om_ceil;
+            slab.draw.material = slab.draw.type == Floor ? room.om_floor : room.om_ceil;
             room.otdslab.Push (std::move (slab));
         }
         // Убираем лишь внутренние швы совместимых контактов; исходный partition сохраняет provenance.
@@ -4297,6 +5481,13 @@ namespace Roombook {
             return false;
         }
         for (const auto &piece : grouped) {
+            // Незаявленная поверхность не является отказом writer; владельца неоднозначной не выдумываем.
+            if (piece.status == RoomSurfacePieceStatus::Unmatched && piece.sources.IsEmpty ())
+                continue;
+            if (piece.status == RoomSurfacePieceStatus::Ambiguous) {
+                hasAmbiguousPieces = true;
+                continue;
+            }
             // beamPart — единственный маршрут балок: не дублируем совпавшие грани partition.
             if (piece.baseType == API_BeamID)
                 continue;
@@ -4316,11 +5507,11 @@ namespace Roombook {
         // Сверка выполняется после сбора всех граней: соседние куски задают внутренние разрывы.
         GS::Array<OtdWall> correctedWalls;
         for (const auto &wall : room.otdwall) {
-            if (wall.base_type != API_WallID || !wall.surface_geometry || wall.slab_step) {
+            if (wall.draw.base_type != API_WallID || !wall.surface_geometry || wall.slab_step) {
                 correctedWalls.Push (wall);
                 continue;
             }
-            const auto base = Element_Read (wall.base_guid, cache);
+            const auto base = Element_Read (wall.draw.base_guid, cache);
             if (base.error != NoError)
                 continue; // Из-за одной ошибки нельзя прерывать всю работу
             // Для дуги tBeg/tEnd нельзя интерпретировать как расстояния по хорде.
@@ -4337,13 +5528,33 @@ namespace Roombook {
                                                              room.otdwall);
             if (corrected.IsEmpty ()) {
                 hasSkippedPieces = true;
-                msg_rep ("Surface finish", "WallPart contact rejected", APIERR_BADPARS, wall.base_guid);
+                msg_rep ("Surface finish", "WallPart contact rejected", APIERR_BADPARS, wall.draw.base_guid);
             }
             correctedWalls.Append (corrected);
         }
         room.otdwall = std::move (correctedWalls);
         room.otdwall.Append (ordinaryWalls);
+        GS::HashTable<API_Guid, const API_BeamPart *> shortestBeamParts;
         for (const auto &part : room.surfaceCandidates.beamParts) {
+            if (!std::isfinite (part.tBeg) || !std::isfinite (part.tEnd) || part.tEnd < part.tBeg)
+                continue;
+            auto shortest = shortestBeamParts.GetPtr (part.guid);
+            if (shortest == nullptr)
+                shortestBeamParts.Add (part.guid, &part);
+            else if (part.tEnd - part.tBeg < (*shortest)->tEnd - (*shortest)->tBeg)
+                *shortest = &part;
+        }
+        GS::HashTable<API_Guid, bool> wholeZoneBeams;
+        for (const auto &part : room.surfaceCandidates.beamParts) {
+            API_Guid classguid = APINULLGuid;
+            if (Class_IsElementFinClass (part.guid, finclassguids, classguid, cache))
+                continue;
+            if (!std::isfinite (part.tBeg) || !std::isfinite (part.tEnd) || part.tEnd < part.tBeg) {
+                msg_rep ("Surface finish", "Invalid beam contact interval", APIERR_BADPARS, part.guid);
+                continue;
+            }
+            if (wholeZoneBeams.ContainsKey (part.guid))
+                continue;
             const RoomSurfaceSource *source = nullptr;
             Int32 sourceCount = 0;
             for (const auto &candidate : room.surfaceCandidates.sources) {
@@ -4358,9 +5569,22 @@ namespace Roombook {
                 continue; // Из-за одной ошибки нельзя прерывать всю работу: другие beamParts могут быть корректны.
             }
             const ElementRead beamRead = Element_Read (part.guid, cache);
-            if (beamRead.error != NoError)
+            if (beamRead.error != NoError) {
+                msg_rep ("Surface finish", "Failed to read beam", beamRead.error, part.guid);
                 continue; // Из-за одной ошибки нельзя прерывать всю работу
+            }
             const API_Element &beam = beamRead.element;
+            const API_BeamPart *selectedPart = &part;
+            const double axisLength =
+                std::hypot (beam.beam.endC.x - beam.beam.begC.x, beam.beam.endC.y - beam.beam.begC.y);
+            const auto shortest = shortestBeamParts.GetPtr (part.guid);
+            if (room.surfaceSnapshot.IsComplete () && shortest != nullptr && std::isfinite (axisLength) &&
+                axisLength > DistanceTolerance &&
+                ((*shortest)->tEnd - (*shortest)->tBeg) / axisLength <= DistanceTolerance) {
+                // Полная зона уже включает все связные контакты; остальные relations этой балки не дублируем.
+                selectedPart = *shortest;
+                wholeZoneBeams.Add (part.guid, true);
+            }
             // Определяем наивысшую точку балки
             double beamTop = -1e9;
             for (const auto &body : source->snapshot.bodies) {
@@ -4379,14 +5603,17 @@ namespace Roombook {
             const auto finish = RoomBeamFinish_Build (*source,
                                                       beam.beam.begC,
                                                       beam.beam.endC,
-                                                      part.tBeg,
-                                                      part.tEnd,
+                                                      selectedPart->tBeg,
+                                                      selectedPart->tEnd,
                                                       room.zBottom,
                                                       room.zBottom + room.height,
                                                       result,
                                                       &room.surfaceSnapshot);
             if (!result.errors.IsEmpty ()) {
-                msg_rep ("Surface finish", "Unsupported beam geometry", APIERR_BADPARS, part.guid);
+                msg_rep ("Surface finish",
+                         GS::UniString ("Beam finish rejected: ") + result.errors[0].stage,
+                         result.errors[0].code,
+                         part.guid);
                 continue; // Из-за одной ошибки нельзя прерывать всю работу
             }
             for (const auto &beamPiece : finish.pieces) {
@@ -4449,8 +5676,33 @@ namespace Roombook {
                 }
             }
         }
+        if (hasAmbiguousPieces)
+            msg_rep ("Surface finish", "Ambiguous surface contacts were not assigned", NoError, room.zone_guid);
         if (hasSkippedPieces)
-            msg_rep ("Surface finish", "Unresolved or unsupported finish pieces were skipped", NoError, room.zone_guid);
+            msg_rep ("Surface finish", "Unsupported finish pieces were skipped", NoError, room.zone_guid);
+        return true;
+    }
+
+    // 3D читается после флагов комнаты; частичный набор снимков не публикуется.
+    static bool OtdRoom_PrepareMeshFloorSources (OtdRoom &room, RoomSurfaceCache *cache) {
+        if (!room.has_floor || room.meshFloorSources.IsEmpty ())
+            return true;
+        auto sources = room.meshFloorSources;
+        for (auto &mesh : sources) {
+            const auto &source = mesh.surface;
+            if (source.baseType != API_MeshID || source.baseGuid == APINULLGuid ||
+                source.geometryGuid != source.baseGuid || source.origin != RoomSurfaceOrigin::Native3D)
+                return false;
+            const auto read = Element_Read (source.baseGuid, cache);
+            if (read.error != NoError || read.element.header.guid != source.baseGuid ||
+                GetElemTypeID (read.element.header) != API_MeshID || read.element.mesh.skirt < 1 ||
+                read.element.mesh.skirt > 3 || mesh.hasBottom != (read.element.mesh.skirt == 1))
+                return false;
+            mesh.surface.snapshot = RoomSurfaces_Read (read.element.header, cache);
+            if (!mesh.surface.snapshot.IsComplete () || mesh.surface.snapshot.guid != source.geometryGuid)
+                return false;
+        }
+        room.meshFloorSources = std::move (sources);
         return true;
     }
 
@@ -4490,13 +5742,30 @@ namespace Roombook {
             Param_SetToRooms (material_dict, otd, context.paramToRead, roomParamsWork);
             if (!otd.isValid)
                 continue;
+            if (!OtdRoom_PrepareMeshFloorSources (otd, &context.surfaceCache)) {
+                msg_rep ("Mesh floor", "Incomplete source snapshot; stopped before writing", APIERR_BADPARS, zoneGuid);
+                return false;
+            }
             // Сохраняем исходную привязку проёмов до замены стен поверхностными.
             GS::Array<OtdWall> openingWalls;
             for (const auto &wall : otd.otdwall) {
                 openingWalls.Push (wall); // Все участки нужны также для стороны полного состава.
             }
-            if (!OtdRoom_BuildSurfaceFinishes (otd, &context.surfaceCache))
-                continue; // Из-за одной ошибки нельзя прерывать всю работу
+            MixedFloorProvenance floorProvenance;
+            if (!OtdRoom_BuildSurfaceFinishes (otd, context.finclassguids, &context.surfaceCache, floorProvenance)) {
+                if (otd.has_floor && !otd.meshFloorSources.IsEmpty ()) {
+                    msg_rep (
+                        "Mesh floor", "Mixed geometry refused; existing finishes retained", APIERR_BADPARS, zoneGuid);
+                    return false;
+                }
+                continue;
+            }
+            if (!MeshFloor_ValidateSourceIdentity (otd, floorProvenance) ||
+                !MeshFloor_ValidateFinalDomains (otd, floorProvenance)) {
+                msg_rep (
+                    "Mesh floor", "Invalid source provenance; existing finishes retained", APIERR_BADPARS, zoneGuid);
+                return false;
+            }
             if (otd.otdwall.IsEmpty () && otd.otdslab.IsEmpty () && openingWalls.IsEmpty ())
                 continue;
             // Полы и потолки: материалы и избранное для подготовленных контуров.
@@ -4510,15 +5779,29 @@ namespace Roombook {
                                      has_base_element);
             // Стены и откосы: здесь же пол расширяется в проёмы, независимо от флага создания откосов.
             // Откосы нужны и при отсутствии представимых основных surface-стен.
-            if (otd.otdwall.IsEmpty () && openingWalls.IsEmpty ())
+            Geometry::MultiPolygon2D profileExclusion;
+            if (!ProfileWalls_ReadFloorExclusion (otd, context, profileExclusion)) {
+                msg_rep ("Profile floor",
+                         "Unsupported or incomplete wall section; existing finishes retained",
+                         APIERR_BADPARS,
+                         zoneGuid);
+                return false;
+            }
+            const bool hasWalls = !otd.otdwall.IsEmpty () || !openingWalls.IsEmpty ();
+            if (!hasWalls && profileExclusion.IsEmpty ())
                 continue;
-            OtdWall_ProcessFinishes (otd,
-                                     openingWalls,
-                                     context.paramToRead,
-                                     context.param_composite,
-                                     context.paramDict_favorite,
-                                     readParams.windowParams,
-                                     paramCompositeToRead);
+            if (hasWalls && !OtdWall_ProcessFinishes (otd,
+                                                      openingWalls,
+                                                      context.paramToRead,
+                                                      context.param_composite,
+                                                      context.paramDict_favorite,
+                                                      readParams.windowParams,
+                                                      paramCompositeToRead,
+                                                      floorProvenance)) {
+                msg_rep (
+                    "Mesh floor", "Uncovered opening demand; existing finishes retained", APIERR_BADPARS, zoneGuid);
+                return false;
+            }
             // Окончательные контуры: расширение пола до ядра, устранение перекрытия контактов, нижние отрезки
             // плинтусов.
             if (!FloorContours_ExtendToCore (otd))
@@ -4526,13 +5809,43 @@ namespace Roombook {
                          "Contour topology changed; original floor retained",
                          APIERR_BADPARS,
                          zoneGuid);
+            if (!MeshFloor_ValidateFinalDomains (otd, floorProvenance)) {
+                msg_rep ("Mesh floor", "Final domains changed; existing finishes retained", APIERR_BADPARS, zoneGuid);
+                return false;
+            }
+            // После расширений и проверки provenance: дробление пола больше не меняет её используемые индексы.
+            GS::Array<OtdDrawData> profileFloorLinks;
+            if (!profileExclusion.IsEmpty ())
+                for (const auto &floor : otd.otdslab)
+                    if (floor.draw.type == Floor && floor.draw.otd_guid != APINULLGuid)
+                        profileFloorLinks.Push (floor.draw);
+            if (!FloorContours_SubtractProfileWalls (otd, profileExclusion))
+                return false;
+            // Полностью вырезанный пол возвращаем в список удаления: ProcessFinishes уже изъял его GUID.
+            for (const auto &link : profileFloorLinks) {
+                bool retained = false;
+                for (const auto &floor : otd.otdslab)
+                    retained = retained || floor.draw.otd_guid == link.otd_guid;
+                if (retained)
+                    continue;
+                auto *byBase = context.exsistot_byzone.GetPtr (zoneGuid);
+                auto *byType = byBase != nullptr ? byBase->GetPtr (link.base_guid) : nullptr;
+                auto *unused = byType != nullptr ? byType->GetPtr (link.type) : nullptr;
+                if (unused == nullptr && byType != nullptr)
+                    unused = byType->GetPtr (NoSet);
+                if (unused == nullptr)
+                    return false;
+                unused->Add (link.otd_guid, true);
+            }
             if (!SlabContacts_DeduplicateAccepted (otd))
                 msg_rep ("Surface finish",
                          "Accepted slab side remainder is ambiguous or unrepresentable",
                          APIERR_BADPARS,
                          zoneGuid);
-            if (!FloorSkirtingSegments_Build (otd))
-                msg_rep ("Floor skirting", "Cannot prepare clean bottom segments", APIERR_BADPARS, zoneGuid);
+            if (!OtdBeam_ProcessFinishes (otd, context.paramDict_favorite, context.param_composite)) {
+                msg_rep ("Skirting", "Cannot prepare final floor/ceiling beam arrays", APIERR_BADPARS, zoneGuid);
+                return false;
+            }
         } // Обработка зон
         return true;
     }
@@ -4542,6 +5855,10 @@ namespace Roombook {
     bool Otd_IsNativeTypeForFinish (TypeOtd type_otd, API_ElemTypeID type_subguid) {
         bool correct_type = true;
         switch (type_otd) {
+        case Floor_Skirting:
+        case Ceil_Cornice:
+            correct_type = type_subguid == API_BeamID || type_subguid == API_WallID || type_subguid == API_ObjectID;
+            break;
         case Wall_Main:
         case Wall_Up:
         case Wall_Down:
@@ -4554,7 +5871,8 @@ namespace Roombook {
             correct_type = (type_subguid == API_WallID || type_subguid == API_ObjectID || type_subguid == API_BeamID);
             break;
         case Floor:
-            correct_type = (type_subguid == API_SlabID || type_subguid == API_ObjectID || type_subguid == API_WallID);
+            correct_type = (type_subguid == API_SlabID || type_subguid == API_ObjectID || type_subguid == API_WallID ||
+                            type_subguid == API_RoofID);
             break;
         case Ceil:
             correct_type = (type_subguid == API_SlabID || type_subguid == API_ObjectID || type_subguid == API_WallID);
@@ -4792,12 +6110,12 @@ namespace Roombook {
         OtdSlab otdslab;
         ConstructPolygon2DFromElementMemo (zonememo, otdslab.poly);
     #ifdef ServerMainVers_2700
-        otdslab.material.material = zoneelement.zone.material.ToInt32_Deprecated ();
+        otdslab.draw.material.material = zoneelement.zone.material.ToInt32_Deprecated ();
     #else
-        otdslab.material.material = zoneelement.zone.material;
+        otdslab.draw.material.material = zoneelement.zone.material;
     #endif
-        otdslab.base_type = API_ZoneID;
-        otdslab.base_guid = zoneGuid;
+        otdslab.draw.base_type = API_ZoneID;
+        otdslab.draw.base_guid = zoneGuid;
         otdslab.floorInd = zoneelement.header.floorInd;
         roominfo.poly = otdslab;
         if (!walledges.IsEmpty ()) {
@@ -5120,7 +6438,6 @@ namespace Roombook {
             opinwall.width = newRight - newLeft;
             opinwall.height = op.height;
             opinwall.zBottom = zBottom + op.lower;
-
             double newCenter = (newLeft + newRight) / 2.0;
             if (!is_fliped) {
                 opinwall.objLoc = newCenter - tBeg;
@@ -5160,16 +6477,15 @@ namespace Roombook {
         double walledgedr = sqrt (walledgedx * walledgedx + walledgedy * walledgedy);
         if (walledgedr < min_dim)
             return false;
-        wallotd.base_guid = wallguid;
-        wallotd.height = height;
+        wallotd.draw.base_guid = wallguid;
+        wallotd.geom.height = height;
         wallotd.base_th = thickness;
-        wallotd.zBottom = zBottom;
         wallotd.base_flipped = is_fliped;
-        wallotd.floorInd = floorInd;
-        wallotd.begC = {walledge.c1.x, walledge.c1.y};
-        wallotd.endC = {walledge.c2.x, walledge.c2.y};
-        wallotd.base_type = API_WallID;
-        wallotd.type = Wall_Main;
+        wallotd.geom.floorInd = floorInd;
+        wallotd.geom.seg.begC = {walledge.c1.x, walledge.c1.y, zBottom};
+        wallotd.geom.seg.endC = {walledge.c2.x, walledge.c2.y, zBottom};
+        wallotd.draw.base_type = API_WallID;
+        wallotd.draw.type = Wall_Main;
         return true;
     }
 
@@ -5409,13 +6725,7 @@ namespace Roombook {
     // Подготовка словаря с параметрами для чтения из стен/колонн/балок
     // -----------------------------------------------------------------------------
     static void Param_GetForBase (ParamDictValue &paramDict, ParamValue &param_composite) {
-        // Поиск свойств со включением слоя отделки и имени
-        GS::UniString propdesc_onoff = "some_stuff_layer_onoff";
-        GS::UniString propdesc_desc = "some_stuff_layer_description";
-        GS::UniString propdesc_fav = "some_stuff_layer_favorite_name";
-        GS::UniString propdesc_hasfin = "some_stuff_layer_has_finish";
-        GS::UniString propdesc_hasfin_elem = "some_stuff_element_has_finish";
-        GS::UniString propdesc_onoff_elem = "some_stuff_element_onoff";
+
         GS::UniString rawName_onoff;
         GS::UniString rawName_desc;
         GS::UniString rawName_fav;
@@ -6318,7 +7628,7 @@ namespace Roombook {
         }
         // Отдельная глубина до фильтрации h/l и до добавления состава избранного.
         if (floorWall != nullptr && !base_composite_ptr->composite.IsEmpty () &&
-            base_composite_ptr->composite_type == API_CompositeStructure && floorWall->base_type == API_WallID &&
+            base_composite_ptr->composite_type == API_CompositeStructure && floorWall->draw.base_type == API_WallID &&
             !floorWall->slab_step) {
             floorWall->floor_core_offset_valid = FloorCoreGeometry::Offset (base_composite_ptr->composite,
                                                                             base_composite_ptr->composite.GetSize (),
@@ -6333,9 +7643,9 @@ namespace Roombook {
 
     // -----------------------------------------------------------------------------
     // Запись прочитанных свойств в отделочные стены
-    // -----------------------------------------------------------------------------
     // Добавляет слои от выбранной стороны до первого слоя с точным типом APICWallComp_Core включительно.
     // Уже накопленные слои не очищает; если ядра нет, добавляет весь состав.
+    // -----------------------------------------------------------------------------
     static void ParamComposite_CollectLayersToCore (const ParamComposite &base_composite,
                                                     bool base_flipped,
                                                     Int32 ncomp,
@@ -6355,8 +7665,10 @@ namespace Roombook {
         }
     }
 
+    // -----------------------------------------------------------------------------
     // Разбирает метки l[1:], h и f в слоях выбранной стороны и добавляет результат к переданному составу.
     // Собирает имя избранного; для последнего слоя с structype == -1 читает покрытие строительного материала.
+    // -----------------------------------------------------------------------------
     void Param_SetComposite (const ParamComposite &base_composite,
                              bool base_flipped,
                              GS::Array<ParamValueComposite> &otdcpmpoosite,
@@ -6452,14 +7764,15 @@ namespace Roombook {
 
     // -----------------------------------------------------------------------------
     // Задание прочитанных параметров для окон
-    // -----------------------------------------------------------------------------
     // После проверки словаря задаёт глубину по толщине стены, затем уточняет её по frame, sill и стороне откоса.
-    // При отсутствии словаря выходит без изменений; при отказе чтения или невалидных frame/sill оставляет толщину
-    // стены.
+    // При отсутствии словаря сохраняет глубину откоса; при отказе чтения или невалидных frame / sill оставляет
+    // толщину стены. Добавка пола по коробке сбрасывается перед чтением.
+    // -----------------------------------------------------------------------------
     void Param_SetToWindows (OtdOpening &op,
                              ParamDictElement &paramToRead,
                              ReadParams &readparams,
                              const OtdWall &otdw) {
+        op.base_frame_width = 0;
         API_Guid base_guid = op.base_guid;
         if (!paramToRead.ContainsKey (base_guid)) {
             return;
@@ -6487,6 +7800,8 @@ namespace Roombook {
 
         // Коробка разделяет откосы двух помещений: глубины зависят от стороны отделки.
         op.base_reveal_width = op.reveal_from_sill ? sill : otdw.base_th - sill - frame;
+        // Полы встречаются в середине коробки, а сами откосы заканчиваются на её гранях.
+        op.base_frame_width = std::isfinite (frame) && frame > 0 ? frame : 0;
 
         // Включение/отключение создания откосов по свойству элемента.
         // Если свойства нет или оно не валидно — откосы создаются (create_reveal остаётся true).
@@ -6500,14 +7815,12 @@ namespace Roombook {
 
     // -----------------------------------------------------------------------------
     // Получение полигона зоны (в том числе стен, колонн)
+    // Добавляет рёбра редукции в reducededges по типам rest, wall, column и gable; затем освобождает handles.
+    // При отсутствии reducededges или некорректных массивах выходит до освобождения handles.
     // -----------------------------------------------------------------------------
     #ifdef ServerMainVers_2700
-    // Добавляет рёбра редукции в reducededges по типам rest, wall, column и gable; затем освобождает handles.
-    // При отсутствии reducededges или некорректных массивах выходит до освобождения handles.
     void RoomReductionPolyProc (const API_RoomReductionPolyType *roomRed)
     #else
-    // Добавляет рёбра редукции в reducededges по типам rest, wall, column и gable; затем освобождает handles.
-    // При отсутствии reducededges или некорректных массивах выходит до освобождения handles.
     static void __ACENV_CALL RoomRedProc (const API_RoomReductionPolyType *roomRed)
     #endif
     {
@@ -6557,9 +7870,9 @@ namespace Roombook {
 
     // -----------------------------------------------------------------------------
     // Получение очищенного полигона зоны, включая стены, колонны
-    // -----------------------------------------------------------------------------
     // Получает рёбра редукций зоны и оставляет рёбра стен, колонн и скатов, совпавшие с restedges редукции.
     // В restedges возвращает исходные рёбра полигона с нулевым разделителем после каждого контура.
+    // -----------------------------------------------------------------------------
     static void OtdRoom_GetEdges (const API_ElementMemo &zonememo,
                                   API_Element &zoneelement,
                                   GS::Array<Sector> &walledges,
@@ -6678,19 +7991,18 @@ namespace Roombook {
                                                  const Point2D &begC,
                                                  const Point2D &endC,
                                                  API_ElemTypeID draw_type) {
-        wallotd.base_guid = otdw.base_guid;
-        wallotd.height = height;
-        wallotd.zBottom = zBottom;
-        wallotd.width = width;
-        wallotd.length = length;
-        wallotd.floorInd = otdw.floorInd;
-        wallotd.begC = {begC.x, begC.y};
-        wallotd.endC = {endC.x, endC.y};
-        wallotd.material = otdw.material;
+        wallotd.draw.base_guid = otdw.draw.base_guid;
+        wallotd.geom.height = height;
+        wallotd.geom.width = width;
+        wallotd.geom.length = length;
+        wallotd.geom.floorInd = otdw.geom.floorInd;
+        wallotd.geom.seg.begC = {begC.x, begC.y, zBottom};
+        wallotd.geom.seg.endC = {endC.x, endC.y, zBottom};
+        wallotd.draw.material = otdw.draw.material;
         wallotd.base_composite = otdw.base_composite;
-        wallotd.base_type = API_WindowID;
-        wallotd.draw_type = draw_type;
-        wallotd.type = Reveal_Main;
+        wallotd.draw.base_type = API_WindowID;
+        wallotd.draw.draw_type = draw_type;
+        wallotd.draw.type = Reveal_Main;
     }
 
     // Вычисляет вертикальное пересечение проёма со стеной и признак выхода проёма выше стены.
@@ -6699,10 +8011,11 @@ namespace Roombook {
         const OtdWall &otdw, const OtdOpening &op, bool &is_upper_wall, double &zDown, double &height) {
         is_upper_wall = false; // Проём заканчивается выше стены, построение
                                // верхнего откоса не требуется
-        if ((op.zBottom + op.height) > (otdw.zBottom + otdw.height))
+        const double zBottom = OtdLinearSegment_GetZBottom (otdw.geom);
+        if ((op.zBottom + op.height) > (zBottom + otdw.geom.height))
             is_upper_wall = true;
-        double zDup = fmin (op.zBottom + op.height, otdw.zBottom + otdw.height);
-        zDown = fmax (op.zBottom, otdw.zBottom);
+        double zDup = fmin (op.zBottom + op.height, zBottom + otdw.geom.height);
+        zDown = fmax (op.zBottom, zBottom);
         height = fmin (op.height, zDup - zDown);
         if (height < min_dim)
             return false;
@@ -6718,20 +8031,20 @@ namespace Roombook {
                                                        Point2D &left_end,
                                                        Point2D &right_begin,
                                                        Point2D &right_end) {
-        double dx = -otdw.endC.x + otdw.begC.x;
-        double dy = -otdw.endC.y + otdw.begC.y;
+        double dx = -otdw.geom.seg.endC.x + otdw.geom.seg.begC.x;
+        double dy = -otdw.geom.seg.endC.y + otdw.geom.seg.begC.y;
         double dr = sqrt (dx * dx + dy * dy);
         if (is_equal (dr, 0))
             return false;
         double lambda = 0;
         lambda = (op.objLoc - op.width / 2) / dr;
-        left_begin.x = otdw.begC.x - dx * lambda;
-        left_begin.y = otdw.begC.y - dy * lambda;
+        left_begin.x = otdw.geom.seg.begC.x - dx * lambda;
+        left_begin.y = otdw.geom.seg.begC.y - dy * lambda;
         left_end.x = left_begin.x + walldir_perp.x * op.base_reveal_width;
         left_end.y = left_begin.y + walldir_perp.y * op.base_reveal_width;
         lambda = (op.objLoc + op.width / 2) / dr;
-        right_begin.x = otdw.begC.x - dx * lambda;
-        right_begin.y = otdw.begC.y - dy * lambda;
+        right_begin.x = otdw.geom.seg.begC.x - dx * lambda;
+        right_begin.y = otdw.geom.seg.begC.y - dy * lambda;
         right_end.x = right_begin.x + walldir_perp.x * op.base_reveal_width;
         right_end.y = right_begin.y + walldir_perp.y * op.base_reveal_width;
         return true;
@@ -6831,6 +8144,7 @@ namespace Roombook {
                                              walledge.c2,
                                              walledge.c1,
                                              API_BeamID);
+            wallotd.draw.is_upper_reveal = true;
             op.has_reveal = true;
             OtdWall_Delim_All (opw,
                                wallotd,
@@ -6857,31 +8171,31 @@ namespace Roombook {
     static TypeOtd OtdWall_GetFinishBandType (const OtdWall &otdw, TypeOtd type) {
         switch (type) {
         case Wall_Down:
-            if (otdw.base_type == API_SlabID)
+            if (otdw.draw.base_type == API_SlabID)
                 type = Floor;
-            if (otdw.base_type == API_WindowID)
+            if (otdw.draw.base_type == API_WindowID)
                 type = Reveal_Down;
-            if (otdw.type == Ceil)
+            if (otdw.draw.type == Ceil)
                 type = Ceil;
-            if (otdw.type == Floor)
+            if (otdw.draw.type == Floor)
                 type = Floor;
             break;
         case Wall_Main:
-            if (otdw.base_type == API_ColumnID)
+            if (otdw.draw.base_type == API_ColumnID)
                 type = Column;
-            if (otdw.base_type == API_WindowID)
+            if (otdw.draw.base_type == API_WindowID)
                 type = Reveal_Main;
-            if (otdw.type == Ceil)
+            if (otdw.draw.type == Ceil)
                 type = Ceil;
-            if (otdw.type == Floor)
+            if (otdw.draw.type == Floor)
                 type = Floor;
             break;
         case Wall_Up:
-            if (otdw.type == Ceil)
+            if (otdw.draw.type == Ceil)
                 type = Ceil;
-            if (otdw.type == Floor)
+            if (otdw.draw.type == Floor)
                 type = Floor;
-            if (otdw.base_type == API_WindowID)
+            if (otdw.draw.base_type == API_WindowID)
                 type = Reveal_Up;
             break;
         default:
@@ -6892,13 +8206,13 @@ namespace Roombook {
 
     // Выбирает резервный тип отделки по основанию; исходные типы потолка и пола имеют приоритет.
     static TypeOtd OtdWall_GetFallbackFinishType (const OtdWall &otdw, TypeOtd type) {
-        if (otdw.base_type == API_ColumnID)
+        if (otdw.draw.base_type == API_ColumnID)
             type = Column;
-        if (otdw.base_type == API_WindowID)
+        if (otdw.draw.base_type == API_WindowID)
             type = Reveal_Main;
-        if (otdw.type == Ceil)
+        if (otdw.draw.type == Ceil)
             type = Ceil;
-        if (otdw.type == Floor)
+        if (otdw.draw.type == Floor)
             type = Floor;
         return type;
     }
@@ -6920,7 +8234,7 @@ namespace Roombook {
                             OtdMaterial &om_floor,
                             OtdMaterial &om_ceil,
                             OtdMaterial &om_zone) {
-        TypeOtd type = otdw.type;
+        TypeOtd type = otdw.draw.type;
         bool has_delim = false; // Найдена разбивка
         double height = 0;      // Высота элемента
         double zBottom = 0;     // Отметка низа
@@ -7046,16 +8360,17 @@ namespace Roombook {
         if (height < min_dim || is_equal (height, 0)) {
             return false;
         }
+        const double otdnzBottom = OtdLinearSegment_GetZBottom (otdn.geom);
         // Проверяем - находится ли изначальная конструкция в этом диапазоне?
-        if (otdn.zBottom >= zBottom + height) {
+        if (otdnzBottom >= zBottom + height) {
             return false; // Конструкция начинается выше необходимого
         }
-        if (otdn.zBottom + otdn.height <= zBottom) {
+        if (otdnzBottom + otdn.geom.height <= zBottom) {
             return false; // Конструкция заканчивается ниже необходимого
         }
-        zDup = fmin (zBottom + height, otdn.zBottom + otdn.height); // Новая отметка верха стены
-        zDown = fmax (zBottom, otdn.zBottom);                       // Новая отметка низа стены
-        height = fmin (otdn.height, zDup - zDown);                  // Новая высота стены
+        zDup = fmin (zBottom + height, otdnzBottom + otdn.geom.height); // Новая отметка верха стены
+        zDown = fmax (zBottom, otdnzBottom);                            // Новая отметка низа стены
+        height = fmin (otdn.geom.height, zDup - zDown);                 // Новая высота стены
         if (height < min_dim || is_equal (height, 0)) {
             return false;
         }
@@ -7084,7 +8399,7 @@ namespace Roombook {
         if (!OtdWall_CalculateHeightIntersection (otdn, height, zBottom, zDup, zDown)) {
             return false;
         }
-        double dlower = otdn.zBottom - zBottom; // Разница отметок стены до и после подрезки
+        double dlower = OtdLinearSegment_GetZBottom (otdn.geom) - zBottom; // Разница отметок стены до и после подрезки
         // Удаляем лишние окна, подстраиваем высоту
         OtdWall localCopy = otdn;
         if (localCopy.surface_geometry) {
@@ -7098,19 +8413,19 @@ namespace Roombook {
         }
         OtdWall_TrimOpeningsToHeight (localCopy, zBottom, height, zDup, zDown);
         if (localCopy.surface_geometry) {
-            const double dz = zBottom - otdn.zBottom;
-            localCopy.begC.x += dz * localCopy.rise_x;
-            localCopy.begC.y += dz * localCopy.rise_y;
-            localCopy.endC.x += dz * localCopy.rise_x;
-            localCopy.endC.y += dz * localCopy.rise_y;
+            const double dz = zBottom - OtdLinearSegment_GetZBottom (otdn.geom);
+            localCopy.geom.seg.begC.x += dz * localCopy.rise_x;
+            localCopy.geom.seg.begC.y += dz * localCopy.rise_y;
+            localCopy.geom.seg.endC.x += dz * localCopy.rise_x;
+            localCopy.geom.seg.endC.y += dz * localCopy.rise_y;
         }
-        localCopy.zBottom = zBottom;
-        localCopy.height = height;
+        OtdLinearSegment_SetZBottom (localCopy.geom, zBottom);
+        localCopy.geom.height = height;
         if (localCopy.surface_geometry && OtdWall_GetArea (localCopy) <= 1.e-6)
             return false;
-        if (!is_equal (localCopy.width, 0))
-            localCopy.length = height;
-        localCopy.type = type;
+        if (!is_equal (localCopy.geom.width, 0))
+            localCopy.geom.length = height;
+        localCopy.draw.type = type;
         OtdWall_SetMaterialByType (
             localCopy, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
         opw.Push (std::move (localCopy));
@@ -7229,9 +8544,9 @@ namespace Roombook {
                                     OtdMaterial &om_zone) {
         OtdMaterial material;
         OtdWall_SelectFinishMaterial (
-            otdw.type, material, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
+            otdw.draw.type, material, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
         OtdMaterial_SetFinish (material, otdw.base_composite);
-        otdw.material = material;
+        otdw.draw.material = material;
     }
 
     // Заменяет покрытие материала индексом и именем последнего слоя состава только при structype == -1.
@@ -7329,101 +8644,135 @@ namespace Roombook {
     // Если подходящий класс не найден, возвращает класс all_class либо APINULLGuid.
     API_Guid Class_GetClassGuid (const TypeOtd &type, const ClassificationFunc::ClassificationDict &finclass) {
         switch (type) {
+        case Floor_Skirting:
+            if (auto *p = finclass.GetPtr (floor_skirting_class))
+                return p->item.guid;
+            return APINULLGuid;
+
+        case Ceil_Cornice:
+            if (auto *p = finclass.GetPtr (ceil_cornice_class))
+                return p->item.guid;
+            return APINULLGuid;
+
         case Column:
-            if (auto *p = finclass.GetPtr (cls.column_class))
+            if (auto *p = finclass.GetPtr (column_class))
                 return p->item.guid;
             break;
 
         case Reveal_Main:
         case Reveal_Up:
         case Reveal_Down:
-            if (auto *p = finclass.GetPtr (cls.reveal_class))
+            if (auto *p = finclass.GetPtr (reveal_class))
                 return p->item.guid;
-            if (auto *p = finclass.GetPtr (cls.otdwall_class))
+            if (auto *p = finclass.GetPtr (wall_class))
                 return p->item.guid;
             break;
 
         case Wall_Down:
-            if (auto *p = finclass.GetPtr (cls.otdwall_down_class))
+            if (auto *p = finclass.GetPtr (wall_down_class))
                 return p->item.guid;
-            if (auto *p = finclass.GetPtr (cls.otdwall_class))
+            if (auto *p = finclass.GetPtr (wall_class))
                 return p->item.guid;
             break;
 
         case Wall_Main:
         case Wall_Up:
-            if (auto *p = finclass.GetPtr (cls.otdwall_class))
+            if (auto *p = finclass.GetPtr (wall_class))
                 return p->item.guid;
             break;
 
         case Floor:
-            if (auto *p = finclass.GetPtr (cls.floor_class))
+            if (auto *p = finclass.GetPtr (floor_class))
                 return p->item.guid;
             break;
 
         case Ceil:
-            if (auto *p = finclass.GetPtr (cls.ceil_class))
+            if (auto *p = finclass.GetPtr (ceil_class))
+                return p->item.guid;
+            break;
+
+        case Beam_Ceil:
+            if (auto *p = finclass.GetPtr (beam_ceil_class))
+                return p->item.guid;
+            break;
+
+        case Beam_Wall:
+            if (auto *p = finclass.GetPtr (beam_wall_class))
                 return p->item.guid;
             break;
 
         default:
             break;
         }
-        if (auto *p = finclass.GetPtr (cls.all_class))
+        if (auto *p = finclass.GetPtr (all_class))
             return p->item.guid;
         return APINULLGuid;
     }
 
-    // Сопоставляет GUID с классами стен, нижней стены, потолка, пола, колонны и откосов в порядке проверок.
-    // Классы оконных и дверных откосов возвращают Reveal_Main; общий и неизвестный класс возвращают NoSet.
+    // Сопоставляет GUID с классами стен, нижней стены, потолка, пола, колонн, откосов и балок в порядке проверок.
+    // Классы оконных и дверных откосов возвращают Reveal_Main; балки — Beam_Ceil/Beam_Wall; общий и неизвестный класс
+    // возвращают NoSet.
     TypeOtd Class_GetOtdTypeByClass (const API_Guid &classguid,
                                      const ClassificationFunc::ClassificationDict &finclass) {
+        if (const auto *p = finclass.GetPtr (floor_skirting_class)) {
+            if (p->item.guid == classguid)
+                return Floor_Skirting;
+        }
 
-        if (const auto *p = finclass.GetPtr (cls.otdwall_class)) {
+        if (const auto *p = finclass.GetPtr (ceil_cornice_class)) {
+            if (p->item.guid == classguid)
+                return Ceil_Cornice;
+        }
+
+        if (const auto *p = finclass.GetPtr (wall_class)) {
             if (p->item.guid == classguid)
                 return Wall_Main;
         }
 
-        if (const auto *p = finclass.GetPtr (cls.otdwall_down_class)) {
+        if (const auto *p = finclass.GetPtr (wall_down_class)) {
             if (p->item.guid == classguid)
                 return Wall_Down;
         }
 
-        if (const auto *p = finclass.GetPtr (cls.ceil_class)) {
+        if (const auto *p = finclass.GetPtr (ceil_class)) {
             if (p->item.guid == classguid)
                 return Ceil;
         }
 
-        if (const auto *p = finclass.GetPtr (cls.floor_class)) {
+        if (const auto *p = finclass.GetPtr (floor_class)) {
             if (p->item.guid == classguid)
                 return Floor;
         }
 
-        if (const auto *p = finclass.GetPtr (cls.column_class)) {
+        if (const auto *p = finclass.GetPtr (column_class)) {
             if (p->item.guid == classguid)
                 return Column;
         }
 
-        if (const auto *p = finclass.GetPtr (cls.reveal_class)) {
+        if (const auto *p = finclass.GetPtr (reveal_class)) {
             if (p->item.guid == classguid)
                 return Reveal_Main;
         }
 
-        if (const auto *p = finclass.GetPtr (cls.reveal_windows_class)) {
+        if (const auto *p = finclass.GetPtr (reveal_windows_class)) {
             if (p->item.guid == classguid)
                 return Reveal_Main;
         }
 
-        if (const auto *p = finclass.GetPtr (cls.reveal_doors_class)) {
+        if (const auto *p = finclass.GetPtr (reveal_doors_class)) {
             if (p->item.guid == classguid)
                 return Reveal_Main;
         }
 
-        if (const auto *p = finclass.GetPtr (cls.all_class)) {
+        if (const auto *p = finclass.GetPtr (beam_ceil_class)) {
             if (p->item.guid == classguid)
-                return NoSet;
+                return Beam_Ceil;
         }
 
+        if (const auto *p = finclass.GetPtr (beam_wall_class)) {
+            if (p->item.guid == classguid)
+                return Beam_Wall;
+        }
         return NoSet;
     }
 
@@ -7431,9 +8780,16 @@ namespace Roombook {
     // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
     // -----------------------------------------------------------------------------
     void Class_FindFinClass (ClassificationFunc::ClassificationDict &findict, UnicGuid &finclassguids) {
+        auto &cache = PROPERTYCACHE ();
+        if (!cache.findict.IsEmpty () && cache.finclassguids.IsEmpty ()) {
+            findict = cache.findict;
+            finclassguids = cache.finclassguids;
+        }
         if (!ClassificationFunc::ReadSystemDict ())
             return;
-        ClassificationFunc::SystemDict &systemdict = PROPERTYCACHE ().systemdict;
+        ClassificationFunc::SystemDict &systemdict = cache.systemdict;
+        findict.Clear ();
+        finclassguids.Clear ();
         for (GS::HashTable<GS::UniString, ClassificationFunc::ClassificationDict>::PairIterator cIt =
                  systemdict.EnumeratePairs ();
              cIt != NULL;
@@ -7457,55 +8813,22 @@ namespace Roombook {
                 ClassificationFunc::ClassificationValues &clas = *cIt->value;
     #endif
                 GS::UniString desc = UniStringToLower (clas.item.description);
-                if (desc.Contains ("some_stuff_fin_")) {
-                    if (desc.Contains (cls.all_class)) {
-                        findict.Add (cls.all_class, clas);
-                        if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Add (clas.item.guid, false);
-                    }
-                    if (desc.Contains (cls.ceil_class)) {
-                        findict.Add (cls.ceil_class, clas);
-                        if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Add (clas.item.guid, false);
-                    }
-                    if (desc.Contains (cls.column_class)) {
-                        findict.Add (cls.column_class, clas);
-                        if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Add (clas.item.guid, false);
-                    }
-                    if (desc.Contains (cls.floor_class)) {
-                        findict.Add (cls.floor_class, clas);
-                        if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Add (clas.item.guid, false);
-                    }
-                    if (desc.Contains (cls.otdwall_class)) {
-                        findict.Add (cls.otdwall_class, clas);
-                        if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Add (clas.item.guid, false);
-                    }
-                    if (desc.Contains (cls.reveal_class)) {
-                        findict.Add (cls.reveal_class, clas);
-                        if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Add (clas.item.guid, false);
-                    }
-                    if (desc.Contains (cls.reveal_windows_class)) {
-                        findict.Add (cls.reveal_windows_class, clas);
-                        if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Add (clas.item.guid, false);
-                    }
-                    if (desc.Contains (cls.reveal_doors_class)) {
-                        findict.Add (cls.reveal_doors_class, clas);
-                        if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Add (clas.item.guid, false);
-                    }
-                    if (desc.Contains (cls.otdwall_down_class)) {
-                        findict.Add (cls.otdwall_down_class, clas);
-                        if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Add (clas.item.guid, false);
+                if (desc.Contains (otd_class_prefix)) {
+                    for (const auto &cls : class_all) {
+                        if (desc.Contains (cls)) {
+                            findict.Add (cls, clas);
+                            if (!finclassguids.ContainsKey (clas.item.guid))
+                                finclassguids.Add (clas.item.guid, false);
+                            // Ранний выход при нахождении не нужен - в одном классе может быть несколько описаний
+                        }
                     }
                 }
             }
         }
+        cache.findict.Clear ();
+        cache.finclassguids.Clear ();
+        cache.findict = findict;
+        cache.finclassguids = finclassguids;
     }
 
     // Ищет среди классификаций элемента первый GUID, присутствующий в finclassguids, записывает его в classguid и
@@ -7588,42 +8911,77 @@ namespace Roombook {
     #endif
     }
 
-    // Собирает избранное окон, дверей, стен, колонн, перекрытий, объектов и зон в словарь по обрезанным именам в нижнем
-    // регистре. Повторные имена пропускает и сообщает об отсутствии рекомендуемых имён; балки в перечень собираемых
-    // типов не входят.
+    // Собирает избранное, включая балки плинтусов, в словарь по обрезанным именам в нижнем регистре.
+    // Повторные имена пропускает и сообщает об отсутствии рекомендуемых имён.
     bool Favorite_GetDict (MatarialToFavoriteDict &favdict) {
         // Словарь с избранным
         favdict.Clear ();
-        MatarialToFavorite fav;
         // Поиск элементов по-умолчанию
         short count = 0;
         GS::Array<GS::UniString> names;
         const API_ElemTypeID favtypes[] = {
-            API_WindowID, API_DoorID, API_WallID, API_ColumnID, API_SlabID, API_ObjectID, API_ZoneID};
+            API_WindowID, API_DoorID, API_WallID, API_ColumnID, API_SlabID, API_ObjectID, API_ZoneID, API_BeamID};
         for (const auto &type : favtypes) {
             if (Favorite_GetNum (type, &count, nullptr, &names) != NoError)
                 continue;
-            fav.type = type;
-            for (GS::UniString &name : names) {
-                name.SetToLowerCase ();
-                name.Trim ();
-                fav.name = name;
-                if (!favdict.ContainsKey (name))
-                    favdict.Add (name, fav);
+            for (const GS::UniString &name : names) {
+                GS::UniString key = name;
+                key.SetToLowerCase ();
+                key.Trim ();
+                if (favdict.ContainsKey (key))
+                    continue;
+                MatarialToFavorite fav;
+                fav.type = type;
+                fav.name = key;
+                if (type == API_SlabID) {
+                    API_Element element = {};
+                    if (Favorite_ReadByName (name, element) && GetElemTypeID (element) == API_SlabID) {
+                        if (element.slab.modelElemStructureType == API_BasicStructure) {
+                            fav.thickness = element.slab.thickness;
+                        } else if (element.slab.modelElemStructureType == API_CompositeStructure) {
+    #ifdef ServerMainVers_2700
+                            const Int32 compositeKey = element.slab.composite.ToInt32_Deprecated ();
+    #else
+                            const Int32 compositeKey = static_cast<Int32> (element.slab.composite);
+    #endif
+                            auto &cache = PROPERTYCACHE ().compositeCache;
+                            const auto *layers = cache.GetPtr (compositeKey);
+                            if (layers == nullptr) {
+                                ParamDictValue params, paramsAdd;
+                                ParamDictComposite composites;
+                                double width = 0, length = 0;
+                                if (ParamHelpers::ComponentsCompositeStructure (APINULLGuid,
+                                                                                element.slab.composite,
+                                                                                params,
+                                                                                composites,
+                                                                                paramsAdd,
+                                                                                width,
+                                                                                length))
+                                    layers = cache.GetPtr (compositeKey);
+                            }
+                            if (layers != nullptr) {
+                                // Нужна вся толщина, а не отфильтрованные отделочные слои fav.composite.
+                                for (const auto &layer : *layers)
+                                    fav.thickness += layer.fillThick;
+                            }
+                        }
+                    }
+                }
+                favdict.Add (key, fav);
             }
         }
         if (favdict.IsEmpty ()) {
             msg_rep ("RoomBook favorite", "Recommended items not found in favorites", NoError, APINULLGuid);
         } else {
             GS::UniString msg;
-            if (!favdict.ContainsKey ("smstf wall"))
-                msg += "'smstf wall' ";
-            if (!favdict.ContainsKey ("smstf floor"))
-                msg += "'smstf floor' ";
-            if (!favdict.ContainsKey ("smstf ceil"))
-                msg += "'smstf ceil' ";
-            if (!favdict.ContainsKey ("smstf window"))
-                msg += "'smstf window' ";
+            if (!favdict.ContainsKey (favorite_wall))
+                msg += favorite_wall;
+            if (!favdict.ContainsKey (favorite_floor))
+                msg += favorite_floor;
+            if (!favdict.ContainsKey (favorite_ceil))
+                msg += favorite_ceil;
+            if (!favdict.ContainsKey (favorite_window))
+                msg += favorite_window;
             if (!msg.IsEmpty ()) {
                 msg_rep ("RoomBook favorite",
                          "The recommended elements were not found in Favorites. Default "
@@ -7635,12 +8993,12 @@ namespace Roombook {
             }
 
             msg = EMPTYSTRING;
-            if (!favdict.ContainsKey ("smstf reveal side"))
-                msg += "'smstf reveal side' ";
-            if (!favdict.ContainsKey ("smstf reveal up"))
-                msg += "'smstf reveal up' ";
+            if (!favdict.ContainsKey (favorite_reveal_side))
+                msg += favorite_reveal_side;
+            if (!favdict.ContainsKey (favorite_reveal_up))
+                msg += favorite_reveal_up;
             if (!msg.IsEmpty ()) {
-                if (favdict.ContainsKey ("smstf wall")) {
+                if (favdict.ContainsKey (favorite_wall)) {
                     msg_rep ("RoomBook favorite",
                              "The recommended elements for reveal were not found in "
                              "Favorites. 'smstf wall' will be used to create these "
@@ -7664,7 +9022,7 @@ namespace Roombook {
     }
 
     // Читает только настройки выбранного избранного, не активируя слой и не подставляя настройки по умолчанию.
-    static bool Favorite_ReadByName (const GS::UniString &favorite_name, API_Element &element) {
+    bool Favorite_ReadByName (const GS::UniString &favorite_name, API_Element &element) {
     #ifndef ServerMainVers_2300
         return false;
     #else
@@ -7678,10 +9036,67 @@ namespace Roombook {
     #endif
     }
 
+    // Подготавливает плинтусы до записи модели; исходные OtdSlab не сдвигает.
+    static bool OtdBeam_ProcessFinishes (OtdRoom &room, ParamDictValue &favoriteParams, ParamValue &compositeParam) {
+        room.otdbeam_floor.Clear ();
+        room.otdbeam_ceil.Clear ();
+        GS::Array<OtdSlab> faces = room.otdslab;
+        for (auto &face : faces) {
+            if (!face.isValid || (face.draw.type != Floor && face.draw.type != Ceil))
+                continue;
+            if (face.draw.type == Floor ? (!room.has_floor || !room.create_floor_elements)
+                                        : (!room.has_ceil || !room.create_ceil_elements)) {
+                face.isValid = false;
+                continue;
+            }
+            const bool meshRoof = face.surface_geometry && face.draw.type == Floor &&
+                                  face.draw.base_type == API_MeshID && face.draw.draw_type == API_RoofID &&
+                                  face.draw.favorite.type == API_SlabID && !face.draw.favorite.name.IsEmpty ();
+            if (meshRoof) {
+                const double thickness = face.draw.favorite.thickness;
+                const double normalLength = std::hypot (1.0, std::hypot (face.slope_x, face.slope_y));
+                if (!std::isfinite (face.slope_x) || !std::isfinite (face.slope_y) || !std::isfinite (thickness) ||
+                    thickness <= 0 || !std::isfinite (normalLength))
+                    return false;
+                // Mesh-writer сохраняет XY-контур и вертикальные торцы; толщина Roof задана по нормали.
+                face.zBottom += thickness * normalLength;
+                if (!std::isfinite (face.zBottom))
+                    return false;
+                continue;
+            }
+            if (!face.surface_geometry || std::hypot (face.slope_x, face.slope_y) > DistanceTolerance) {
+                msg_rep ("Skirting", "Unsupported prepared slab writer; skirting skipped", NoError, room.zone_guid);
+                face.isValid = false;
+                continue;
+            }
+            // Object_Draw_Poly задаёт 2 см; для Slab толщина прочитана вместе с избранным.
+            const double thickness =
+                face.draw.favorite.type == API_ObjectID
+                    ? 0.02
+                    : (face.draw.favorite.name.IsEmpty () ? otd_thickness : face.draw.favorite.thickness);
+            if (!std::isfinite (thickness) || thickness <= 0)
+                return false;
+            face.zBottom += face.draw.type == Floor ? thickness : -thickness;
+        }
+        if (!SkirtingSegments_Build (room, faces))
+            return false;
+        GS::UniString tip;
+        for (auto *beams : {&room.otdbeam_floor, &room.otdbeam_ceil}) {
+            for (auto &beam : *beams)
+                Favorite_FindName (beam.draw.favorite,
+                                   beam.draw.material,
+                                   beam.draw.type,
+                                   API_BeamID,
+                                   favoriteParams,
+                                   compositeParam,
+                                   tip);
+        }
+        return true;
+    }
+
     // Помечает избранное как прочитанное до получения элемента и чтения материалов; при дальнейшей ошибке флаг не
     // сбрасывает. При наличии требуемого параметра и состава материала заполняет composite через Param_SetComposite.
     void Favorite_ReadComposite (const ParamValue &param_composite,
-
                                  ParamDictValue &paramToRead_favorite,
                                  const GS::UniString &fav_name) {
 
@@ -7714,7 +9129,80 @@ namespace Roombook {
         if (base_composite == nullptr)
             return;
         GS::UniString fav_name_;
-        Param_SetComposite (*base_composite, element.wall.flipped, favData->composite, fav_name_, true);
+        const bool flipped = GetElemTypeID (element) == API_BeamID ? false : element.wall.flipped;
+        Param_SetComposite (*base_composite, flipped, favData->composite, fav_name_, true);
+    }
+
+    static void Favorite_GetPossiblyType (const TypeOtd &type,
+                                          const API_ElemTypeID &draw_type,
+                                          API_ElemTypeID &possibly_type) {
+        GS::UniString favorite_name_defult;
+        switch (type) {
+        case Reveal_Main:
+        case Reveal_Up:
+        case Reveal_Down:
+            if (draw_type == API_BeamID) {
+                favorite_name_defult = favorite_reveal_up;
+            }
+            if (!favdict.ContainsKey (favorite_name_defult) || favorite_name_defult.IsEmpty ()) {
+                possibly_type = API_WallID;
+            }
+            break;
+        case Floor:
+            if (draw_type == API_WallID) {
+                possibly_type = API_WallID;
+            }
+            break;
+        case Ceil:
+            if (draw_type == API_WallID) {
+                possibly_type = API_WallID;
+            }
+            break;
+        default:
+            break;
+        }
+        return;
+    }
+
+    static GS::UniString Favorite_GetDefultName (const TypeOtd &type, const API_ElemTypeID &draw_type) {
+        GS::UniString favorite_name_defult;
+        switch (type) {
+        case Wall_Main:
+        case Wall_Up:
+        case Wall_Down:
+        case Column:
+            favorite_name_defult = favorite_wall;
+            break;
+        case Reveal_Main:
+        case Reveal_Up:
+        case Reveal_Down:
+            if (draw_type == API_BeamID) {
+                favorite_name_defult = favorite_reveal_up;
+            }
+            if (!favdict.ContainsKey (favorite_name_defult) || favorite_name_defult.IsEmpty ()) {
+                favorite_name_defult = favorite_wall;
+            }
+            break;
+        case Floor:
+            favorite_name_defult = favorite_floor;
+            if (draw_type == API_WallID) {
+                favorite_name_defult = favorite_wall;
+            }
+            break;
+        case Ceil:
+            favorite_name_defult = favorite_ceil;
+            if (draw_type == API_WallID) {
+                if (favdict.ContainsKey (favorite_ceil_wall)) {
+                    favorite_name_defult = favorite_ceil_wall;
+                } else if (favdict.ContainsKey (favorite_wall)) {
+                    favorite_name_defult = favorite_wall;
+                }
+            }
+            break;
+        default:
+            break;
+        }
+        return favorite_name_defult;
     }
 
     // Подбирает избранное по имени материала и суффиксу, затем по текущему или рекомендуемому имени.
@@ -7723,12 +9211,21 @@ namespace Roombook {
                                    const OtdMaterial &material,
                                    const TypeOtd &type,
                                    const API_ElemTypeID &draw_type,
-
                                    ParamDictValue &paramToRead_favorite,
                                    ParamValue &param_composite,
                                    GS::UniString &tip) {
         API_ElemTypeID possibly_type = draw_type;
+        const bool isSkirting = type == Floor_Skirting || type == Ceil_Cornice;
         GS::UniString fav_name = favorite.name;
+        if (isSkirting) {
+            if (fav_name.IsEmpty ())
+                fav_name = type == Floor_Skirting ? favorite_floor_skirting : favorite_ceil_cornice;
+            favorite = MatarialToFavorite{};
+            const auto *entry = favdict.GetPtr (fav_name);
+            if (entry != nullptr && entry->type == API_BeamID)
+                favorite = *entry;
+            return;
+        }
         if (favdict.IsEmpty ())
             return;
         if (material.smaterial.Contains (ATSIGN)) {
@@ -7779,7 +9276,7 @@ namespace Roombook {
     #else
                 const GS::UniString &fav = *cIt->key;
     #endif
-                if (fav.Contains (tipLower) && fav.Contains ("smstf")) {
+                if (fav.Contains (tipLower) && fav.Contains (favorite_suffix)) {
                     if (auto *favPtr = favdict.GetPtr (fav)) {
                         if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
                             Favorite_ReadComposite (param_composite, paramToRead_favorite, fav);
@@ -7794,50 +9291,8 @@ namespace Roombook {
         }
 
         if (favorite.type == API_ZombieElemID) {
-            GS::UniString favorite_name_defult;
-            switch (type) {
-            case Wall_Main:
-            case Wall_Up:
-            case Wall_Down:
-            case Column:
-                favorite_name_defult = "smstf wall";
-                break;
-            case Reveal_Main:
-            case Reveal_Up:
-            case Reveal_Down:
-                if (draw_type == API_BeamID) {
-                    favorite_name_defult = "smstf reveal up";
-                }
-                if (draw_type == API_ColumnID) {
-                    favorite_name_defult = "smstf reveal side";
-                }
-                if (!favdict.ContainsKey (favorite_name_defult) || favorite_name_defult.IsEmpty ()) {
-                    favorite_name_defult = "smstf wall";
-                    possibly_type = API_WallID;
-                }
-                break;
-            case Floor:
-                favorite_name_defult = "smstf floor";
-                if (draw_type == API_WallID) {
-                    favorite_name_defult = "smstf wall";
-                    possibly_type = API_WallID;
-                }
-                break;
-            case Ceil:
-                favorite_name_defult = "smstf ceil";
-                if (draw_type == API_WallID) {
-                    if (favdict.ContainsKey ("smstf ceil wall")) {
-                        favorite_name_defult = "smstf ceil wall";
-                    } else if (favdict.ContainsKey ("smstf wall")) {
-                        favorite_name_defult = "smstf wall";
-                    }
-                    possibly_type = API_WallID;
-                }
-                break;
-            default:
-                return;
-                break;
-            }
+            GS::UniString favorite_name_defult = Favorite_GetDefultName (type, draw_type);
+            Favorite_GetPossiblyType (type, draw_type, possibly_type);
             if (auto *favPtr = favdict.GetPtr (favorite_name_defult)) {
                 if (favPtr->type == possibly_type || favPtr->type == API_ObjectID) {
                     Favorite_ReadComposite (param_composite, paramToRead_favorite, favorite_name_defult);
@@ -7887,6 +9342,146 @@ namespace Roombook {
     #endif
     }
 
+    // -----------------------------------------------------------------------------
+    // Собирает настройки инструмента для типа отделки и сохраняет их в избранное с заданным именем.
+    // -----------------------------------------------------------------------------
+    bool Favorite_CreateOtd (const TypeOtd &type, const GS::UniString &name, const GS::UniString &folder) {
+
+        ClassificationFunc::ClassificationDict finclass;
+        UnicGuid finclassguids;
+        Class_FindFinClass (finclass, finclassguids);
+
+        API_Element element = {};
+        API_ElementMemo memo = {};
+        bool withMemo = false;
+        bool ready = false;
+        switch (type) {
+        case Floor:
+        case Ceil:
+            // Полы и потолки — перекрытия.
+            ready = Slab_GetDefault (EMPTYSTRING, type, element);
+            break;
+        case Floor_Skirting:
+        case Ceil_Cornice:
+        case Reveal_Up:
+            // Плинтус пола и потолка, а также верхний откос — балки.
+            withMemo = true;
+            ready = Beam_GetDefault (EMPTYSTRING, type, element, memo);
+            break;
+        case Wall_Main:
+        case Wall_Up:
+        case Wall_Down:
+        case Reveal_Main:
+        case Reveal_Down:
+            // Стены отделки и остальные откосы — стены.
+            ready = Wall_GetDefault (EMPTYSTRING, type, element);
+            break;
+        default:
+            return false;
+        }
+        if (!ready) {
+            ACAPI_DisposeElemMemoHdls (&memo);
+            return false;
+        }
+        if (name.IsEmpty ())
+            return true;
+        API_Favorite favorite (name);
+        favorite.element = element;
+        API_FavoriteFolderHierarchy favoriteFolder;
+        favoriteFolder.Push (folder);
+        favorite.folder = favoriteFolder;
+
+        // Классификация избранного — пара (система, класс); GUID системы берём из той же записи словаря отделочных
+        // классов.
+        const API_Guid classguid = Class_GetClassGuid (type, finclass);
+        if (classguid != APINULLGuid) {
+            for (const auto &clas : finclass) {
+    #ifdef ServerMainVers_2800
+                const ClassificationFunc::ClassificationValues *cv = &clas.value;
+    #else
+                const ClassificationFunc::ClassificationValues *cv = clas.value;
+    #endif
+                if (cv == nullptr || cv->item.guid != classguid)
+                    continue;
+                favorite.classifications.New ();
+                favorite.classifications.Get ().Push (GS::Pair<API_Guid, API_Guid> (cv->system.guid, classguid));
+                break;
+            }
+        }
+
+        if (withMemo) {
+            favorite.memo.New ();
+            favorite.memo.Get () = memo;
+            BNZeroMemory (&memo, sizeof (API_ElementMemo));
+        }
+        const GS::OnExit favoriteMemoGuard ([&favorite] () {
+            if (favorite.memo.HasValue ())
+                ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
+        });
+        const GSErrCode err = ACAPI_Favorite_Create (favorite);
+        if (err != NoError) {
+            msg_rep ("Favorite_CreateOtd", "ACAPI_Favorite_Create", err, APINULLGuid);
+            return false;
+        }
+        return true;
+    }
+
+    bool Roombook_CheckSkirtingConfiguration (const OtdRooms &rooms,
+                                              const ClassificationFunc::ClassificationDict &finclass,
+                                              const UnicGuid &finclassguids,
+                                              const ParamDictValue &propertyParams,
+                                              GS::UniString &error) {
+        error.Clear ();
+        bool lower = false;
+        bool upper = false;
+        for (const auto &entry : rooms) {
+    #ifdef ServerMainVers_2800
+            const OtdRoom &room = entry.value;
+    #else
+            const OtdRoom &room = *entry.value;
+    #endif
+            if (!room.isValid)
+                continue;
+            lower = lower || !room.otdbeam_floor.IsEmpty ();
+            upper = upper || !room.otdbeam_ceil.IsEmpty ();
+        }
+        for (const TypeOtd role : {Floor_Skirting, Ceil_Cornice}) {
+            if (!(role == Floor_Skirting ? lower : upper))
+                continue;
+            const GS::UniString roleName = role == Floor_Skirting ? floor_skirting_class : ceil_cornice_class;
+            const API_Guid classGuid = Class_GetClassGuid (role, finclass);
+            if (classGuid == APINULLGuid || !finclassguids.ContainsKey (classGuid)) {
+                error = "Skirting configuration: missing or unrecognized role classification '" + roleName + "'.";
+                return false;
+            }
+            bool zone = false;
+            bool base = false;
+            for (const auto &entry : propertyParams) {
+    #ifdef ServerMainVers_2800
+                const ParamValue &param = entry.value;
+    #else
+                const ParamValue &param = *entry.value;
+    #endif
+                const API_PropertyDefinition &definition = param.definition;
+                if (!definition.description.Contains (SYNCGUID) ||
+                    definition.valueType != API_PropertyStringValueType ||
+                    definition.collectionType != API_PropertySingleCollectionType ||
+                    !definition.availability.Contains (classGuid))
+                    continue;
+                zone = zone || definition.description.Contains ("zone");
+                base = base || definition.description.Contains ("base element");
+            }
+            if (!zone || !base) {
+                error =
+                    "Skirting configuration: '" + roleName +
+                    "' requires single String ownership properties "
+                    "with description markers Sync_GUID zone and Sync_GUID base element and explicit role availability.";
+                return false;
+            }
+        }
+        return true;
+    }
+
     // Проверяет наличие классов отделки и доступность Sync_GUID zone для GUID в finclassguids.
     // Уже установленные флаги не сбрасывает; проблемы Sync_GUID base element сообщает без отказа расчёта.
     bool Roombook_CheckFinishConfiguration (const ClassificationFunc::ClassificationDict &finclass,
@@ -7899,13 +9494,13 @@ namespace Roombook {
             SafeWriteReport (msgString, true);
             return false;
         }
-        if (!finclass.ContainsKey (cls.all_class)) {
+        if (!finclass.ContainsKey (all_class)) {
             bool msg = false;
-            if (!finclass.ContainsKey (cls.floor_class))
+            if (!finclass.ContainsKey (floor_class))
                 msg = true;
-            if (!finclass.ContainsKey (cls.ceil_class))
+            if (!finclass.ContainsKey (ceil_class))
                 msg = true;
-            if (!finclass.ContainsKey (cls.otdwall_class))
+            if (!finclass.ContainsKey (wall_class))
                 msg = true;
             if (msg) {
                 GS::UniString msgString = RSGetIndString (iseng, 51, ACAPI_GetOwnResModule ());

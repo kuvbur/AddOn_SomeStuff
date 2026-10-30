@@ -99,7 +99,9 @@ namespace Roombook
     // Собирает данные зон и конструкций, рассчитывает отделку и подготавливает результаты по материалам.
     // Проверяет классификации и доступность существующей отделки, затем вызывает отрисовку и запись связей; при ошибках
     // или отмене выходит.
-    void RoomBook_Run () {
+    void RoomBook_Run (GS::Array<RoomBookFinishResult> *results) {
+        if (results != nullptr)
+            results->Clear ();
         GS::UniString funcname ("RoomBook");
         GS::Int32 nPhase = 1;
         // Окно прогресса помогает видеть, на каком этапе выполняется расчёт отделки.
@@ -167,6 +169,15 @@ namespace Roombook
         OtdData_WriteRoomMaterialData (context.roomsinfo, context.paramToRead, summary);
         auto &paramToWrite = summary.paramToWrite;
         context.paramToRead.Clear ();
+        GS::UniString skirtingConfigurationError;
+        if (!Roombook_CheckSkirtingConfiguration (context.roomsinfo,
+                                                  context.finclass,
+                                                  context.finclassguids,
+                                                  PROPERTYCACHE ().property,
+                                                  skirtingConfigurationError)) {
+            msg_rep ("RoomBook", skirtingConfigurationError, APIERR_GENERAL, APINULLGuid, false);
+            return;
+        }
         // Проверка существования классов и свойств
         if (!zones.IsEmpty ()) {
             if (!Roombook_CheckFinishConfiguration (context.finclass, context.finclassguids))
@@ -182,7 +193,8 @@ namespace Roombook
                        paramToWrite,
                        context.elementTypes,
                        context.elementTypeCount,
-                       nPhase);
+                       nPhase,
+                       results);
     }
 
 #endif

@@ -38,6 +38,24 @@ namespace Roombook {
                                         const GS::UniString &mat,
                                         double area);
 
+    // Длины подготовленных плинтусов; результат не зависит от записи native-элементов.
+    // void OtdRoom_CalculateSkirtingLengths (OtdRoom &otd) {
+    //    otd.length_beam_floor = 0;
+    //    otd.length_beam_ceil = 0;
+    //    if (!otd.isValid)
+    //        return;
+    //    for (const auto *beams : {&otd.otdbeam_floor, &otd.otdbeam_ceil}) {
+    //        for (const auto &beam : *beams) {
+    //            if (beam.draw.type != Skirting_Down && beam.draw.type != Skirting_Up)
+    //                continue;
+    //            const double length = std::hypot (std::hypot (beam.geom.seg.endC.x - beam.geom.seg.begC.x,
+    //                                                          beam.geom.seg.endC.y - beam.geom.seg.begC.y),
+    //                                              beam.geom.seg.endC.z - beam.geom.seg.begC.z);
+    //            (beam.draw.type == Skirting_Down ? otd.length_beam_floor : otd.length_beam_ceil) += length;
+    //        }
+    //    }
+    //}
+
     // Дополняет сводку одной комнаты и подготавливает её свойства; не выбирает зоны на создание.
     // Невалидная комната, отсутствующие параметры или обязательные имена результата не дают вклада.
     void OtdData_AddRoomToMaterialSummary (const OtdRoom &otd,
@@ -245,7 +263,7 @@ namespace Roombook {
         for (const OtdWall &otdw : otd.otdwall) {
             if (!otdw.isValid)
                 continue;
-            const TypeOtd &t = otdw.type;
+            const TypeOtd &t = otdw.draw.type;
             const double area = OtdWall_GetArea (otdw);
             for (UInt32 j = 0; j < otdw.base_composite.GetSize (); j++) {
                 GS::UniString mat = otdw.base_composite[j].val;
@@ -268,8 +286,11 @@ namespace Roombook {
         for (const OtdSlab &otdslab : otd.otdslab) {
             if (!otdslab.isValid)
                 continue;
-            const TypeOtd &t = otdslab.type;
-            const double area = otdslab.poly.CalcArea ();
+            const TypeOtd &t = otdslab.draw.type;
+            const double area =
+                otdslab.poly.CalcArea () * (otdslab.draw.base_type == API_MeshID
+                                                ? std::hypot (1.0, std::hypot (otdslab.slope_x, otdslab.slope_y))
+                                                : 1.0);
             for (UInt32 j = 0; j < otdslab.base_composite.GetSize (); j++) {
                 GS::UniString mat = otdslab.base_composite[j].val;
                 if (mat.Contains (SEMICOLON)) {
@@ -522,21 +543,21 @@ namespace Roombook {
     // Получение площади отделочной стены с учётом отверстий, м²
     // -----------------------------------------------------------------------------
     double OtdWall_GetArea (const OtdWall &otdw) {
-        double dx = -otdw.endC.x + otdw.begC.x;
-        double dy = -otdw.endC.y + otdw.begC.y;
+        double dx = -otdw.geom.seg.endC.x + otdw.geom.seg.begC.x;
+        double dy = -otdw.geom.seg.endC.y + otdw.geom.seg.begC.y;
         double dr = sqrt (dx * dx + dy * dy);
-        double area = dr * otdw.height;
+        double area = dr * otdw.geom.height;
         if (otdw.surface_geometry) {
             for (const auto &opening : otdw.openings)
                 area -= opening.width * opening.height;
             return std::max (0.0, area) * std::sqrt (1 + otdw.rise_x * otdw.rise_x + otdw.rise_y * otdw.rise_y);
         }
         // Если задана ширина - это откос
-        if (!is_equal (otdw.width, 0)) {
-            if (!is_equal (otdw.length, 0)) {
-                area = otdw.width * otdw.length;
+        if (!is_equal (otdw.geom.width, 0)) {
+            if (!is_equal (otdw.geom.length, 0)) {
+                area = otdw.geom.width * otdw.geom.length;
             } else {
-                area = otdw.width * otdw.height;
+                area = otdw.geom.width * otdw.geom.height;
             }
             // В откосах проёмов быть не может - выходим
             if (area < 0)

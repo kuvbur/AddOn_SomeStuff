@@ -21,68 +21,298 @@
 #ifdef ServerMainVers_2400
 namespace Roombook {
 
-    static void OtdBeam_Draw_Beam (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges);
-
-    static void OtdBeam_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges);
-
-    bool OtdBeam_GetDefault_Object (const GS::UniString &favorite_name,
-                                    API_Element &beamelement,
-                                    API_ElementMemo &beammemo);
+    // -----------------------------------------------------------------------------
+    // Проверяет необходимость обновления данных в API_Elem_Head
+    // -----------------------------------------------------------------------------
+    static bool Elems_Check_Update (API_Elem_Head &elemhead,
+                                    API_Element &mask,
+                                    short floorInd,
+                                    const API_AttributeIndex &layer,
+                                    const API_RenovationStatusType &renovationStatus) {
+        bool needupdate = false;
+        if (elemhead.floorInd != floorInd) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, floorInd);
+            elemhead.floorInd = floorInd;
+            needupdate = true;
+        }
+        if (elemhead.layer != layer) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, layer);
+            elemhead.layer = layer;
+            needupdate = true;
+        }
+        bool renovationChanged = elemhead.renovationStatus != renovationStatus;
+        if (renovationStatus == API_DefaultStatus && elemhead.guid != APINULLGuid) {
+            // Default — только входной псевдостатус; сравниваем категории без перевода GUID в enum.
+            API_ElemCategory category = {};
+            category.categoryID = API_ElemCategory_RenovationStatus;
+            API_ElemCategoryValue defaultValue = {};
+            API_ElemCategoryValue currentValue = {};
+    #ifdef ServerMainVers_2700
+            GSErrCode err = ACAPI_Category_GetCategoryValueDefault (elemhead.type, category, &defaultValue);
+    #elif defined ServerMainVers_2600
+            GSErrCode err = ACAPI_Element_GetCategoryValueDefault (elemhead.type, category, &defaultValue);
+    #else
+            GSErrCode err =
+                ACAPI_Element_GetCategoryValueDefault (elemhead.typeID, elemhead.variationID, category, &defaultValue);
+    #endif
+            if (err == NoError && defaultValue.guid != APINULLGuid) {
+    #ifdef ServerMainVers_2700
+                err = ACAPI_Category_GetCategoryValue (elemhead.guid, category, &currentValue);
+    #else
+                err = ACAPI_Element_GetCategoryValue (elemhead.guid, category, &currentValue);
+    #endif
+                if (err == NoError && currentValue.guid != APINULLGuid)
+                    renovationChanged = currentValue.guid != defaultValue.guid;
+            }
+            // При ошибке чтения сохраняем прежнее применение Default, а не объявляем no-op.
+        }
+        if (renovationChanged) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, renovationStatus);
+            elemhead.renovationStatus = renovationStatus;
+            needupdate = true;
+        }
+        return needupdate;
+    }
 
     // -----------------------------------------------------------------------------
-    // Построение отделочных стен аксессуаром
+    // Назначение класса элементу
     // -----------------------------------------------------------------------------
-    static void OtdWall_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges);
+    static void Class_Set (const TypeOtd &type,
+                           const API_Guid &guid,
+                           const ClassificationFunc::ClassificationDict &finclass) {
+        if (guid == APINULLGuid)
+            return;
+        API_Guid class_guid = Class_GetClassGuid (type, finclass);
+        if (class_guid != APINULLGuid)
+            ACAPI_Element_AddClassificationItem (guid, class_guid);
+    }
 
     // -----------------------------------------------------------------------------
-    // Построение отделочных стен стандартной стеной
+    // Назначение класса проёму
+    // Для ненулевого GUID проёма выбирает класс NoSet, затем при его отсутствии класс Wall_Main.
+    // Вызывает добавление классификации только при ненулевом GUID выбранного класса.
     // -----------------------------------------------------------------------------
-    static void OtdWall_Draw_Wall (const GS::UniString &favorite_name,
-                                   const Stories &storyLevels,
-                                   OtdWall &edges,
-                                   UnicElementByType &subelementByparent);
+    static void Class_Set_OtdOpening (const OtdOpening &op, const ClassificationFunc::ClassificationDict &finclass) {
+        if (op.otd_guid == APINULLGuid)
+            return;
+        API_Guid class_guid = Class_GetClassGuid (NoSet, finclass);
+        if (class_guid == APINULLGuid)
+            class_guid = Class_GetClassGuid (Wall_Main, finclass);
+        if (class_guid != APINULLGuid)
+            ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
+    }
+
+    static bool GetDefault (const GS::UniString &favorite_name,
+                            API_Element &element,
+                            const API_ElemTypeID &eltype,
+                            bool activate = true) {
+        GSErrCode err = NoError;
+        BNZeroMemory (&element, sizeof (API_Element));
+        if (activate ? Favorite_GetByName (favorite_name, element) : Favorite_ReadByName (favorite_name, element)) {
+            if (GetElemTypeID (element) == eltype)
+                return true;
+        }
+        SetElemTypeID (element, eltype);
+        err = ACAPI_Element_GetDefaults (&element, nullptr);
+        if (err != NoError) {
+            return false;
+        }
+        return true;
+    }
+
+    static bool GetDefault (const GS::UniString &favorite_name,
+                            API_Element &element,
+                            API_ElementMemo &memo,
+                            const API_ElemTypeID &eltype) {
+        GSErrCode err = NoError;
+        BNZeroMemory (&memo, sizeof (API_ElementMemo));
+        BNZeroMemory (&element, sizeof (API_Element));
+        if (Favorite_GetByName (favorite_name, element, memo)) {
+            if (GetElemTypeID (element) == eltype)
+                return true;
+        }
+        SetElemTypeID (element, eltype);
+        err = ACAPI_Element_GetDefaults (&element, &memo);
+        if (err != NoError) {
+            ACAPI_DisposeElemMemoHdls (&memo);
+            return false;
+        }
+        return true;
+    }
+
+    static bool GetExsist (const API_Guid &guid, API_Element &element, API_ElementMemo &memo) {
+        GSErrCode err = NoError;
+        BNZeroMemory (&memo, sizeof (API_ElementMemo));
+        BNZeroMemory (&element, sizeof (API_Element));
+        element.header.guid = guid;
+        err = ACAPI_Element_Get (&element);
+        if (err != NoError) {
+            msg_rep ("GetExsist", "ACAPI_Element_Get", err, guid);
+            return false;
+        }
+        err = ACAPI_Element_GetMemo (guid, &memo);
+        if (err != NoError) {
+            msg_rep ("GetExsist", "ACAPI_Element_GetMemo", err, guid);
+            return false;
+        }
+        return true;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Получение из избранного стены для простроения
+    // -----------------------------------------------------------------------------
+    bool Wall_GetDefault (const GS::UniString &favorite_name,
+                          const TypeOtd &type,
+                          API_Element &wallelement,
+                          bool activate) {
+        if (!GetDefault (favorite_name, wallelement, API_WallID, activate)) {
+            return false;
+        }
+        wallelement.wall.zoneRel = APIZRel_None;
+        wallelement.wall.referenceLineLocation = APIWallRefLine_Inside;
+        wallelement.wall.flipped = false;
+    #ifdef ServerMainVers_2600
+    #else
+        wallelement.wall.refMat.overridden = true;
+        wallelement.wall.oppMat.overridden = true;
+        wallelement.wall.sidMat.overridden = true;
+    #endif
+        wallelement.wall.modelElemStructureType = API_BasicStructure;
+        wallelement.wall.thickness = otd_thickness;
+        return true;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Обнуляет элемент и memo; использует избранное, если оно содержит балку, иначе получает настройки балки по
+    // умолчанию. При ошибке получения настроек освобождает memo и возвращает false.
+    // -----------------------------------------------------------------------------
+    bool Beam_GetDefault (const GS::UniString &favorite_name,
+                          const TypeOtd &type,
+                          API_Element &beamelement,
+                          API_ElementMemo &beammemo) {
+        if (!GetDefault (favorite_name, beamelement, beammemo, API_BeamID)) {
+            return false;
+        }
+        return true;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Возвращает объект из избранного подходящего типа либо получает настройки объекта по умолчанию.
+    // Только для настроек по умолчанию сбрасывает угол и автовидимость по этажам, включает перья, линии и материалы
+    // объекта.
+    // -----------------------------------------------------------------------------
+    bool Object_GetDefault (const GS::UniString &favorite_name,
+                            const TypeOtd &type,
+                            API_Element &element,
+                            API_ElementMemo &memo) {
+        if (!GetDefault (favorite_name, element, memo, API_ObjectID)) {
+            return false;
+        }
+        element.object.angle = 0;
+        element.object.isAutoOnStoryVisibility = false;
+        element.object.useObjPens = true;
+        element.object.useObjLtypes = true;
+        element.object.useObjMaterials = true;
+        return true;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Возвращает перекрытие из избранного подходящего типа либо получает настройки перекрытия по умолчанию.
+    // Только для настроек по умолчанию задаёт нулевой offsetFromTop, связанные материалы и базовую структуру.
+    // -----------------------------------------------------------------------------
+    bool Slab_GetDefault (const GS::UniString &favorite_name, const TypeOtd &type, API_Element &element) {
+        if (!GetDefault (favorite_name, element, API_SlabID)) {
+            return false;
+        }
+        element.slab.offsetFromTop = 0;
+        element.slab.materialsChained = true;
+    #ifdef ServerMainVers_2600
+    #else
+        element.slab.sideMat.overridden = true;
+        element.slab.topMat.overridden = true;
+        element.slab.botMat.overridden = true;
+    #endif
+        element.slab.modelElemStructureType = API_BasicStructure;
+        return true;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Получение настроек проёмов в отделочных стенах
+    // -----------------------------------------------------------------------------
+    static bool OtdOpening_GetDefault (const GS::UniString &favorite_name,
+                                       API_Element &windowelement,
+                                       API_ElementMemo &windowmemo) {
+        GSErrCode err = NoError;
+        BNZeroMemory (&windowmemo, sizeof (API_ElementMemo));
+        BNZeroMemory (&windowelement, sizeof (API_Element));
+        if (Favorite_GetByName (favorite_name, windowelement, windowmemo)) {
+            if (GetElemTypeID (windowelement) == API_WindowID)
+                return true;
+        }
+        SetElemTypeID (windowelement, API_WindowID);
+        err = ACAPI_Element_GetDefaults (&windowelement, &windowmemo);
+        if (err != NoError) {
+            ACAPI_DisposeElemMemoHdls (&windowmemo);
+            return false;
+        }
+        return true;
+    }
 
     // -----------------------------------------------------------------------------
     // Построение проёмов в отделочных стенах
     // -----------------------------------------------------------------------------
-    static void OtdOpening_Draw (API_Element &wallelement,
-                                 OtdOpening &op,
-                                 UnicElementByType &subelementByparent,
-                                 double zBottom);
-
-    // -----------------------------------------------------------------------------
-    // Построение потолка/пола (общая)
-    // -----------------------------------------------------------------------------
-    static void OtdSlab_Draw (const Stories &storyLevels, OtdSlab &otdslab, UnicElementByType &subelementByparent);
-
-    static void OtdSlab_Draw_Slab (const GS::UniString &favorite_name, const Stories &storyLevels, OtdSlab &otdslab);
-
-    static void OtdSlab_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdSlab &otdslab);
-
-    static void OtdWall_SetClass (const OtdWall &op, const ClassificationFunc::ClassificationDict &finclass);
-
-    static void OtdOpening_SetClass (const OtdOpening &op, const ClassificationFunc::ClassificationDict &finclass);
-
-    static void OtdSlab_SetClass (const OtdSlab &op, const ClassificationFunc::ClassificationDict &finclass);
-
-    // Локальные настройки для создания элементов; общим этапам эти функции не нужны.
-    static bool OtdBeam_GetDefault_Beam (const GS::UniString &favorite_name,
-                                         API_Element &beamelement,
-                                         API_ElementMemo &beammemo);
-
-    static bool OtdWall_GetDefault_Object (const GS::UniString &favorite_name,
-                                           API_Element &wallobjelement,
-                                           API_ElementMemo &wallobjmemo);
-
-    static bool OtdOpening_GetDefault (const GS::UniString &favorite_name,
-                                       API_Element &windowelement,
-                                       API_ElementMemo &windowmemo);
-
-    static bool OtdSlab_GetDefault_Object (const GS::UniString &favorite_name,
-                                           API_Element &slabobjelement,
-                                           API_ElementMemo &slabobjmemo);
-
-    static bool OtdSlab_GetDefault_Slab (const GS::UniString &favorite_name, API_Element &slabelement);
+    static void OtdOpening_Draw (API_Element &wallelement, OtdOpening &op, double zBottom) {
+        GSErrCode err = NoError;
+        API_Element windowelement = {};
+        API_ElementMemo windowmemo = {};
+        if (wallelement.wall.type == APIWtyp_Poly)
+            return;
+        if (!OtdOpening_GetDefault ("smstf window", windowelement, windowmemo)) {
+            return;
+        }
+        windowelement.window.owner = wallelement.header.guid;
+        const GS::OnExit memoGuard ([&windowmemo] () { ACAPI_DisposeElemMemoHdls (&windowmemo); });
+        if (op.surface_geometry) {
+            // Вырез следует наклону стены, независимо от точки фиксации избранного.
+            windowelement.window.directionType = API_WDAssociativeToWall;
+            windowelement.window.fixPoint = APIHoleAnchor_CenterFix;
+        }
+        if (op.has_reveal) {
+            double th = wallelement.wall.thickness;
+            double zUp_op = op.zBottom + op.height;
+            double zUp_wall = zBottom + wallelement.wall.height;
+            // Уменьшаем проём на толщину откоса по высоте
+            if (!is_equal (zUp_op, zUp_wall)) {
+                op.height -= th;
+            }
+            double lwall = sqrt ((wallelement.wall.begC.x - wallelement.wall.endC.x) *
+                                     (wallelement.wall.begC.x - wallelement.wall.endC.x) +
+                                 (wallelement.wall.begC.y - wallelement.wall.endC.y) *
+                                     (wallelement.wall.begC.y - wallelement.wall.endC.y));
+            if (!is_equal (op.objLoc + op.width / 2, lwall)) {
+                op.width -= th;
+                op.objLoc -= th;
+            }
+            if (!is_equal (op.objLoc - op.width / 2, 0)) {
+                op.width -= th;
+                op.objLoc += th;
+            }
+        }
+        // objLoc присваиваем ПОСЛЕ коррекции откосов, чтобы центр проёма совпадал со скорректированными размерами
+        windowelement.window.objLoc = op.objLoc;
+        if (op.width < min_dim || op.height < min_dim) {
+            return;
+        }
+        windowelement.window.openingBase.width = op.width;
+        windowelement.window.openingBase.height = op.height;
+        windowelement.window.lower = op.lower;
+        err = ACAPI_Element_Create (&windowelement, &windowmemo);
+        if (err != NoError) {
+            msg_rep ("OtdOpening_Draw err", "ACAPI_Element_Create", err, APINULLGuid);
+            return;
+        }
+        op.otd_guid = windowelement.header.guid;
+    }
 
     // -----------------------------------------------------------------------------
     // Собирает оставшиеся GUID существующей отделки в deletelist; само удаление здесь не выполняется.
@@ -122,10 +352,28 @@ namespace Roombook {
         }
     }
 
+    static bool OtdSlab_ShouldDrawFinish (const OtdRoom &room, const OtdSlab &otdslab) {
+        if (!room.isValid || !otdslab.isValid)
+            return false;
+        switch (otdslab.draw.type) {
+        case Ceil:
+            if (!room.create_ceil_elements)
+                return false;
+            break;
+        case Floor:
+            if (!room.create_floor_elements)
+                return false;
+            break;
+        default:
+            break;
+        }
+        return true;
+    }
+
     static bool OtdWall_ShouldDrawFinish (const OtdRoom &room, const OtdWall &wall) {
         if (!room.isValid || !wall.isValid)
             return false;
-        switch (wall.type) {
+        switch (wall.draw.type) {
         case Wall_Main:
         case Wall_Up:
         case Wall_Down:
@@ -138,10 +386,12 @@ namespace Roombook {
             return room.create_reveal_elements;
         case Ceil:
             return room.create_ceil_elements;
+        case Floor:
+            return room.create_floor_elements;
         default:
-            return room.create_wall_elements || room.create_column_elements || room.create_reveal_elements ||
-                   room.create_ceil_elements;
+            break;
         }
+        return true;
     }
 
     API_Guid OtdWall_TakeExistingFinish (UnicGuid &pool,
@@ -167,9 +417,15 @@ namespace Roombook {
                 continue;
             if (type == API_ObjectID && element->object.libInd != target.object.libInd)
                 continue;
-            if (type == API_BeamID && (target.beam.nSegments != 1 || element->beam.nSegments != 1))
+            if (type == API_BeamID &&
+                (target.beam.nSegments != 1 || element->beam.nSegments != 1 || target.beam.nSchemes != 1 ||
+                 element->beam.nSchemes != 1 || target.beam.nCuts != 2 || element->beam.nCuts != 2))
                 continue;
-            if (type != API_WallID && type != API_ObjectID && type != API_BeamID)
+            if (type == API_RoofID &&
+                (target.roof.roofClass != API_PlaneRoofID || element->roof.roofClass != API_PlaneRoofID))
+                continue;
+            if (type != API_WallID && type != API_ObjectID && type != API_BeamID && type != API_SlabID &&
+                type != API_RoofID)
                 continue;
             const std::string key = APIGuidToString (guid).ToCStr ().Get ();
             if (selected == APINULLGuid || key < selectedKey) {
@@ -181,6 +437,8 @@ namespace Roombook {
             pool.Delete (selected);
         return selected;
     }
+
+    static bool OtdLinearElement_CanDraw (const OtdLinearElement &geom, bool requireHeight);
 
     // Соответствия назначаются только окончательным участкам; один GUID нельзя использовать в двух зонах.
     static GSErrCode OtdRooms_AssignExistingWallFinishes (OtdRooms &rooms,
@@ -195,11 +453,15 @@ namespace Roombook {
             const OtdRoom &room = *it->value;
     #endif
             for (const auto &slab : room.otdslab)
-                if (slab.otd_guid != APINULLGuid)
-                    used.Add (slab.otd_guid, true);
+                if (slab.draw.otd_guid != APINULLGuid)
+                    used.Add (slab.draw.otd_guid, true);
             for (const auto &wall : room.otdwall)
-                if (wall.otd_guid != APINULLGuid)
-                    used.Add (wall.otd_guid, true);
+                if (wall.draw.otd_guid != APINULLGuid)
+                    used.Add (wall.draw.otd_guid, true);
+            for (const auto *beams : {&room.otdbeam_floor, &room.otdbeam_ceil})
+                for (const auto &beam : *beams)
+                    if (beam.draw.otd_guid != APINULLGuid)
+                        used.Add (beam.draw.otd_guid, true);
         }
         for (auto roomIt = rooms.EnumeratePairs (); roomIt != nullptr; ++roomIt) {
     #ifdef ServerMainVers_2800
@@ -210,44 +472,24 @@ namespace Roombook {
             auto *byBase = byZone.GetPtr (room.zone_guid);
             if (byBase == nullptr)
                 continue;
-            for (auto &wall : room.otdwall) {
-                if (!OtdWall_ShouldDrawFinish (room, wall) || wall.otd_guid != APINULLGuid || wall.height < min_dim ||
-                    std::hypot (wall.endC.x - wall.begC.x, wall.endC.y - wall.begC.y) < min_dim)
-                    continue;
-                const API_Guid classGuid = Class_GetClassGuid (wall.type, finclass);
+            const auto findPool = [&] (const OtdDrawData &draw) -> UnicGuid * {
+                const API_Guid classGuid = Class_GetClassGuid (draw.type, finclass);
                 if (classGuid == APINULLGuid)
-                    continue;
-                auto *byType = byBase->GetPtr (wall.base_guid);
-                if (byType == nullptr)
-                    continue;
-                auto *pool = byType->GetPtr (Class_GetOtdTypeByClass (classGuid, finclass));
-                if (pool == nullptr || pool->IsEmpty ())
-                    continue;
-                API_Element target = {};
-                API_ElementMemo memo = {};
-                const GS::OnExit memoGuard ([&] () { ACAPI_DisposeElemMemoHdls (&memo); });
-                bool ready = false;
-                if (wall.surface_geometry || wall.favorite.type == API_WallID) {
-                    ready = OtdWall_GetDefault_Wall (wall.favorite.name, target);
-                    if (wall.surface_geometry)
-                        target.wall.type = APIWtyp_Normal;
-                } else if (wall.favorite.type == API_ObjectID && wall.draw_type != API_BeamID) {
-                    ready = OtdWall_GetDefault_Object (wall.favorite.name, target, memo);
-                } else if (wall.favorite.type == API_BeamID) {
-                    ready = OtdBeam_GetDefault_Beam (wall.favorite.name, target, memo);
-                } else {
-                    continue; // Незавершённый Object-writer горизонтального откоса не активируем.
-                }
-                if (!ready)
-                    return APIERR_BADPARS;
+                    return nullptr;
+                auto *byType = byBase->GetPtr (draw.base_guid);
+                return byType == nullptr ? nullptr : byType->GetPtr (Class_GetOtdTypeByClass (classGuid, finclass));
+            };
+            const auto assign = [&] (OtdDrawData &draw, const API_Element &target, UnicGuid &pool) -> GSErrCode {
                 UnicGuid candidates;
-                for (auto it = pool->EnumeratePairs (); it != nullptr; ++it) {
+                for (auto it = pool.EnumeratePairs (); it != nullptr; ++it) {
     #ifdef ServerMainVers_2800
                     const API_Guid guid = it->key;
+                    const bool available = it->value;
     #else
                     const API_Guid guid = *it->key;
+                    const bool available = *it->value;
     #endif
-                    if (used.ContainsKey (guid))
+                    if (!available || used.ContainsKey (guid))
                         continue;
                     if (!existing.ContainsKey (guid)) {
                         API_Element element = {};
@@ -257,12 +499,109 @@ namespace Roombook {
                             return err;
                         existing.Add (guid, element);
                     }
+                    if (GetElemTypeID (target) == API_BeamID && GetElemTypeID (existing.Get (guid)) == API_BeamID) {
+                        API_ElementMemo memo = {};
+                        const GS::OnExit memoGuard ([&] () { ACAPI_DisposeElemMemoHdls (&memo); });
+                        const GSErrCode err =
+                            ACAPI_Element_GetMemo (guid,
+                                                   &memo,
+                                                   APIMemoMask_BeamSegment | APIMemoMask_AssemblySegmentScheme |
+                                                       APIMemoMask_AssemblySegmentCut);
+                        if (err != NoError)
+                            return err;
+                        if (memo.beamSegments == nullptr || memo.assemblySegmentSchemes == nullptr ||
+                            memo.assemblySegmentCuts == nullptr)
+                            continue;
+                    }
                     candidates.Add (guid, true);
                 }
-                wall.otd_guid = OtdWall_TakeExistingFinish (candidates, target, existing);
-                if (wall.otd_guid != APINULLGuid) {
-                    used.Add (wall.otd_guid, true);
-                    pool->Delete (wall.otd_guid);
+                draw.otd_guid = OtdWall_TakeExistingFinish (candidates, target, existing);
+                if (draw.otd_guid != APINULLGuid) {
+                    used.Add (draw.otd_guid, true);
+                    pool.Delete (draw.otd_guid);
+                }
+                return NoError;
+            };
+            for (auto &wall : room.otdwall) {
+                if (!OtdWall_ShouldDrawFinish (room, wall) || wall.draw.otd_guid != APINULLGuid ||
+                    wall.geom.height < min_dim ||
+                    std::hypot (wall.geom.seg.endC.x - wall.geom.seg.begC.x,
+                                wall.geom.seg.endC.y - wall.geom.seg.begC.y) < min_dim)
+                    continue;
+                auto *pool = findPool (wall.draw);
+                if (pool == nullptr || pool->IsEmpty ())
+                    continue;
+                API_Element target = {};
+                API_ElementMemo memo = {};
+                const GS::OnExit memoGuard ([&] () { ACAPI_DisposeElemMemoHdls (&memo); });
+                bool ready = false;
+                if (wall.surface_geometry || wall.draw.favorite.type == API_WallID) {
+                    ready = Wall_GetDefault (wall.draw.favorite.name, wall.draw.type, target);
+                    if (wall.surface_geometry)
+                        target.wall.type = APIWtyp_Normal;
+                } else if (wall.draw.favorite.type == API_ObjectID && wall.draw.draw_type != API_BeamID) {
+                    ready = Object_GetDefault (wall.draw.favorite.name, wall.draw.type, target, memo);
+                } else if (wall.draw.favorite.type == API_BeamID) {
+                    ready = Beam_GetDefault (wall.draw.favorite.name, wall.draw.type, target, memo);
+                } else {
+                    continue; // Незавершённый Object-writer горизонтального откоса не активируем.
+                }
+                if (!ready)
+                    return APIERR_BADPARS;
+                const GSErrCode err = assign (wall.draw, target, *pool);
+                if (err != NoError)
+                    return err;
+            }
+            for (auto &slab : room.otdslab) {
+                const double area = slab.poly.CalcArea ();
+                if (!OtdSlab_ShouldDrawFinish (room, slab) || !slab.surface_geometry ||
+                    slab.draw.otd_guid != APINULLGuid || !std::isfinite (area) || area < 0.0001 ||
+                    !std::isfinite (slab.zBottom))
+                    continue;
+                auto *pool = findPool (slab.draw);
+                if (pool == nullptr || pool->IsEmpty ())
+                    continue;
+                API_Element target = {};
+                API_ElementMemo memo = {};
+                const GS::OnExit memoGuard ([&] () { ACAPI_DisposeElemMemoHdls (&memo); });
+                bool ready = false;
+                if (slab.draw.base_type == API_MeshID) {
+                    SetElemTypeID (target, API_RoofID);
+                    target.roof.roofClass = API_PlaneRoofID;
+                    ready = true; // Геометрию и избранное уже проверил RoofBatch_Validate.
+                } else if (slab.draw.favorite.type == API_SlabID) {
+                    ready = Slab_GetDefault (slab.draw.favorite.name, slab.draw.type, target);
+                } else if (slab.draw.favorite.type == API_ObjectID) {
+                    ready = Object_GetDefault (slab.draw.favorite.name, slab.draw.type, target, memo);
+                }
+                if (!ready)
+                    return APIERR_BADPARS;
+                const GSErrCode err = assign (slab.draw, target, *pool);
+                if (err != NoError)
+                    return err;
+            }
+            if (!room.isValid)
+                continue;
+            for (auto *beams : {&room.otdbeam_floor, &room.otdbeam_ceil}) {
+                for (auto &beam : *beams) {
+                    if (beam.draw.otd_guid != APINULLGuid || beam.draw.favorite.type != API_BeamID ||
+                        !OtdLinearElement_CanDraw (beam.geom, false))
+                        continue;
+                    auto *pool = findPool (beam.draw);
+                    if (pool == nullptr || pool->IsEmpty ())
+                        continue;
+                    API_Element target = {};
+                    API_ElementMemo memo = {};
+                    const GS::OnExit memoGuard ([&] () { ACAPI_DisposeElemMemoHdls (&memo); });
+                    if (!Beam_GetDefault (beam.draw.favorite.name, beam.draw.type, target, memo))
+                        return APIERR_BADPARS;
+                    if (target.beam.nSegments != 1 || target.beam.nSchemes != 1 || target.beam.nCuts != 2 ||
+                        memo.beamSegments == nullptr || memo.assemblySegmentSchemes == nullptr ||
+                        memo.assemblySegmentCuts == nullptr)
+                        continue;
+                    const GSErrCode err = assign (beam.draw, target, *pool);
+                    if (err != NoError)
+                        return err;
                 }
             }
         }
@@ -298,119 +637,27 @@ namespace Roombook {
         return NoError;
     }
 
-    static GSErrCode OtdRoom_Draw (const Stories &storyLevels,
-                                   OtdRoom &otd,
-                                   UnicElementByType &subelementByparent,
-                                   ClassificationFunc::ClassificationDict &finclass) {
-        GSErrCode err = NoError;
-        GS::Array<API_Guid> group;
-        if (!otd.isValid)
-            return NoError;
-        API_Guid class_guid = APINULLGuid;
-        if (otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements ||
-            otd.create_ceil_elements) {
-            for (OtdWall &otdwall : otd.otdwall) {
-                if (!otdwall.isValid)
-                    continue;
-                if ((otdwall.type == Wall_Main || otdwall.type == Wall_Up || otdwall.type == Wall_Down) &&
-                    !otd.create_wall_elements)
-                    continue;
-                if (otdwall.type == Ceil && !otd.create_ceil_elements)
-                    continue;
-                if ((otdwall.type == Column) && !otd.create_column_elements)
-                    continue;
-                if ((otdwall.type == Reveal_Main || otdwall.type == Reveal_Down || otdwall.type == Reveal_Up) &&
-                    !otd.create_reveal_elements)
-                    continue;
-                OtdWall_Draw (storyLevels, otdwall, subelementByparent);
-                if (otdwall.draw_error != NoError)
-                    return otdwall.draw_error;
-                if (!otdwall.isValid)
-                    continue;
-                if (otdwall.otd_guid != APINULLGuid) {
-                    Param_AddUnicElementByType (otd.zone_guid,
-                                                otdwall.otd_guid,
-                                                API_ZoneID,
-                                                subelementByparent); // Привязка отделочных стен к
-                                                                     // зоне
-                    for (OtdOpening &op : otdwall.openings) {
-                        Param_AddUnicElementByType (otd.zone_guid,
-                                                    op.otd_guid,
-                                                    API_ZoneID,
-                                                    subelementByparent); // Привязка отделочных
-                                                                         // проёмов к зоне
-                    }
-                    // Классификация созданных стен
-                    OtdWall_SetClass (otdwall, finclass);
-                    for (OtdOpening &op : otdwall.openings) {
-                        if (op.otd_guid == APINULLGuid)
-                            continue;
-                        OtdOpening_SetClass (op, finclass);
-                    }
-                    group.Push (otdwall.otd_guid);
-                } else {
-                    msg_rep ("OtdRoom_Draw", "otdwall.otd_guid == APINULLGuid", NoError, APINULLGuid);
-                }
-            }
-        } else {
-            otd.otdwall.Clear ();
-        }
-        if (otd.create_ceil_elements || otd.create_floor_elements) {
-            for (OtdSlab &otdslab : otd.otdslab) {
-                if (!otdslab.isValid)
-                    continue;
-                if (otdslab.type == Ceil && !otd.create_ceil_elements)
-                    continue;
-                if (otdslab.type == Floor && !otd.create_floor_elements)
-                    continue;
-                OtdSlab_Draw (storyLevels, otdslab, subelementByparent);
-                if (otdslab.otd_guid != APINULLGuid) {
-                    Param_AddUnicElementByType (otd.zone_guid,
-                                                otdslab.otd_guid,
-                                                API_ZoneID,
-                                                subelementByparent); // Привязка перекрытий к зоне
-                    OtdSlab_SetClass (otdslab, finclass);
-                    group.Push (otdslab.otd_guid);
-                } else {
-                    msg_rep ("OtdRoom_Draw", "otdslab.otd_guid == APINULLGuid", NoError, APINULLGuid);
-                }
-            }
-        } else {
-            otd.otdslab.Clear ();
-        }
-        if (group.GetSize () > 1) {
-    #ifdef ServerMainVers_2700
-            err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
-    #else
-            API_Guid groupGuid = APINULLGuid;
-            err = ACAPI_ElementGroup_Create (group, &groupGuid);
-        #ifdef ServerMainVers_2300
-            if (err != NoError)
-                err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
-        #endif
-    #endif
-            if (err != NoError)
-                msg_rep ("OtdRoom_Draw", "ACAPI_Grouping_CreateGroup", err, APINULLGuid);
-        }
-        return err;
-    }
-
     // -----------------------------------------------------------------------------
     // Связи отделки с основаниями и зонами; общая запись накопленных свойств, включая сводку площадей.
     // -----------------------------------------------------------------------------
-    static void OtdWall_SetSync (UnicElementByType &subelementByparent,
-                                 ParamDictElement &paramToWrite,
-                                 const API_ElemTypeID *elementTypes,
-                                 std::size_t elementTypeCount,
-                                 GS::Int32 &nPhase) {
+    static void OtdElements_SetSync (UnicElementByType &subelementByparent,
+                                     ParamDictElement &paramToWrite,
+                                     const API_ElemTypeID *elementTypes,
+                                     std::size_t elementTypeCount,
+                                     GS::Int32 &nPhase) {
         API_Elem_Head parentelementhead;
         UnicGuid syncguidsdict;
         GS::UniString suffix;
         GS::Array<API_Guid> syncguids;
         GS::UniString funcname = "Create link with base element";
         SuspendGroupsGuard suspGuard; // отключаем режим группировки на время записи.
-        for (std::size_t typeIndex = 0; typeIndex < elementTypeCount; ++typeIndex) {
-            const API_ElemTypeID &typeelem = elementTypes[typeIndex];
+        bool meshListed = false;
+        for (std::size_t i = 0; i < elementTypeCount; ++i)
+            meshListed = meshListed || elementTypes[i] == API_MeshID;
+        for (std::size_t typeIndex = 0; typeIndex <= elementTypeCount; ++typeIndex) {
+            if (typeIndex == elementTypeCount && meshListed)
+                continue;
+            const API_ElemTypeID typeelem = typeIndex < elementTypeCount ? elementTypes[typeIndex] : API_MeshID;
             if (!subelementByparent.ContainsKey (typeelem))
                 continue;
             for (UnicElement::PairIterator cIt = subelementByparent.Get (typeelem).EnumeratePairs (); cIt != NULL;
@@ -462,292 +709,325 @@ namespace Roombook {
         }
         SyncSettings syncSettings;
         LoadSyncSettingsFromPreferences (syncSettings);
+        if (!syncSettings.GetSyncMon ())
+            return;
         GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids);
         if (!rereadelem.IsEmpty ()) {
             SyncArray (syncSettings, rereadelem);
         }
     }
 
-    void OtdRooms_Draw (GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,
-                        GS::Array<API_Guid> &deletelist,
-                        OtdRooms &roomsinfo,
-                        const Stories &storyLevels,
-                        ClassificationFunc::ClassificationDict &finclass,
-                        UnicGuid &reserv_elements,
-                        ParamDictElement &paramToWrite,
-                        const API_ElemTypeID *elementTypes,
-                        std::size_t elementTypeCount,
-                        GS::Int32 &nPhase) {
-        // Повторный запуск: назначаем совместимые существующие GUID окончательным участкам отделки.
-        const GSErrCode matchErr = OtdRooms_AssignExistingWallFinishes (roomsinfo, exsistot_byzone, finclass);
-        if (matchErr != NoError) {
-            msg_rep ("RoomBook", "Cannot prepare existing finish updates", matchErr, APINULLGuid);
-            return;
+    static bool OtdLinearElement_CanDraw (const OtdLinearElement &geom, bool requireHeight) {
+        const auto finite = [] (const API_Coord3D &point) {
+            return std::isfinite (point.x) && std::isfinite (point.y) && std::isfinite (point.z);
+        };
+        if (!finite (geom.seg.begC) || !finite (geom.seg.endC))
+            return false;
+        // Всем линейным элементам нужна ненулевая ось в плане, не только длина в 3D.
+        const double length = std::hypot (geom.seg.endC.x - geom.seg.begC.x, geom.seg.endC.y - geom.seg.begC.y);
+        if (!std::isfinite (length) || length < min_dim || !std::isfinite (geom.seg.endC.z - geom.seg.begC.z))
+            return false;
+        // Нулевая необязательная высота сохраняет сечение избранного.
+        return std::isfinite (geom.height) && ((!requireHeight && geom.height == 0) || geom.height >= min_dim);
+    }
+
+    // Верх проёма подготовлен слева направо: глубина лежит справа от оси.
+    // Столбцы сетки Beam anchorPoint: 0/3/6 — слева, 1/4/7 — центр, 2/5/8 — справа.
+    static bool UpperReveal_GetBeamOffset (short anchorPoint, double width, double &offset) {
+        if (anchorPoint < 0 || anchorPoint > 8 || !std::isfinite (width) || width <= min_dim)
+            return false;
+        offset = -width * (2 - anchorPoint % 3) / 2;
+        return true;
+    }
+
+    static bool UpperReveal_GetWallOffset (const API_WallType &wall, double &offset) {
+        if (!std::isfinite (wall.thickness) || wall.thickness <= min_dim)
+            return false;
+        // При flipped меняются стороны тела, но не направление подготовленной оси.
+        switch (wall.referenceLineLocation) {
+        case APIWallRefLine_Outside:
+            offset = wall.flipped ? -wall.thickness : 0;
+            return true;
+        case APIWallRefLine_Inside:
+            offset = wall.flipped ? 0 : -wall.thickness;
+            return true;
+        default:
+            return false; // Center/CoreCenter не допускают offset; core-привязки требуют Composite.
         }
-        // Только список удаления; модель изменяется ниже, внутри команды создания и обновления.
-        OtdRooms_CollectUnusedFinishingElements (exsistot_byzone, deletelist);
-        UnicElementByType subelementByparent; // Словарь с созданными родительскими
-                                              // и дочерними элементами
-        // Отрисовка элементов отделки
-        GS::UniString funcname = "Draw finishing element(s)";
-        GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
-        SuspendGroupsGuard suspGuard; // отключаем режим группировки на время записи.
-        const GSErrCode drawErr = ACAPI_CallUndoableCommand (UndoString, [&] () -> GSErrCode {
-            // Резервируем и разблокируем
-            PrepareElementsResult prepareResult = PrepareElementsResult::NothingToDo;
-            if (!PrepareElementsForUpdate (reserv_elements, prepareResult))
-                return APIERR_CANCEL;
-            // Удаляем устаревшие элементы отделки
-            if (!deletelist.IsEmpty ()) {
-                GSErrCode err = ACAPI_Element_Delete (deletelist);
-                if (err != NoError) {
-                    msg_rep ("RoomBook", "Cannot remove obsolete finishing elements", err, APINULLGuid);
-                    return err;
-                }
-            }
-            for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #ifdef ServerMainVers_2800
-                OtdRoom &otd = cIt->value;
-    #else
-                OtdRoom &otd = *cIt->value;
-    #endif
-                if (AdvanceProcessPhase (funcname, nPhase))
-                    return APIERR_CANCEL;
-                const GSErrCode err = OtdRoom_Draw (storyLevels, otd, subelementByparent, finclass);
-                if (err != NoError)
-                    return err;
-            }
-            return NoError;
-        });
-        if (drawErr != NoError) {
-            msg_rep ("RoomBook", "Finish update rolled back", drawErr, APINULLGuid);
-            return; // Связи частично выполненного пакета не публикуем.
-        }
-        // Только после успешной отрисовки: связи с основаниями/зонами и запись общего paramToWrite.
-        OtdWall_SetSync (subelementByparent, paramToWrite, elementTypes, elementTypeCount, nPhase);
     }
 
     // -----------------------------------------------------------------------------
-    // Построение отделочных стен (общая)
+    // Создание балки
     // -----------------------------------------------------------------------------
-    void OtdWall_Draw (const Stories &storyLevels, OtdWall &edges, UnicElementByType &subelementByparent) {
-        edges.draw_error = NoError;
-        if (!std::isfinite (edges.height) || !std::isfinite (edges.zBottom) || edges.height < min_dim) {
-            edges.otd_guid = APINULLGuid;
-            edges.draw_error = APIERR_BADPARS;
+    static void Beam_Draw (const Stories &storyLevels, const OtdLinearElement &geom, OtdDrawData &draw) {
+        const API_Guid otd_guid = draw.otd_guid;
+        draw.otd_guid = APINULLGuid;
+        draw.draw_error = APIERR_BADPARS;
+        if (!OtdLinearElement_CanDraw (geom, false))
             return;
-        }
-        double dx = -edges.endC.x + edges.begC.x;
-        double dy = -edges.endC.y + edges.begC.y;
-        double dr = sqrt (dx * dx + dy * dy);
-        if (!std::isfinite (dr) || dr < min_dim) {
-            edges.otd_guid = APINULLGuid;
-            edges.draw_error = APIERR_BADPARS;
+        const double planLength = std::hypot (geom.seg.endC.x - geom.seg.begC.x, geom.seg.endC.y - geom.seg.begC.y);
+        const double dz = geom.seg.endC.z - geom.seg.begC.z;
+        const double level = GetOffsetFromStory (geom.seg.begC.z, geom.floorInd, storyLevels);
+        if (!std::isfinite (level))
             return;
-        }
-        if (edges.surface_geometry) {
-            OtdWall_Draw_Wall (edges.favorite.name, storyLevels, edges, subelementByparent);
-            if (edges.isValid && edges.otd_guid != APINULLGuid)
-                Param_AddUnicElementByType (edges.base_guid, edges.otd_guid, edges.base_type, subelementByparent);
-            return;
-        }
-        if (edges.favorite.type == API_ObjectID) {
-            // горизонтальную часть откоса строим в этом случае аксессуаром
-            // пола/потолка
-            if (edges.draw_type == API_BeamID) {
-                OtdBeam_Draw_Object (edges.favorite.name, storyLevels, edges);
-            } else {
-                OtdWall_Draw_Object (edges.favorite.name, storyLevels, edges);
-            }
-        }
-        if (edges.favorite.type == API_WallID) {
-            OtdWall_Draw_Wall (edges.favorite.name, storyLevels, edges, subelementByparent);
-        }
-        if (edges.favorite.type == API_BeamID) {
-            OtdBeam_Draw_Beam (edges.favorite.name, storyLevels, edges);
-        }
-        Param_AddUnicElementByType (edges.base_guid,
-                                    edges.otd_guid,
-                                    API_WallID,
-                                    subelementByparent); // Привязка отделочной стены к базовой
-    }
-
-    // Создаёт балку с координатами, размерами первого сегмента и материалом из edges; задаёт этаж и отметку.
-    // После успешного создания записывает GUID в edges.otd_guid, при ошибке создания сообщает о ней.
-    static void OtdBeam_Draw_Beam (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges) {
-        const API_Guid existingGuid = edges.otd_guid;
-        edges.otd_guid = APINULLGuid;
-        edges.draw_error = APIERR_BADPARS;
-        GSErrCode err = NoError;
         API_Element beamelement = {};
         API_ElementMemo beammemo = {};
+        API_Element settings = {};
+        API_ElementMemo settingsMemo = {};
+        API_Element mask = {};
         const GS::OnExit memoGuard ([&beammemo] () { ACAPI_DisposeElemMemoHdls (&beammemo); });
-        if (existingGuid == APINULLGuid) {
-            if (!OtdBeam_GetDefault_Beam (favorite_name, beamelement, beammemo))
-                return;
+        const GS::OnExit settingsGuard ([&settingsMemo] () { ACAPI_DisposeElemMemoHdls (&settingsMemo); });
+        if (!Beam_GetDefault (draw.favorite.name, draw.type, settings, settingsMemo))
+            return;
+        const bool is_new = (otd_guid == APINULLGuid);
+        if (is_new) {
+            beamelement = settings;
+            std::swap (beammemo, settingsMemo);
         } else {
-            beamelement.header.guid = existingGuid;
-            err = ACAPI_Element_Get (&beamelement);
-            if (err == NoError && GetElemTypeID (beamelement) == API_BeamID && beamelement.beam.nSegments == 1)
-                err = ACAPI_Element_GetMemo (existingGuid, &beammemo, APIMemoMask_BeamSegment);
-            else if (err == NoError)
-                err = APIERR_BADID;
-            if (err != NoError) {
-                edges.draw_error = err;
+            if (!GetExsist (otd_guid, beamelement, beammemo))
                 return;
+        }
+        if (GetElemTypeID (beamelement) != API_BeamID || beamelement.beam.nSegments != 1 ||
+            beamelement.beam.nSchemes != 1 || beamelement.beam.nCuts != 2 || beammemo.beamSegments == nullptr ||
+            beammemo.assemblySegmentSchemes == nullptr || beammemo.assemblySegmentCuts == nullptr)
+            return;
+        beamelement.header.guid = otd_guid;
+        API_Coord begC = {geom.seg.begC.x, geom.seg.begC.y}; // begin point of the beam reference line
+        API_Coord endC = {geom.seg.endC.x, geom.seg.endC.y};
+        bool needupdate = Elems_Check_Update (
+            beamelement.header, mask, geom.floorInd, settings.header.layer, settings.header.renovationStatus);
+        if (beamelement.beam.begC.x != begC.x || beamelement.beam.begC.y != begC.y) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, begC);
+            beamelement.beam.begC = begC;
+            needupdate = true;
+        }
+        if (beamelement.beam.endC.x != endC.x || beamelement.beam.endC.y != endC.y) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, endC);
+            beamelement.beam.endC = endC;
+            needupdate = true;
+        }
+        if (beamelement.beam.level != level) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, level);
+            beamelement.beam.level = level;
+            needupdate = true;
+        }
+        if (beamelement.beam.curveAngle != 0) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, curveAngle);
+            beamelement.beam.curveAngle = 0;
+            needupdate = true;
+        }
+        if (beamelement.beam.verticalCurveHeight != 0) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, verticalCurveHeight);
+            beamelement.beam.verticalCurveHeight = 0;
+            needupdate = true;
+        }
+        if (beamelement.beam.isSlanted != (dz != 0)) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, isSlanted);
+            beamelement.beam.isSlanted = dz != 0;
+            needupdate = true;
+        }
+        const double slantAngle = std::atan2 (dz, planLength);
+        if (beamelement.beam.slantAngle != slantAngle) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, slantAngle);
+            beamelement.beam.slantAngle = slantAngle;
+            needupdate = true;
+        }
+        // Один отрезок задаёт всю длину балки, независимо от фиксированной длины шаблона.
+        if (beammemo.assemblySegmentSchemes[0].lengthType != APIAssemblySegment_Proportional) {
+            beammemo.assemblySegmentSchemes[0].lengthType = APIAssemblySegment_Proportional;
+            needupdate = true;
+        }
+        if (beammemo.assemblySegmentSchemes[0].lengthProportion != 1) {
+            beammemo.assemblySegmentSchemes[0].lengthProportion = 1;
+            needupdate = true;
+        }
+        if (beammemo.assemblySegmentSchemes[0].fixedLength != 0) {
+            beammemo.assemblySegmentSchemes[0].fixedLength = 0;
+            needupdate = true;
+        }
+        // Нулевые размеры и материал означают сохранение соответствующих настроек шаблона.
+        if (!is_equal (geom.width, 0) && geom.width > min_dim &&
+            beammemo.beamSegments[0].assemblySegmentData.nominalWidth != geom.width) {
+            beammemo.beamSegments[0].assemblySegmentData.nominalWidth = geom.width;
+            needupdate = true;
+        }
+        if (!is_equal (geom.height, 0) && geom.height > min_dim &&
+            beammemo.beamSegments[0].assemblySegmentData.nominalHeight != geom.height) {
+            beammemo.beamSegments[0].assemblySegmentData.nominalHeight = geom.height;
+            needupdate = true;
+        }
+        if (draw.is_upper_reveal) {
+            const auto &segment = beammemo.beamSegments[0].assemblySegmentData;
+            double offset = beamelement.beam.offset;
+            if (segment.modelElemStructureType != API_BasicStructure || segment.circleBased ||
+                !is_equal (beamelement.beam.profileAngle, 0) ||
+                !UpperReveal_GetBeamOffset (beamelement.beam.anchorPoint, segment.nominalWidth, offset))
+                return;
+            if (beamelement.beam.offset != offset) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, offset);
+                beamelement.beam.offset = offset;
+                needupdate = true;
             }
         }
-        if (beammemo.beamSegments == nullptr ||
-            (existingGuid != APINULLGuid &&
-             beammemo.beamSegments[0].assemblySegmentData.modelElemStructureType == API_ProfileStructure))
-            return;
-        beamelement.beam.begC = edges.begC;
-        beamelement.beam.endC = edges.endC;
-        if (beammemo.beamSegments != nullptr) {
-            beammemo.beamSegments[0].assemblySegmentData.nominalWidth = edges.width;
-            beammemo.beamSegments[0].assemblySegmentData.nominalHeight = edges.height;
-
+        if (draw.material.material > 0) {
     #ifdef ServerMainVers_2700
-            // Материал горизонтального откоса: для AC_27+ структура API_BeamSegmentType содержит
-            // bottomMaterial, leftMaterial, rightMaterial, topMaterial, endsMaterial (AC_29+ extrusionMaterial)
-            // AC27: API_OverriddenAttribute заменён на APIOptional<API_AttributeIndex>
-            // (как сделано ниже для стены: hasValue + value).
-            const API_AttributeIndex beamMaterial = ACAPI_CreateAttributeIndex (edges.material.material);
-            beammemo.beamSegments[0].bottomMaterial.hasValue = true;
-            beammemo.beamSegments[0].bottomMaterial.value = beamMaterial;
-
-            beammemo.beamSegments[0].leftMaterial.hasValue = true;
-            beammemo.beamSegments[0].leftMaterial.value = beamMaterial;
-
-            beammemo.beamSegments[0].rightMaterial.hasValue = true;
-            beammemo.beamSegments[0].rightMaterial.value = beamMaterial;
-
-            beammemo.beamSegments[0].topMaterial.hasValue = true;
-            beammemo.beamSegments[0].topMaterial.value = beamMaterial;
-
-            beammemo.beamSegments[0].endsMaterial.hasValue = true;
-            beammemo.beamSegments[0].endsMaterial.value = beamMaterial;
+            const API_AttributeIndex beamMaterial = ACAPI_CreateAttributeIndex (draw.material.material);
+            for (auto *material : {&beammemo.beamSegments[0].bottomMaterial,
+                                   &beammemo.beamSegments[0].leftMaterial,
+                                   &beammemo.beamSegments[0].rightMaterial,
+                                   &beammemo.beamSegments[0].topMaterial,
+                                   &beammemo.beamSegments[0].endsMaterial}) {
+                if (!material->hasValue || material->value != beamMaterial) {
+                    material->hasValue = true;
+                    material->value = beamMaterial;
+                    needupdate = true;
+                }
+            }
     #else
-            beammemo.beamSegments[0].bottomMaterial.overridden = true;
-            beammemo.beamSegments[0].bottomMaterial.attributeIndex = edges.material.material;
-
-            beammemo.beamSegments[0].leftMaterial.overridden = true;
-            beammemo.beamSegments[0].leftMaterial.attributeIndex = edges.material.material;
-
-            beammemo.beamSegments[0].rightMaterial.overridden = true;
-            beammemo.beamSegments[0].rightMaterial.attributeIndex = edges.material.material;
+            for (auto *material : {&beammemo.beamSegments[0].bottomMaterial,
+                                   &beammemo.beamSegments[0].leftMaterial,
+                                   &beammemo.beamSegments[0].rightMaterial}) {
+                if (!material->overridden || material->attributeIndex != draw.material.material) {
+                    material->overridden = true;
+                    material->attributeIndex = draw.material.material;
+                    needupdate = true;
+                }
+            }
     #endif
         }
-        beamelement.header.floorInd = edges.floorInd;
-        beamelement.beam.level = GetOffsetFromStory (edges.zBottom, edges.floorInd, storyLevels);
-        beamelement.beam.isFlipped = false;
-        if (existingGuid == APINULLGuid) {
+        GSErrCode err = NoError;
+        if (is_new) {
             err = ACAPI_Element_Create (&beamelement, &beammemo);
-        } else {
-            API_Element mask = {};
-            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, begC);
-            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, endC);
-            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, level);
-            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, isFlipped);
-            ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, floorInd);
-            err = ACAPI_Element_Change (&beamelement, &mask, &beammemo, APIMemoMask_BeamSegment, true);
+        } else if (needupdate) {
+            err = ACAPI_Element_Change (
+                &beamelement, &mask, &beammemo, APIMemoMask_BeamSegment | APIMemoMask_AssemblySegmentScheme, true);
         }
-        edges.draw_error = err;
+        draw.draw_error = err;
         if (err != NoError) {
-            msg_rep ("OtdBeam_Draw_Beam err", "ACAPI_Element_Create", err, APINULLGuid);
+            msg_rep ("Beam_Draw err", is_new ? "ACAPI_Element_Create" : "ACAPI_Element_Change", err, otd_guid);
             return;
         }
-        edges.otd_guid = beamelement.header.guid;
-    }
-
-    // Обнуляет элемент и memo; использует избранное, если оно содержит балку, иначе получает настройки балки по
-    // умолчанию. При ошибке получения настроек освобождает memo и возвращает false.
-    static bool OtdBeam_GetDefault_Beam (const GS::UniString &favorite_name,
-                                         API_Element &beamelement,
-                                         API_ElementMemo &beammemo) {
-        GSErrCode err = NoError;
-        BNZeroMemory (&beamelement, sizeof (API_Element));
-        BNZeroMemory (&beammemo, sizeof (API_ElementMemo));
-        if (Favorite_GetByName (favorite_name, beamelement, beammemo)) {
-            if (GetElemTypeID (beamelement) == API_BeamID)
-                return true;
+        draw.material.structtype = beammemo.beamSegments[0].assemblySegmentData.modelElemStructureType;
+        switch (draw.material.structtype) {
+        case API_BasicStructure:
+            draw.material.bmaterial =
+                AttributeIndexGetShort (beammemo.beamSegments[0].assemblySegmentData.buildingMaterial);
+            break;
+        case API_CompositeStructure:
+            draw.material.bmaterial = AttributeIndexGetShort (beammemo.beamSegments[0].assemblySegmentData.profileAttr);
+            break;
+        case API_ProfileStructure:
+            draw.material.bmaterial = 0;
+            break;
         }
-        SetElemTypeID (beamelement, API_BeamID);
-        err = ACAPI_Element_GetDefaults (&beamelement, &beammemo);
-        if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&beammemo);
-            return false;
-        }
-        return true;
-    }
-
-    // Ничего не делает: тело создания объекта закомментировано, edges.otd_guid не изменяется.
-    static void OtdBeam_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges) {
-        // API_Element beamelement;
-        // API_ElementMemo beammemo;
-        // GSErrCode err = NoError;
-        // if (!OtdBeam_GetDefault_Object (favorite_name, beamelement, beammemo)) {
-        //     return;
-        // }
-        // edges.otd_guid = beamelement.header.guid;
-        // ACAPI_DisposeElemMemoHdls (&beammemo);
-    }
-
-    // Обнуляет элемент и memo; возвращает объект из избранного либо получает настройки объекта по умолчанию.
-    // Только для настроек по умолчанию сбрасывает угол и автовидимость по этажам, включает параметры пера, линий и
-    // материалов объекта.
-    bool OtdBeam_GetDefault_Object (const GS::UniString &favorite_name,
-                                    API_Element &beamelement,
-                                    API_ElementMemo &beammemo) {
-        GSErrCode err = NoError;
-        BNZeroMemory (&beammemo, sizeof (API_ElementMemo));
-        BNZeroMemory (&beamelement, sizeof (API_Element));
-        if (Favorite_GetByName (favorite_name, beamelement, beammemo)) {
-            if (GetElemTypeID (beamelement) == API_ObjectID)
-                return true;
-        }
-        SetElemTypeID (beamelement, API_ObjectID);
-        err = ACAPI_Element_GetDefaults (&beamelement, &beammemo);
-        if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&beammemo);
-            return false;
-        }
-        beamelement.object.angle = 0;
-        beamelement.object.isAutoOnStoryVisibility = false;
-        beamelement.object.useObjPens = true;
-        beamelement.object.useObjLtypes = true;
-        beamelement.object.useObjMaterials = true;
-        return true;
+        draw.otd_guid = beamelement.header.guid;
+        draw.write_succeeded = true;
+        draw.was_created = is_new;
     }
 
     // -----------------------------------------------------------------------------
+    // ParamToMemo возвращает полноту поиска, а не наличие отличий. Убираем равные
+    // параметры до записи; отсутствующие и неподдерживаемые параметры не меняют объект.
+    static bool Object_UpdateParams (API_ElementMemo &memo, GDLHelpers::ParamDict &params) {
+        if (memo.params == nullptr)
+            return false;
+        bool needupdate = false;
+        const GSSize count = BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
+        for (GSIndex i = 0; i < count; ++i) {
+            const API_AddParType &current = (*memo.params)[i];
+            GS::UniString name = GDLNAMEPREFIX;
+            name += GS::UniString (current.name);
+            name.SetToLowerCase ();
+            name += BRACEEND;
+            const auto *value = params.GetPtr (name);
+            if (value == nullptr)
+                continue;
+            bool different = false;
+            switch (current.typeID) {
+            case APIParT_LineTyp:
+            case APIParT_Profile:
+            case APIParT_BuildingMaterial:
+            case APIParT_FillPat:
+            case APIParT_Mater:
+            case APIParT_Boolean:
+            case APIParT_Integer:
+            case APIParT_PenCol:
+            case APIParT_Length:
+            case APIParT_RealNum:
+            case APIParT_ColRGB:
+            case APIParT_Intens:
+            case APIParT_Angle:
+                if (current.typeMod == API_ParSimple) {
+                    different = current.value.real != value->num;
+                } else {
+                    different = current.dim1 != value->dim1 || current.dim2 != value->dim2;
+                    const USize size = (USize)value->dim1 * value->dim2;
+                    if (!different && value->arr_num.GetSize () >= size && size > 0) {
+                        different = current.value.array == nullptr ||
+                                    BMGetHandleSize (current.value.array) < size * sizeof (double);
+                        for (USize j = 0; j < size && !different; ++j)
+                            different = ((double *)*current.value.array)[j] != value->arr_num[j];
+                    }
+                }
+                break;
+            case APIParT_CString:
+                if (current.typeMod == API_ParSimple) {
+                    const GS::UniString target (
+                        value->str.ToUStr (0, GS::Min (value->str.GetLength (), (USize)(API_UAddParStrLen - 1)))
+                            .Get ());
+                    different = GS::UniString (current.value.uStr) != target;
+                }
+                break;
+            default:
+                break;
+            }
+            if (different)
+                needupdate = true;
+            else
+                params.Delete (name);
+        }
+        if (needupdate)
+            GDLHelpers::ParamToMemo (memo, params);
+        return needupdate;
+    }
+
     // Построение отделочных стен аксессуаром
     // -----------------------------------------------------------------------------
-    static void OtdWall_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges) {
-        const API_Guid existingGuid = edges.otd_guid;
-        edges.otd_guid = APINULLGuid;
-        edges.draw_error = APIERR_BADPARS;
+    static void Object_Draw_Linear (const Stories &storyLevels,
+                                    const OtdLinearElement &geom,
+                                    OtdDrawData &draw,
+                                    GS::Array<OtdOpening> &openings) {
+        const double level = GetOffsetFromStory (geom, storyLevels);
+        if (!OtdLinearElement_CanDraw (geom, true) || !std::isfinite (level)) {
+            draw.otd_guid = APINULLGuid;
+            draw.draw_error = APIERR_BADPARS;
+            return;
+        }
+        API_ElemTypeID type = draw.favorite.type;
+        API_Guid otd_guid = draw.otd_guid;
+        bool is_new = (otd_guid == APINULLGuid);
         GSErrCode err = NoError;
         API_Element wallobjelement = {};
         API_ElementMemo wallobjmemo = {};
+        API_Element settings = {};
+        API_ElementMemo settingsMemo = {};
+        API_Element mask = {};
         const GS::OnExit memoGuard ([&wallobjmemo] () { ACAPI_DisposeElemMemoHdls (&wallobjmemo); });
-        if (existingGuid == APINULLGuid) {
-            if (!OtdWall_GetDefault_Object (favorite_name, wallobjelement, wallobjmemo))
-                return;
+        const GS::OnExit settingsGuard ([&settingsMemo] () { ACAPI_DisposeElemMemoHdls (&settingsMemo); });
+        if (!Object_GetDefault (draw.favorite.name, draw.type, settings, settingsMemo))
+            return;
+        if (is_new) {
+            wallobjelement = settings;
+            std::swap (wallobjmemo, settingsMemo);
         } else {
-            wallobjelement.header.guid = existingGuid;
-            err = ACAPI_Element_Get (&wallobjelement);
-            if (err == NoError && GetElemTypeID (wallobjelement) == API_ObjectID)
-                err = ACAPI_Element_GetMemo (existingGuid, &wallobjmemo, APIMemoMask_AddPars);
-            else if (err == NoError)
-                err = APIERR_BADID;
-            if (err != NoError) {
-                edges.draw_error = err;
+            if (!GetExsist (draw.otd_guid, wallobjelement, wallobjmemo))
+                return;
+            if (GetElemTypeID (wallobjelement) != API_ObjectID) {
                 return;
             }
         }
-        Point2D wbegC = {edges.begC.x, edges.begC.y};
-        Point2D wendC = {edges.endC.x, edges.endC.y};
+        Point2D wbegC = {geom.seg.begC.x, geom.seg.begC.y};
+        Point2D wendC = {geom.seg.endC.x, geom.seg.endC.y};
         Sector walledge = {wbegC, wendC};
         GS::Optional<UnitVector_2D> walldir = walledge.GetDirection ();
         if (!walldir.HasValue ()) {
@@ -758,12 +1038,12 @@ namespace Roombook {
         GDLHelpers::Param p;
         p.num = 1;
         accsessoryparams.Add ("{@gdl:ac_refside}", p);
-        p.num = edges.material.material;
+        p.num = draw.material.material;
         accsessoryparams.Add ("{@gdl:gs_bw_mat}", p);
-        p.num = edges.material.material;
+        p.num = draw.material.material;
         accsessoryparams.Add ("{@gdl:matp1}", p);
 
-        p.num = edges.height;
+        p.num = geom.height;
         accsessoryparams.Add ("{@gdl:ac_wall_height}", p);
         p.num = ac_wall_length;
         accsessoryparams.Add ("{@gdl:ac_wall_length}", p);
@@ -780,9 +1060,9 @@ namespace Roombook {
         p.dim1 = 2;
         p.dim2 = 2;
         p.arr_num.Push (0);
-        p.arr_num.Push (edges.height);
+        p.arr_num.Push (geom.height);
         p.arr_num.Push (ac_wall_length);
-        p.arr_num.Push (edges.height);
+        p.arr_num.Push (geom.height);
         accsessoryparams.Add ("{@gdl:ac_top_poly}", p);
         p.arr_num.Clear ();
 
@@ -797,12 +1077,12 @@ namespace Roombook {
 
         p.dim1 = 1;
         p.dim2 = 2;
-        p.arr_num.Push (edges.ang_begC);
-        p.arr_num.Push (edges.ang_endC);
+        p.arr_num.Push (geom.ang_begC);
+        p.arr_num.Push (geom.ang_endC);
         accsessoryparams.Add ("{@gdl:ac_angles}", p);
         p.arr_num.Clear ();
 
-        if (edges.openings.IsEmpty ()) {
+        if (openings.IsEmpty ()) {
             p.dim1 = 1;
             p.dim2 = 2;
             p.arr_num.Push (0);
@@ -810,7 +1090,7 @@ namespace Roombook {
         } else {
             Int32 dim2 = 0;
             UInt32 addedOpenings = 0;
-            for (OtdOpening &op : edges.openings) {
+            for (OtdOpening &op : openings) {
                 if (op.width < min_dim || op.height < min_dim)
                     continue;
                 ++addedOpenings;
@@ -835,127 +1115,112 @@ namespace Roombook {
         }
         accsessoryparams.Add ("{@gdl:ac_wd_poly}", p);
         p.arr_num.Clear ();
-        GDLHelpers::ParamToMemo (wallobjmemo, accsessoryparams);
+        bool needupdate = Object_UpdateParams (wallobjmemo, accsessoryparams);
         Vector2D ref = {-1, 0};
         Vector2D wallvect = walldir.Get ().ToVector2D ();
         double ang = wallvect.CalcAngleToReference (ref);
-        wallobjelement.object.angle = ang;
-        wallobjelement.object.pos = edges.endC;
-        wallobjelement.header.floorInd = edges.floorInd;
+        if (wallobjelement.object.angle != ang) {
+            wallobjelement.object.angle = ang;
+            needupdate = true;
+        }
+        if (wallobjelement.object.pos.x != geom.seg.endC.x || wallobjelement.object.pos.y != geom.seg.endC.y) {
+            wallobjelement.object.pos = {geom.seg.endC.x, geom.seg.endC.y};
+            needupdate = true;
+        }
+        needupdate =
+            Elems_Check_Update (
+                wallobjelement.header, mask, geom.floorInd, settings.header.layer, settings.header.renovationStatus) ||
+            needupdate;
     #ifdef ServerMainVers_2700
-        API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
-        wallobjelement.object.mat = ematerial;
+        API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (draw.material.material);
+        if (wallobjelement.object.mat != ematerial) {
+            wallobjelement.object.mat = ematerial;
+            needupdate = true;
+        }
     #else
-        wallobjelement.object.mat = edges.material.material;
+        if (wallobjelement.object.mat != draw.material.material) {
+            wallobjelement.object.mat = draw.material.material;
+            needupdate = true;
+        }
     #endif
-        wallobjelement.object.level = GetOffsetFromStory (edges.zBottom, edges.floorInd, storyLevels);
-        if (existingGuid == APINULLGuid) {
+        if (wallobjelement.object.level != level) {
+            wallobjelement.object.level = level;
+            needupdate = true;
+        }
+        if (is_new) {
             err = ACAPI_Element_Create (&wallobjelement, &wallobjmemo);
-        } else {
-            API_Element mask = {};
+        } else if (needupdate) {
             ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, pos);
             ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, angle);
             ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, level);
             ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, mat);
-            ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, floorInd);
             err = ACAPI_Element_Change (&wallobjelement, &mask, &wallobjmemo, APIMemoMask_AddPars, true);
         }
-        edges.draw_error = err;
+        draw.draw_error = err;
         if (err != NoError) {
             if (wallobjelement.object.libInd == 0) {
                 GS::UniString message =
                     "Cannot create or update the wall finish: the GDL object has no valid library part (library index is 0). Favorite: '";
-                message += favorite_name;
+                message += draw.favorite.name;
                 message +=
                     "'. Check that the required library is loaded and reselect the GDL object in the Favorite. If no Favorite is used, check the Object tool defaults.";
-                msg_rep ("RoomBook", message, err, edges.base_guid);
+                msg_rep ("RoomBook", message, err, draw.base_guid);
             } else {
-                msg_rep ("OtdWall_Draw_Object err", "ACAPI_Element_Create", err, APINULLGuid);
+                msg_rep ("Draw_Object_Linear err", "ACAPI_Element_Create", err, APINULLGuid);
             }
             return;
         }
-        edges.otd_guid = wallobjelement.header.guid;
-    }
-
-    // -----------------------------------------------------------------------------
-    // Получение из избранного аксессуара стены для простроения
-    // -----------------------------------------------------------------------------
-    // Обнуляет элемент и memo; возвращает объект из избранного либо получает настройки объекта по умолчанию.
-    // Только в ветке настроек по умолчанию задаёт угол, видимость и использование перьев, линий и материалов объекта.
-    static bool OtdWall_GetDefault_Object (const GS::UniString &favorite_name,
-                                           API_Element &wallobjelement,
-                                           API_ElementMemo &wallobjmemo) {
-        GSErrCode err = NoError;
-        BNZeroMemory (&wallobjmemo, sizeof (API_ElementMemo));
-        BNZeroMemory (&wallobjelement, sizeof (API_Element));
-        if (Favorite_GetByName (favorite_name, wallobjelement, wallobjmemo)) {
-            if (GetElemTypeID (wallobjelement) == API_ObjectID)
-                return true;
-        }
-        SetElemTypeID (wallobjelement, API_ObjectID);
-        err = ACAPI_Element_GetDefaults (&wallobjelement, &wallobjmemo);
-        if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&wallobjmemo);
-            return false;
-        }
-        wallobjelement.object.angle = 0;
-        wallobjelement.object.isAutoOnStoryVisibility = false;
-        wallobjelement.object.useObjPens = true;
-        wallobjelement.object.useObjLtypes = true;
-        wallobjelement.object.useObjMaterials = true;
-        return true;
+        draw.otd_guid = wallobjelement.header.guid;
+        draw.write_succeeded = true;
+        draw.was_created = is_new;
     }
 
     // -----------------------------------------------------------------------------
     // Построение отделочных стен стандартной стеной
     // -----------------------------------------------------------------------------
-    static void OtdWall_Draw_Wall (const GS::UniString &favorite_name,
-                                   const Stories &storyLevels,
-                                   OtdWall &edges,
-                                   UnicElementByType &subelementByparent) {
-        const API_Guid existingGuid = edges.otd_guid;
-        edges.otd_guid = APINULLGuid;
-        edges.draw_error = APIERR_BADPARS;
+    static void Wall_Draw (const Stories &storyLevels,
+                           OtdLinearElement &geom,
+                           OtdDrawData &draw,
+                           double slant_angle,
+                           GS::Array<OtdOpening> &openings) {
+        const API_Guid existingGuid = draw.otd_guid;
+        draw.otd_guid = APINULLGuid;
+        draw.draw_error = APIERR_BADPARS;
+        if (!OtdLinearElement_CanDraw (geom, true))
+            return;
+        const double level = GetOffsetFromStory (geom, storyLevels);
+        if (!std::isfinite (level))
+            return;
         GSErrCode err = NoError;
         API_Element wallelement = {};
-        if (!OtdWall_GetDefault_Wall (favorite_name, wallelement)) {
+        const bool is_upper_reveal = draw.is_upper_reveal;
+        // Общий Wall_GetDefault нормализует привязку; верх проёма должен сохранить избранное.
+        if (!Wall_GetDefault (draw.favorite.name, draw.type, wallelement)) {
             return;
         }
-        if (edges.surface_geometry) {
-            if (wallelement.wall.modelElemStructureType == API_ProfileStructure) {
-                msg_rep (
-                    "Surface finish", "Profile wall favorite is not representable", APIERR_BADPARS, edges.base_guid);
-                return;
-            }
-            wallelement.wall.type = APIWtyp_Normal;
-            wallelement.wall.referenceLineLocation = APIWallRefLine_Inside;
-            wallelement.wall.offset = 0;
-            wallelement.wall.offsetFromOutside = wallelement.wall.thickness;
-        }
-        const bool is_upper_reveal =
-            !edges.surface_geometry && edges.draw_type == API_BeamID && edges.favorite.type == API_WallID;
-        // Откосы
         if (is_upper_reveal) {
-            edges.height = wallelement.wall.thickness;
-            edges.zBottom -= edges.height;
-            if (!is_equal (edges.width, 0) && edges.width > 0)
-                wallelement.wall.thickness = edges.width;
-            wallelement.wall.offset = wallelement.wall.thickness;
-            wallelement.wall.offsetFromOutside = 0;
+            if (wallelement.wall.modelElemStructureType != API_BasicStructure ||
+                wallelement.wall.type != APIWtyp_Normal)
+                return;
+            if (!is_equal (geom.width, 0) && geom.width > 0)
+                wallelement.wall.thickness = geom.width;
+            wallelement.wall.thickness1 = wallelement.wall.thickness;
+            if (!UpperReveal_GetWallOffset (wallelement.wall, wallelement.wall.offset))
+                return;
         }
         // Верхний откос уже ориентирован при подготовке; повторный разворот меняет сторону глубины.
-        wallelement.wall.begC = edges.begC;
-        wallelement.wall.endC = edges.endC;
-        wallelement.wall.height = edges.height;
-        if (edges.slant_angle > 0 && !is_upper_reveal) {
-            wallelement.wall.profileType = is_equal (edges.slant_angle, 90 * DEGRAD) ? APISect_Normal : APISect_Slanted;
-            wallelement.wall.slantAlpha = edges.slant_angle;
+        wallelement.wall.begC = {geom.seg.begC.x, geom.seg.begC.y};
+        wallelement.wall.endC = {geom.seg.endC.x, geom.seg.endC.y};
+        wallelement.wall.height = geom.height;
+        if (slant_angle > 0 && !is_upper_reveal) {
+            wallelement.wall.profileType = is_equal (slant_angle, 90 * DEGRAD) ? APISect_Normal : APISect_Slanted;
+            wallelement.wall.slantAlpha = slant_angle;
             wallelement.wall.relativeTopStory = 0;
         }
-        wallelement.header.floorInd = edges.floorInd;
-        wallelement.wall.bottomOffset = GetOffsetFromStory (edges.zBottom, edges.floorInd, storyLevels);
+        wallelement.header.floorInd = geom.floorInd;
+        wallelement.wall.bottomOffset = level;
     #ifdef ServerMainVers_2700
-        API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
+        API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (draw.material.material);
         wallelement.wall.refMat.hasValue = true;
         wallelement.wall.oppMat.hasValue = true;
         wallelement.wall.sidMat.hasValue = true;
@@ -966,20 +1231,25 @@ namespace Roombook {
         wallelement.wall.refMat.overridden = true;
         wallelement.wall.oppMat.overridden = true;
         wallelement.wall.sidMat.overridden = true;
-        wallelement.wall.refMat.attributeIndex = edges.material.material;
-        wallelement.wall.oppMat.attributeIndex = edges.material.material;
-        wallelement.wall.sidMat.attributeIndex = edges.material.material;
+        wallelement.wall.refMat.attributeIndex = draw.material.material;
+        wallelement.wall.oppMat.attributeIndex = draw.material.material;
+        wallelement.wall.sidMat.attributeIndex = draw.material.material;
     #endif
         wallelement.wall.zoneRel = APIZRel_None;
-        wallelement.wall.flipped = false;
+        if (!is_upper_reveal)
+            wallelement.wall.flipped = false;
         if (existingGuid == APINULLGuid) {
             err = ACAPI_Element_Create (&wallelement, nullptr);
+            if (err != NoError) {
+                draw.draw_error = err;
+                return;
+            }
         } else {
             API_Element current = {};
             current.header.guid = existingGuid;
             err = ACAPI_Element_Get (&current);
             if (err != NoError) {
-                edges.draw_error = err;
+                draw.draw_error = err;
                 return;
             }
             if (GetElemTypeID (current) != API_WallID || current.wall.type == APIWtyp_Poly ||
@@ -993,7 +1263,7 @@ namespace Roombook {
             for (const API_ElemTypeID type : {API_WindowID, API_DoorID}) {
                 const auto children = ConnectedElements_Read (existingGuid, type, APIFilt_None);
                 if (children.error != NoError) {
-                    edges.draw_error = children.error;
+                    draw.draw_error = children.error;
                     return;
                 }
                 for (const auto &guid : children.items) {
@@ -1007,13 +1277,113 @@ namespace Roombook {
             if (!oldOpenings.IsEmpty ()) {
                 err = ACAPI_Element_Delete (oldOpenings);
                 if (err != NoError) {
-                    edges.draw_error = err;
+                    draw.draw_error = err;
                     return;
                 }
             }
             wallelement.header.guid = existingGuid;
             API_Element mask = {};
-            ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, floorInd);
+            bool needupdate = Elems_Check_Update (current.header,
+                                                  mask,
+                                                  wallelement.header.floorInd,
+                                                  wallelement.header.layer,
+                                                  wallelement.header.renovationStatus);
+            if (current.wall.begC.x != wallelement.wall.begC.x || current.wall.begC.y != wallelement.wall.begC.y) {
+                current.wall.begC = wallelement.wall.begC;
+                needupdate = true;
+            }
+            if (current.wall.endC.x != wallelement.wall.endC.x || current.wall.endC.y != wallelement.wall.endC.y) {
+                current.wall.endC = wallelement.wall.endC;
+                needupdate = true;
+            }
+            if (current.wall.height != wallelement.wall.height) {
+                current.wall.height = wallelement.wall.height;
+                needupdate = true;
+            }
+            if (current.wall.bottomOffset != wallelement.wall.bottomOffset) {
+                current.wall.bottomOffset = wallelement.wall.bottomOffset;
+                needupdate = true;
+            }
+            if (current.wall.topOffset != wallelement.wall.topOffset) {
+                current.wall.topOffset = wallelement.wall.topOffset;
+                needupdate = true;
+            }
+            if (current.wall.relativeTopStory != wallelement.wall.relativeTopStory) {
+                current.wall.relativeTopStory = wallelement.wall.relativeTopStory;
+                needupdate = true;
+            }
+            if (current.wall.thickness != wallelement.wall.thickness) {
+                current.wall.thickness = wallelement.wall.thickness;
+                needupdate = true;
+            }
+            if (current.wall.thickness1 != wallelement.wall.thickness1) {
+                current.wall.thickness1 = wallelement.wall.thickness1;
+                needupdate = true;
+            }
+            if (current.wall.type != wallelement.wall.type) {
+                current.wall.type = wallelement.wall.type;
+                needupdate = true;
+            }
+            if (current.wall.angle != wallelement.wall.angle) {
+                current.wall.angle = wallelement.wall.angle;
+                needupdate = true;
+            }
+            if (current.wall.referenceLineLocation != wallelement.wall.referenceLineLocation) {
+                current.wall.referenceLineLocation = wallelement.wall.referenceLineLocation;
+                needupdate = true;
+            }
+            if (current.wall.offset != wallelement.wall.offset) {
+                current.wall.offset = wallelement.wall.offset;
+                needupdate = true;
+            }
+            if (current.wall.modelElemStructureType != wallelement.wall.modelElemStructureType) {
+                current.wall.modelElemStructureType = wallelement.wall.modelElemStructureType;
+                needupdate = true;
+            }
+            if (wallelement.wall.modelElemStructureType == API_BasicStructure &&
+                current.wall.buildingMaterial != wallelement.wall.buildingMaterial) {
+                current.wall.buildingMaterial = wallelement.wall.buildingMaterial;
+                needupdate = true;
+            }
+            if (wallelement.wall.modelElemStructureType == API_CompositeStructure &&
+                current.wall.composite != wallelement.wall.composite) {
+                current.wall.composite = wallelement.wall.composite;
+                needupdate = true;
+            }
+            if (current.wall.profileType != wallelement.wall.profileType) {
+                current.wall.profileType = wallelement.wall.profileType;
+                needupdate = true;
+            }
+            if (current.wall.slantAlpha != wallelement.wall.slantAlpha) {
+                current.wall.slantAlpha = wallelement.wall.slantAlpha;
+                needupdate = true;
+            }
+            if (current.wall.slantBeta != wallelement.wall.slantBeta) {
+                current.wall.slantBeta = wallelement.wall.slantBeta;
+                needupdate = true;
+            }
+            for (const auto &pair : {std::make_pair (&current.wall.refMat, &wallelement.wall.refMat),
+                                     std::make_pair (&current.wall.oppMat, &wallelement.wall.oppMat),
+                                     std::make_pair (&current.wall.sidMat, &wallelement.wall.sidMat)}) {
+    #ifdef ServerMainVers_2700
+                if (pair.first->hasValue != pair.second->hasValue || pair.first->value != pair.second->value) {
+    #else
+                if (pair.first->overridden != pair.second->overridden ||
+                    pair.first->attributeIndex != pair.second->attributeIndex) {
+    #endif
+                    *pair.first = *pair.second;
+                    needupdate = true;
+                }
+            }
+            if (current.wall.zoneRel != wallelement.wall.zoneRel) {
+                current.wall.zoneRel = wallelement.wall.zoneRel;
+                needupdate = true;
+            }
+            if (current.wall.flipped != wallelement.wall.flipped) {
+                current.wall.flipped = wallelement.wall.flipped;
+                needupdate = true;
+            }
+            wallelement = current;
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, begC);
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, endC);
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, height);
@@ -1026,10 +1396,11 @@ namespace Roombook {
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, angle);
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, referenceLineLocation);
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, offset);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, offsetFromOutside);
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, modelElemStructureType);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, buildingMaterial);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, composite);
+            if (wallelement.wall.modelElemStructureType == API_BasicStructure)
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, buildingMaterial);
+            if (wallelement.wall.modelElemStructureType == API_CompositeStructure)
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, composite);
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, profileType);
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, slantAlpha);
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, slantBeta);
@@ -1038,199 +1409,51 @@ namespace Roombook {
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, sidMat);
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, zoneRel);
             ACAPI_ELEMENT_MASK_SET (mask, API_WallType, flipped);
-            err = ACAPI_Element_Change (&wallelement, &mask, nullptr, 0, true);
+            if (needupdate)
+                err = ACAPI_Element_Change (&wallelement, &mask, nullptr, 0, true);
         }
-        edges.draw_error = err;
+
+        draw.draw_error = err;
         if (err != NoError) {
-            msg_rep ("OtdWall_Draw_Wall err", "ACAPI_Element_Create", err, APINULLGuid);
+            msg_rep ("Wall_Draw err", "ACAPI_Element_Create", err, APINULLGuid);
             return;
         }
-        edges.otd_guid = wallelement.header.guid;
-        for (OtdOpening &op : edges.openings) {
+        draw.otd_guid = wallelement.header.guid;
+        for (OtdOpening &op : openings) {
             op.otd_guid = APINULLGuid;
-            OtdOpening_Draw (wallelement, op, subelementByparent, edges.zBottom);
+            OtdOpening_Draw (wallelement, op, OtdLinearSegment_GetZBottom (geom));
             const bool opening_failed = op.otd_guid == APINULLGuid;
             if (!opening_failed)
                 continue;
-            if (existingGuid != APINULLGuid || !edges.surface_geometry) {
-                edges.draw_error = APIERR_BADPARS;
-                edges.otd_guid = APINULLGuid;
-                return; // Вызывающий undo scope откатит также старые вырезы.
-            }
-            edges.draw_error = APIERR_BADPARS;
+
+            draw.draw_error = APIERR_BADPARS;
             // Непрорезанная оболочка даёт лишнюю отделку; удаляем только новый результат.
             const GS::Array<API_Guid> incomplete = {wallelement.header.guid};
             const GSErrCode deleteErr = ACAPI_Element_Delete (incomplete);
-            msg_rep ("Surface finish", "Opening failed; removing incomplete wall", deleteErr, edges.base_guid);
-            edges.isValid = false;
+            msg_rep ("Surface finish", "Opening failed; removing incomplete wall", deleteErr, draw.base_guid);
             if (deleteErr == NoError) {
-                edges.otd_guid = APINULLGuid;
-                for (auto &opening : edges.openings)
+                draw.otd_guid = APINULLGuid;
+                for (auto &opening : openings)
                     opening.otd_guid = APINULLGuid;
             }
             return;
         }
-    }
+        draw.material.structtype = wallelement.wall.modelElemStructureType;
 
-    // -----------------------------------------------------------------------------
-    // Получение из избранного стены для простроения
-    // -----------------------------------------------------------------------------
-    // Возвращает стену из избранного, если её тип подходит; иначе получает настройки стены по умолчанию.
-    // В ветке настроек по умолчанию задаёт базовую структуру, толщину otd_thickness, внутреннюю линию привязки и
-    // zoneRel.
-    bool OtdWall_GetDefault_Wall (const GS::UniString &favorite_name, API_Element &wallelement) {
-        GSErrCode err = NoError;
-        BNZeroMemory (&wallelement, sizeof (API_Element));
-        if (Favorite_GetByName (favorite_name, wallelement)) {
-            if (GetElemTypeID (wallelement) == API_WallID)
-                return true;
+        switch (draw.material.structtype) {
+        case API_BasicStructure:
+            draw.material.bmaterial = AttributeIndexGetShort (wallelement.wall.buildingMaterial);
+            break;
+        case API_CompositeStructure:
+            draw.material.bmaterial = AttributeIndexGetShort (wallelement.wall.composite);
+            break;
+        case API_ProfileStructure:
+            draw.material.bmaterial = AttributeIndexGetShort (wallelement.wall.profileAttr);
+            break;
         }
-        SetElemTypeID (wallelement, API_WallID);
-        err = ACAPI_Element_GetDefaults (&wallelement, nullptr);
-        if (err != NoError) {
-            return false;
-        }
-        wallelement.wall.zoneRel = APIZRel_None;
-        wallelement.wall.referenceLineLocation = APIWallRefLine_Inside;
-        wallelement.wall.flipped = false;
-    #ifdef ServerMainVers_2600
-    #else
-        wallelement.wall.refMat.overridden = true;
-        wallelement.wall.oppMat.overridden = true;
-        wallelement.wall.sidMat.overridden = true;
-    #endif
-        wallelement.wall.modelElemStructureType = API_BasicStructure;
-        wallelement.wall.thickness = otd_thickness;
-        return true;
-    }
 
-    // -----------------------------------------------------------------------------
-    // Построение проёмов в отделочных стенах
-    // -----------------------------------------------------------------------------
-    static void OtdOpening_Draw (API_Element &wallelement,
-                                 OtdOpening &op,
-                                 UnicElementByType &subelementByparent,
-                                 double zBottom) {
-        GSErrCode err = NoError;
-        API_Element windowelement = {};
-        API_ElementMemo windowmemo = {};
-        if (wallelement.wall.type == APIWtyp_Poly)
-            return;
-        if (!OtdOpening_GetDefault ("smstf window", windowelement, windowmemo)) {
-            return;
-        }
-        windowelement.window.owner = wallelement.header.guid;
-        const GS::OnExit memoGuard ([&windowmemo] () { ACAPI_DisposeElemMemoHdls (&windowmemo); });
-        if (op.surface_geometry) {
-            // Вырез следует наклону стены, независимо от точки фиксации избранного.
-            windowelement.window.directionType = API_WDAssociativeToWall;
-            windowelement.window.fixPoint = APIHoleAnchor_CenterFix;
-        }
-        if (op.has_reveal) {
-            double th = wallelement.wall.thickness;
-            double zUp_op = op.zBottom + op.height;
-            double zUp_wall = zBottom + wallelement.wall.height;
-            // Уменьшаем проём на толщину откоса по высоте
-            if (!is_equal (zUp_op, zUp_wall)) {
-                op.height -= th;
-            }
-            double lwall = sqrt ((wallelement.wall.begC.x - wallelement.wall.endC.x) *
-                                     (wallelement.wall.begC.x - wallelement.wall.endC.x) +
-                                 (wallelement.wall.begC.y - wallelement.wall.endC.y) *
-                                     (wallelement.wall.begC.y - wallelement.wall.endC.y));
-            if (!is_equal (op.objLoc + op.width / 2, lwall)) {
-                op.width -= th;
-                op.objLoc -= th;
-            }
-            if (!is_equal (op.objLoc - op.width / 2, 0)) {
-                op.width -= th;
-                op.objLoc += th;
-            }
-        }
-        // objLoc присваиваем ПОСЛЕ коррекции откосов, чтобы центр проёма совпадал со скорректированными размерами
-        windowelement.window.objLoc = op.objLoc;
-        if (op.width < min_dim || op.height < min_dim) {
-            return;
-        }
-        windowelement.window.openingBase.width = op.width;
-        windowelement.window.openingBase.height = op.height;
-        windowelement.window.lower = op.lower;
-        err = ACAPI_Element_Create (&windowelement, &windowmemo);
-        if (err != NoError) {
-            msg_rep ("OtdOpening_Draw err", "ACAPI_Element_Create", err, APINULLGuid);
-            return;
-        }
-        op.otd_guid = windowelement.header.guid;
-        Param_AddUnicElementByType (op.base_guid,
-                                    op.otd_guid,
-                                    API_WindowID,
-                                    subelementByparent); // Привязка отделочного проёма к базовому
-    }
-
-    // -----------------------------------------------------------------------------
-    // Получение настроек проёмов в отделочных стенах
-    // -----------------------------------------------------------------------------
-    static bool OtdOpening_GetDefault (const GS::UniString &favorite_name,
-                                       API_Element &windowelement,
-                                       API_ElementMemo &windowmemo) {
-        GSErrCode err = NoError;
-        BNZeroMemory (&windowmemo, sizeof (API_ElementMemo));
-        BNZeroMemory (&windowelement, sizeof (API_Element));
-        if (Favorite_GetByName (favorite_name, windowelement, windowmemo)) {
-            if (GetElemTypeID (windowelement) == API_WindowID)
-                return true;
-        }
-        SetElemTypeID (windowelement, API_WindowID);
-        err = ACAPI_Element_GetDefaults (&windowelement, &windowmemo);
-        if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&windowmemo);
-            return false;
-        }
-        return true;
-    }
-
-    // -----------------------------------------------------------------------------
-    // Построение потолка/пола (общая)
-    // -----------------------------------------------------------------------------
-    static void OtdSlab_Draw (const Stories &storyLevels, OtdSlab &otdslab, UnicElementByType &subelementByparent) {
-        if (otdslab.surface_geometry) {
-            if (otdslab.favorite.type == API_ObjectID) {
-                OtdSlab_Draw_Object (otdslab.favorite.name, storyLevels, otdslab);
-            } else {
-                OtdSlab_Draw_Slab (otdslab.favorite.name, storyLevels, otdslab);
-            }
-            if (otdslab.otd_guid != APINULLGuid)
-                Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent);
-            return;
-        }
-        // Провери тип существующего элемента
-        API_ElemTypeID type = otdslab.favorite.type;
-        API_Guid otd_guid = otdslab.otd_guid;
-        bool is_new = (otd_guid == APINULLGuid);
-        if (!is_new) {
-            type = GetElemTypeID (otd_guid);
-        }
-        if (type == API_ObjectID) {
-            OtdSlab_Draw_Object (otdslab.favorite.name, storyLevels, otdslab);
-        } else {
-            OtdSlab_Draw_Slab (otdslab.favorite.name, storyLevels, otdslab);
-        }
-        // Если обновить объект не получилось - удаляем старый и создаём новый
-        if (!is_new && otdslab.otd_guid == APINULLGuid) {
-            msg_rep ("OtdSlab_Draw err", "Can't update element, create new", NoError, APINULLGuid);
-            GS::Array<API_Guid> deletelist = {otd_guid};
-            ACAPI_Element_Delete (deletelist);
-            if (otdslab.favorite.type == API_ObjectID) {
-                OtdSlab_Draw_Object (otdslab.favorite.name, storyLevels, otdslab);
-            } else {
-                OtdSlab_Draw_Slab (otdslab.favorite.name, storyLevels, otdslab);
-            }
-        }
-        otdslab.poly.Clear ();
-        Param_AddUnicElementByType (otdslab.base_guid,
-                                    otdslab.otd_guid,
-                                    API_SlabID,
-                                    subelementByparent); // Привязка отделочного перекрытия к базовому
+        draw.write_succeeded = true;
+        draw.was_created = (existingGuid == APINULLGuid);
     }
 
     // Контур Roof привязан к верху: подрезку сначала переносим на верхнюю плоскость,
@@ -1256,7 +1479,7 @@ namespace Roombook {
         Geometry::MultiPolygon2D coverage;
         coverage.Push (floor.poly);
         for (const auto &neighbor : neighbors) {
-            if (neighbor.type != Floor || neighbor.base_type != API_MeshID)
+            if (neighbor.draw.type != Floor || neighbor.draw.base_type != API_MeshID)
                 continue;
             API_Polygon otherPolygon = {};
             API_ElementMemo otherMemo = {};
@@ -1397,13 +1620,13 @@ namespace Roombook {
 
     // Готовит настройки, контур и подрезки Roof без создания элемента.
     // Вызывающий код передаёт нулевые element/memo и освобождает memo при любом исходе.
-    static GSErrCode OtdSlab_PrepareRoof (const Stories &storyLevels,
-                                          const OtdSlab &floor,
-                                          const API_Element &slabSettings,
-                                          const GS::Array<OtdSlab> *neighbors,
-                                          API_Element &element,
-                                          API_ElementMemo &memo) {
-        if (GetElemTypeID (slabSettings) != API_SlabID || floor.type != Floor || !std::isfinite (floor.zBottom) ||
+    static GSErrCode Roof_Prepare (const Stories &storyLevels,
+                                   const OtdSlab &floor,
+                                   const API_Element &slabSettings,
+                                   const GS::Array<OtdSlab> *neighbors,
+                                   API_Element &element,
+                                   API_ElementMemo &memo) {
+        if (GetElemTypeID (slabSettings) != API_SlabID || floor.draw.type != Floor || !std::isfinite (floor.zBottom) ||
             !std::isfinite (floor.plane_origin.x) || !std::isfinite (floor.plane_origin.y) ||
             !std::isfinite (floor.slope_x) || !std::isfinite (floor.slope_y) || floor.poly.CalcArea () < 0.0001)
             return APIERR_BADPARS;
@@ -1431,6 +1654,7 @@ namespace Roombook {
         if (error != NoError)
             return error;
         element.header.layer = slabSettings.header.layer;
+        element.header.renovationStatus = slabSettings.header.renovationStatus;
         element.header.floorInd = floor.floorInd;
         element.roof.roofClass = API_PlaneRoofID;
         auto &base = element.roof.shellBase;
@@ -1458,6 +1682,8 @@ namespace Roombook {
         base.edgeTrim.sideType = APIEdgeTrim_Vertical;
         base.edgeTrim.sideAngle = PI / 2;
         base.level = GetOffsetFromStory (floor.zBottom, floor.floorInd, storyLevels);
+        if (!std::isfinite (base.level))
+            return APIERR_BADPARS;
         auto &plane = element.roof.u.planeRoof;
         const double slope = std::hypot (floor.slope_x, floor.slope_y);
         plane.angle = std::atan (slope);
@@ -1471,95 +1697,502 @@ namespace Roombook {
         return error;
     }
 
-    GSErrCode OtdSlab_CreateRoof (const Stories &storyLevels,
-                                  OtdSlab &floor,
-                                  const API_Element &slabSettings,
-                                  const GS::Array<OtdSlab> *neighbors) {
+    // ID и padding не описывают геометрию; сравниваем только записываемые координаты,
+    // границы контуров и дуги, до освобождения прежних handles конвертером.
+    static bool Polygon_IsEqual (const API_Polygon &a,
+                                 const API_ElementMemo &am,
+                                 const API_Polygon &b,
+                                 const API_ElementMemo &bm) {
+        if (a.nCoords != b.nCoords || a.nSubPolys != b.nSubPolys || a.nArcs != b.nArcs || am.coords == nullptr ||
+            bm.coords == nullptr || am.pends == nullptr || bm.pends == nullptr)
+            return false;
+        for (Int32 i = 1; i <= a.nCoords; ++i) {
+            if ((*am.coords)[i].x != (*bm.coords)[i].x || (*am.coords)[i].y != (*bm.coords)[i].y)
+                return false;
+        }
+        for (Int32 i = 0; i <= a.nSubPolys; ++i) {
+            if ((*am.pends)[i] != (*bm.pends)[i])
+                return false;
+        }
+        if (a.nArcs > 0 && (am.parcs == nullptr || bm.parcs == nullptr))
+            return false;
+        for (Int32 i = 0; i < a.nArcs; ++i) {
+            const auto &aa = (*am.parcs)[i];
+            const auto &ba = (*bm.parcs)[i];
+            if (aa.begIndex != ba.begIndex || aa.endIndex != ba.endIndex || aa.arcAngle != ba.arcAngle)
+                return false;
+        }
+        return true;
+    }
+
+    // Полностью заменяемый контур получает новые ID вершин; прежние настройки рёбер не привязываем к новым индексам.
+    static GSErrCode Roof_WritePrepared (API_Element &element, API_ElementMemo &memo, const API_Guid &existingGuid) {
+        if (existingGuid == APINULLGuid)
+            return ACAPI_Element_Create (&element, &memo);
+        API_Element existing = {};
+        existing.header.guid = existingGuid;
+        GSErrCode err = ACAPI_Element_Get (&existing);
+        if (err != NoError)
+            return err;
+        if (GetElemTypeID (existing) != API_RoofID || existing.roof.roofClass != API_PlaneRoofID)
+            return APIERR_BADPARS;
+        API_ElementMemo previousMemo = {};
+        const GS::OnExit memoGuard ([&] () { ACAPI_DisposeElemMemoHdls (&previousMemo); });
+        err = ACAPI_Element_GetMemo (existingGuid,
+                                     &previousMemo,
+                                     APIMemoMask_Polygon | APIMemoMask_EdgeTrims | APIMemoMask_SideMaterials |
+                                         APIMemoMask_RoofEdgeTypes);
+        if (err != NoError)
+            return err;
+        bool needupdate =
+            !Polygon_IsEqual (existing.roof.u.planeRoof.poly, previousMemo, element.roof.u.planeRoof.poly, memo);
+        if (!needupdate) {
+            // Замыкающая вершина контура не задаёт ребро; SDK обнуляет её edge payload.
+            for (Int32 contour = 1; contour <= element.roof.u.planeRoof.poly.nSubPolys; ++contour) {
+                for (Int32 i = (*memo.pends)[contour - 1] + 1; i < (*memo.pends)[contour]; ++i) {
+                    const API_EdgeTrim previousTrim = previousMemo.edgeTrims == nullptr
+                                                          ? existing.roof.shellBase.edgeTrim
+                                                          : (*previousMemo.edgeTrims)[i];
+                    const API_EdgeTrim targetTrim =
+                        memo.edgeTrims == nullptr ? element.roof.shellBase.edgeTrim : (*memo.edgeTrims)[i];
+                    if (previousTrim.sideType != targetTrim.sideType ||
+                        (targetTrim.sideType == APIEdgeTrim_CustomAngle &&
+                         previousTrim.sideAngle != targetTrim.sideAngle))
+                        needupdate = true;
+                    if (previousMemo.sideMaterials != nullptr) {
+    #ifdef ServerMainVers_2700
+                        if (previousMemo.sideMaterials[i].hasValue)
+    #else
+                        if (previousMemo.sideMaterials[i].overridden)
+    #endif
+                            needupdate = true;
+                    }
+                    if (previousMemo.roofEdgeTypes != nullptr &&
+                        previousMemo.roofEdgeTypes[i] != APIRoofEdgeType_Undefined)
+                        needupdate = true;
+                }
+            }
+        }
+        API_Element mask = {};
+        needupdate = Elems_Check_Update (existing.header,
+                                         mask,
+                                         element.header.floorInd,
+                                         element.header.layer,
+                                         element.header.renovationStatus) ||
+                     needupdate;
+        auto &current = existing.roof.shellBase;
+        const auto &target = element.roof.shellBase;
+        if (current.modelElemStructureType != target.modelElemStructureType) {
+            current.modelElemStructureType = target.modelElemStructureType;
+            needupdate = true;
+        }
+        if (target.modelElemStructureType == API_BasicStructure &&
+            current.buildingMaterial != target.buildingMaterial) {
+            current.buildingMaterial = target.buildingMaterial;
+            needupdate = true;
+        }
+        if (target.modelElemStructureType == API_CompositeStructure && current.composite != target.composite) {
+            current.composite = target.composite;
+            needupdate = true;
+        }
+        if (current.thickness != target.thickness) {
+            current.thickness = target.thickness;
+            needupdate = true;
+        }
+        if (current.pen != target.pen) {
+            current.pen = target.pen;
+            needupdate = true;
+        }
+        if (current.ltypeInd != target.ltypeInd) {
+            current.ltypeInd = target.ltypeInd;
+            needupdate = true;
+        }
+    #ifndef ServerMainVers_2700
+        if (current.penOverride.cutFillPen != target.penOverride.cutFillPen ||
+            current.penOverride.cutFillBackgroundPen != target.penOverride.cutFillBackgroundPen ||
+            current.penOverride.overrideCutFillPen != target.penOverride.overrideCutFillPen ||
+            current.penOverride.overrideCutFillBackgroundPen != target.penOverride.overrideCutFillBackgroundPen) {
+            current.penOverride = target.penOverride;
+            needupdate = true;
+        }
+    #endif
+        if (current.sectContPen != target.sectContPen) {
+            current.sectContPen = target.sectContPen;
+            needupdate = true;
+        }
+        if (current.sectContLtype != target.sectContLtype) {
+            current.sectContLtype = target.sectContLtype;
+            needupdate = true;
+        }
+        for (const auto &pair : {std::make_pair (&current.topMat, &target.topMat),
+                                 std::make_pair (&current.botMat, &target.botMat),
+                                 std::make_pair (&current.sidMat, &target.sidMat)}) {
+    #ifdef ServerMainVers_2700
+            if (pair.first->hasValue != pair.second->hasValue || pair.first->value != pair.second->value) {
+    #else
+            if (pair.first->overridden != pair.second->overridden ||
+                pair.first->attributeIndex != pair.second->attributeIndex) {
+    #endif
+                *pair.first = *pair.second;
+                needupdate = true;
+            }
+        }
+
+        if (current.materialsChained != target.materialsChained) {
+            current.materialsChained = target.materialsChained;
+            needupdate = true;
+        }
+        if (current.useFloorFill != target.useFloorFill) {
+            current.useFloorFill = target.useFloorFill;
+            needupdate = true;
+        }
+        if (current.use3DHatching != target.use3DHatching) {
+            current.use3DHatching = target.use3DHatching;
+            needupdate = true;
+        }
+        if (current.floorFillPen != target.floorFillPen) {
+            current.floorFillPen = target.floorFillPen;
+            needupdate = true;
+        }
+        if (current.floorFillBGPen != target.floorFillBGPen) {
+            current.floorFillBGPen = target.floorFillBGPen;
+            needupdate = true;
+        }
+        if (current.floorFillInd != target.floorFillInd) {
+            current.floorFillInd = target.floorFillInd;
+            needupdate = true;
+        }
+        const auto &a = current.hatchOrientation;
+        const auto &b = target.hatchOrientation;
+        if (a.type != b.type || a.version != b.version || a.flags != b.flags || a.origo.x != b.origo.x ||
+            a.origo.y != b.origo.y || a.matrix00 != b.matrix00 || a.matrix10 != b.matrix10 ||
+            a.matrix01 != b.matrix01 || a.matrix11 != b.matrix11 || a.innerRadius != b.innerRadius) {
+            current.hatchOrientation = target.hatchOrientation;
+            needupdate = true;
+        }
+        if (current.edgeTrim.sideType != target.edgeTrim.sideType ||
+            (target.edgeTrim.sideType == APIEdgeTrim_CustomAngle &&
+             current.edgeTrim.sideAngle != target.edgeTrim.sideAngle)) {
+            current.edgeTrim = target.edgeTrim;
+            needupdate = true;
+        }
+        if (current.level != target.level) {
+            current.level = target.level;
+            needupdate = true;
+        }
+        auto &plane = existing.roof.u.planeRoof;
+        const auto &targetPlane = element.roof.u.planeRoof;
+        if (plane.angle != targetPlane.angle) {
+            plane.angle = targetPlane.angle;
+            needupdate = true;
+        }
+        if (plane.posSign != targetPlane.posSign) {
+            plane.posSign = targetPlane.posSign;
+            needupdate = true;
+        }
+        if (plane.baseLine.c1.x != targetPlane.baseLine.c1.x || plane.baseLine.c1.y != targetPlane.baseLine.c1.y ||
+            plane.baseLine.c2.x != targetPlane.baseLine.c2.x || plane.baseLine.c2.y != targetPlane.baseLine.c2.y) {
+            plane.baseLine = targetPlane.baseLine;
+            needupdate = true;
+        }
+        plane.poly = targetPlane.poly;
+        element = existing;
+        if (!needupdate)
+            return NoError;
+        if (memo.vertexIDs == nullptr)
+            return APIERR_MEMFULL;
+        (*memo.vertexIDs)[0] = previousMemo.vertexIDs == nullptr ? 0 : (*previousMemo.vertexIDs)[0];
+        for (Int32 i = 1; i <= element.roof.u.planeRoof.poly.nCoords; ++i)
+            (*memo.vertexIDs)[i] = 0;
+        element.header.guid = existingGuid;
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.modelElemStructureType);
+        if (element.roof.shellBase.modelElemStructureType == API_BasicStructure)
+            ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.buildingMaterial);
+        if (element.roof.shellBase.modelElemStructureType == API_CompositeStructure)
+            ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.composite);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.thickness);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.pen);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.ltypeInd);
+    #ifndef ServerMainVers_2700
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.penOverride);
+    #endif
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.sectContPen);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.sectContLtype);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.topMat);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.botMat);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.sidMat);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.materialsChained);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.useFloorFill);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.use3DHatching);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.floorFillPen);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.floorFillBGPen);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.floorFillInd);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.hatchOrientation);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.edgeTrim);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, shellBase.level);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, u.planeRoof.angle);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, u.planeRoof.posSign);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, u.planeRoof.baseLine);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, u.planeRoof.poly.nCoords);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, u.planeRoof.poly.nSubPolys);
+        ACAPI_ELEMENT_MASK_SET (mask, API_RoofType, u.planeRoof.poly.nArcs);
+        // Нулевые edge payload сбрасывают прежние индивидуальные настройки, как в SDK-примере GetMemoMask.
+        return ACAPI_Element_Change (&element,
+                                     &mask,
+                                     &memo,
+                                     APIMemoMask_Polygon | APIMemoMask_EdgeTrims | APIMemoMask_SideMaterials |
+                                         APIMemoMask_RoofEdgeTypes,
+                                     true);
+    }
+
+    GSErrCode Roof_Draw (const Stories &storyLevels,
+                         OtdSlab &floor,
+                         const API_Element &slabSettings,
+                         const GS::Array<OtdSlab> *neighbors) {
+        const API_Guid existingGuid = floor.draw.otd_guid;
+        floor.draw.otd_guid = APINULLGuid;
+        floor.draw.write_succeeded = false;
+        floor.draw.was_created = false;
         API_Element element = {};
         API_ElementMemo memo = {};
         const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
-        GSErrCode error = OtdSlab_PrepareRoof (storyLevels, floor, slabSettings, neighbors, element, memo);
-        if (error == NoError)
-            error = ACAPI_Element_Create (&element, &memo);
-        if (error == NoError)
-            floor.otd_guid = element.header.guid;
+        GSErrCode error = Roof_Prepare (storyLevels, floor, slabSettings, neighbors, element, memo);
+        if (error == NoError) {
+            UnhideUnlockElementLayer (element.header);
+            error = Roof_WritePrepared (element, memo, existingGuid);
+        }
+        floor.draw.draw_error = error;
+        if (error != NoError)
+            return error;
+        floor.draw.otd_guid = element.header.guid;
+        floor.draw.write_succeeded = true;
+        floor.draw.was_created = existingGuid == APINULLGuid;
+        floor.draw.material.structtype = element.roof.shellBase.modelElemStructureType;
+        switch (floor.draw.material.structtype) {
+        case API_BasicStructure:
+            floor.draw.material.bmaterial = AttributeIndexGetShort (element.roof.shellBase.buildingMaterial);
+            break;
+        case API_CompositeStructure:
+            floor.draw.material.bmaterial = AttributeIndexGetShort (element.roof.shellBase.composite);
+            break;
+        case API_ProfileStructure:
+            floor.draw.material.bmaterial = 0;
+            break;
+        }
         return error;
     }
 
-    // Создаёт или изменяет перекрытие по полигону, отметке и материалу otdslab; пропускает площадь менее 0.0001.
-    // При изменении задаёт материалы и перпендикулярную подрезку рёбер; GUID записывает только при успехе и не обнуляет
-    // при ошибках.
-    static void OtdSlab_Draw_Slab (const GS::UniString &favorite_name, const Stories &storyLevels, OtdSlab &otdslab) {
+    // Только выбранный Slab: Object не подменяется крышей, отсутствующее избранное не заменяется defaults.
+    static bool Roof_ReadSlabSettings (const OtdSlab &floor, API_Element &settings) {
+        if (floor.draw.type != Floor || floor.draw.draw_type != API_RoofID || floor.draw.favorite.type != API_SlabID ||
+            !Favorite_ReadByName (floor.draw.favorite.name, settings) || GetElemTypeID (settings) != API_SlabID)
+            return false;
+    #ifdef ServerMainVers_2700
+        const auto material = ACAPI_CreateAttributeIndex (floor.draw.material.material);
+        settings.slab.topMat.value = material;
+        settings.slab.botMat.value = material;
+        settings.slab.sideMat.value = material;
+        settings.slab.topMat.hasValue = settings.slab.sideMat.hasValue = true;
+    #else
+        settings.slab.topMat.attributeIndex = floor.draw.material.material;
+        settings.slab.botMat.attributeIndex = floor.draw.material.material;
+        settings.slab.sideMat.attributeIndex = floor.draw.material.material;
+        settings.slab.topMat.overridden = settings.slab.sideMat.overridden = true;
+    #endif
+        return true;
+    }
+
+    static GSErrCode RoofBatch_Validate (const Stories &stories, OtdRooms &rooms) {
+        for (auto it = rooms.EnumeratePairs (); it != nullptr; ++it) {
+    #ifdef ServerMainVers_2800
+            OtdRoom &room = it->value;
+    #else
+            OtdRoom &room = *it->value;
+    #endif
+            for (auto &floor : room.otdslab) {
+                if (floor.draw.base_type != API_MeshID || !OtdSlab_ShouldDrawFinish (room, floor))
+                    continue;
+                API_Element settings = {};
+                if (!Roof_ReadSlabSettings (floor, settings)) {
+                    msg_rep ("Mesh floor",
+                             "Selected floor Favorite cannot be rendered as Roof",
+                             APIERR_BADPARS,
+                             floor.draw.base_guid);
+                    return APIERR_BADPARS;
+                }
+                API_Element element = {};
+                API_ElementMemo memo = {};
+                const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
+                const GSErrCode err = Roof_Prepare (stories, floor, settings, nullptr, element, memo);
+                if (err != NoError)
+                    return err;
+            }
+        }
+        return NoError;
+    }
+
+    // Создаёт или изменяет перекрытие по готовой геометрии; GUID публикует только при успешной записи.
+    // При изменении сохраняет прежнюю политику материалов и перпендикулярной подрезки рёбер.
+    static void Slab_Draw (const Stories &storyLevels,
+                           const Geometry::Polygon2D &poly,
+                           double zBottom,
+                           short floorInd,
+                           bool surface_geometry,
+                           OtdDrawData &draw) {
+        const API_Guid existingGuid = draw.otd_guid;
+        draw.otd_guid = APINULLGuid;
+        draw.draw_error = APIERR_BADPARS;
+        draw.write_succeeded = false;
+        draw.was_created = false;
         GSErrCode err = NoError;
-        if (otdslab.poly.CalcArea () < 0.0001)
-            return;
         API_Element slabelement = {};
-        bool is_new = (otdslab.otd_guid == APINULLGuid); // Элемент уже существует, нужно только обновить
+        API_Element settings = {};
+        API_Element mask = {};
         API_ElementMemo memo = {};
         const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
+        if (!Slab_GetDefault (draw.favorite.name, draw.type, settings))
+            return;
+        bool is_new = (existingGuid == APINULLGuid); // Элемент уже существует, нужно только обновить
         if (is_new) {
-            if (!OtdSlab_GetDefault_Slab (favorite_name, slabelement))
-                return;
+            slabelement = settings;
         } else {
-            slabelement.header.guid = otdslab.otd_guid;
-            err = ACAPI_Element_Get (&slabelement);
-            if (err != NoError) {
-                msg_rep ("OtdSlab_Draw_Object", "ACAPI_Element_Get", err, otdslab.otd_guid);
+            if (!GetExsist (existingGuid, slabelement, memo))
                 return;
-            }
             if (GetElemTypeID (slabelement) != API_SlabID)
                 return;
-            err = ACAPI_Element_GetMemo (slabelement.header.guid, &memo, APIMemoMask_Polygon);
-            if (err != NoError) {
-                msg_rep ("OtdSlab_Draw_Object", "ACAPI_Element_GetMemo", err, otdslab.otd_guid);
-                return;
-            }
         }
-        slabelement.header.floorInd = otdslab.floorInd;
-        slabelement.slab.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
-        if (otdslab.surface_geometry) {
-            slabelement.slab.referencePlaneLocation = APISlabRefPlane_Top;
-            slabelement.slab.offsetFromTop = 0;
-            if (favorite_name.IsEmpty ()) {
-                slabelement.slab.modelElemStructureType = API_BasicStructure;
-                slabelement.slab.thickness = otd_thickness;
+        bool needupdate = Elems_Check_Update (
+            slabelement.header, mask, floorInd, settings.header.layer, settings.header.renovationStatus);
+        double level = GetOffsetFromStory (zBottom, floorInd, storyLevels);
+        if (surface_geometry) {
+            if (slabelement.slab.referencePlaneLocation != APISlabRefPlane_Top) {
+                slabelement.slab.referencePlaneLocation = APISlabRefPlane_Top;
+                needupdate = true;
+            }
+            if (slabelement.slab.offsetFromTop != 0) {
+                slabelement.slab.offsetFromTop = 0;
+                needupdate = true;
+            }
+            if (draw.favorite.name.IsEmpty ()) {
+                if (slabelement.slab.modelElemStructureType != API_BasicStructure) {
+                    slabelement.slab.modelElemStructureType = API_BasicStructure;
+                    needupdate = true;
+                }
+                if (slabelement.slab.thickness != otd_thickness) {
+                    slabelement.slab.thickness = otd_thickness;
+                    needupdate = true;
+                }
             }
             // Потолок уходит вниз от контакта, пол — вверх; level задаёт верх перекрытия.
-            if (otdslab.type == Floor)
-                slabelement.slab.level += slabelement.slab.thickness;
+            if (draw.type == Floor)
+                level += slabelement.slab.thickness;
+        }
+        if (slabelement.slab.level != level) {
+            slabelement.slab.level = level;
+            needupdate = true;
         }
     #ifdef ServerMainVers_2700
-        API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (otdslab.material.material);
-        slabelement.slab.topMat.value = ematerial;
-        slabelement.slab.sideMat.value = ematerial;
-        slabelement.slab.botMat.value = ematerial;
-        slabelement.slab.sideMat.hasValue = true;
+        API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (draw.material.material);
+        for (auto *material : {&slabelement.slab.topMat, &slabelement.slab.sideMat, &slabelement.slab.botMat}) {
+            if (material->value != ematerial) {
+                material->value = ematerial;
+                needupdate = true;
+            }
+        }
+        if (!slabelement.slab.sideMat.hasValue) {
+            slabelement.slab.sideMat.hasValue = true;
+            needupdate = true;
+        }
     #else
-        slabelement.slab.topMat.attributeIndex = otdslab.material.material;
-        slabelement.slab.sideMat.attributeIndex = otdslab.material.material;
-        slabelement.slab.botMat.attributeIndex = otdslab.material.material;
-        slabelement.slab.sideMat.overridden = true;
+        for (auto *material : {&slabelement.slab.topMat, &slabelement.slab.sideMat, &slabelement.slab.botMat}) {
+            if (material->attributeIndex != draw.material.material) {
+                material->attributeIndex = draw.material.material;
+                needupdate = true;
+            }
+        }
+        if (!slabelement.slab.sideMat.overridden) {
+            slabelement.slab.sideMat.overridden = true;
+            needupdate = true;
+        }
     #endif
-        if (otdslab.type == Ceil) {
+        if (draw.type == Ceil) {
     #ifdef ServerMainVers_2700
-            slabelement.slab.botMat.hasValue = true;
+            if (!slabelement.slab.botMat.hasValue) {
+                slabelement.slab.botMat.hasValue = true;
+                needupdate = true;
+            }
     #else
-            slabelement.slab.botMat.overridden = true;
+            if (!slabelement.slab.botMat.overridden) {
+                slabelement.slab.botMat.overridden = true;
+                needupdate = true;
+            }
     #endif
         } else {
     #ifdef ServerMainVers_2700
-            slabelement.slab.topMat.hasValue = true;
+            if (!slabelement.slab.topMat.hasValue) {
+                slabelement.slab.topMat.hasValue = true;
+                needupdate = true;
+            }
     #else
-            slabelement.slab.topMat.overridden = true;
+            if (!slabelement.slab.topMat.overridden) {
+                slabelement.slab.topMat.overridden = true;
+                needupdate = true;
+            }
     #endif
         }
-        err = ConvertPolygon2DToAPIPolygon (otdslab.poly, slabelement.slab.poly, memo);
+        const UInt32 previousMaxVertexID = memo.vertexIDs == nullptr ? 0 : (*memo.vertexIDs)[0];
+        API_Polygon targetPolygon = {};
+        API_ElementMemo targetMemo = {};
+        const GS::OnExit targetGuard ([&targetMemo] () { ACAPI_DisposeElemMemoHdls (&targetMemo); });
+        err = ConvertPolygon2DToAPIPolygon (poly, targetPolygon, targetMemo);
         if (err != NoError) {
+            draw.draw_error = err;
             return;
         }
+        if (!Polygon_IsEqual (slabelement.slab.poly, memo, targetPolygon, targetMemo)) {
+            slabelement.slab.poly = targetPolygon;
+            needupdate = true;
+        }
+        if (!is_new && !needupdate) {
+            for (Int32 contour = 1; contour <= targetPolygon.nSubPolys; ++contour) {
+                for (Int32 i = (*targetMemo.pends)[contour - 1] + 1; i < (*targetMemo.pends)[contour]; ++i) {
+                    if (memo.edgeTrims == nullptr ||
+                        BMGetHandleSize ((GSHandle)memo.edgeTrims) < (i + 1) * sizeof (API_EdgeTrim) ||
+                        (*memo.edgeTrims)[i].sideType != APIEdgeTrim_Perpendicular)
+                        needupdate = true;
+                    if (memo.sideMaterials == nullptr ||
+                        BMGetPtrSize ((GSPtr)memo.sideMaterials) < (i + 1) * sizeof (*memo.sideMaterials)) {
+                        needupdate = true;
+                    } else {
+    #ifdef ServerMainVers_2700
+                        if (memo.sideMaterials[i].hasValue != slabelement.slab.sideMat.hasValue ||
+                            memo.sideMaterials[i].value != slabelement.slab.sideMat.value)
+    #else
+                        if (memo.sideMaterials[i].overridden != slabelement.slab.sideMat.overridden ||
+                            memo.sideMaterials[i].attributeIndex != slabelement.slab.sideMat.attributeIndex)
+    #endif
+                            needupdate = true;
+                    }
+                }
+            }
+        }
+        std::swap (memo.coords, targetMemo.coords);
+        std::swap (memo.pends, targetMemo.pends);
+        std::swap (memo.parcs, targetMemo.parcs);
+        std::swap (memo.vertexIDs, targetMemo.vertexIDs);
         if (is_new) {
             err = ACAPI_Element_Create (&slabelement, &memo);
-        } else {
+        } else if (needupdate) {
+            if (surface_geometry) {
+                if (memo.vertexIDs == nullptr) {
+                    draw.draw_error = APIERR_MEMFULL;
+                    return;
+                }
+                (*memo.vertexIDs)[0] = previousMaxVertexID;
+                for (Int32 i = 1; i <= slabelement.slab.poly.nCoords; ++i)
+                    (*memo.vertexIDs)[i] = 0;
+                BMhKill ((GSHandle *)&memo.contourIDs);
+            }
             // Setting side materials and edge angles
             BMhKill ((GSHandle *)&memo.edgeTrims);
             BMhKill ((GSHandle *)&memo.edgeIDs);
@@ -1569,12 +2202,15 @@ namespace Roombook {
                 (slabelement.slab.poly.nCoords + 1) * sizeof (API_EdgeTrim), ALLOCATE_CLEAR, 0);
             memo.sideMaterials = (API_OverriddenAttribute *)BMAllocatePtr (
                 (slabelement.slab.poly.nCoords + 1) * sizeof (API_OverriddenAttribute), ALLOCATE_CLEAR, 0);
+            if (memo.edgeTrims == nullptr || memo.sideMaterials == nullptr) {
+                draw.draw_error = APIERR_MEMFULL;
+                return;
+            }
             for (Int32 k = 1; k <= slabelement.slab.poly.nCoords; ++k) {
                 memo.sideMaterials[k] = slabelement.slab.sideMat;
                 (*(memo.edgeTrims))[k].sideType = edgeType;
                 (*(memo.edgeTrims))[k].sideAngle = PI / 2;
             }
-            API_Element mask = {};
             ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, botMat);
             ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, topMat);
             ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, sideMat);
@@ -1582,71 +2218,87 @@ namespace Roombook {
             ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, poly.nCoords);
             ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, poly.nArcs);
             ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, level);
-            if (otdslab.surface_geometry) {
-                ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, layer);
+            if (surface_geometry) {
                 ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, referencePlaneLocation);
                 ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, offsetFromTop);
                 ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, thickness);
                 ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, modelElemStructureType);
             }
-            ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, floorInd);
             err = ACAPI_Element_Change (&slabelement,
                                         &mask,
                                         &memo,
                                         APIMemoMask_Polygon | APIMemoMask_SideMaterials | APIMemoMask_EdgeTrims,
                                         true);
         }
+        draw.draw_error = err;
         if (err != NoError) {
-            msg_rep ("OtdSlab_Draw_Slab", favorite_name, err, APINULLGuid);
+            msg_rep ("Slab_Draw", draw.favorite.name, err, APINULLGuid);
             return;
         } else {
-            otdslab.otd_guid = slabelement.header.guid;
+            draw.otd_guid = slabelement.header.guid;
+            draw.write_succeeded = true;
+            draw.was_created = is_new;
+        }
+        draw.material.structtype = slabelement.slab.modelElemStructureType;
+        switch (draw.material.structtype) {
+        case API_BasicStructure:
+            draw.material.bmaterial = AttributeIndexGetShort (slabelement.slab.buildingMaterial);
+            break;
+        case API_CompositeStructure:
+            draw.material.bmaterial = AttributeIndexGetShort (slabelement.slab.composite);
+            break;
+        case API_ProfileStructure:
+            draw.material.bmaterial = 0;
+            break;
         }
         return;
     }
 
     // Создаёт или обновляет объект пола/потолка, передавая контуры и параметры отделки в GDL.
     // При отказе чтения существующего элемента, memo или записи обнуляет otd_guid; при успехе сохраняет GUID.
-    static void OtdSlab_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdSlab &otdslab) {
+    static void Object_Draw_Poly (const Stories &storyLevels,
+                                  const Geometry::Polygon2D &poly,
+                                  double zBottom,
+                                  short floorInd,
+                                  const GS::UniString &tip,
+                                  OtdDrawData &draw) {
+        const API_Guid existingGuid = draw.otd_guid;
+        draw.otd_guid = APINULLGuid;
+        draw.write_succeeded = false;
+        draw.was_created = false;
+        draw.draw_error = APIERR_BADPARS;
         GSErrCode err = NoError;
         API_Element slabobjelement = {};
         API_ElementMemo slabobjmemo = {};
+        API_Element settings = {};
+        API_ElementMemo settingsMemo = {};
+        API_Element mask = {};
         const GS::OnExit memoGuard ([&slabobjmemo] () { ACAPI_DisposeElemMemoHdls (&slabobjmemo); });
-        bool is_new = (otdslab.otd_guid == APINULLGuid); // Элемент уже существует, нужно только обновить
+        const GS::OnExit settingsGuard ([&settingsMemo] () { ACAPI_DisposeElemMemoHdls (&settingsMemo); });
+        if (!Object_GetDefault (draw.favorite.name, draw.type, settings, settingsMemo))
+            return;
+        bool is_new = (existingGuid == APINULLGuid); // Элемент уже существует, нужно только обновить
         if (is_new) {
-            if (!OtdSlab_GetDefault_Object (favorite_name, slabobjelement, slabobjmemo))
-                return;
+            slabobjelement = settings;
+            std::swap (slabobjmemo, settingsMemo);
         } else {
-            slabobjelement.header.guid = otdslab.otd_guid;
-            API_Guid savedGuid_Get = otdslab.otd_guid; // Сохраняем GUID для логирования перед обнулением
-            err = ACAPI_Element_Get (&slabobjelement);
-            if (err != NoError) {
-                otdslab.otd_guid = APINULLGuid;
-                msg_rep ("OtdSlab_Draw_Object", "ACAPI_Element_Get", err, savedGuid_Get);
+            if (!GetExsist (existingGuid, slabobjelement, slabobjmemo))
                 return;
-            }
-            API_Guid savedGuid_GetMemo = otdslab.otd_guid; // Сохраняем GUID для логирования перед обнулением
-            err = ACAPI_Element_GetMemo (otdslab.otd_guid, &slabobjmemo);
-            if (err != NoError) {
-                otdslab.otd_guid = APINULLGuid;
-                msg_rep ("OtdSlab_Draw_Object", "ACAPI_Element_GetMemo", err, savedGuid_GetMemo);
+            if (GetElemTypeID (slabobjelement) != API_ObjectID)
                 return;
-            }
         }
         GDLHelpers::ParamDict accsessoryparams;
         GDLHelpers::Param p;
-        if (otdslab.type == Ceil) {
+        if (draw.type == Ceil) {
             // Высота уже задана положением объекта; GDL дополнительно прибавляет ac_ref_height.
             p.num = 0;
             accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
-            slabobjelement.object.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
         }
-        if (otdslab.type == Floor) {
-            p.num = otdslab.zBottom;
+        if (draw.type == Floor) {
+            p.num = zBottom;
             accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
-            slabobjelement.object.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
         }
-        p.str = otdslab.tip;
+        p.str = tip;
         accsessoryparams.Add ("{@gdl:tip_pol}", p);
         p.str = EMPTYSTRING;
         p.num = 1;
@@ -1657,11 +2309,11 @@ namespace Roombook {
         accsessoryparams.Add ("{@gdl:ac_ceilling_side}", p);
         p.num = 0;
         accsessoryparams.Add ("{@gdl:ac_ceiling_type}", p);
-        p.num = otdslab.material.material;
+        p.num = draw.material.material;
         accsessoryparams.Add ("{@gdl:ceil_mat}", p);
-        p.num = otdslab.material.material;
+        p.num = draw.material.material;
         accsessoryparams.Add ("{@gdl:matedge}", p);
-        p.num = otdslab.material.material;
+        p.num = draw.material.material;
         accsessoryparams.Add ("{@gdl:matceipanel}", p);
         p.num = 0.02;
         accsessoryparams.Add ("{@gdl:ceil_thk}", p);
@@ -1671,10 +2323,10 @@ namespace Roombook {
         accsessoryparams.Add ("{@gdl:ac_slab_side}", p);
         Geometry::Polygon2DData polygon2DData;
         Geometry::InitPolygon2DData (&polygon2DData);
-        Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, otdslab.poly);
+        Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, poly);
         Int32 nCoords = polygon2DData.nVertices;
         Int32 nSubPolys = polygon2DData.nContours;
-        Box2DData bbox = otdslab.poly.GetBoundBox ();
+        Box2DData bbox = poly.GetBoundBox ();
         GDLHelpers::Param ac_coords;
         GDLHelpers::Param ac_whole_poly;
         for (Int32 j = 1; j <= nSubPolys; j++) {
@@ -1704,7 +2356,7 @@ namespace Roombook {
         accsessoryparams.Add ("{@gdl:ac_whole_poly}", ac_whole_poly);
         accsessoryparams.Add ("{@gdl:ac_coords}", ac_coords);
         if (is_new) {
-            if (otdslab.type == Ceil) {
+            if (draw.type == Ceil) {
                 p.num = bbox.xMax - bbox.xMin - 0.1;
                 accsessoryparams.Add ("{@gdl:pos_x2}", p);
                 p.num = bbox.yMax - bbox.yMin - 0.1;
@@ -1715,132 +2367,377 @@ namespace Roombook {
                 p.num = (bbox.yMax - bbox.yMin - 0.1) / 2;
                 accsessoryparams.Add ("{@gdl:pos_ytxt}", p);
             }
-            if (otdslab.type == Floor) {
-                p.num = otdslab.poly.GetCenter ().x - bbox.xMin;
+            if (draw.type == Floor) {
+                p.num = poly.GetCenter ().x - bbox.xMin;
                 accsessoryparams.Add ("{@gdl:pos_x1}", p);
-                p.num = otdslab.poly.GetCenter ().y - bbox.yMin;
+                p.num = poly.GetCenter ().y - bbox.yMin;
                 accsessoryparams.Add ("{@gdl:pos_y1}", p);
             }
             p.dim1 = 1;
             p.dim2 = 2;
-            p.arr_num.Push (otdslab.poly.GetCenter ().x - bbox.xMin);
-            p.arr_num.Push (otdslab.poly.GetCenter ().y - bbox.yMin);
+            p.arr_num.Push (poly.GetCenter ().x - bbox.xMin);
+            p.arr_num.Push (poly.GetCenter ().y - bbox.yMin);
             accsessoryparams.Add ("{@gdl:fieldorig}", p);
         }
         Geometry::FreePolygon2DData (&polygon2DData);
-        GDLHelpers::ParamToMemo (slabobjmemo, accsessoryparams);
-        slabobjelement.header.floorInd = otdslab.floorInd;
-        slabobjelement.object.pos.x = bbox.xMin;
-        slabobjelement.object.pos.y = bbox.yMin;
+        bool needupdate = Object_UpdateParams (slabobjmemo, accsessoryparams);
+        if (draw.type == Ceil || draw.type == Floor) {
+            const double level = GetOffsetFromStory (zBottom, floorInd, storyLevels);
+            if (slabobjelement.object.level != level) {
+                slabobjelement.object.level = level;
+                needupdate = true;
+            }
+        }
+        needupdate =
+            Elems_Check_Update (
+                slabobjelement.header, mask, floorInd, settings.header.layer, settings.header.renovationStatus) ||
+            needupdate;
+        if (slabobjelement.object.pos.x != bbox.xMin || slabobjelement.object.pos.y != bbox.yMin) {
+            slabobjelement.object.pos = {bbox.xMin, bbox.yMin};
+            needupdate = true;
+        }
         double y_start = 0;
         if (is_new) {
             err = ACAPI_Element_Create (&slabobjelement, &slabobjmemo);
-        } else {
-            API_Element mask = {};
-            ACAPI_ELEMENT_MASK_CLEAR (mask);
+        } else if (needupdate) {
             ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, pos);
             ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, level);
-            ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, floorInd);
             err = ACAPI_Element_Change (&slabobjelement, &mask, &slabobjmemo, APIMemoMask_AddPars, true);
         }
+        draw.draw_error = err;
         if (err != NoError) {
-            otdslab.otd_guid = APINULLGuid;
-            msg_rep ("OtdSlab_Draw_Object", favorite_name, err, APINULLGuid);
+            draw.otd_guid = APINULLGuid;
+            msg_rep ("Object_Draw_Poly", draw.favorite.name, err, APINULLGuid);
             return;
         } else {
-            otdslab.otd_guid = slabobjelement.header.guid;
+            draw.otd_guid = slabobjelement.header.guid;
+            draw.write_succeeded = true;
+            draw.was_created = is_new;
         }
     }
 
-    // Возвращает объект из избранного подходящего типа либо получает настройки объекта по умолчанию.
-    // Только для настроек по умолчанию сбрасывает угол и автовидимость по этажам, включает перья, линии и материалы
-    // объекта.
-    static bool OtdSlab_GetDefault_Object (const GS::UniString &favorite_name,
-                                           API_Element &slabobjelement,
-                                           API_ElementMemo &slabobjmemo) {
-        GSErrCode err = NoError;
-        BNZeroMemory (&slabobjmemo, sizeof (API_ElementMemo));
-        BNZeroMemory (&slabobjelement, sizeof (API_Element));
-        if (Favorite_GetByName (favorite_name, slabobjelement, slabobjmemo)) {
-            if (GetElemTypeID (slabobjelement) == API_ObjectID)
-                return true;
+    // -----------------------------------------------------------------------------
+    // Построение потолка/пола (общая)
+    // Выбирает - каким элементом строить - slab/mesh/object
+    // -----------------------------------------------------------------------------
+    static void OtdSlab_Draw (const Stories &storyLevels, OtdSlab &otdslab, UnicElementByType &subelementByparent) {
+        otdslab.draw.write_succeeded = false;
+        otdslab.draw.was_created = false;
+        const double area = otdslab.poly.CalcArea ();
+        if (!std::isfinite (area) || area < 0.0001 || !std::isfinite (otdslab.zBottom)) {
+            otdslab.draw.otd_guid = APINULLGuid;
+            otdslab.draw.draw_error = APIERR_BADPARS;
+            return;
         }
-        SetElemTypeID (slabobjelement, API_ObjectID);
-        err = ACAPI_Element_GetDefaults (&slabobjelement, &slabobjmemo);
-        if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&slabobjmemo);
-            return false;
-        }
-        slabobjelement.object.angle = 0;
-        slabobjelement.object.isAutoOnStoryVisibility = false;
-        slabobjelement.object.useObjPens = true;
-        slabobjelement.object.useObjLtypes = true;
-        slabobjelement.object.useObjMaterials = true;
-        return true;
+        if (otdslab.draw.base_type == API_MeshID) {
+            const API_Guid existingGuid = otdslab.draw.otd_guid;
+            otdslab.draw.otd_guid = APINULLGuid;
+            otdslab.draw.draw_error = APIERR_BADPARS;
+            API_Element settings = {};
+            if (!Roof_ReadSlabSettings (otdslab, settings))
+                return;
+            otdslab.draw.otd_guid = existingGuid;
+            otdslab.draw.draw_error = Roof_Draw (storyLevels, otdslab, settings, nullptr);
+        } else
+            switch (otdslab.draw.favorite.type) {
+            case API_SlabID:
+                Slab_Draw (storyLevels,
+                           otdslab.poly,
+                           otdslab.zBottom,
+                           otdslab.floorInd,
+                           otdslab.surface_geometry,
+                           otdslab.draw);
+                break;
+            case API_ObjectID:
+                Object_Draw_Poly (
+                    storyLevels, otdslab.poly, otdslab.zBottom, otdslab.floorInd, otdslab.tip, otdslab.draw);
+                break;
+            default:
+                otdslab.draw.otd_guid = APINULLGuid;
+                otdslab.draw.draw_error = APIERR_BADPARS;
+                break;
+            }
+        if (otdslab.draw.draw_error != NoError)
+            return;
+        Param_AddUnicElementByType (otdslab.draw.base_guid,
+                                    otdslab.draw.otd_guid,
+                                    otdslab.draw.base_type == API_MeshID ? API_MeshID : API_SlabID,
+                                    subelementByparent);
     }
 
-    // Возвращает перекрытие из избранного подходящего типа либо получает настройки перекрытия по умолчанию.
-    // Только для настроек по умолчанию задаёт нулевой offsetFromTop, связанные материалы и базовую структуру.
-    static bool OtdSlab_GetDefault_Slab (const GS::UniString &favorite_name, API_Element &slabelement) {
+    // Выбирает способ построения плинтуса и собирает связь с его основанием.
+    static void OtdBeam_Draw (const Stories &storyLevels, OtdBeam &beam, UnicElementByType &subelementByparent) {
+        beam.draw.write_succeeded = false;
+        beam.draw.was_created = false;
+        beam.draw.draw_error = NoError;
+        GS::Array<OtdOpening> openings;
+        switch (beam.draw.favorite.type) {
+        case API_BeamID:
+            Beam_Draw (storyLevels, beam.geom, beam.draw);
+            break;
+        case API_WallID:
+            Wall_Draw (storyLevels, beam.geom, beam.draw, 0, openings);
+            break;
+        case API_ObjectID:
+            Object_Draw_Linear (storyLevels, beam.geom, beam.draw, openings);
+            break;
+        default:
+            beam.draw.draw_error = APIERR_BADPARS;
+            break;
+        }
+        if (beam.draw.draw_error != NoError)
+            return;
+        Param_AddUnicElementByType (beam.draw.base_guid, beam.draw.otd_guid, beam.draw.base_type, subelementByparent);
+    }
+
+    // -----------------------------------------------------------------------------
+    // Построение отделочных стен (общая)
+    // Решает - чем строить - стеной/балкой/объектом
+    // -----------------------------------------------------------------------------
+    void OtdWall_Draw (const Stories &storyLevels, OtdWall &edges, UnicElementByType &subelementByparent) {
+        edges.draw.draw_error = NoError;
+        if (!OtdLinearElement_CanDraw (edges.geom, edges.draw.favorite.type != API_BeamID)) {
+            edges.draw.otd_guid = APINULLGuid;
+            edges.draw.draw_error = APIERR_BADPARS;
+            return;
+        }
+        // Выбор элемента для отрисовки
+        switch (edges.draw.favorite.type) {
+        case API_WallID:
+            Wall_Draw (storyLevels, edges.geom, edges.draw, edges.slant_angle, edges.openings);
+            break;
+        case API_BeamID:
+            Beam_Draw (storyLevels, edges.geom, edges.draw);
+            break;
+        case API_ObjectID:
+            Object_Draw_Linear (storyLevels, edges.geom, edges.draw, edges.openings);
+            break;
+        default:
+            edges.draw.otd_guid = APINULLGuid;
+            edges.draw.draw_error = APIERR_BADPARS;
+            break;
+        }
+        // Привязка элемента к отделке
+        Param_AddUnicElementByType (edges.draw.base_guid,
+                                    edges.draw.otd_guid,
+                                    API_WallID,
+                                    subelementByparent); // Привязка отделочной стены к базовой
+        for (OtdOpening &op : edges.openings) {
+            Param_AddUnicElementByType (op.base_guid,
+                                        op.otd_guid,
+                                        API_WindowID,
+                                        subelementByparent); // Привязка отделочного проёма к базовому
+        }
+    }
+
+    static GSErrCode OtdRoom_Draw (const Stories &storyLevels,
+                                   OtdRoom &otd,
+                                   UnicElementByType &subelementByparent,
+                                   ClassificationFunc::ClassificationDict &finclass) {
         GSErrCode err = NoError;
-        BNZeroMemory (&slabelement, sizeof (API_Element));
-        if (Favorite_GetByName (favorite_name, slabelement)) {
-            if (GetElemTypeID (slabelement) == API_SlabID)
-                return true;
+        GS::Array<API_Guid> group;
+        if (!otd.isValid)
+            return NoError;
+        API_Guid class_guid = APINULLGuid;
+        for (OtdWall &otdwall : otd.otdwall) {
+            otdwall.draw.write_succeeded = false;
+            if (!OtdWall_ShouldDrawFinish (otd, otdwall))
+                continue;
+            OtdWall_Draw (storyLevels, otdwall, subelementByparent);
+            if (otdwall.draw.draw_error != NoError) {
+                msg_rep ("OtdRoom_Draw", "OtdWall_Draw err", otdwall.draw.draw_error, otdwall.draw.otd_guid);
+                continue;
+            }
+            Param_AddUnicElementByType (otd.zone_guid,
+                                        otdwall.draw.otd_guid,
+                                        API_ZoneID,
+                                        subelementByparent); // Привязка отделочных стен к
+                                                             // зоне
+            for (OtdOpening &op : otdwall.openings) {
+                Param_AddUnicElementByType (otd.zone_guid,
+                                            op.otd_guid,
+                                            API_ZoneID,
+                                            subelementByparent); // Привязка отделочных
+                                                                 // проёмов к зоне
+            }
+            // Классификация созданных стен
+            Class_Set (otdwall.draw.type, otdwall.draw.otd_guid, finclass);
+            for (OtdOpening &op : otdwall.openings) {
+                Class_Set_OtdOpening (op, finclass);
+            }
+            group.Push (otdwall.draw.otd_guid);
         }
-        SetElemTypeID (slabelement, API_SlabID);
-        err = ACAPI_Element_GetDefaults (&slabelement, nullptr);
-        if (err != NoError) {
-            return false;
+        for (OtdSlab &otdslab : otd.otdslab) {
+            otdslab.draw.write_succeeded = false;
+            if (!OtdSlab_ShouldDrawFinish (otd, otdslab))
+                continue;
+            OtdSlab_Draw (storyLevels, otdslab, subelementByparent);
+            if (otdslab.draw.draw_error != NoError) {
+                msg_rep ("OtdRoom_Draw", "OtdSlab_Draw err", otdslab.draw.draw_error, otdslab.draw.otd_guid);
+                if (otdslab.draw.base_type == API_MeshID)
+                    return otdslab.draw.draw_error;
+                continue;
+            }
+            Param_AddUnicElementByType (otd.zone_guid,
+                                        otdslab.draw.otd_guid,
+                                        API_ZoneID,
+                                        subelementByparent); // Привязка перекрытий к зоне
+            Class_Set (otdslab.draw.type, otdslab.draw.otd_guid, finclass);
+            group.Push (otdslab.draw.otd_guid);
         }
-        slabelement.slab.offsetFromTop = 0;
-        slabelement.slab.materialsChained = true;
-    #ifdef ServerMainVers_2600
+        for (OtdBeam &beam : otd.otdbeam_ceil) {
+            beam.draw.write_succeeded = false;
+            OtdBeam_Draw (storyLevels, beam, subelementByparent);
+            if (beam.draw.draw_error != NoError) {
+                msg_rep ("OtdRoom_Draw", "OtdBeam_Draw err", beam.draw.draw_error, beam.draw.otd_guid);
+                continue;
+            }
+            Param_AddUnicElementByType (otd.zone_guid, beam.draw.otd_guid, API_ZoneID, subelementByparent);
+            Class_Set (beam.draw.type, beam.draw.otd_guid, finclass);
+            group.Push (beam.draw.otd_guid);
+        }
+        for (OtdBeam &beam : otd.otdbeam_floor) {
+            beam.draw.write_succeeded = false;
+            OtdBeam_Draw (storyLevels, beam, subelementByparent);
+            if (beam.draw.draw_error != NoError) {
+                msg_rep ("OtdRoom_Draw", "OtdBeam_Draw err", beam.draw.draw_error, beam.draw.otd_guid);
+                continue;
+            }
+            Param_AddUnicElementByType (otd.zone_guid, beam.draw.otd_guid, API_ZoneID, subelementByparent);
+            Class_Set (beam.draw.type, beam.draw.otd_guid, finclass);
+            group.Push (beam.draw.otd_guid);
+        }
+
+        if (group.GetSize () > 1) {
+    #ifdef ServerMainVers_2700
+            err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
     #else
-        slabelement.slab.sideMat.overridden = true;
-        slabelement.slab.topMat.overridden = true;
-        slabelement.slab.botMat.overridden = true;
+            API_Guid groupGuid = APINULLGuid;
+            err = ACAPI_ElementGroup_Create (group, &groupGuid);
+        #ifdef ServerMainVers_2300
+            if (err != NoError)
+                err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
+        #endif
     #endif
-        slabelement.slab.modelElemStructureType = API_BasicStructure;
-        return true;
+            if (err != NoError)
+                msg_rep ("OtdRoom_Draw", "ACAPI_Grouping_CreateGroup", err, APINULLGuid);
+        }
+        return err;
     }
 
-    // -----------------------------------------------------------------------------
-    // Назначение класса стене
-    // -----------------------------------------------------------------------------
-    static void OtdWall_SetClass (const OtdWall &op, const ClassificationFunc::ClassificationDict &finclass) {
-        if (op.otd_guid == APINULLGuid)
+    static void AppendRoomFinish (GS::Array<RoomBookFinishResult> &results,
+                                  const API_Guid &zone,
+                                  const OtdDrawData &draw,
+                                  double length,
+                                  bool hasLength,
+                                  double area,
+                                  bool hasArea) {
+        if (!draw.write_succeeded || !draw.was_created || draw.draw_error != NoError || draw.otd_guid == APINULLGuid)
             return;
-        API_Guid class_guid = Class_GetClassGuid (op.type, finclass);
-        if (class_guid != APINULLGuid)
-            ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
+        RoomBookFinishResult result;
+        result.zone_guid = zone;
+        result.draw = draw;
+        result.length = length;
+        result.has_length = hasLength;
+        result.area = area;
+        result.has_area = hasArea;
+        results.Push (result);
     }
 
-    // -----------------------------------------------------------------------------
-    // Назначение класса проёму
-    // -----------------------------------------------------------------------------
-    // Для ненулевого GUID проёма выбирает класс NoSet, затем при его отсутствии класс Wall_Main.
-    // Вызывает добавление классификации только при ненулевом GUID выбранного класса.
-    static void OtdOpening_SetClass (const OtdOpening &op, const ClassificationFunc::ClassificationDict &finclass) {
-        if (op.otd_guid == APINULLGuid)
+    static double FinishLinearLength (const OtdLinearElement &geom) {
+        return std::hypot (std::hypot (geom.seg.endC.x - geom.seg.begC.x, geom.seg.endC.y - geom.seg.begC.y),
+                           geom.seg.endC.z - geom.seg.begC.z);
+    }
+
+    static void CollectRoomFinishes (const OtdRoom &room, GS::Array<RoomBookFinishResult> &results) {
+        for (const OtdWall &wall : room.otdwall)
+            AppendRoomFinish (
+                results, room.zone_guid, wall.draw, FinishLinearLength (wall.geom), true, OtdWall_GetArea (wall), true);
+        for (const OtdSlab &slab : room.otdslab) {
+            const double area =
+                slab.poly.CalcArea () *
+                (slab.draw.base_type == API_MeshID ? std::hypot (1.0, std::hypot (slab.slope_x, slab.slope_y)) : 1.0);
+            AppendRoomFinish (results, room.zone_guid, slab.draw, 0, false, area, true);
+        }
+        for (const OtdBeam &beam : room.otdbeam_ceil)
+            AppendRoomFinish (results, room.zone_guid, beam.draw, FinishLinearLength (beam.geom), true, 0, false);
+        for (const OtdBeam &beam : room.otdbeam_floor)
+            AppendRoomFinish (results, room.zone_guid, beam.draw, FinishLinearLength (beam.geom), true, 0, false);
+    }
+
+    void OtdRooms_Draw (GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,
+                        GS::Array<API_Guid> &deletelist,
+                        OtdRooms &roomsinfo,
+                        const Stories &storyLevels,
+                        ClassificationFunc::ClassificationDict &finclass,
+                        UnicGuid &reserv_elements,
+                        ParamDictElement &paramToWrite,
+                        const API_ElemTypeID *elementTypes,
+                        std::size_t elementTypeCount,
+                        GS::Int32 &nPhase,
+                        GS::Array<RoomBookFinishResult> *results) {
+        GS::Array<RoomBookFinishResult> pendingResults;
+        // Проверяем все Roof до очистки и записи модели; memo освобождаются внутри проверки.
+        const GSErrCode roofErr = RoofBatch_Validate (storyLevels, roomsinfo);
+        if (roofErr != NoError) {
+            msg_rep ("Mesh floor", "Roof preflight failed; existing finishes retained", roofErr, APINULLGuid);
             return;
-        API_Guid class_guid = Class_GetClassGuid (NoSet, finclass);
-        if (class_guid == APINULLGuid)
-            class_guid = Class_GetClassGuid (Wall_Main, finclass);
-        if (class_guid != APINULLGuid)
-            ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
-    }
-
-    // -----------------------------------------------------------------------------
-    // Назначение класса полу/потолку
-    // -----------------------------------------------------------------------------
-    static void OtdSlab_SetClass (const OtdSlab &op, const ClassificationFunc::ClassificationDict &finclass) {
-        if (op.otd_guid == APINULLGuid)
+        }
+        // Повторный запуск: назначаем совместимые существующие GUID окончательным участкам отделки.
+        const GSErrCode matchErr = OtdRooms_AssignExistingWallFinishes (roomsinfo, exsistot_byzone, finclass);
+        if (matchErr != NoError) {
+            msg_rep ("RoomBook", "Cannot prepare existing finish updates", matchErr, APINULLGuid);
             return;
-        API_Guid class_guid = Class_GetClassGuid (op.type, finclass);
-        if (class_guid != APINULLGuid)
-            ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
+        }
+        // Только список удаления; модель изменяется ниже, внутри команды создания и обновления.
+        OtdRooms_CollectUnusedFinishingElements (exsistot_byzone, deletelist);
+        UnicElementByType subelementByparent; // Словарь с созданными родительскими
+                                              // и дочерними элементами
+        // Отрисовка элементов отделки
+        GS::UniString funcname = "Draw finishing element(s)";
+        GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
+        SuspendGroupsGuard suspGuard; // отключаем режим группировки на время записи.
+        const GSErrCode drawErr = ACAPI_CallUndoableCommand (UndoString, [&] () -> GSErrCode {
+            // Резервируем и разблокируем
+            PrepareElementsResult prepareResult = PrepareElementsResult::NothingToDo;
+            if (!PrepareElementsForUpdate (reserv_elements, prepareResult))
+                return APIERR_CANCEL;
+            // Удаляем устаревшие элементы отделки
+            if (!deletelist.IsEmpty ()) {
+                GSErrCode err = ACAPI_Element_Delete (deletelist);
+                if (err != NoError) {
+                    msg_rep ("RoomBook", "Cannot remove obsolete finishing elements", err, APINULLGuid);
+                    return err;
+                }
+            }
+            for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
+    #ifdef ServerMainVers_2800
+                OtdRoom &otd = cIt->value;
+    #else
+                OtdRoom &otd = *cIt->value;
+    #endif
+                if (AdvanceProcessPhase (funcname, nPhase))
+                    return APIERR_CANCEL;
+                const GSErrCode err = OtdRoom_Draw (storyLevels, otd, subelementByparent, finclass);
+                if (err != NoError)
+                    return err;
+                if (results != nullptr && otd.isValid) {
+                    RoomBookFinishResult roomResult;
+                    roomResult.zone_guid = otd.zone_guid;
+                    pendingResults.Push (roomResult);
+                    CollectRoomFinishes (otd, pendingResults);
+                }
+            }
+            return NoError;
+        });
+        if (drawErr != NoError) {
+            msg_rep ("RoomBook", "Finish update rolled back", drawErr, APINULLGuid);
+            return; // Связи частично выполненного пакета не публикуем.
+        }
+        if (results != nullptr)
+            *results = pendingResults;
+        // Только после успешной отрисовки: связи с основаниями/зонами и запись общего paramToWrite.
+        OtdElements_SetSync (subelementByparent, paramToWrite, elementTypes, elementTypeCount, nPhase);
     }
-
 } // namespace Roombook
 #endif
