@@ -196,8 +196,10 @@ struct PropertyCache {
     GS::HashTable<GS::UniString, GS::Array<GS::Array<GS::UniString>>> filedata; // Данные в файлах
     ClassificationFunc::SystemDict systemdict;                                  // Словарь систем с вложенными классами
     GS::Array<GS::UniString>
-        classificationOptions;              // Опции классификаций для BrowserPalette — чистится вместе с systemdict
-    UnicGuidByGuidString reversesystemdict; // Получение имени класса по GUID классификации и GUID класса в нём
+        classificationOptions; // Опции классификаций для BrowserPalette — чистится вместе с systemdict
+    ClassificationFunc::ClassificationDict findict; //
+    UnicGuid finclassguids;                         //
+    UnicGuidByGuidString reversesystemdict;         // Получение имени класса по GUID классификации и GUID класса в нём
     GS::HashTable<API_Guid, API_PropertyGroup> propertygroups;
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
     bool hasLayerNameInDimRules;
@@ -291,6 +293,8 @@ struct PropertyCache {
         glob.Clear ();
         systemdict.Clear ();
         reversesystemdict.Clear ();
+        findict.Clear ();
+        finclassguids.Clear ();
         classificationOptions.Clear (); // Опции классификаций для палитры — не переживают смену проекта/TW-receive
         propertygroups.Clear ();
         dimrules.Clear ();
@@ -413,6 +417,8 @@ struct PropertyCache {
         glob.Clear ();
         unreadedgdlparams.Clear ();
         addonrulesbytype.Clear ();
+        findict.Clear ();
+        finclassguids.Clear ();
         ReadGetGeoLocation ();
         ReadSurveyPointTransformation ();
         ReadPlaceSets ();
