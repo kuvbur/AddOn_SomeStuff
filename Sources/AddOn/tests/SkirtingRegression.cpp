@@ -494,132 +494,90 @@ int main () {
         check (!GS::UniString ("some_stuff_fin_cornice").Contains (GS::UniString ("some_stuff_fin_skirting")),
                "roles upper class marker does not match lower substring search");
         classes.Delete ("some_stuff_fin_cornice");
-        check (Class_GetClassGuid (upperRole, classes) == APINULLGuid &&
+        check (Class_GetClassGuid (upperRole, classes) == generic.item.guid &&
                    Class_GetClassGuid (lowerRole, classes) == lower.item.guid,
-               "roles missing upper class never falls back to lower or generic");
+               "roles missing upper class falls back to the generic class");
         check (Class_GetOtdTypeByClass (upper.item.guid, classes) == NoSet,
                "roles unknown upper class is not misclassified as lower");
         classes.Delete ("some_stuff_fin_skirting");
         classes.Add ("some_stuff_fin_cornice", upper);
-        check (Class_GetClassGuid (lowerRole, classes) == APINULLGuid &&
+        check (Class_GetClassGuid (lowerRole, classes) == generic.item.guid &&
                    Class_GetClassGuid (upperRole, classes) == upper.item.guid,
-               "roles missing lower class does not disable configured upper");
+               "roles missing lower class falls back to generic and keeps configured upper");
     }
-    // Skirting configuration preflight: prepared outputs define the required roles.
+    // Preflight плинтуса/карниза един с общей конфигурацией отделки: та же функция и те же требования,
+    // что у стен. base-свойство только предупреждает; zone-покрытие обязательно для всех ролей.
     {
-        OtdRooms rooms;
         ClassificationFunc::ClassificationDict classes;
         UnicGuid recognized;
-        ParamDictValue properties;
-        GS::UniString error;
-        auto valid = [&] () {
-            return Roombook_CheckSkirtingConfiguration (rooms, classes, recognized, properties, error);
-        };
-        check (valid () && error.IsEmpty (), "preflight empty rooms unchanged");
-        OtdRoom room;
-        room.isValid = false;
-        room.otdbeam_floor.Push (OtdBeam ());
-        API_Guid roomGuid = APINULLGuid;
-        roomGuid.time_low = 101;
-        rooms.Add (roomGuid, room);
-        check (valid (), "preflight invalid room ignored");
-        room.isValid = true;
-        room.otdbeam_floor.Clear ();
-        rooms.Set (roomGuid, room);
-        check (valid (), "preflight valid room without skirting unchanged");
-        ClassificationFunc::ClassificationValues lower, upper, generic;
-        lower.item.guid = upper.item.guid = generic.item.guid = APINULLGuid;
+        ClassificationFunc::ClassificationValues generic, lower, upper;
+        generic.item.guid = lower.item.guid = upper.item.guid = APINULLGuid;
+        generic.item.guid.time_low = 203;
         lower.item.guid.time_low = 201;
         upper.item.guid.time_low = 202;
-        generic.item.guid.time_low = 203;
-        classes.Add ("some_stuff_fin_class", generic);
-        recognized.Add (generic.item.guid, true);
-        for (const bool lowerOnly : {true, false}) {
-            const GS::UniString role = lowerOnly ? "some_stuff_fin_skirting" : "some_stuff_fin_cornice";
-            const auto roleClass = lowerOnly ? lower : upper;
-            room.otdbeam_floor.Clear ();
-            room.otdbeam_ceil.Clear ();
-            if (lowerOnly)
-                room.otdbeam_floor.Push (OtdBeam ());
-            else
-                room.otdbeam_ceil.Push (OtdBeam ());
-            rooms.Set (roomGuid, room);
-            classes.Delete ("some_stuff_fin_skirting");
-            classes.Delete ("some_stuff_fin_cornice");
-            properties.Clear ();
-            check (!valid () && error.Contains (role), "preflight missing role no common fallback");
-            auto nullClass = roleClass;
-            nullClass.item.guid = APINULLGuid;
-            classes.Add (role, nullClass);
-            check (!valid (), "preflight null role rejected");
-            classes.Set (role, roleClass);
-            check (!valid (), "preflight role absent from recognition rejected");
-            recognized.Add (roleClass.item.guid, false);
-            ParamValue zone, base;
-            zone.definition.description = "Sync_GUID zone";
-            base.definition.description = "Sync_GUID base element";
-            for (auto *p : {&zone, &base}) {
-                p->definition.valueType = API_PropertyStringValueType;
-                p->definition.collectionType = API_PropertySingleCollectionType;
-                p->definition.availability.Push (roleClass.item.guid);
+        check (!Roombook_CheckFinishConfiguration (classes, recognized),
+               "preflight empty class dict rejected");
+
+        auto &cache = PROPERTYCACHE ();
+        const ParamDictValue original = cache.property;
+        const bool originalFull = cache.isPropertyDefinitionRead_full;
+        const bool originalOK = cache.isPropertyDefinition_OK;
+        struct CacheRestore {
+            PropertyCache &cache;
+            ParamDictValue property;
+            bool full;
+            bool ok;
+
+            explicit CacheRestore (PropertyCache &source)
+                : cache (source), property (source.property), full (source.isPropertyDefinitionRead_full),
+                  ok (source.isPropertyDefinition_OK) {}
+
+            ~CacheRestore () {
+                cache.property = property;
+                cache.isPropertyDefinitionRead_full = full;
+                cache.isPropertyDefinition_OK = ok;
             }
-            properties.Add ("zone", zone);
-            check (!valid (), "preflight missing base rejected");
-            properties.Delete ("zone");
-            properties.Add ("base", base);
-            check (!valid (), "preflight missing zone rejected");
-            properties.Add ("zone", zone);
-            check (valid () && error.IsEmpty (), "preflight only used role passes with false recognition value");
-            for (const bool testZone : {true, false}) {
-                const GS::UniString key = testZone ? "zone" : "base";
-                const ParamValue good = testZone ? zone : base;
-                auto bad = good;
-                bad.definition.valueType = API_PropertyRealValueType;
-                properties.Set (key, bad);
-                check (!valid (), "preflight ownership wrong type rejected");
-                bad = good;
-                bad.definition.collectionType = API_PropertyListCollectionType;
-                properties.Set (key, bad);
-                check (!valid (), "preflight ownership list rejected");
-                bad = good;
-                bad.definition.availability.Clear ();
-                bad.definition.availability.Push (generic.item.guid);
-                properties.Set (key, bad);
-                check (!valid (), "preflight other class availability rejected");
-                bad = good;
-                bad.definition.availability.Clear ();
-                properties.Set (key, bad);
-                check (!valid (), "preflight empty availability rejected");
-                bad = good;
-                bad.definition.name = good.definition.description;
-                bad.definition.description = "";
-                properties.Set (key, bad);
-                check (!valid (), "preflight name only marker rejected");
-                bad = good;
-                bad.definition.description = testZone ? "zone" : "base element";
-                properties.Set (key, bad);
-                check (!valid (), "preflight missing Sync_GUID marker rejected");
-                properties.Set (key, good);
-            }
-            check (valid (), "preflight recovers after invalid definitions");
-            recognized.Delete (roleClass.item.guid);
-        }
-        classes.Add ("some_stuff_fin_skirting", lower);
+        } restore (cache);
+        cache.isPropertyDefinitionRead_full = true;
+        cache.isPropertyDefinition_OK = true;
+
+        classes.Add (all_class, generic);
+        recognized.Clear ();
+        recognized.Add (generic.item.guid, false);
+        cache.property.Clear ();
+        check (!Roombook_CheckFinishConfiguration (classes, recognized),
+               "preflight zone property missing rejected");
+
+        ParamValue zone;
+        zone.definition.description = SYNCGUID + " zone";
+        zone.definition.availability.Push (generic.item.guid);
+        cache.property.Add ("zone", zone);
+        check (Roombook_CheckFinishConfiguration (classes, recognized) && recognized.Get (generic.item.guid),
+               "preflight zone availability passes with base property absent");
+
+        recognized.Set (generic.item.guid, false);
+        zone.definition.description = "zone";
+        cache.property.Set ("zone", zone);
+        check (!Roombook_CheckFinishConfiguration (classes, recognized),
+               "preflight missing Sync_GUID marker rejected");
+
+        zone.definition.description = SYNCGUID + " zone";
+        cache.property.Set ("zone", zone);
+        check (Roombook_CheckFinishConfiguration (classes, recognized),
+               "preflight recovers after invalid definition");
+
+        // Роли плинтуса/карниза в recognized покрываются тем же механизмом, что и стены.
+        recognized.Set (generic.item.guid, true);
         recognized.Add (lower.item.guid, false);
         recognized.Add (upper.item.guid, false);
-        room.otdbeam_floor.Push (OtdBeam ());
-        rooms.Set (roomGuid, room);
-        check (!valid (), "preflight both roles need ownership for each");
-        for (const GS::UniString &key : {GS::UniString ("zone"), GS::UniString ("base")}) {
-            ParamValue value = properties.Get (key);
-            value.definition.availability.Push (lower.item.guid);
-            properties.Set (key, value);
-        }
-        check (valid (), "preflight both configured roles accepted");
-        check (!recognized.Get (lower.item.guid) && !recognized.Get (upper.item.guid) &&
-                   rooms.Get (roomGuid).otdbeam_floor.GetSize () == 1 &&
-                   rooms.Get (roomGuid).otdbeam_ceil.GetSize () == 1 && properties.GetSize () == 2,
-               "preflight does not mutate inputs");
+        check (!Roombook_CheckFinishConfiguration (classes, recognized),
+               "preflight uncovered skirting roles rejected like walls");
+        ParamValue roleZone = zone;
+        roleZone.definition.availability.Push (lower.item.guid);
+        roleZone.definition.availability.Push (upper.item.guid);
+        cache.property.Set ("zone", roleZone);
+        check (Roombook_CheckFinishConfiguration (classes, recognized),
+               "preflight skirting roles covered by zone property accepted");
     }
     #if defined(SKIRTING_PROCESS_REGRESSION)
     {

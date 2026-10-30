@@ -966,7 +966,9 @@ namespace Roombook {
 
     API_Guid Class_GetClassGuid (const TypeOtd &type, const ClassificationFunc::ClassificationDict &finclass);
 
-    TypeOtd Class_GetOtdTypeByClass (const API_Guid &classguid, const ClassificationFunc::ClassificationDict &finclass);
+    TypeOtd Class_GetOtdTypeByClass (const API_Guid &classguid,
+                                     const ClassificationFunc::ClassificationDict &finclass,
+                                     const API_ElemTypeID &type);
 
     // -----------------------------------------------------------------------------
     // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
@@ -992,26 +994,33 @@ namespace Roombook {
     bool Favorite_GetByName (const GS::UniString &favorite_name, API_Element &element, API_ElementMemo &memo);
 
     // -----------------------------------------------------------------------------
-    // Создаёт избранное с заданным именем из настроек по умолчанию инструмента типа отделки.
+    // Создаёт избранное с заданным именем из настроек по умолчанию инструмента типа отделки
+    // и кладёт его в заданную папку (пустая папка — избранное без папки).
     // Полы и потолки — перекрытия (Slab_GetDefault), плинтус пола и потолка, а также верхний
     // откос reveal up — балки (Beam_GetDefault), остальные стены и откосы — стены (Wall_GetDefault).
     // Для пустого имени только собирает настройки, не сохраняя избранное.
     // -----------------------------------------------------------------------------
-    bool Favorite_CreateOtd (const TypeOtd &type, const GS::UniString &name);
+    bool Favorite_CreateOtd (const TypeOtd &type, const GS::UniString &name, const GS::UniString &folder);
 
     void Param_Property_FindInParams (ReadParams &zoneparams);
     bool Param_Property_Read (const API_Guid &elGuid, ParamDictElement &paramToRead, ReadParams &zoneparams);
     ReadParams Param_GetForWindowParams ();
     ReadParams Param_GetForRooms ();
 
-    bool Roombook_CheckSkirtingConfiguration (const OtdRooms &rooms,
-                                              const ClassificationFunc::ClassificationDict &finclass,
-                                              const UnicGuid &finclassguids,
-                                              const ParamDictValue &propertyParams,
-                                              GS::UniString &error);
-
     bool Roombook_CheckFinishConfiguration (const ClassificationFunc::ClassificationDict &finclass,
                                             UnicGuid &finclassguids);
+
+    // Тот же контракт, но собирает все ошибки в errors (по одной на строку).
+    bool Roombook_CheckFinishConfiguration (const ClassificationFunc::ClassificationDict &finclass,
+                                            UnicGuid &finclassguids,
+                                            GS::UniString &errors);
+
+    // Для JSON: собирает классы отделки из систем классификации и выполняет общую проверку конфигурации,
+    // возвращая список ошибок текстом (по одной на строку) для передачи в json.
+    bool Roombook_CheckFinishConfiguration (GS::UniString &errors);
+
+    // Для JSON: собирает классы отделки из систем классификации и выполняет общую проверку конфигурации.
+    bool Roombook_CheckFinishConfiguration ();
 
     // Контейнеры одного запуска живут от сбора до записи; порядок типов ссылается на единственный массив Data.
     struct RoomProcessingContext {

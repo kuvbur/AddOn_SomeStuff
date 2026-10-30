@@ -169,15 +169,6 @@ namespace Roombook
         OtdData_WriteRoomMaterialData (context.roomsinfo, context.paramToRead, summary);
         auto &paramToWrite = summary.paramToWrite;
         context.paramToRead.Clear ();
-        GS::UniString skirtingConfigurationError;
-        if (!Roombook_CheckSkirtingConfiguration (context.roomsinfo,
-                                                  context.finclass,
-                                                  context.finclassguids,
-                                                  PROPERTYCACHE ().property,
-                                                  skirtingConfigurationError)) {
-            msg_rep ("RoomBook", skirtingConfigurationError, APIERR_GENERAL, APINULLGuid, false);
-            return;
-        }
         // Проверка существования классов и свойств
         if (!zones.IsEmpty ()) {
             if (!Roombook_CheckFinishConfiguration (context.finclass, context.finclassguids))

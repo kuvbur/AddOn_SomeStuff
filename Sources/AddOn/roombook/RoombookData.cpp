@@ -5927,8 +5927,8 @@ namespace Roombook {
     #endif
                 API_Guid classguid;
                 if (Class_IsElementFinClass (guid, finclassguids, classguid, cache)) {
-                    TypeOtd type_otd = Class_GetOtdTypeByClass (classguid, finclass);
                     API_ElemTypeID type_subguid = GetElemTypeID (guid);
+                    TypeOtd type_otd = Class_GetOtdTypeByClass (classguid, finclass, type_subguid);
                     const bool correct_type = Otd_IsNativeTypeForFinish (type_otd, type_subguid);
                     if (!otd_elements.ContainsKey (guid) && correct_type)
                         otd_elements.Add (guid, type_otd);
@@ -8640,20 +8640,26 @@ namespace Roombook {
         return false;
     }
 
+    // -----------------------------------------------------------------------------
     // Выбирает GUID класса по типу отделки; для откосов и нижней стены пробует также общий класс стен.
-    // Если подходящий класс не найден, возвращает класс all_class либо APINULLGuid.
+    // Если специфичный класс не найден  получают класс all_class.
+    // -----------------------------------------------------------------------------
     API_Guid Class_GetClassGuid (const TypeOtd &type, const ClassificationFunc::ClassificationDict &finclass) {
         switch (type) {
         case Floor_Skirting:
             if (auto *p = finclass.GetPtr (floor_skirting_class))
                 return p->item.guid;
-            return APINULLGuid;
-
+            break;
+            if (auto *p = finclass.GetPtr (floor_class))
+                return p->item.guid;
+            break;
         case Ceil_Cornice:
             if (auto *p = finclass.GetPtr (ceil_cornice_class))
                 return p->item.guid;
-            return APINULLGuid;
-
+            break;
+            if (auto *p = finclass.GetPtr (ceil_class))
+                return p->item.guid;
+            break;
         case Column:
             if (auto *p = finclass.GetPtr (column_class))
                 return p->item.guid;
@@ -8709,11 +8715,13 @@ namespace Roombook {
         return APINULLGuid;
     }
 
+    // -----------------------------------------------------------------------------
     // Сопоставляет GUID с классами стен, нижней стены, потолка, пола, колонн, откосов и балок в порядке проверок.
-    // Классы оконных и дверных откосов возвращают Reveal_Main; балки — Beam_Ceil/Beam_Wall; общий и неизвестный класс
-    // возвращают NoSet.
+    // общий и неизвестный класс возвращают NoSet.
+    // -----------------------------------------------------------------------------
     TypeOtd Class_GetOtdTypeByClass (const API_Guid &classguid,
-                                     const ClassificationFunc::ClassificationDict &finclass) {
+                                     const ClassificationFunc::ClassificationDict &finclass,
+                                     const API_ElemTypeID &type) {
         if (const auto *p = finclass.GetPtr (floor_skirting_class)) {
             if (p->item.guid == classguid)
                 return Floor_Skirting;
@@ -8735,13 +8743,22 @@ namespace Roombook {
         }
 
         if (const auto *p = finclass.GetPtr (ceil_class)) {
-            if (p->item.guid == classguid)
-                return Ceil;
+            if (p->item.guid == classguid) {
+                if (type == API_BeamID) {
+                    return Ceil_Cornice;
+                } else {
+                    return Ceil;
+                }
+            }
         }
-
         if (const auto *p = finclass.GetPtr (floor_class)) {
-            if (p->item.guid == classguid)
-                return Floor;
+            if (p->item.guid == classguid) {
+                if (type == API_BeamID) {
+                    return Floor_Skirting;
+                } else {
+                    return Floor;
+                }
+            }
         }
 
         if (const auto *p = finclass.GetPtr (column_class)) {
@@ -9387,9 +9404,11 @@ namespace Roombook {
             return true;
         API_Favorite favorite (name);
         favorite.element = element;
-        API_FavoriteFolderHierarchy favoriteFolder;
-        favoriteFolder.Push (folder);
-        favorite.folder = favoriteFolder;
+        if (!folder.IsEmpty ()) {
+            API_FavoriteFolderHierarchy favoriteFolder;
+            favoriteFolder.Push (folder);
+            favorite.folder = favoriteFolder;
+        }
 
         // Классификация избранного — пара (система, класс); GUID системы берём из той же записи словаря отделочных
         // классов.
@@ -9426,72 +9445,36 @@ namespace Roombook {
         return true;
     }
 
-    bool Roombook_CheckSkirtingConfiguration (const OtdRooms &rooms,
-                                              const ClassificationFunc::ClassificationDict &finclass,
-                                              const UnicGuid &finclassguids,
-                                              const ParamDictValue &propertyParams,
-                                              GS::UniString &error) {
-        error.Clear ();
-        bool lower = false;
-        bool upper = false;
-        for (const auto &entry : rooms) {
-    #ifdef ServerMainVers_2800
-            const OtdRoom &room = entry.value;
-    #else
-            const OtdRoom &room = *entry.value;
-    #endif
-            if (!room.isValid)
-                continue;
-            lower = lower || !room.otdbeam_floor.IsEmpty ();
-            upper = upper || !room.otdbeam_ceil.IsEmpty ();
-        }
-        for (const TypeOtd role : {Floor_Skirting, Ceil_Cornice}) {
-            if (!(role == Floor_Skirting ? lower : upper))
-                continue;
-            const GS::UniString roleName = role == Floor_Skirting ? floor_skirting_class : ceil_cornice_class;
-            const API_Guid classGuid = Class_GetClassGuid (role, finclass);
-            if (classGuid == APINULLGuid || !finclassguids.ContainsKey (classGuid)) {
-                error = "Skirting configuration: missing or unrecognized role classification '" + roleName + "'.";
-                return false;
-            }
-            bool zone = false;
-            bool base = false;
-            for (const auto &entry : propertyParams) {
-    #ifdef ServerMainVers_2800
-                const ParamValue &param = entry.value;
-    #else
-                const ParamValue &param = *entry.value;
-    #endif
-                const API_PropertyDefinition &definition = param.definition;
-                if (!definition.description.Contains (SYNCGUID) ||
-                    definition.valueType != API_PropertyStringValueType ||
-                    definition.collectionType != API_PropertySingleCollectionType ||
-                    !definition.availability.Contains (classGuid))
-                    continue;
-                zone = zone || definition.description.Contains ("zone");
-                base = base || definition.description.Contains ("base element");
-            }
-            if (!zone || !base) {
-                error =
-                    "Skirting configuration: '" + roleName +
-                    "' requires single String ownership properties "
-                    "with description markers Sync_GUID zone and Sync_GUID base element and explicit role availability.";
-                return false;
-            }
-        }
-        return true;
+    // Для JSON: собирает классы отделки из систем классификации и выполняет общую проверку конфигурации,
+    // возвращая список ошибок текстом для передачи в json.
+    bool Roombook_CheckFinishConfiguration (GS::UniString &errors) {
+        ClassificationFunc::ClassificationDict finclass;
+        UnicGuid finclassguids;
+        Class_FindFinClass (finclass, finclassguids);
+        return Roombook_CheckFinishConfiguration (finclass, finclassguids, errors);
     }
 
     // Проверяет наличие классов отделки и доступность Sync_GUID zone для GUID в finclassguids.
     // Уже установленные флаги не сбрасывает; проблемы Sync_GUID base element сообщает без отказа расчёта.
     bool Roombook_CheckFinishConfiguration (const ClassificationFunc::ClassificationDict &finclass,
                                             UnicGuid &finclassguids) {
+        GS::UniString errors;
+        return Roombook_CheckFinishConfiguration (finclass, finclassguids, errors);
+    }
+
+    // Тот же контракт, но собирает все ошибки в errors (по одной на строку); сообщения также идут в отчёт.
+    bool Roombook_CheckFinishConfiguration (const ClassificationFunc::ClassificationDict &finclass,
+                                            UnicGuid &finclassguids,
+                                            GS::UniString &errors) {
+        errors.Clear ();
+        bool ok = true;
         // Проверка наличия классов
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         if (finclass.IsEmpty ()) {
             GS::UniString msgString = RSGetIndString (iseng, 50, ACAPI_GetOwnResModule ());
             msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
             SafeWriteReport (msgString, true);
+            errors += msgString;
             return false;
         }
         if (!finclass.ContainsKey (all_class)) {
@@ -9505,12 +9488,17 @@ namespace Roombook {
             if (msg) {
                 GS::UniString msgString = RSGetIndString (iseng, 51, ACAPI_GetOwnResModule ());
                 msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
-                return false;
+                errors += msgString;
+                ok = false;
             }
         }
         // Проверка наличия свойств `Sync_GUID zone`
-        if (!ParamHelpers::isPropertyDefinitionRead ())
+        if (!ParamHelpers::isPropertyDefinitionRead ()) {
+            GS::UniString msgString = RSGetIndString (iseng, 51, ACAPI_GetOwnResModule ());
+            msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
+            errors += msgString;
             return false;
+        }
         const ParamDictValue &propertyParams = PROPERTYCACHE ().property;
         for (const auto &cItt : propertyParams) {
     #ifdef ServerMainVers_2800
@@ -9533,9 +9521,22 @@ namespace Roombook {
     #endif
             if (!msg) {
                 GS::UniString msgString = RSGetIndString (iseng, 52, ACAPI_GetOwnResModule ());
+                // Уточняем сообщение именем класса, чтобы список ошибок был читаемым в json.
+                for (GS::HashTable<GS::UniString, ClassificationFunc::ClassificationValues>::ConstPairIterator cCl =
+                         finclass.EnumeratePairs ();
+                     cCl != NULL;
+                     ++cCl) {
+                    if ((*cCl->value).item.guid == *cIt->key) {
+                        msgString += " ('" + *cCl->key + "')";
+                        break;
+                    }
+                }
                 msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
                 SafeWriteReport (msgString, true);
-                return false;
+                if (!errors.IsEmpty ())
+                    errors += "\n";
+                errors += msgString;
+                ok = false;
             }
         }
 
@@ -9570,12 +9571,12 @@ namespace Roombook {
         }
         if (!find) {
             msg_rep ("RoomBook",
-                     "Missing 'Sync_GUID base element' property. Floor/ceiling updates "
+                     "Missing 'Sync_GUID base element' property. Floor/ceiling/skirting/cornice updates "
                      "require this property. Existing elements will be replaced",
                      NoError,
                      APINULLGuid);
         }
-        return true;
+        return ok;
     }
 } // namespace Roombook
 #endif

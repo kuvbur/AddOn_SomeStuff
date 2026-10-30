@@ -477,7 +477,9 @@ namespace Roombook {
                 if (classGuid == APINULLGuid)
                     return nullptr;
                 auto *byType = byBase->GetPtr (draw.base_guid);
-                return byType == nullptr ? nullptr : byType->GetPtr (Class_GetOtdTypeByClass (classGuid, finclass));
+                return byType == nullptr
+                           ? nullptr
+                           : byType->GetPtr (Class_GetOtdTypeByClass (classGuid, finclass, API_ZombieElemID));
             };
             const auto assign = [&] (OtdDrawData &draw, const API_Element &target, UnicGuid &pool) -> GSErrCode {
                 UnicGuid candidates;
