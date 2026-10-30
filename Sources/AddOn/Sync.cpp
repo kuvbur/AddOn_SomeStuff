@@ -469,12 +469,15 @@ void SyncSelected (const SyncSettings &syncSettings) {
 
 // -----------------------------------------------------------------------------
 // Запускает обработку переданного массива
-// -----------------------------------------------------------------------------
 // Синхронизирует массив элементов: читает свойства и записывает изменения
 // Для каждого элемента в guidArray вызывает SyncElement, который читает свойства и формирует paramToWrite
 // Если syncSettings.GetSyncMon() включён - привязывает элементы к мониторингу (AttachObserver)
 // Возвращает массив guid элементов, которые были обработаны (для обновления)
-GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_Guid> &guidArray) {
+// Если запускать в UndoableCommand, то isUndo = true, иначе false. В UndoableCommand не открывается ProcessWindow
+// -----------------------------------------------------------------------------
+GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings,
+                               GS::Array<API_Guid> &guidArray,
+                               bool isUndo /*=false*/) {
     GS::Array<API_Guid> rereadelem = {};
     if (guidArray.IsEmpty ())
         return rereadelem;
@@ -490,7 +493,8 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
     bool showPercent = true;
     Int32 maxval = guidArray.GetSize ();
 #endif
-    ProcessWindowGuard pwGuard (funcname, nPhase);
+    if (!isUndo)
+        ProcessWindowGuard pwGuard (funcname, nPhase);
     clock_t start, finish;
     double duration = 0;
     start = clock ();
@@ -523,7 +527,11 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     GS::UniString paramch = CountUnreadGDLParams ();
     msg_rep ("SyncSelected - read", subtitle + intString + paramch + time, NoError, APINULLGuid);
-    if (!paramToWrite.IsEmpty ()) {
+
+    if (paramToWrite.IsEmpty ())
+        msg_rep ("SyncSelected - write", "No data to write", NoError, APINULLGuid);
+
+    if (!isUndo) {
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         GS::UniString undoString = RSGetIndString (iseng, UndoSyncId, ACAPI_GetOwnResModule ());
         ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
@@ -544,10 +552,24 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
             msg_rep ("SyncSelected - write", time, NoError, APINULLGuid);
             return NoError;
         });
+        ParamHelpers::WriteInfo (paramToWrite);
     } else {
-        msg_rep ("SyncSelected - write", "No data to write", NoError, APINULLGuid);
+        start = clock ();
+        GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ());
+        Int32 i = 1;
+#ifdef ServerMainVers_2700
+        ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
+#else
+        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+#endif
+        GS::Array<API_Guid> rereadelem_ = ParamHelpers::ElementsWrite (paramToWrite);
+        if (!rereadelem_.IsEmpty ())
+            rereadelem.Append (rereadelem_);
+        finish = clock ();
+        duration = (double)(finish - start) / CLOCKS_PER_SEC;
+        GS::UniString time = title + GS::UniString::Printf (" %.3f s", duration);
+        msg_rep ("SyncSelected - write", time, NoError, APINULLGuid);
     }
-    ParamHelpers::WriteInfo (paramToWrite);
     return rereadelem;
 }
 

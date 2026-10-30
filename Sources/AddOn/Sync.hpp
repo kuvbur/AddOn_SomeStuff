@@ -112,7 +112,9 @@ void SyncSelected (const SyncSettings &syncSettings);
 // -----------------------------------------------------------------------------
 // Запускает обработку переданного массива
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_Guid> &guidArray);
+GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings,
+                               GS::Array<API_Guid> &guidArray,
+                               bool isUndo = false /*=false*/);
 
 // -----------------------------------------------------------------------------
 // Запуск скрипта параметров выбранных элементов
