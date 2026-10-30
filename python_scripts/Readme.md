@@ -53,8 +53,11 @@ Worker errors are displayed separately from an empty instance list.
 For each required `some_stuff_fin_*` marker the tab shows a searchable
 dropdown (filter by first letters, with a contains-fallback) listing the
 project's UserDefined properties. "Apply selected" sets the chosen property's
-description to the marker via the add-on command `SetPropertyDescription`
-(issue #304). An existing different description is skipped unless the
+description to a readable text (the "Назначение" wording of
+`wiki/ru/Finishing-ru.md`) followed by the marker in parentheses, via the
+add-on command `SetPropertyDescription` (issue #304). The marker must stay in
+the description — the add-on finds finish properties by `Contains(marker)`
+search over descriptions. An existing different description is skipped unless the
 "Overwrite existing description" option is enabled. Property listing and
 application run in a background thread; every applied change is verified by a
 read-back and can be undone in Archicad (in-memory only until the project is
