@@ -9526,8 +9526,14 @@ namespace Roombook {
                          finclass.EnumeratePairs ();
                      cCl != NULL;
                      ++cCl) {
+    #ifdef ServerMainVers_2800
+                    // AC28+: поля пары — ссылки, разыменование не нужно.
+                    if (cCl->value.item.guid == cIt->key) {
+                        msgString += " ('" + cCl->key + "')";
+    #else
                     if ((*cCl->value).item.guid == *cIt->key) {
                         msgString += " ('" + *cCl->key + "')";
+    #endif
                         break;
                     }
                 }
