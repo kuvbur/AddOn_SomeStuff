@@ -77,14 +77,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install requests
-
-      - name: Setup Xcode
-        if: runner.os == 'macOS'
-        run: |
-          xcVersion=15.1
-          echo "Using Xcode version: ${xcVersion}"
-          sudo xcode-select -s /Applications/Xcode_${xcVersion}.app
-    
+          
       - name: Run build script
         run: |
           python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
