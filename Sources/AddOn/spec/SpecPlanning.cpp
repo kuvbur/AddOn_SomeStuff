@@ -35,6 +35,8 @@ namespace Spec {
             ParamValue pvalue = {};
             if (reader.Read (elemguid, group.flag_paramrawname, pvalue, group.n_layer)) {
                 flag = pvalue.val.boolValue;
+            } else {
+                contribution.flagReadFailed = true;
             }
         }
         if (!flag) {
@@ -79,11 +81,9 @@ namespace Spec {
             ParamValue pvalue = {};
             if (slot.isSumLiteral) {
                 ParamHelpers::ConvertIntToParamValue (pvalue, rawname, 1);
-                contribution.outSumParam.Push (pvalue);
             } else {
-                if (reader.Read (elemguid, rawname, pvalue, group.n_layer)) {
-                    contribution.outSumParam.Push (pvalue);
-                } else {
+                if (!reader.Read (elemguid, rawname, pvalue, group.n_layer)) {
+                    pvalue.isValid = false;
                     MissingField field = {};
                     field.rawname = rawname;
                     field.isError = ReadIsError (pvalue, group.fromMaterial);
@@ -94,12 +94,14 @@ namespace Spec {
                         (void)0; // счётчик уже содержит это поле: сообщение не повторяется
                 }
             }
+            // Суммирование адресует поля по позиции: пропуск не сдвигает следующие суммы.
+            contribution.outSumParam.Push (pvalue);
         }
 
         // Выходные слоты здесь НЕ читаются: для этого нужно знать, первый ли
         // это представитель ключа, а словаря элементов у вклада нет. См.
         // ReadContributionOutputs.
-        contribution.hasSumSlots = !contribution.outSumParam.IsEmpty ();
+        contribution.hasSumSlots = contribution.outSumParam.GetSize () > contribution.missingSum.GetSize ();
         contribution.status = ContributionStatus::Partial;
         return contribution;
     }
@@ -134,7 +136,8 @@ namespace Spec {
         contribution.keyOut = keyOut;
         contribution.outputsRead = true;
         contribution.hasOutSlots = !contribution.outParam.IsEmpty ();
-        contribution.isComplete = contribution.hasOutSlots && contribution.hasSumSlots;
+        contribution.isComplete = contribution.hasOutSlots && contribution.hasSumSlots &&
+                                  contribution.missingOut.IsEmpty () && contribution.missingSum.IsEmpty ();
     }
 
     // Определяет статус вклада по включению источника, чтению выходных слотов
@@ -150,11 +153,14 @@ namespace Spec {
         // Ни одного прочитанного значения — вклад пустой, а не частичный:
         // различать это важно, потому что в агрегат пустой вклад не
         // добавляет ни источника, ни нулевого слота.
-        if (contribution.outParam.IsEmpty () && contribution.outSumParam.IsEmpty ())
+        if (contribution.outParam.IsEmpty () &&
+            contribution.outSumParam.GetSize () == contribution.missingSum.GetSize ())
             return ContributionStatus::Empty;
         // Сравнение со схемой даёт статус вклада, но не отменяет проверку в
         // цикле: фактическое число слотов известно лишь после чтения.
-        if (contribution.outParam.GetSize () == schemaOutSlots && contribution.outSumParam.GetSize () == schemaSumSlots)
+        if (contribution.outParam.GetSize () == schemaOutSlots &&
+            contribution.outSumParam.GetSize () == schemaSumSlots && contribution.missingSum.IsEmpty () &&
+            contribution.missingOut.IsEmpty ())
             return ContributionStatus::Complete;
         return ContributionStatus::Partial;
     }
@@ -240,7 +246,7 @@ namespace Spec {
         Element row = {};
         // Схема строится до проверки соответствия; ключ уже записан в outParam.
         BuildOutputSlots (row, rule, contribution);
-        if (!OutSlotsMatchSchema (row, schemaOutSlots, schemaSumSlots)) {
+        if (!contribution.missingSum.IsEmpty () || !OutSlotsMatchSchema (row, schemaOutSlots, schemaSumSlots)) {
             // Отброшенная строка пометим ПО КЛЮЧУ СТРОКИ, а не по ключу выхода:
             // по ключу выхода отметился бы и отказ всего правила (все строки
             // отброшены разом), а сверке нужен именно факт «этой строки нет по
@@ -401,9 +407,27 @@ namespace Spec {
                     report ("Param not valid: " + rawname);
                     flag_change = true;
                 }
-                GS::UniString instring = APIGuidToString (el.elements[0]);
-                for (UInt32 k = 1; k < el.elements.GetSize (); k++) {
-                    instring = instring + SEMICOLON + APIGuid2GSGuid (el.elements[k]).ToUniString ();
+                // Сравниваем множество источников, а не порядок сериализации связи.
+                GS::HashSet<API_Guid> expectedSources = {};
+                for (const API_Guid &source : el.elements)
+                    expectedSources.Add (source);
+                GS::HashSet<API_Guid> storedSources = {};
+                GS::Array<GS::UniString> parts = {};
+                StringSplt (pvalue.val.uniStringValue, SEMICOLON, parts, false);
+                for (GS::UniString part : parts) {
+                    part.Trim ();
+                    GS::Guid source;
+                    if (source.ConvertFromString (part) != NoError || source.IsNull ()) {
+                        flag_change = true;
+                        continue;
+                    }
+                    storedSources.Add (GSGuid2APIGuid (source));
+                }
+                if (storedSources.GetSize () != expectedSources.GetSize ())
+                    flag_change = true;
+                for (const API_Guid &source : expectedSources) {
+                    if (!storedSources.Contains (source))
+                        flag_change = true;
                 }
             }
             // Если нашли изменения - добавим в список модифицированных

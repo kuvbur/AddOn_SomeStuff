@@ -17,8 +17,6 @@
 #include "Propertycache.hpp"
 
 namespace Spec {
-    GS::Int32 nPhase = 1;
-
     // --------------------------------------------------------------------
     // Получение правил из свойств элемента по умолчанию
     // Назначение: ищет правила спецификации в пользовательских свойствах объекта по умолчанию
@@ -648,7 +646,7 @@ namespace Spec {
         clock_t start, finish;
         double duration;
         start = clock ();
-        nPhase = 1;
+        GS::Int32 nPhase = 1;
         GS::UniString funcname = "SpecAll";
         GS::UniString subtitle;
         // набор прочитанных словарей один на весь запуск. До чтения
@@ -679,8 +677,11 @@ namespace Spec {
         GSErrCode err = NoError;
         subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ());
         if (showUserInterface) {
-            if (AdvanceProcessPhase (subtitle, nPhase))
-                return false;
+            if (AdvanceProcessPhase (subtitle, nPhase)) {
+                if (runResult != nullptr)
+                    runResult->prepareFailureStage = SpecPrepareStage::CanceledByUser;
+                return APIERR_CANCEL;
+            }
         }
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         if (!guidArray.IsEmpty ()) {
@@ -757,8 +758,11 @@ namespace Spec {
         }
         subtitle = GS::UniString::Printf ("Reading parameters from %d elements", readContext.read.GetSize ());
         if (showUserInterface) {
-            if (AdvanceProcessPhase (subtitle, nPhase))
-                return APIERR_GENERAL;
+            if (AdvanceProcessPhase (subtitle, nPhase)) {
+                if (runResult != nullptr)
+                    runResult->prepareFailureStage = SpecPrepareStage::CanceledByUser;
+                return APIERR_CANCEL;
+            }
         }
         // Накопитель кандидатов на обновление: все элементы, найденные по
         // свойству-правилу, включая заблокированные. Разблокируются и
@@ -1023,7 +1027,11 @@ namespace Spec {
         }
         subtitle = GS::UniString::Printf ("Create %d elements", n_elements);
         if (showUserInterface) {
-            AdvanceProcessPhase (subtitle, nPhase);
+            if (AdvanceProcessPhase (subtitle, nPhase)) {
+                if (runResult != nullptr)
+                    runResult->prepareFailureStage = SpecPrepareStage::CanceledByUser;
+                return APIERR_CANCEL;
+            }
         }
         // Какое-то действие требуется: создать, изменить или удалить.
         bool has_action = false;
@@ -1848,6 +1856,7 @@ namespace Spec {
                         GS::HashSet<GS::UniString> *rejected_keys) {
         ParamDict not_found_paramname = {};
         ParamDict not_found_unic = {};
+        GS::HashSet<GS::UniString> reported_flags = {};
         Int32 n_elements = 0;
         FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
         // out_param передан вызывающим: ключ - уникальные значения,
@@ -1881,6 +1890,16 @@ namespace Spec {
                 // чтений: флаг -> уникальные -> суммы -> выход.
                 const RuleContribution contribution = BuildContribution (
                     elemguid, group_index, group, binding, reader, not_found_paramname, not_found_unic);
+                // Нечитаемый флаг по прежнему контракту включает источник.
+                // Сообщаем один раз на поле правила, не превращая fallback в отказ.
+                if (contribution.flagReadFailed && !reported_flags.Contains (group.flag_paramrawname)) {
+                    reported_flags.Add (group.flag_paramrawname);
+                    const GS::UniString message =
+                        "Group flag not readable; using enabled fallback: " + group.flag_paramrawname;
+                    msg_rep ("Spec", message, NoError, elemguid);
+                    if (runResult != nullptr)
+                        runResult->AddRuleMessage (rule.rule_name, message);
+                }
                 GS::UniString key = contribution.key;
                 // полнота чтения считается по САМОМУ вкладу, а не по
                 // словарям not_found_*. Те хранят только поля, по которым выведено сообщение
@@ -1989,7 +2008,6 @@ namespace Spec {
                     if (rule.stop_on_error) {
                         if (!error_element.ContainsKey (elemguid))
                             error_element.Add (elemguid, true);
-                        n_elements = 0;
                     }
                 }
             }
@@ -2137,7 +2155,7 @@ namespace Spec {
             msg_rep ("Spec", "SpecChangePlan mismatch", NoError, APINULLGuid);
         }
         n_elements = 0;
-        n_elements += elements_delete.GetSize ();
+        n_elements += elements_delete.GetSize () - deleteOffset;
         n_elements += elements_mod.GetSize ();
         n_elements += elements.GetSize ();
         return n_elements;
