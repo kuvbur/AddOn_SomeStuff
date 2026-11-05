@@ -159,16 +159,14 @@ def find_addons_dir(install_root):
 
 
 def find_installed_addon(addons_dir):
-    """Ищет SomeStuff*.apx в папке аддонов (и на уровень подпапок).
+    """Ищет SomeStuff*.apx в папке аддонов рекурсивно (все вложенные папки).
 
     Возвращает (path, None) или (None, все_варианты) если найдено несколько.
     """
     if addons_dir is None or not addons_dir.is_dir():
         return None, []
-    found = list(addons_dir.glob("SomeStuff*.apx"))
-    for child in addons_dir.iterdir():
-        if child.is_dir():
-            found.extend(child.glob("SomeStuff*.apx"))
+    # rglob обходит и саму папку, и вложенные на любую глубину
+    found = sorted(addons_dir.rglob("SomeStuff*.apx"))
     if not found:
         return None, []
     if len(found) == 1:
@@ -248,7 +246,7 @@ def find_registry_custom_addons(ac_version):
                 if actual:
                     d = Path(actual)
                     if d.is_dir():
-                        result.extend(d.glob("SomeStuff*.apx"))
+                        result.extend(sorted(d.rglob("SomeStuff*.apx")))
     finally:
         winreg.CloseKey(key)
     # уникальные, с сохранением порядка
