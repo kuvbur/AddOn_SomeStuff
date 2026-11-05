@@ -1,6 +1,8 @@
-#include "CommandBase.hpp"
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
 
 #if defined(ServerMainVers_2500)
+
+    #include "CommandBase.hpp"
 
 // -----------------------------------------------------------------------------
 // Возвращает пространство имён, общее для всех JSON-команд аддона.
@@ -67,4 +69,4 @@ GS::ObjectState CreateErrorResponse (GSErrCode errorCode, const GS::UniString &e
 // -----------------------------------------------------------------------------
 GS::ObjectState CreateSuccessResponse () { return GS::ObjectState ("success", true); }
 
-#endif // defined (ServerMainVers_2500)
+#endif // ServerMainVers_2500

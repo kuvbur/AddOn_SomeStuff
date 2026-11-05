@@ -1,5 +1,7 @@
 //------------ kuvbur 2022 ------------
 #include "ACAPinc.h"
+
+#include "OnExit.hpp"
 #ifdef ServerMainVers_2300
     #include "Helpers.hpp"
     #include "Model3D/MeshBody.hpp"
@@ -267,6 +269,7 @@ namespace AutoFunc {
         if (err != NoError)
             return err;
         API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         GS::Array<Sector> k = {};
         GS::Array<Point2D> p = {};
         Point2D c1 = {0, 0};
@@ -275,12 +278,10 @@ namespace AutoFunc {
         API_ElemTypeID type = GetElemTypeID (element);
         err = ACAPI_Element_GetMemo (element.header.guid, &memo);
         if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&memo);
             return err;
         }
         if (type == API_RailingID) {
             if (memo.coords == nullptr || memo.pends == nullptr) {
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return err;
             }
             Int32 nCoords = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.coords)) / sizeof (Coord);
@@ -301,7 +302,6 @@ namespace AutoFunc {
         if (type == API_MorphID) {
             if (memo.morphBody == nullptr) {
                 msg_rep ("GetSectLine", "memo.morphBody == nullptr", err, APINULLGuid);
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return err;
             }
             if (memo.morphBody->IsWireBody () && !memo.morphBody->IsSolidBody ()) {
@@ -323,13 +323,11 @@ namespace AutoFunc {
                 }
             } else {
                 msg_rep ("GetSectLine", "memo.morphBody->IsWireBody", err, APINULLGuid);
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return err;
             }
         }
         if (memo.elemInfoString == nullptr) {
             msg_rep ("GetSectLine", "memo.elemInfoString == nullptr", APIERR_BADPARS, element.header.guid);
-            ACAPI_DisposeElemMemoHdls (&memo);
             return APIERR_BADPARS;
         }
         id = *memo.elemInfoString;
@@ -391,7 +389,6 @@ namespace AutoFunc {
         if (lines.GetSize () != n) {
             msg_rep ("GetSectLine", "Diff size lines", err, APINULLGuid);
         }
-        ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
 

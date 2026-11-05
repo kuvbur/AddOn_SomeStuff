@@ -1,9 +1,42 @@
 # TestFunc — Локальное тестирование
 
-> Базовый хеш карточки: 1e67983 (2026-09-22); локальное дополнение #199 — 2026-09-24 (ещё без коммита). Полное покрытие API (hpp:17-123, 33 функции); строки — объявления в hpp, определения .cpp не фиксировались.
+> Базовый хеш карточки: 1e67983 (2026-09-22); локальное дополнение #199 — 2026-09-24 (ещё без коммита). Полное покрытие API (hpp:17-123, 33 функции); строки — объявления в hpp, определения .cpp не фиксировались. P2b3 #260: дополнение поверх ce0f0e0, 2026-10-04; свежие координаты/контракт/AC25-прогон в секции P2b3. P2b4/P4j #260: рабочее дерево поверх7140f15, 2026-10-04; текущие координаты/проверки в новой секции. P2b10/P4o #260: рабочее дерево поверх ff6779c (AC25 Windows); актуальные координаты и проверки — в секции P2b10/P4o, остальные исторические строки не обновлялись. P2b11/P4p (2026-10-05): свежие координаты и проверки в соответствующей секции.
+
+### P2b15 — характеризация разбора правил, остановка по запросу владельца (#260, AC25 Windows)
+
+- `TestRoomCompositeSelection` (`tests/TestCore.cpp:3230–3413`) дополнен 14 правилами × двумя направлениями × empty/preseeded output × обоими `has_fin`: 112 комбинаций. Проверены `l[1:]`, отсутствие/регистр `l`, `f[]`/`f[name]`, порядок favorite, пробелы/Unicode, `h[0]`/`h[1]`/`h[]`, append, метаданные и независимость source/output. Конечный anchor с `structype!=-1` исключает SDK attribute lookup. Production побайтно равен проверенному P4s; P4t не начинался.
+- Наблюдаемое legacy-поведение `f[]`: ветка `GetSubstring(4, GetLength()-5)` отбрасывает последний символ значения; `l[1:Eta]f[]` даёт `Et`, `l[1: Alpha ]f[]` даёт ` Alpha`. Первые тестовые ожидания были неверны и дали 16 failures; исправлены только ожидания, production не менялся. Не трактовать характеризацию как исправление parser.
+- Canonical AC25 Debug BuildAddOn success; свежий завершённый TestKit: 85 наборов / 39418 passed / 0 failed / EXIT 0; `TestRoomCompositeSelection` 5940/0. 84 остальных END побайтно равны P4s. Отчёт новее launch/APX-границы. Артефакты: Hermes scratch/p4t-green-{build.log,launch.json,TestKit.txt}.
+- Свежий direct LSP до последней коррекции двух ожиданий/комментария: прежние Root8unused-variable/5include, Core0errors/3include, registry0errors/2include; severity/code/message равны baseline. Final LSP/MCP после коррекции и дополнение callgraph site3381 не выполнялись после команды остановиться. Сохранённые P4s generated координаты существующих функций/site3297 не сдвинуты; новые local fixture symbols/site3381 пока не собраны — not verified.
+- Модельный baseline начат, но клиент остановлен по запросу владельца; есть только `p4t_before_pre.json`, завершённого ответа/read-back нет. Это не доказательство результата/скорости RoomBook. Отправленная host-команда могла продолжить выполнение; приложение/VS Run оставлены открытыми, PLN не сохранялся агентом. После команды остановиться новых build/runtime/production edits не было. Scope review новых тестов: No issues found in inspected scope. #260 остаётся открыта; checkpoint по запросу владельца, без push.
+
+### P2b14/P4s — выбор слоёв композита (#260, 2026-10-08, AC25 Windows)
+
+[рабочее дерево поверх cc81b95; исторические координаты предыдущих этапов не актуализировались]
+- `TestRoomCompositeSelection` — `tests/TestCore.cpp:3230–3331`, регистрация `tests/TestFunc.cpp:89`. 504 комбинации:0–5слоёв × все маски точных Core × оба направления × empty/preseeded output × оба has_fin. Проверены пустой состав/сохранение favorite, включение первого ядра, несколько/нет ядер, combined Core|Finish как не-Core, порядок favorite, append, метаданные и независимость output/source. Ожидаемый выбор задаётся маской фикстуры, не копией production-цикла. Все результаты имеют structype!=−1: SDK attribute lookup не исполнялся. [исходник + runtime5236/0]
+- Private static `CollectBaseCompositeLayers(const ParamComposite&, bool, Int32, GS::Array<ParamValueComposite>&) -> void` — `Roombook.cpp:3100–3122`; caller `Param_SetComposite` :3124–3215, site3134. Передаётся уже вычисленный caller-ом signed ncomp; число GetSize не увеличено. Сохранены оба направленных цикла, flag_core, точное сравнение с APICWallComp_Core, включение самого ядра и порядок Push. Scratch-array остаётся в caller; parsing/favorite/has_fin/SDK-ветки и публичная сигнатура не менялись. [по коду]
+- LightRAG p4s-resume-rag.json не установил нужный GS::Array контракт; fallback — AC25 GSRoot/Array.hpp:537–541 (const operator[] возвращает const reference), :974–987 (Push(const Type&) создаёт копию). APICWallComp_Core/Finish подтверждены APIdefs_Attributes.h:368–369. [installed headers после RAG]
+- Production до fresh GREEN побайтно равен P4r. После извлечения полный reverse всего файла совпал со снимком p4s-before-Roombook.cpp modulo whitespace. Тестовые файлы после извлечения не менялись. clang-format, registry85/85/85, git diff --check PASS. Canonical AC25 Debug BuildAddOn до/после exit0; after loaded APX — Build/SomeStuff/25/Debug/SomeStuff.apx. [snapshot + reverse + build + loaded module]
+- Свежий isolated direct LSP до/после: Root8unused-variable/5include, Core0errors/3include, TestFunc0errors/2include; severity/code/message одинаковы. Fresh isolated MCP symbols и disk hashes сопряжены: Root5718строк/endLine5717, Core3334/endLine3332, TestFunc143/endLine141 (endLine0-based). Helper/caller/test body ends совпадают с живыми закрывающими скобками. [fresh MCP + direct LSP + SHA]
+- Fresh TestKit до/после:85наборов/38714passed/0failed/EXIT0; новый набор5236/0. Все85END/SUMMARY/EXIT записи равны; after report новее сохранённой launch/APX границы. После сообщения владельца об исправлении запуска AC25 оба запуска и тесты прошли; причина старого загрузочного падения отдельно не установлена. [штатные завершённые отчёты]
+- Model A/B:63зоны,2393новых элемента (1916Wall/126Object/351Window),25свойств/59825slots. Мультимножества(type,3D box,properties) равны, bbox round9; исходные GUID-наборы одинаковы и сохранены. Исходный PLN SHA-256 не изменился. Старые1778 не использовались как критерий. [JSON read-back + multiset + SHA]
+- Прежние126production-диагностик paramTo.isValid до/после не исправлялись. Полные контуры/материалы, SDK structype=-1 attribute lookup, прочие PLN/версии/macOS и performance distribution — not verified. VS Design/IsDebugging=false; Archicad count0, PLN не сохранялся, профили не чистились. Commit/push/закрытие#260 не выполнялись. Scoped review: No issues found in inspected scope. [VS pane + ограничения]
+- Scoped generated проверены parent-ом:1045symbols,488edges;155scoped symbols/140endpoint occurrences/116call sites сопряжены с исходником без расхождений. Добавлены helper/test symbols и два hierarchy-подтверждённых ребра (sites3134/3297);55symbol coordinates и18edge coordinates обновлены без удалений.890посторонних символов и417рёбер/их порядок совпадают с HEAD, scope не расширен. Fresh MCP/source provenance разделены в metadata; полнота cross-TU графа не заявляется. [fresh MCP + parent source join + Git blob comparison] Артефакты: Hermes scratch/p4s-resume-{before,after}-TestKit.txt, p4s_resume_{before,after}_*.json, p4s-baseline/, p4s-resume-after/, p4s-resume-validation.json.
+
+### P2b13/P4r — применение пяти материалов (#260, AC25 Windows)
+
+- `TestRoomParameterIsolation` — `tests/TestCore.cpp:1501–2088`; новые проверки материалов :1927–2087. Пять ключей × восемь состояний: missing/invalid/cache-hit/empty/integer/real/boolean/preset; семь различных material-slot sentinels, сохранность rawname/rawname_bytype/source/template/рабочего запроса, два порядка зон, preset-only aggregate guard. Исходное Unicode-имя с пробелами и его Trim-вариант имеют разные индексы71/909: индекс ищется до Trim; empty-string cache seeded72. Это cached/non-string характеризация, не проверка SDK cache-miss/attribute-failure. Production до baseline побайтно неизменён. [по коду + runtime]
+- Полные свежие TestKit до/после:84набора/33478passed/0failed/EXIT0, `TestRoomParameterIsolation`6787/0; все84END/SUMMARY/EXIT записи одинаковы. Отчёты новее соответствующего APX. Материал-тесты не изменялись после production extraction. [штатные завершённые отчёты]
+Материал-разрешение проверено на cached/non-string пути; SDK cache-miss/attribute-failure не имитировались. До/после production extraction все84END/SUMMARY/EXIT равны. Fresh Core:0errors/3прежних unused-includes,3231строка. Исторические координаты предыдущих этапов сохранены; текущие — в scoped symbols.json. [по коду + штатные отчёты + fresh LSP]
+
+### P2b12/P4q — типы и доступность отделки (#260, AC25 Windows)
+
+`TestRoomParameterIsolation` :1501–1926, новые матрицы :1578–1698: tip_pot/tip_otd/tip_pol (missing/invalid/empty/whitespace/Unicode/preset/type-agnostic), has_ceil/has_floor и gated ceil_by_slab/floor_by_slab с обоими начальными флагами; destination/template/cache сохранены. P2b12 на неизменённом production5959/0, после private ApplyRoomFinishTypeParameters те же5959/0; полный TestKit84/32532/0 EXIT0, все84итога равны. AC25 Debug BuildAddOn success/relink, fresh Core0errors/3прежних warnings; scoped16symbols joined, TestRoomMaterialRawNames :2804–3017. [исходник + fresh MCP + завершённый runtime]
 
 ## Назначение
 Вспомогательные функции для локального тестирования и отладки. Активен только под `TESTING`. [из комментария, TestFunc.hpp:16]
+
+`TestBuildOtdByParent` (`tests/TestCore.cpp:79`) характеризует группировку отделки по двум родителям, двух детей-стен одного родителя, неизвестного ребёнка, пустой набор типов и исходное значение `hasBaseElement`. Синтетический тест не проверяет геометрию или материалы созданной отделки. [по коду; runtime AC25 2026-10-03: 12 passed, 0 failed]
 
 Вывод результата — файловый отчёт **TestKit** (`%TEMP%\somestuff_test_report.txt`): каждая строка сбрасывается на диск (`fflush`), поэтому файл переживает падение ArchiCAD; в панель «Отладка» строки дублируются через `DBPrintf`. Успех по умолчанию молчит (`printPass=false`), печатаются отклонения и сводка. Границы наборов — `BEGIN`/`END <имя> passed=N failed=M`, признак завершения прогона — `=== somestuff tests end ===`. Файл `test_results.txt` не используется. [по коду `TestKit.cpp`, runtime AC25 2026-09-30]
 
@@ -60,6 +93,52 @@ NOTE [Verbose] TestPropertyRuleFlagOnProjectElements | RuleFlagProj.desc | name=
 
 **Отбор наборов.** Реестр наполняется явно в `TestFunc::Test` (49 наборов, 6 групп: spec/sync/param/format/renum/core), а не статическими инициализаторами: при разбиении файла по TU регистратор вместе со своей `static`-функцией выкидывается линковкой и набор молча исчезает из прогона. Отбор — переменная окружения `SMSTF_TEST`: пусто (всё), группа, префикс с `*` или список через запятую. Мёртвый агрегатор `TestSpecRegression`, дублировавший реестр, удалён. [по коду `TestFunc.cpp`, `TestKit.cpp`]
 
+## ClearZoneGUID #260 — P2b3 (AC25, 2026-10-04)
+
+- `TestClearZoneGuid` (`tests/TestCore.cpp:1210`, объявление `tests/TestFunc.hpp`, регистрация `tests/TestFunc.cpp`) проверяет множества и кратность GUID, сохранность вложенных ключей, NULL GUID, очистку scratch между элементами/типами, непросматриваемый Beam и повторный вызов. 12 табличных случаев и пустой индекс/bucket; production не изменён. Порядок обработанных GUID не фиксируется, порядок пропущенного типа проверяется точно. [по коду]
+- Контролируемый VS MCP запуск: `END TestClearZoneGuid passed=1719 failed=0`; `SUMMARY suites=77 passed=10521 failed=0 suppressed=0 notes=36`, `EXIT 0`. Все прежние 76 END-строк совпали с P4i. AC25 BuildAddOn success; fresh MCP TestCore/TestFunc 0 ошибок, только прежние unused-includes. Отчёт сохранён до debugger_stop. [runtime]
+- Scoped symbols: +1 определение; registry-срез из 7 записей неизменён. Callgraph: +1 ребро TestClearZoneGuid -> ClearZoneGUID с тремя source-joined call sites, MCP endpoints; межфайловое ребро отсутствовало в single-TU hierarchy, поэтому источник смешанный, не полный cross-TU MCP. Остальные 453 ребра сохранены.
+
+## Откосы #260 — P2b2j/P4i (AC25)
+
+- `CalculateOpeningRevealCoordinates` (`Roombook.cpp:3523`) — private static: прежние dx/dy/dr, guard нулевой длины, два lambda и четыре endpoint; без нормализации перпендикуляра, ограничения objLoc или исправления отрицательной ширины. Новых типов, ACAPI-вызовов и публичных интерфейсов нет. [по коду / fresh MCP]
+- `OpeningReveals_Create_One` (:3549) сохраняет четыре Point2D и один исходный Sector, три присваивания/IsZeroLength, порядок левой/правой/верхней стадии, три initializer/Delim_All и has_reveal до clipping. Правая координата теперь вычисляется вместе с левой до первой подрезки: единственный production caller ProcessWallFinishes (:286) использует отдельный output opw (:294); подрезка работает с wallotd/localCopy и не меняет координатные входы исходной стены/проёма. Это не геометрия тела зоны #252/Z0. [по коду, :327/:3708/:3863 и fresh MCP]
+- `TestOpeningRevealsCreateOne` (`TestCore.cpp:795`): девять новых сценариев × два начальных has_reveal — диагональные стены в обоих направлениях, objLoc на концах/до/после стены, отрицательная ширина, масштабированный/обратный перпендикуляр. Старые assertions сохранены; production не менялся до контролируемого GREEN baseline. [по коду]
+- AC25 Windows Debug: BuildAddOn success до/после; откосы **3754/0**, TestKit **76/8802/0**, EXIT 0 и все 76 END/SUMMARY/EXIT совпали в двух контролируемых VS MCP запусках. Модель before/after: 1778 новых элементов, box/доступные свойства совпали с исходной фикстурой; исходные GUID сохранены. Полные контуры/материалы not verified; времена одиночных запусков не являются performance A/B. [по свежим штатным отчётам и JSON read-back]
+- Fresh isolated MCP: Roombook severity/code/message совпадают с проверенным P3k (8 unused-variable и 5 unused-includes); TestCore без errors / 3 unused-includes. Scoped symbols 129/129 (121 Roombook + 8 TestCore), 13 границ / 36 project edges сверены с кодом; полный граф 453. Межфайловое Menu→RoomBook сохранено и source-joined; прочие 417 inherited edges не являются результатом этого сбора. VS pane содержит предсуществующие ERROR IN TEST/paramTo.isValid; TestKit verdict взят из свежих штатных отчётов. [по MCP / коду / отчётам]
+- Коммит и push этого шага не выполнялись. Параллельные изменения других файлов не включены в scope и не откатывались. После завершения контролируемого P4i-прогона общий APX пересобран параллельной работой: runtime APX mtime_ns1791116419085828300, свежий отчёт1791116510012487100; текущий APX1791116773819665700 новее отчёта. Roombook совпадает с проверенным снимком, но последний общий бинарник и параллельные изменения этим прогоном не проверены (not verified).
+
+## Roombook — характеризации #260 (AC25, 2026-10-04)
+
+- `TestOpeningAddOne` (`TestCore.cpp:157`) 114/0; `TestOtdWallDelimOne` (:227) 246/0; `TestOtdWallDelimAll` (:424) 197/0; `TestOtdWallAddOne` (:606) 60/0. Последний добавлен в Core через явный Register и объявление в TestFunc.hpp; TestCore содержит 6 наборов. [по коду и штатным отчётам]
+- AddOne: 11 сценариев ребра/высоты, отказ без мутации, сохранение неинициализируемых полей. DelimOne: 8 новых wall-intersection сценариев при width=0/1, без изменения существующих opening/многопроёмных assertions (#261). Production read-only до зелёного baseline; после P4e те же числа. [по коду и исполнению]
+- Реестр 73 registered/defined/declared; TestKit 73/3184/0, EXIT 0 до/после P4e. BuildAddOn AC25 success; fresh MCP TestCore 0 errors/3 прежних warnings. TestKit-сводки в VS pane не найдены; источник чисел — свежие отчёты 08:09:51/08:13:04 после соответствующих APX, запуски через VS MCP. [по инструментам]
+- Числа 49 наборов/103 строки и прежние file-counts в исходной части карточки ниже исторические; весь модуль в этом шаге не пересчитывался. [граница обновления]
+
+## Выбор материала #260 — P2b2f/P4f (AC25, 2026-10-04)
+
+- `TestSetMaterialByType` (`TestCore.cpp:675`) зарегистрирован в Core, объявлен в TestFunc.hpp. 11 типов × 6 конфигураций × 2 вида последнего слоя; 1848/0 до/после, TestKit 74/5032/0, EXIT 0 (11:00:47/11:04:22), registry 74/74/74. TestCore теперь 7 наборов; остальные старые числовые таблицы карточки исторические. [по fresh MCP/registry и отчётам]
+- Ожидания отдельно задают выбранные поля материала и итоговый TypeOtd: нормализация rawname не пере выбирает материал, last-layer override меняет только имя/индекс. Проверяются сохранность всех настроек, геометрия, первоначальный слой и добавленный finish. Production read-only до зелёного baseline. [по коду и исполнению]
+- AC25 BuildAddOn success до/после; fresh TestCore 0 errors/3 прежних warnings, registry 0 errors/2 warnings. Свежесть обоих отчётов относительно соответствующего APX проверена; suite-маркер в VS pane отсутствует, verdict взят из штатного отчёта. [по инструментам]
+
+## Откосы #260 — P2b2g/P4g (AC25, 2026-10-04)
+
+- `TestOpeningRevealsCreateOne` (`TestCore.cpp:795`) зарегистрирован в Core и объявлен в TestFunc.hpp. 13 сценариев × два начальных has_reveal; 662/0 на исходном и извлечённом initializer, весь TestKit75/5694/0, EXIT0. Registry75 registered/defined/declared, TestCore8 наборов. [по fresh MCP, реестру и штатным отчётам]
+- Проверяет две боковые стенки/верхнюю балку: порядок, координаты, высоты и length после подрезки, точный верх/касание/вырожденные размеры/ориентацию, материал и состав, GUID/этаж/типы и сохранение входов. Нулевые размеры характеризуют существующий код, не вводят новые требования к валидации. Production read-only до baseline. [по коду и исполнению]
+- BuildAddOn AC25 Windows Debug success до/после; fresh TestCore0 errors/3 прежних warnings, registry0 errors/2 warnings. Оба отчёта свежее своих APX; запуск через VS MCP. В VS pane suite-маркер отсутствует; числа взяты из свежего штатного отчёта, не из отсутствия ERROR IN TEST. [по инструментам]
+
+## Откосы × полосы #260 — P2b2h/P4h (AC25)
+
+- Существующий `TestOpeningRevealsCreateOne` (`TestCore.cpp:795`) расширен: 10 новых сценариев × два режима материала × два исходных has_reveal. Реестр не менялся; прежние assertions сохранены. Добавлены полосы/частичная балка/касание/fallback/полный отказ и верхняя/нижняя подрезка; проверены порядок, материалы и сохранность входов. [по коду]
+- Набор2414/0 и весь TestKit75/7446/0, EXIT0 на исходном и извлечённом production; отчёты свежее соответствующих APX, запуск через VS MCP. AC25 BuildAddOn success; fresh TestCore0 errors/3 прежних warnings, namespace и конец изменённого тела совпали с исходником. [по инструментам]
+- has_reveal отражает попытку до Delim_All, а не успешное создание стенок: при полном отказе выходов true сохраняется для обоих начальных состояний. [по коду и исполнению]
+
+## Смещённые отметки и min_dim #260 — P2b2i/P3j (AC25)
+
+- `TestOpeningRevealsCreateOne` (`TestCore.cpp:795`) расширен на 11 сценариев × два начальных has_reveal. Прежние 13 случаев и 10 случаев полос сохранены. Добавлен wallBottom с нулевым default; fallback перемещается вместе со стеной, проверяется сохранность обеих отметок и полос. [по коду]
+- Положительная/отрицательная отметки, подрезки/точный верх/полное непересечение; исходная высота ниже/ровно/выше min_dim и высота после подрезки ниже/ровно min_dim. Отказ сохраняет исходный флаг. Для точного порога используются нулевой уровень и кратные min_dim, без вычитания больших смещённых отметок. [по коду и AC25/VS исполнению]
+- Откосы3052/0, весь TestKit75/8084/0, EXIT0 до/после P3j. Реестр не менялся; отчёты свежее APX. AC25 BuildAddOn success; fresh TestCore0 errors/3 прежних warnings, конец тела/namespace совпал с текущим source. [по инструментам]
+
 ## Файлы
 - `Sources/AddOn/tests/` — все файлы тестов, только под `#ifdef TESTING`:
   - `TestFunc.cpp` (103 строки) — заголовок, `Groups`, реестр 49 наборов, `Test()`;
@@ -106,6 +185,66 @@ NOTE [Verbose] TestPropertyRuleFlagOnProjectElements | RuleFlagProj.desc | name=
 
 ## Зависимости
 - `api_headers/APICommon25/26/27.h` [по include]
+
+## P2b4 — TestRoomMaterialQuantities (#260)
+
+- `tests/TestCore.cpp:1320`: 28 сценариев ×11типов ×два накопления разных зон; стены/перекрытия, составы/дедуп/----/Unicode, пустые/невалидные входы, порог площади, проёмы/откосы и порядок float. Пустые rawname исключают форматирование/запись свойств. Прямоугольная SDK-фикстура имеет площадь6. Проверяются итоговые ключи/точные суммы, сохранность чужого типа отделки, отсутствие property-output и отдельные исходные поля. [по коду]
+- Production read-only до baseline;8031/0 до/после P4j, TestKit78/18552/0 EXIT0; все78итогов совпали. AC25 BuildAddOn success; fresh Core/registry0errors, прежние include warnings. Реестр78/78/78. Штатные отчёты свежие относительно APX; pane прочитан, production-диагностики не смешиваются с TestKit-verdict. Форматирование текста/SDK-запись данным набором не проверяются. [по build/MCP/report/runtime]
+
+## P2b5 — TestRoomParameterIsolation (#260)
+
+- `tests/TestCore.cpp:1501`: 256 комбинаций флагов,13 случаев высот/fallback, две зоны в обоих порядках и шесть reader-вариантов + пустые запросы. Проверены шаблон/входной словарь, Unicode, preset target, условные slab-флаги, фактический return-флаг чтения и приоритет rawname/false vots. Material-запросов нет, запись в модель не вызывается. [по исходнику]
+- Production read-only до baseline;1921/0 и TestKit79/20473/0 EXIT0 до/после отдельного P4k. Прежние78 END совпали с P4j, все79 END/SUMMARY/EXIT совпали до/после P4k. AC25 BuildAddOn success, fresh Core/registry0errors; реестр79/79/79. Отсутствующий словарь зоны и реальное SDK-чтение материалов данным набором не проверяются. [по build/MCP/report]
+
+## P2b6 — TestRoomMaterialFormatting (#260)
+
+- `tests/TestCore.cpp:1738`:11сценариев ×11типов +4padding cases +SDK metrics guard,973/0; точный текст, естественная сортировка/объединение, trim/маркер/Unicode/перенос, отсутствие повторной записи и сохранность metadata/сторонних значений. Формируется локальный output-словарь, реальной записи свойств нет; SDK-метрики текста реально вызваны. [по source/runtime]
+- TestKit80/21446/0 EXIT0; прежние79END совпали с P4k. Production byte-identical; AC25 BuildAddOn success, fresh Core/registry0errors, реестр80/80/80. Другие шрифты/сложные Unicode-переносы/реальная property-write не проверены. [по build/MCP/report]
+
+## P2b7 — TestOpeningParameterIsolation (#260)
+
+- `tests/TestCore.cpp:1909`:64маски/слои +13состояний второго проёма ×оба порядка +5early-return. Публичный Param_SetToWindows вызывается на синтетических cached-данных; проверяются глубина, width/height, val/isValid, сохранность identity/геометрических полей, исходных слоёв/словарей и шаблона. Сам private ProcessWallFinishes не вызывается. [по исходнику]
+- Production read-only,3692/0; TestKit81/25138/0 EXIT0, прежние80END совпали, реестр81/81/81. AC25 BuildAddOn success, fresh Core/registry0errors/прежние3и2include warnings. APX1791137672828327000, отчёт1791137775872208700; загружен Build/SomeStuff/25/Debug/SomeStuff.apx. [по build/MCP/report/runtime]
+- Preset-only requests дают false aggregate при сохранённых valid values; missing/invalid required keys оставляют base_th и исходные размеры. Пять ожидаемых Param_SetToWindows err в pane не являются TestKit-verdict. Реальное GDL-чтение, модельный read-back/полные контуры/материалы не проверялись. [по source/runtime]
+
+### TestRoomParameterResolution (#260 P2b8)
+
+- Новый `TestRoomParameterResolution` — `Sources/AddOn/tests/TestCore.cpp:2117`: 7 description-cases × 2 вида ключа, 8 порядков/preset-valid, дубликаты, пустые списки/словарь, unavailable cache gate, шаблон окон и восстановление оригинального кэша. RAII временно подменяет только property и два флага `isPropertyDefinitionRead_full`/`isPropertyDefinition_OK`; full=true исключает реальный SDK-load в этой фикстуре. До изменения production — побайтная неизменность. [по коду + assertions]
+- AC25 Windows Debug: оба `BuildAddOn.py` success; fresh Root — прежние 8 unused-variable errors + 5 include warnings, Core/registry — 0 errors и прежние 3/2 include warnings. Реестр 82/82/82. До/после: новый тест 636/0, TestKit 82/25774/0 EXIT0; все 82 END/SUMMARY/EXIT совпали, прежние 81 END совпали с P2b7. [build log + fresh MCP + свежие штатные TestKit reports]
+- Полные контуры/материалы, SDK-failure/load путь при full=false, macOS/другие AC и performance A/B — not verified. Мой VS-сеанс остановлен; коммит/push не выполнялись, #260 остаётся открытой.
+
+### P2b9 — полный cached reader (#260, 2026-10-04)
+
+- `TestCachedParameterReader` — `Sources/AddOn/tests/TestCore.cpp:2362`. Production побайтно совпадает с проверенным P4m: `Param_Property_Read` (`Roombook.cpp:2649`) не изменён и не раздроблен. [по коду + byte snapshot]
+- Матрица: шесть API_VariantType × шесть имён × четыре bool/fromProperty состояния. Дополнены `vots_fill`, содержащие тег строки, другой регистр, type-agnostic bool-фильтр и сохранность всех полей ParamValueData/FormatString. `fromProperty` меняет только type результата на String; исходный cached ParamValue не меняется. [по исходнику + runtime assertions]
+- Все шесть перестановок трёх кандидатов × пять состояний (missing/invalid/false-filter/valid/all-invalid), восемь масок preset-valid в трёх запросах, четыре безопасных ранних выхода, два GUID в обоих порядках. Aggregate return проверен отдельно от общей валидности. Мутация результата не меняет исходное значение и шаблон rawnames. [по исходнику + runtime assertions]
+- Отсутствующий GUID проверен только при пустых запросах, полностью preset-запросе или пустом списке кандидатов — эти пути не разыменовывают baseparam. Непустой непредустановленный запрос с кандидатами и отсутствующим GUID НЕ исполнялся: текущий код получает GetPtr(elGuid), затем разыменовывает его без null-guard. Это ограничение входной фикстуры, не подтверждённый runtime-дефект и не повод менять production в тестовой задаче. [по коду; unsafe missing-GUID not verified]
+- AC25 Windows Debug `BuildAddOn.py`: success; свежие изолированные Core/registry MCP — 0 errors, прежние 3/2 include warnings. Новый тест 1009 passed/0 failed; TestKit 83 suites/26783 passed/0 failed/EXIT0, все 82 унаследованных END совпали с P4m. Реестр 83/83/83. [build log + свежий штатный TestKit report + MCP]
+- VS launch загрузил `Build/SomeStuff/25/Debug/SomeStuff.apx`; runtime mtime_ns1791142015500552900, scratch-копия штатного отчёта p2b9_test_report.txt mtime_ns1791142161702406500, бинарник не изменился во время прогона. Pane «Отладка» прочитан, TestKit-вердикт из штатного отчёта; мой debuggee остановлен. Новый model read-back/A-B не выполнялись: production byte-identical. SDK-генерация cached значений и полноценные геометрия/материалы not verified. [Modules + VS + report]
+- Scoped generated: 22 test symbols из fresh MCP/source join, одно test→Param_Property_Read ребро с пятью source-joined sites, 478 унаследованных рёбер неизменны, graph479. Root endpoint из прежнего fresh MCP повторно сопряжён с неизменённым source; cross-TU outgoing0 не принят за отсутствие вызовов. Полный regen не выполнялся. [MCP + source join]
+- По запросу владельца накопленные P2b4/P4j–P2b9 фиксируются одним checkpoint `[P2b9]`; push и закрытие #260 не выполняются. Чужой `Test_file/test_30.pln` исключён.
+
+### P2b10/P4o — применение имён свойств отделки (#260, AC25 Windows)
+
+[рабочее дерево поверх ff6779c; P4n сохранён; текущие координаты после clang-format]
+- `TestRoomMaterialRawNames` — `Sources/AddOn/tests/TestCore.cpp:2614`, объявление/регистрация в TestFunc.hpp/.cpp. До production edit тест дал1711/0; весь TestKit84/28494/0 EXIT0,83унаследованных END равны P4n. Registry84/84/84; production побайтно неизменён относительно проверенного P4n. [source snapshots + report + registry]
+- Все12ключей (rawname/rawname_bytype ×ceil/reveals/up/main/down/column) ×7состояний: отсутствующий request, invalid source, валидная пустая строка, пробелы/разделители, Unicode, preset с другим реально читаемым request, boolean-type/false с непустым uniStringValue. Для каждой записи проверены все12назначений на различных sentinels, нетронутые поля материала, исходный cached value/type и шаблон. Поля копируются без Trim/смены регистра/типового фильтра; валидная пустая строка очищает прежний target. [по коду + runtime assertions]
+- Preset-only: все запросы остаются valid, aggregate reader=false, wrapper возвращается до применения полей и нормализации высот. Отдельно две зоны в обоих порядках с missing/invalid/empty/Unicode для второй зоны; свежая рабочая копия шаблона исключает перенос значений. Material dictionary неизменён, SDK material-lookup исключён из фикстуры. Missing GUID с непустыми кандидатами намеренно не исполнялся. [по коду + runtime assertions]
+- `ApplyRoomMaterialRawNames(const ReadParams &, OtdRoom &) -> void` — private static, `Roombook.cpp:2791`; caller `Param_SetToRooms` :2881/site3036. Только прежние12последовательных GetPtr/isValid/val/field assignments и локальный scratch; нет универсального setter, таблицы указателей в production, нового SDK-чтения или полной копии словаря/комнаты. Pointer-array используется только в тестовом oracle, ссылается на живой локальный room. [по исходнику + fresh MCP]
+- Guard/SDK material lookup/height selection остаются в caller. После выбора высот: rawnames (:3036) → ApplyRoomCreationFlags (:3037) → NormalizeRoomFinishHeights (:3038). Публичная сигнатура неизменна; полный reverse helper/local scratch совпал с pre-step P4n modulo whitespace, остальной production и все тесты после извлечения побайтно неизменны. [reverse + snapshots]
+- LightRAG запрос сохранён в scratch p4o_rag.json; const/non-const GetPtr и pointer/null contract проверены по DevKit25 GSRoot/HashTable.hpp:743/:756. Const lookup не отдаёт копию контейнера. Новые ACAPI вызовы не введены. [LightRAG + installed headers]
+- AC25 Debug BuildAddOn до/после success, APX mtime_ns1791145987400812600→1791146273591746000; оба loaded Modules — Build/SomeStuff/25/Debug/SomeStuff.apx, во время каждого прогона source/APX не изменялись. Fresh Core/registry0errors, Root baseline8unused-variable errors/5include warnings unchanged. [build + fresh isolated MCP + Modules]
+- Свежие полные отчёты: p2b10_test_report.txt report1791146100452148600 > launch1791146025407728900/APX; p4o_after_test_report.txt report1791146351523623100 > launch1791146313577201300/APX. До/после1711/0, TestKit84/28494/0 EXIT0, все84END/SUMMARY/EXIT одинаковы. [report freshness + parsed records]
+- Модельные VS before/after на восстановленной безопасной копии test_25.pln:1778новых элементов, точное равенство мультимножеств (тип,3D box,доступные свойства),0missing/extra, исходные GUID сохранены. Полные контуры/материалы, прочие PLN/macOS/AC версии и performance A/B not verified; одиночные elapsedSeconds не трактуются как speed-gate. [existing JSON read-back]
+- В pane остаются production-диагностики ERROR IN TEST/paramTo.isValid:126до и125после; изменение числа не исследовалось и не заявляется исправлением. TestKit-вердикт — из полного свежего штатного отчёта. Мой debuggee остановлен; чужие Test_file/test_30.pln/профили не тронуты. [VS output + report]
+- Scoped generated:150fresh symbols (Root127/Core16/registry7), source join PASS. Helper incoming1/outgoing0; test single-TU outgoing0 не доказывает отсутствие cross-TU calls: два test-ребра добавлены по fresh endpoints/source sites3/1. Одна новая helper-edge,24унаследованных ребра пересопряжены с актуальными координатами,456прочих unchanged,graph483. Full regen не выполнялся; остальной scope NOT from this collection. [MCP + source join]
+- P2b10/P4o завершены и проверены; commit/push/закрытие#260 не выполнялись, последний checkpoint ff6779c. Следующее возможное малое извлечение — primary/fallback height parameters, только после проверки полноты имеющейся характеризации; SDK material block остаётся вне такого извлечения.
+
+### P2b11/P4p — матрица выбора высот (#260, 2026-10-05, AC25)
+
+[рабочее дерево поверх ff6779c]
+- TestRoomParameterIsolation :1501:180комбинаций direct/gate/fallback/main;4399/0 на неизменённом P4o production и после извлечения, TestKit84/30972/0 EXIT0, все84итога равны. Проверены приоритет valid direct=0, отсутствующие/invalid gate/value/main, false gate и сохранность source/template/постороннего материала. Старые13HeightCase/оба порядка зон сохранены. [source + fresh reports]
+- Fresh Core0errors/3старых warnings, AC25 build/relink success, registry84/84/84. TestRoomMaterialRawNames теперь :2681. Scoped Core16symbols/current callsites обновлены; production helper2881/caller2920 и полная runtime/model evidence — Docs/modules/Roombook.md, раздел P2b11/P4p. [MCP + source]
 
 ## Инварианты
 - Прод-код в тестовых задачах read-only; провал виден как строка `FAIL ... | expected ... got ...` в отчёте и как `FAILED_SUITE`/`exit_code=70` от раннера [из AGENTS.md]

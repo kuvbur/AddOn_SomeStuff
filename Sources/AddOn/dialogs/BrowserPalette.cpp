@@ -16,10 +16,8 @@
     #include "Process.hpp"
 #endif
 
-#include "dialogs/BrowserPalette.hpp"
-
 #include "CommonFunction.hpp"
-#include "dialogs/CommandHelpers.hpp"
+#include "dialogs/BrowserPalette.hpp"
 #include "dialogs/SyncSettings.hpp"
 #include "Propertycache.hpp"
 #include "spec/Spec.hpp"
@@ -274,6 +272,10 @@ BrowserPalette::BrowserPalette ()
 BrowserPalette::~BrowserPalette () {
     EndEventProcessing ();
     Detach (*this);
+}
+
+void BrowserPalette::DestroyInstance () {
+    // Освобождаем браузер до выгрузки DLL, вне блокировки загрузчика ОС.
     instance = nullptr;
 }
 
@@ -324,8 +326,8 @@ void BrowserPalette::Show (bool reloadContent) {
         GS::Array<API_Guid> selectedElements;
         UpdateSelectionInfoInUI (selectedElements);
     }
-    // Обновляем информацию о выделении после загрузки страницы
-    // onLoadingStateChange вызовет RegisterACAPIJavaScriptObject и UpdateSelectionInfoInUI
+    // Обновляем информацию о выделении после загрузки страницы.
+    // onLoadingStateChange обновит UI через уже зарегистрированный мост.
 }
 
 void BrowserPalette::Hide () {
@@ -377,28 +379,26 @@ void BrowserPalette::UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedEleme
 }
 
 void BrowserPalette::InitBrowserControl () {
-    DBprnt ("BrowserPalette::InitBrowserControl () — loading HTML");
-    // Загружаем HTML
-    browser.LoadHTML (LoadHtmlFromResource ());
-    DBprnt ("BrowserPalette::InitBrowserControl () — HTML load started");
+    // Мост принадлежит контролу: не заменяем его при перезагрузке страницы,
+    // пока ответы предыдущих асинхронных вызовов могут ещё обрабатываться.
+    RegisterACAPIJavaScriptObject ();
 
-    // Подписываемся на событие завершения загрузки страницы
-    // Используем event notifier браузера
     browser.onLoadingStateChange +=
         [this] (const DG::BrowserBase & /*source*/, const DG::BrowserLoadingStateChangeArg &eventArg) {
             DBprnt ("BrowserPalette::onLoadingStateChange () — isLoading=" + GS::ValueToUniString (eventArg.isLoading) +
                     " canGoBack=" + GS::ValueToUniString (eventArg.canGoBack) +
                     " canGoForward=" + GS::ValueToUniString (eventArg.canGoForward));
 
-            // Когда загрузка завершена — регистрируем JS-объект
-            if (!eventArg.isLoading) {
-                DBprnt ("BrowserPalette::onLoadingStateChange () — page loaded, registering JS");
-                RegisterACAPIJavaScriptObject ();
-                // Сразу обновляем информацию о выделении
+            if (!eventArg.isLoading && jsObjectRegistered) {
+                DBprnt ("BrowserPalette::onLoadingStateChange () — page loaded, refreshing selection");
                 GS::Array<API_Guid> selectedElements;
                 UpdateSelectionInfoInUI (selectedElements);
             }
         };
+
+    // Подписка и мост готовы до начала загрузки HTML.
+    browser.LoadHTML (LoadHtmlFromResource ());
+    DBprnt ("BrowserPalette::InitBrowserControl () — HTML load started");
 }
 
 void BrowserPalette::RegisterACAPIJavaScriptObject () {
@@ -632,7 +632,13 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             for (const API_Guid &elemGuid : selectedElements) {
                 API_Property property;
                 GSErrCode err = ACAPI_Element_GetPropertyValue (elemGuid, propertyGuid, property);
+#if !defined(ServerMainVers_2400)
+                // Только AC23: API_Property не имеет члена status — проверяем наличие значения через статус варианта.
+                if (err != NoError || (property.value.variantStatus != API_VariantStatusNormal &&
+                                       property.value.listVariant.variants.IsEmpty ())) {
+#else
                 if (err != NoError || property.status != API_Property_HasValue) {
+#endif
                     continue;
                 }
                 // Значение может быть одиночным или списочным — берём первый вариант
@@ -767,7 +773,12 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
                     property.isDefault = true;
                     property.value.variantStatus = API_VariantStatusNormal;
+#if !defined(ServerMainVers_2400)
+                    // Только AC23: API_Property не имеет члена status — помечаем свойство вычисленным.
+                    property.isEvaluated = true;
+#else
                     property.status = API_Property_HasValue;
+#endif
 
                     resetElementGuids.Push (elemGuid);
                     resetProperties.Push (property);
@@ -824,7 +835,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         }));
 
     // Подсветка и приближение элементов из HTML БЕЗ смены выделения
-    // (паттерн Spec.cpp: APIIo_HighlightElementsID).
     // Контракт: вход — JSON-массив GUID'ов в виде строки '["{...}","{...}"]';
     // выход — true. Элементы подсвечиваются цветом (HashTable GUID->API_RGBAColor),
     // камера зумится на них (APIDo_ZoomToElementsID, par1: const GS::Array<API_Guid>*).
@@ -869,32 +879,10 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             suppressSelectionRefresh = true;
             SuppressSelectionRefreshGuard suppressGuard{suppressSelectionRefresh};
             (void)suppressGuard;
-
-            // Подсветка цветом, выделение не трогаем. Версионные обёртки как в Spec.cpp.
-            GS::HashTable<API_Guid, API_RGBAColor> hlElems;
-            const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
-            for (const API_Guid &guid : guids)
-                hlElems.Put (guid, hlColor);
-            // С AC26 функции подсветки возвращают void, поэтому код ошибки от них
-            // не получить и hlErr остаётся NoError.
-            GSErrCode hlErr = NoError;
-#ifdef ServerMainVers_2700
-            ACAPI_UserInput_ClearElementHighlight ();
-            ACAPI_UserInput_SetElementHighlight (hlElems);
-#else
-    #ifdef ServerMainVers_2600
-            ACAPI_Interface_ClearElementHighlight ();
-            ACAPI_Interface_SetElementHighlight (hlElems);
-    #else
-            // Вызов без par1 снимает предыдущую подсветку
-            ACAPI_Interface (APIIo_HighlightElementsID);
-            hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
-    #endif
-#endif
+            GSErrCode hlErr = HighlightElements (guids);
             if (hlErr != NoError) {
                 DBprnt (GS::UniString ("HighlightElements: highlight error ") + GS::ValueToUniString (hlErr));
             }
-
 // Приближаем камеру к элементам без смены выделения.
 #ifdef ServerMainVers_2700
             const GSErrCode zoomErr =
@@ -1464,13 +1452,17 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
             DBprnt ("GetClassification: returning JSON: " + jsonStr);
             return new DG::JSValue (jsonStr);
-        } catch (const std::exception &e) {
+        }
+
+        catch (const std::exception &e) {
             DBprnt (GS::UniString ("GetClassification: std::exception: ") + e.what ());
             return new DG::JSValue (
                 GS::UniString ("{\"common\":true,\"commonPath\":[],\"differing\":[],\"options\":[],"
                                "\"status\":\"error\",\"debug_error\":\"std::exception\",\"debug_exception\":\"") +
                 EscapeJsonString (e.what ()).ToCStr ().Get () + "\"}");
-        } catch (...) {
+        }
+
+        catch (...) {
             DBprnt ("GetClassification: unknown exception caught");
             return new DG::JSValue (GS::UniString ("{\"common\":true,\"commonPath\":[],\"differing\":[],\"options\":[],"
                                                    "\"status\":\"error\",\"debug_error\":\"unknown exception\"}"));
@@ -1806,7 +1798,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             // Постфикс перед "pec_rule" (km, kzh, v2, v3) частью имени не считается:
             // все они начинаются с "pec_rule".
             const bool hasSpecRule =
-                !definition.description.IsEmpty () && definition.description.ToLowerCase ().Contains ("pec_rule");
+                !definition.description.IsEmpty () && UniStringToLower (definition.description).Contains ("pec_rule");
             GS::UniString name = EMPTYSTRING;
             GetPropertyFullName (definition, name);
             if (name.IsEmpty ())
@@ -1982,13 +1974,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 return new DG::JSValue (emptyAnswer);
             }
         }));
-#if defined(ServerMainVers_2700) || !defined(ServerMainVers_2600)
-    // AC26 удалил UnregisterJSObject из DGLib, AC27 вернул его (перегрузку по имени)
-    // уже в JavascriptEngine — компилируем вызов только там, где метод есть.
-    browser.UnregisterJSObject (GS::UniString ("ACAPI"));
-#endif
-    const bool registerOk = browser.RegisterAsynchJSObject (jsACAPI);
-    if (!registerOk) {
+    jsObjectRegistered = browser.RegisterAsynchJSObject (jsACAPI);
+    if (!jsObjectRegistered) {
         DBprnt ("RegisterACAPIJavaScriptObject: browser.RegisterAsynchJSObject failed for object 'ACAPI'");
     }
 }
@@ -2137,7 +2124,13 @@ GSErrCode __ACENV_CALL BrowserPalette::PaletteControlCallBack (Int32,
 }
 
 GSErrCode BrowserPalette::RegisterPaletteControlCallBack () {
-    return ACAPI_RegisterModelessWindow (GS::CalculateHashValue (paletteGuid),
+#if !defined(ServerMainVers_2500)
+    // До AC25 GS::CalculateHashValue отсутствует — используем хеш GS::Guid из девкита.
+    const Int32 referenceID = static_cast<Int32> (GS::GenerateHashValue (paletteGuid));
+#else
+    const Int32 referenceID = static_cast<Int32> (GS::CalculateHashValue (paletteGuid));
+#endif
+    return ACAPI_RegisterModelessWindow (referenceID,
                                          PaletteControlCallBack,
                                          API_PalEnabled_FloorPlan + API_PalEnabled_Section + API_PalEnabled_Elevation +
                                              API_PalEnabled_InteriorElevation + API_PalEnabled_3D +

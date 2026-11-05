@@ -28,6 +28,8 @@
     #include "ReNum.hpp"
     #include "Sync.hpp"
 
+GS::Int32 nPhase = 1;
+
 // -----------------------------------------------------------------------------------------------------------------------
 // 1. Получаем список объектов, в свойствах которых ищем
 //		Флаг включения нумерации в формате
@@ -57,7 +59,7 @@
 // (ShowRenumResult) - прежде каждая точка отказа открыла своё всплывающее окно.
 GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     GS::UniString funcname ("Numbering");
-    GS::Int32 nPhase = 1;
+    nPhase = 1;
     GSErrCode err = NoError;
     ProcessWindowGuard pwGuard (funcname, nPhase);
     clock_t start, finish;
@@ -100,14 +102,8 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     }
     UInt32 qtywrite = paramToWriteelem.GetSize ();
     GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", qtywrite);
-    Int32 i = 2; // APIIo_SetNextProcessPhaseID ожидает Int32* maxval (см. DevKit-25)
-    #ifdef ServerMainVers_2700
-    bool showPercent = false;
-    Int32 maxval = 2;
-    ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-    #else
-    ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-    #endif
+    if (AdvanceProcessPhase (subtitle, nPhase))
+        return NoError;
     SuspendGroupsGuard suspGuard; // отключаем режим группировки на время записи.
     #if defined(TESTING)
     DBprnt ("Write start");
@@ -137,8 +133,8 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     // записанных позиций принадлежит всем правилам сразу, и вне окна ему
     // показываться негде.
     runResult.elementsToWrite = qtywrite;
-    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
-    msg_rep ("ReNumSelected", GS::UniString::Printf ("Time spent%s", time), NoError, APINULLGuid);
+    GS::UniString time = GS::UniString::Printf ("Time spent %.3f s", duration);
+    msg_rep ("ReNumSelected", time, NoError, APINULLGuid);
     // Окно результата - единственное место, где пользователь видит итог по
     // правилам. Показывается и на успешном запуске: список счётчиков и есть
     // результат, а не только ошибка.
@@ -321,9 +317,7 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
     // какое из правил негодно.
     RenumMissingProps missing_props = {};
     #ifndef ServerMainVers_2700
-    // Счётчик фазы для APIIo_SetNextProcessPhaseID. Начиная с AC27 фаза
-    // задаётся парой (maxval, showPercent), и номер больше не нужен.
-    int n_elem = 0;
+    int n_elem = 0; // Счётчик фазы
     #endif
     #if defined(TESTING)
     DBprnt ("find rule");
@@ -356,21 +350,8 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
         } else {
             hasDef = ReNumHasFlag (definitions);
         }
-    #ifdef ServerMainVers_2700
-        bool showPercent = true;
-        Int32 maxval = guidArray.GetSize ();
-        ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-    #else
-        n_elem += 1;
-        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &n_elem);
-    #endif
-    #ifdef ServerMainVers_2700
-        if (ACAPI_ProcessWindow_IsProcessCanceled ())
+        if (AdvanceProcessPhase (subtitle, nPhase))
             return false;
-    #else
-        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-            return false;
-    #endif
         if (!hasDef)
             continue;
         ReNum_GetElement (guid, paramToReadelem, rules, missing_props, definitions);
@@ -564,10 +545,6 @@ void AddFormulaToRead (const API_Guid &elemGuid,
     param.name = paramName;
     param.typeinx = FORMULATYPEINX;
     param.val.hasFormula = true;
-    // Шаблон НЕ оборачивается в <...>: EvalExpression вычисляет каждую пару
-    // <...> на месте, поэтому внешняя обёртка сломала бы внутреннюю формулу
-    // (парсер ищет первую '>' и обрезал бы по ней). Так же поступает и Sync для
-    // кавыченной формулы (Sync.cpp:1774) — обёртка там только для <...>-формы.
     param.val.uniStringValue = templatestring;
     ParamHelpers::AddParamValue2ParamDict (elemGuid, param, paramDict);
     // Переносим зависимости шаблона в словарь элемента (как BuildReadParamDict в Spec)
@@ -711,7 +688,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
             const GS::UniString rule_name = RenumRuleDisplayName (definition.description);
             // Разбираем - что записано в свойстве с флагом
             // В нём должно быть имя свойства и, возможно, флаг добавления нулей
-            GS::UniString paramName = definition.description.ToLowerCase ();
+            GS::UniString paramName = UniStringToLower (definition.description);
             partstring.Clear ();
             if (StringSplt (paramName, BRACEEND, partstring, "enum_flag", &local_scratch) > 0) {
                 paramName = partstring[0] + BRACEEND;
@@ -770,7 +747,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         GetFormulaTemplate (ruleParts[0], criteria_formula);
                     if (nRulePart > 1)
                         GetFormulaTemplate (ruleParts[1], delimetr_formula);
-                    ruleparamName = ruleBody.ToLowerCase ();
+                    ruleparamName = UniStringToLower (ruleBody);
                     GS::UniString rawNamecriteria = PVALPREFIX;
                     GS::UniString rawNamedelimetr;
                     if (ruleparamName.Contains (SEMICOLON)) { // Есть указание на нули
@@ -806,7 +783,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         GS::UniString fname;
                         GS::UniString rawName = PROPERTYNAMEPREFIX;
                         GetPropertyFullName (definition, fname);
-                        rawName.Append (fname.ToLowerCase ());
+                        rawName.Append (UniStringToLower (fname));
                         rawName.Append (BRACEEND);
                         rulecritetia.flag = rawName;
                         // Формульная часть не имеет имени свойства - вместо него
@@ -1332,7 +1309,7 @@ RenumMode ReNumGetFlag (const ParamValue &paramflag, const ParamValue &paramposi
         }
     }
     if (paramflag.type == API_PropertyStringValueType) {
-        GS::UniString flag = paramflag.val.uniStringValue.ToLowerCase ();
+        GS::UniString flag = UniStringToLower (paramflag.val.uniStringValue);
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         // Исключаемые позиции
         GS::UniString txtypenum = RSGetIndString (iseng, RenumSkipID, ACAPI_GetOwnResModule ());

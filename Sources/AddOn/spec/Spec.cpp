@@ -13,6 +13,7 @@
     #include "tests/TestFunc.hpp"
 #endif
 #include "dialogs/DG4rule.hpp"
+#include "OnExit.hpp"
 #include "Propertycache.hpp"
 
 namespace Spec {
@@ -645,15 +646,9 @@ namespace Spec {
         clock_t start, finish;
         double duration;
         start = clock ();
+        GS::Int32 nPhase = 1;
         GS::UniString funcname = "SpecAll";
-        GS::Int32 nPhase = 4;
         GS::UniString subtitle;
-#ifdef ServerMainVers_2700
-        Int32 maxval = 1;
-        bool showPercent = true;
-#else
-        short i = 1;
-#endif
         // набор прочитанных словарей один на весь запуск. До чтения
         // заполняется только поле read (запросы), composite/listData — выход
         // ParamHelpers::ElementsRead.
@@ -682,13 +677,11 @@ namespace Spec {
         GSErrCode err = NoError;
         subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ());
         if (showUserInterface) {
-#ifdef ServerMainVers_2700
-            maxval = 2;
-            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-            i = 2;
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+            if (AdvanceProcessPhase (subtitle, nPhase)) {
+                if (runResult != nullptr)
+                    runResult->prepareFailureStage = SpecPrepareStage::CanceledByUser;
+                return APIERR_CANCEL;
+            }
         }
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         if (!guidArray.IsEmpty ()) {
@@ -765,13 +758,11 @@ namespace Spec {
         }
         subtitle = GS::UniString::Printf ("Reading parameters from %d elements", readContext.read.GetSize ());
         if (showUserInterface) {
-#ifdef ServerMainVers_2700
-            maxval = 2;
-            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-            i = 2;
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+            if (AdvanceProcessPhase (subtitle, nPhase)) {
+                if (runResult != nullptr)
+                    runResult->prepareFailureStage = SpecPrepareStage::CanceledByUser;
+                return APIERR_CANCEL;
+            }
         }
         // Накопитель кандидатов на обновление: все элементы, найденные по
         // свойству-правилу, включая заблокированные. Разблокируются и
@@ -823,7 +814,7 @@ namespace Spec {
             // заблокированные строки не попали бы в набор на разблокировку.
             GS::Array<API_Guid> exsist_elements = {};
             GetElementByPropertyDescription (
-                subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase (), exsist_elements);
+                subguid_pvalue.definition, UniStringToLower (rule.subguid_rulevalue), exsist_elements);
             for (const API_Guid &exsist_element : exsist_elements)
                 existingCandidates.Push (exsist_element);
             SelectExistingElements (rule, exsist_elements, selected_elements);
@@ -960,17 +951,7 @@ namespace Spec {
             // указание, где именно ошибка. Сообщение при этом копится и
             // показывается в общем окне результата.
             if (showUserInterface && error_element.GetSize () < 20) {
-    #ifdef ServerMainVers_2700
-                ACAPI_UserInput_ClearElementHighlight ();
-    #else
-        #ifdef ServerMainVers_2600
-                ACAPI_Interface_ClearElementHighlight ();
-        #else
-                ACAPI_Interface (APIIo_HighlightElementsID);
-        #endif
-    #endif
-                GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
-                API_RGBAColor hlColor = {1, 0.0, 0.0, 1};
+                HighlightElements (error_element);
                 GS::Array<API_Neig> error_elements = {};
                 for (const auto &cIt : error_element) {
     #ifdef ServerMainVers_2800
@@ -978,18 +959,8 @@ namespace Spec {
     #else
                     API_Guid el = *cIt.key;
     #endif
-                    hlElems.Add (el, hlColor);
                     error_elements.PushNew (el);
                 }
-    #ifdef ServerMainVers_2700
-                ACAPI_UserInput_SetElementHighlight (hlElems);
-    #else
-        #ifdef ServerMainVers_2600
-                ACAPI_Interface_SetElementHighlight (hlElems);
-        #else
-                ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
-        #endif
-    #endif
     #ifdef ServerMainVers_2700
                 err = ACAPI_Selection_Select (error_elements, true);
                 if (err == NoError)
@@ -1015,17 +986,8 @@ namespace Spec {
         }
 #endif
         if (!elements_mod.IsEmpty ()) {
-            if (showUserInterface) {
-#ifdef ServerMainVers_2700
-                ACAPI_UserInput_ClearElementHighlight ();
-#else
-    #ifdef ServerMainVers_2600
-                ACAPI_Interface_ClearElementHighlight ();
-    #else
-                ACAPI_Interface (APIIo_HighlightElementsID);
-    #endif
-#endif
-            }
+            if (showUserInterface)
+                ClearElementHighlight ();
             GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
             API_RGBAColor hlColor = {0.8, 0.0, 0.0, 0.5};
             for (const auto &eldict : elements_mod) {
@@ -1065,13 +1027,11 @@ namespace Spec {
         }
         subtitle = GS::UniString::Printf ("Create %d elements", n_elements);
         if (showUserInterface) {
-#ifdef ServerMainVers_2700
-            maxval = 3;
-            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-            i = 3;
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+            if (AdvanceProcessPhase (subtitle, nPhase)) {
+                if (runResult != nullptr)
+                    runResult->prepareFailureStage = SpecPrepareStage::CanceledByUser;
+                return APIERR_CANCEL;
+            }
         }
         // Какое-то действие требуется: создать, изменить или удалить.
         bool has_action = false;
@@ -1608,7 +1568,7 @@ namespace Spec {
             // не подменяется результатом и повторный проход по тому же правилу
             // ищет то же самое.
             if (!searchMarker.IsEmpty ()) {
-                if (description.Contains (searchMarker.ToLowerCase ()) && description.Contains ("sync_guid")) {
+                if (description.Contains (UniStringToLower (searchMarker)) && description.Contains ("sync_guid")) {
                     if (!paramToWrite.ContainsKey (rawname)) {
                         ParamValue chpvalue;
                         if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) {
@@ -1896,6 +1856,7 @@ namespace Spec {
                         GS::HashSet<GS::UniString> *rejected_keys) {
         ParamDict not_found_paramname = {};
         ParamDict not_found_unic = {};
+        GS::HashSet<GS::UniString> reported_flags = {};
         Int32 n_elements = 0;
         FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
         // out_param передан вызывающим: ключ - уникальные значения,
@@ -1929,6 +1890,16 @@ namespace Spec {
                 // чтений: флаг -> уникальные -> суммы -> выход.
                 const RuleContribution contribution = BuildContribution (
                     elemguid, group_index, group, binding, reader, not_found_paramname, not_found_unic);
+                // Нечитаемый флаг по прежнему контракту включает источник.
+                // Сообщаем один раз на поле правила, не превращая fallback в отказ.
+                if (contribution.flagReadFailed && !reported_flags.Contains (group.flag_paramrawname)) {
+                    reported_flags.Add (group.flag_paramrawname);
+                    const GS::UniString message =
+                        "Group flag not readable; using enabled fallback: " + group.flag_paramrawname;
+                    msg_rep ("Spec", message, NoError, elemguid);
+                    if (runResult != nullptr)
+                        runResult->AddRuleMessage (rule.rule_name, message);
+                }
                 GS::UniString key = contribution.key;
                 // полнота чтения считается по САМОМУ вкладу, а не по
                 // словарям not_found_*. Те хранят только поля, по которым выведено сообщение
@@ -2037,7 +2008,6 @@ namespace Spec {
                     if (rule.stop_on_error) {
                         if (!error_element.ContainsKey (elemguid))
                             error_element.Add (elemguid, true);
-                        n_elements = 0;
                     }
                 }
             }
@@ -2185,7 +2155,7 @@ namespace Spec {
             msg_rep ("Spec", "SpecChangePlan mismatch", NoError, APINULLGuid);
         }
         n_elements = 0;
-        n_elements += elements_delete.GetSize ();
+        n_elements += elements_delete.GetSize () - deleteOffset;
         n_elements += elements_mod.GetSize ();
         n_elements += elements.GetSize ();
         return n_elements;
@@ -2244,7 +2214,7 @@ namespace Spec {
     // Всё остальное - разбор групп и полей - делает GetRuleFromDescription.
     // --------------------------------------------------------------------
     void ApplyRulePolicy (const GS::UniString &description, SpecRule &rule) {
-        const GS::UniString ldescription = description.ToLowerCase ();
+        const GS::UniString ldescription = UniStringToLower (description);
         if (ldescription.Contains ("pec_rule_v2")) {
             rule.delete_old = true;
         } else {
@@ -3023,6 +2993,7 @@ namespace Spec {
             favorite.memo.New ();
             favorite.properties.New ();
             BNZeroMemory (&favorite.memo.Get (), sizeof (API_ElementMemo));
+            const GS::OnExit favMemoGuard ([&favorite] () { ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ()); });
             err = ACAPI_Favorite_Get (&favorite);
             if (err == NoError) {
                 if (readInfo != nullptr) {
@@ -3035,10 +3006,10 @@ namespace Spec {
                         GS::UniString fname;
                         GS::UniString rawName = PROPERTYNAMEPREFIX;
                         GetPropertyFullName (property.definition, fname);
-                        rawName.Append (fname.ToLowerCase ());
+                        rawName.Append (UniStringToLower (fname));
                         rawName.Append (BRACEEND);
                         if (!paramdict.ContainsKey (rawName))
-                            paramdict.Add (rawName, property.definition.description.ToLowerCase ());
+                            paramdict.Add (rawName, UniStringToLower (property.definition.description));
                     }
                 }
                 if (favorite.memo.HasValue ()) {
@@ -3049,14 +3020,13 @@ namespace Spec {
                             API_AddParType &actParam = (*favorite.memo.Get ().params)[ii];
                             GS::UniString fname = GS::UniString (actParam.name);
                             GS::UniString rawName = GDLNAMEPREFIX;
-                            rawName.Append (fname.ToLowerCase ());
+                            rawName.Append (UniStringToLower (fname));
                             rawName.Append (BRACEEND);
                             if (!paramdict.ContainsKey (rawName))
                                 paramdict.Add (rawName, EMPTYSTRING);
                         }
                     }
                 }
-                ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
                 return err;
             } else {
                 msg_rep ("Spec",
@@ -3075,10 +3045,10 @@ namespace Spec {
         if (readInfo != nullptr)
             readInfo->fromDefaultElem = true;
         msg_rep ("Spec", "Read the default settings of the object", err, APINULLGuid);
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         err = ACAPI_Element_GetDefaults (&element, &memo);
         if (err != NoError) {
             msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
-            ACAPI_DisposeElemMemoHdls (&memo);
             return err;
         }
         if (memo.params != nullptr) {
@@ -3087,13 +3057,12 @@ namespace Spec {
                 API_AddParType &actParam = (*memo.params)[ii];
                 GS::UniString fname = GS::UniString (actParam.name);
                 GS::UniString rawName = GDLNAMEPREFIX;
-                rawName.Append (fname.ToLowerCase ());
+                rawName.Append (UniStringToLower (fname));
                 rawName.Append (BRACEEND);
                 if (!paramdict.ContainsKey (rawName))
                     paramdict.Add (rawName, EMPTYSTRING);
             }
         }
-        ACAPI_DisposeElemMemoHdls (&memo);
         GS::Array<API_PropertyDefinition> definitions = {};
 #ifdef ServerMainVers_2600
         err = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (
@@ -3110,10 +3079,10 @@ namespace Spec {
             GS::UniString fname;
             GS::UniString rawName = PROPERTYNAMEPREFIX;
             GetPropertyFullName (definition, fname);
-            rawName.Append (fname.ToLowerCase ());
+            rawName.Append (UniStringToLower (fname));
             rawName.Append (BRACEEND);
             if (!paramdict.ContainsKey (rawName))
-                paramdict.Add (rawName, definition.description.ToLowerCase ());
+                paramdict.Add (rawName, UniStringToLower (definition.description));
         }
         return err;
     }
@@ -3138,13 +3107,13 @@ namespace Spec {
             API_Favorite favorite (favorite_name);
             favorite.memo.New ();
             BNZeroMemory (&favorite.memo.Get (), sizeof (API_ElementMemo));
+            GS::OnExit favMemoGuard ([&favorite] () { ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ()); });
             err = ACAPI_Favorite_Get (&favorite);
             if (err == NoError) {
                 element = favorite.element;
                 memo = *favorite.memo;
+                favMemoGuard.Deactivate ();
                 return err;
-            } else {
-                ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
             }
         }
 #endif

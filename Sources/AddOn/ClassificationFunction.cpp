@@ -33,10 +33,10 @@ namespace ClassificationFunc {
             return err;
         }
         for (const auto &system : systems) {
-            GS::UniString systemname = system.name.ToLowerCase ();
+            GS::UniString systemname = UniStringToLower (system.name);
             systemname.Trim ();
 
-            GS::UniString systemname_full = systemname + " v" + system.editionVersion.ToLowerCase ();
+            GS::UniString systemname_full = systemname + " v" + UniStringToLower (system.editionVersion);
             systemname_full.Trim ();
 
             bool has_systemname = systemdict.ContainsKey (systemname);
@@ -119,8 +119,8 @@ namespace ClassificationFunc {
                                 const API_ClassificationItem &parent,
                                 ClassificationDict &classifications,
                                 const API_ClassificationSystem &system) {
-        GS::UniString itemname = item.id.ToLowerCase ();
-        GS::UniString desc = item.description.ToLowerCase ();
+        GS::UniString itemname = UniStringToLower (item.id);
+        GS::UniString desc = UniStringToLower (item.description);
         if (itemname.IsEmpty ())
             itemname = "@system@";
         if (!classifications.ContainsKey (itemname)) {
@@ -128,7 +128,7 @@ namespace ClassificationFunc {
             classificationitem.item = item;
             classificationitem.system = system;
             classificationitem.itemname = itemname;
-            classificationitem.parentname = parent.id.ToLowerCase ();
+            classificationitem.parentname = UniStringToLower (parent.id);
             classifications.Put (itemname, classificationitem);
         }
 
@@ -151,7 +151,7 @@ namespace ClassificationFunc {
     void GetFullName (const API_ClassificationItem &item,
                       const ClassificationDict &classifications,
                       GS::UniString &fullname) {
-        GS::UniString itemname = item.id.ToLowerCase ();
+        GS::UniString itemname = UniStringToLower (item.id);
         const ClassificationValues *itemPtr = classifications.GetPtr (itemname);
         if (itemPtr != nullptr) {
             if (fullname.IsEmpty ()) {

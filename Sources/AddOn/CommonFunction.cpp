@@ -11,6 +11,7 @@
 
 #include "CommonFunction.hpp"
 
+#include "OnExit.hpp"
 #include "Propertycache.hpp"
 #include "third_party/qrcodegen.hpp"
 #if defined(_MAC)
@@ -255,7 +256,7 @@ bool IsTestProjectOpen () {
         return false;
     }
 
-    return projectInfo.projectName->ToLowerCase ().Contains ("test");
+    return UniStringToLower (*projectInfo.projectName).Contains ("test");
 }
 
 // -----------------------------------------------------------------------------
@@ -264,6 +265,7 @@ bool IsTestProjectOpen () {
 // -----------------------------------------------------------------------------
 void DBprnt (double a, GS::UniString reportString) {
 #if defined(TESTING)
+    reportString.ReplaceAll ("%", "");
     // Форматируем число и выводим отладочный префикс
     GS::UniString msg = GS::UniString::Printf ("%f", a);
     std::string reportString_str;
@@ -306,6 +308,8 @@ void DBprnt (double a, GS::UniString reportString) {
 // -----------------------------------------------------------------------------
 void DBprnt (GS::UniString msg, GS::UniString reportString) {
 #if defined(TESTING)
+    msg.ReplaceAll ("%", "");
+    reportString.ReplaceAll ("%", "");
     // Если хоть одно сообщение выглядит как ошибка, добавляем ERROR-префикс
     if (msg.Contains ("err") || msg.Contains ("ERROR") || reportString.Contains ("err") ||
         reportString.Contains ("ERROR")) {
@@ -404,6 +408,12 @@ void DBtest (double a, double b, GS::UniString reportString) {
 // -----------------------------------------------------------------------------
 // Вывод сообщения в отчёт
 // -----------------------------------------------------------------------------
+void SafeWriteReport (GS::UniString text, bool withDial) {
+    // Текст правила может содержать %n: SDK не должен воспринимать его как формат.
+    text.ReplaceAll ("%", "");
+    ACAPI_WriteReport (text, withDial);
+}
+
 void msg_rep (const GS::UniString &modulename,
               const GS::UniString &reportString,
               const GSErrCode &err,
@@ -733,9 +743,9 @@ void msg_rep (const GS::UniString &modulename,
     version = version + " =TESTING ON= ";
 #endif
     msg = version + msg + LINEBRAKE;
-    ACAPI_WriteReport (msg, false);
+    SafeWriteReport (msg, false);
     if (show)
-        ACAPI_WriteReport (msg, show);
+        SafeWriteReport (msg, show);
     if (err != NoError) {
         msg = "== SMSTF ERROR ==" + msg;
     }
@@ -833,21 +843,9 @@ void CallOnSelectedElem2 (void (*function) (const API_Guid &),
 #endif
         ProcessWindowGuard pwGuard (funcname, nPhase);
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-#ifdef ServerMainVers_2700
-            if (i % 10 == 0)
-                ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-            if (i % 10 == 0)
-                ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+            if (AdvanceProcessPhase (subtitle, nPhase))
+                return;
             function (guidArray[i]);
-#ifdef ServerMainVers_2700
-            if (ACAPI_ProcessWindow_IsProcessCanceled ())
-                return;
-#else
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                return;
-#endif
         }
         long time_end = clock ();
         GS::UniString time =
@@ -1357,22 +1355,10 @@ bool EvalExpression (GS::UniString &unistring_expression) {
     // ускорить работу. Счётчики попаданий и сбросов: см. #217.
     GS::UniString fullkey = unistring_expression;
     static GS::HashTable<GS::UniString, GS::UniString> exprResultFullCache; // Кэш для строковых результатов
-#if defined(TESTING)
-    FormulaCacheStats &stats = PROPERTYCACHE ().formulaCacheStats;
-    stats.calls += 1;
-#endif
     if (exprResultFullCache.GetSize () > 4096) {
-#if defined(TESTING)
-        // Сброс уничтожает рабочее множество — печатаем накопленное до него.
-        ReportFormulaCacheStats ("переполнение кэша всей строки");
-        stats.fullClears += 1;
-#endif
         exprResultFullCache.Clear ();
     }
     if (const GS::UniString *cachedPtr = exprResultFullCache.GetPtr (fullkey)) {
-#if defined(TESTING)
-        stats.fullHits += 1;
-#endif
         unistring_expression = *cachedPtr; // Используем кэшированный результат
         return (!unistring_expression.IsEmpty ());
     }
@@ -1432,19 +1418,12 @@ bool EvalExpression (GS::UniString &unistring_expression) {
 
                 static GS::HashTable<GS::UniString, ExprResult> exprResultCache;
                 if (exprResultCache.GetSize () > 4096) {
-#if defined(TESTING)
-                    ReportFormulaCacheStats ("переполнение кэша текста выражения");
-                    stats.exprClears += 1;
-#endif
                     exprResultCache.Clear (); // защита от неограниченного роста на длинной сессии
                 }
 
                 const GS::UniString cacheKey (expression_string.c_str (), chcode);
                 ExprResult result;
                 if (const ExprResult *cachedPtr = exprResultCache.GetPtr (cacheKey)) {
-#if defined(TESTING)
-                    stats.exprHits += 1;
-#endif
                     result = *cachedPtr;
                 } else {
                     expression_t expression;
@@ -1455,7 +1434,7 @@ bool EvalExpression (GS::UniString &unistring_expression) {
                     result.ok = result.ok && !std::isnan (result.value);
 #if defined(TESTING)
                     if (!result.ok) {
-                        DBprnt ("ExprTk Compile Error in formula:", expression_string.c_str ());
+                        DBprnt ("ExprTk Compile Error in formula");
                     }
 #endif
                     exprResultCache.Put (cacheKey, result);
@@ -1599,42 +1578,14 @@ GSCharCode GetCharCode (const GS::UniString &instring) {
 }
 
 GSCharCode GetCharCode (const GS::UniString &instring, bool &findecode) {
-    if (ProbeCharCode (instring, CC_Cyrillic))
-        return CC_Cyrillic;
-    if (ProbeCharCode (instring, CC_Korean))
-        return CC_Korean;
-    if (ProbeCharCode (instring, CC_Application))
-        return CC_Application;
-    if (ProbeCharCode (instring, CC_UTF8))
-        return CC_UTF8;
-    if (ProbeCharCode (instring, CC_UniCode))
-        return CC_UniCode;
-    if (ProbeCharCode (instring, CC_UTF16))
-        return CC_UTF16;
-    if (ProbeCharCode (instring, CC_WestEuropean))
-        return CC_WestEuropean;
-    if (ProbeCharCode (instring, CC_EastEuropean))
-        return CC_EastEuropean;
-    if (ProbeCharCode (instring, CC_Greek))
-        return CC_Greek;
-    if (ProbeCharCode (instring, CC_Turkish))
-        return CC_Turkish;
-    if (ProbeCharCode (instring, CC_Hebrew))
-        return CC_Hebrew;
-    if (ProbeCharCode (instring, CC_Arabic))
-        return CC_Arabic;
-    if (ProbeCharCode (instring, CC_Thai))
-        return CC_Thai;
-    if (ProbeCharCode (instring, CC_Japanese))
-        return CC_Japanese;
-    if (ProbeCharCode (instring, CC_TradChinese))
-        return CC_TradChinese;
-    if (ProbeCharCode (instring, CC_SimpChinese))
-        return CC_SimpChinese;
-    if (ProbeCharCode (instring, CC_Symbol))
-        return CC_Symbol;
-    findecode = false;
-    return CC_Cyrillic;
+    // Вход уже декодирован в UTF-16, поэтому искать «однобайтовую кодировку,
+    // в которой строка случайно выглядит правильной» бессмысленно: жёсткий
+    // порядок проб отдавал не-ASCII строки в CC_Korean (второй по списку) —
+    // кириллица в CP949 представима. Такая строка — уже Unicode, и кодировать
+    // её надо в UTF-8. CC_System неприменим: проект создаётся на машинах с
+    // разными кодовыми страницами, ради чего механизм проверки и появился.
+    findecode = true;
+    return CC_UTF8;
 }
 
 bool ProbeCharCode (const std::string &instring, GSCharCode chcode) {
@@ -1752,11 +1703,11 @@ GSErrCode GetRElementsForCWall (const API_Guid &cwGuid, GS::Array<API_Guid> &ele
         return err;
     }
     API_ElementMemo memo = {};
+    const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
     UInt64 mask =
         APIMemoMask_CWallFrames | APIMemoMask_CWallPanels | APIMemoMask_CWallJunctions | APIMemoMask_CWallAccessories;
     err = ACAPI_Element_GetMemo (cwGuid, &memo, mask);
     if (err != NoError) {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
     bool isDegenerate = false;
@@ -1801,7 +1752,6 @@ GSErrCode GetRElementsForCWall (const API_Guid &cwGuid, GS::Array<API_Guid> &ele
             }
         }
     }
-    ACAPI_DisposeElemMemoHdls (&memo);
     return err;
 }
 
@@ -1816,6 +1766,7 @@ GSErrCode GetRElementsForRailing (const API_Guid &elemGuid, GS::Array<API_Guid> 
         return err;
     }
     API_ElementMemo memo = {};
+    const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
     UInt64 mask = APIMemoMask_RailingNode | APIMemoMask_RailingSegment | APIMemoMask_RailingPost |
                   APIMemoMask_RailingInnerPost | APIMemoMask_RailingRail | APIMemoMask_RailingHandrail |
                   APIMemoMask_RailingToprail | APIMemoMask_RailingPanel | APIMemoMask_RailingBaluster |
@@ -1824,7 +1775,6 @@ GSErrCode GetRElementsForRailing (const API_Guid &elemGuid, GS::Array<API_Guid> 
                   APIMemoMask_RailingHandrailConnection | APIMemoMask_RailingToprailConnection;
     err = ACAPI_Element_GetMemo (elemGuid, &memo, mask);
     if (err != NoError) {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
     GSSize n = 0;
@@ -1912,7 +1862,6 @@ GSErrCode GetRElementsForRailing (const API_Guid &elemGuid, GS::Array<API_Guid> 
                 elementsGuids.Push (std::move (memo.railingPanels[idx].head.guid));
         }
     }
-    ACAPI_DisposeElemMemoHdls (&memo);
     return err;
 }
 
@@ -2586,7 +2535,7 @@ bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult 
     // меняет модель и требует undo-контекста, но собственная транзакция на
     // каждый вызов даёт отдельную запись в истории Undo. Вызывающий обязан
     // обеспечить undo-контекст сам - тогда запись в истории одна на операцию.
-#ifdef ServerMainVers_2700
+#if defined(ServerMainVers_2700)
     err = ACAPI_Grouping_Tool (reserv, APITool_Unlock, nullptr);
 #else
     err = ACAPI_Element_Tool (reserv, APITool_Unlock, nullptr);
@@ -2597,13 +2546,21 @@ bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult 
         return false;
     }
 
-#ifdef ServerMainVers_2700
+#if defined(ServerMainVers_2700)
     if (ACAPI_Teamwork_HasConnection () && !reserv.IsEmpty ()) {
         err = ACAPI_Teamwork_ReserveElements (reserv, &conflicts, true);
     }
-#else
+#elif defined(ServerMainVers_2500)
     if (ACAPI_TeamworkControl_HasConnection () && !reserv.IsEmpty ()) {
         err = ACAPI_TeamworkControl_ReserveElements (reserv, &conflicts);
+    }
+#else
+    // В AC23/24 ReserveElements принимает const GS::PagedArray<API_Guid> — конвертируем.
+    if (ACAPI_TeamworkControl_HasConnection () && !reserv.IsEmpty ()) {
+        GS::PagedArray<API_Guid> pagedReserv;
+        for (const API_Guid &guid : reserv)
+            pagedReserv.Push (guid);
+        err = ACAPI_TeamworkControl_ReserveElements (pagedReserv, &conflicts);
     }
 #endif
     if (err != NoError) {
@@ -2619,6 +2576,90 @@ bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult 
 
     result = PrepareElementsResult::Ok;
     return true;
+}
+
+void ClearElementHighlight () {
+#ifdef ServerMainVers_2700
+    ACAPI_UserInput_ClearElementHighlight ();
+#else
+    #ifdef ServerMainVers_2600
+    ACAPI_Interface_ClearElementHighlight ();
+    #else
+    ACAPI_Interface (APIIo_HighlightElementsID);
+    #endif
+#endif
+}
+
+GSErrCode HighlightElements (const UnicGuid &guids) {
+    GSErrCode hlErr = NoError;
+    GS::HashTable<API_Guid, API_RGBAColor> hlElems;
+    const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
+    for (const auto &cIt : guids) {
+#ifdef ServerMainVers_2800
+        API_Guid el = cIt.key;
+#else
+        API_Guid el = *cIt.key;
+#endif
+        hlElems.Add (el, hlColor);
+    }
+    ClearElementHighlight ();
+#ifdef ServerMainVers_2700
+    ACAPI_UserInput_SetElementHighlight (hlElems);
+#else
+    #ifdef ServerMainVers_2600
+    ACAPI_Interface_SetElementHighlight (hlElems);
+    #else
+    hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+    #endif
+#endif
+    return hlErr;
+}
+
+GSErrCode HighlightElements (const GS::Array<API_Guid> &guids) {
+    GSErrCode hlErr = NoError;
+    GS::HashTable<API_Guid, API_RGBAColor> hlElems;
+    const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
+    for (const API_Guid &guid : guids)
+        hlElems.Put (guid, hlColor);
+    ClearElementHighlight ();
+#ifdef ServerMainVers_2700
+    ACAPI_UserInput_SetElementHighlight (hlElems);
+#else
+    #ifdef ServerMainVers_2600
+    ACAPI_Interface_SetElementHighlight (hlElems);
+    #else
+    hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+    #endif
+#endif
+    return hlErr;
+}
+
+short AttributeIndexGetShort (const API_AttributeIndex &attribinx) {
+    short attribinxint = 0;
+#ifdef ServerMainVers_2700
+    attribinxint = attribinx.ToInt32_Deprecated ();
+#else
+    attribinxint = attribinx;
+#endif
+    return attribinxint;
+}
+
+// -----------------------------------------------------------------------------
+// Переход к следующей фазе расчёта: увеличивает счётчик, сообщает прогресс и
+// проверяет отмену.
+// -----------------------------------------------------------------------------
+bool AdvanceProcessPhase (GS::UniString &funcname, GS::Int32 &nPhase) {
+    nPhase += 1;
+    bool showPercent = true;
+#ifdef ServerMainVers_2700
+    if (nPhase % 10 == 0 || nPhase < 10)
+        ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase, &showPercent);
+    return ACAPI_ProcessWindow_IsProcessCanceled ();
+#else
+    if (nPhase % 10 == 0 || nPhase < 10)
+        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase, &showPercent);
+    return ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr) != NoError;
+#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -2764,7 +2805,7 @@ void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype) {
 GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
                                            const GS::UniString value,
                                            GS::Array<API_Guid> &elements) {
-    const GS::UniString lowerValue = value.ToLowerCase ();
+    const GS::UniString lowerValue = UniStringToLower (value);
     GSErrCode error = NoError;
     elements.Clear ();
 #ifndef ServerMainVers_2300
@@ -2805,7 +2846,7 @@ GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
                 continue;
             if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ())
                 continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase () == lowerValue) {
+            if (UniStringToLower (propertyflag.value.singleVariant.variant.uniStringValue) == lowerValue) {
                 candidates.Push (elemGuid);
     #else
             if (propertyflag.status != API_Property_HasValue)
@@ -2814,7 +2855,7 @@ GSErrCode GetElementByPropertyDescription (API_PropertyDefinition &definition,
                 continue;
             if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ())
                 continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (lowerValue)) {
+            if (UniStringToLower (propertyflag.value.singleVariant.variant.uniStringValue).IsEqual (lowerValue)) {
                 candidates.Push (elemGuid);
     #endif
             }

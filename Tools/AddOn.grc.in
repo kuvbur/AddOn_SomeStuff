@@ -1,4 +1,4 @@
-#include "api_headers/ResourceIds.hpp"
+﻿#include "api_headers/ResourceIds.hpp"
 
 'DATA' ID_ADDON_HTML "Browser Control Html" {
 	"Interface_ru.html"
@@ -157,6 +157,9 @@
 /* [ 96] */	"Правила нумерации не найдены: проверьте, что описание свойства содержит Renum_flag"
 /* [ 97] */	"Не удалось записать нумерацию: проверьте, не заблокированы ли элементы"
 /* [ 98] */	"Пропущено из-за ошибок в свойствах: "
+/* [100] */	"ядро"
+/* [101] */	"отделка"
+/* [102] */	"другое"
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -308,6 +311,9 @@
 /* [ 96] */	"Numbering rules not found: check that the property description contains Renum_flag"
 /* [ 97] */	"Could not write the numbering: check whether the elements are locked"
 /* [ 98] */	"Skipped due to property errors: "
+/* [100] */	"core"
+/* [101] */	"finish"
+/* [102] */	"other"
 }
 
 'GDLG'  32590  Modal | grow         0    0  680  330  "RuleSelect Dialog" {

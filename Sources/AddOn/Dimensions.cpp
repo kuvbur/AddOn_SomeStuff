@@ -5,6 +5,7 @@
 
 #include "Dimensions.hpp"
 
+#include "OnExit.hpp"
 #include "Propertycache.hpp"
 
 #define DIM_NOCHANGE 0
@@ -27,13 +28,13 @@ GSErrCode DimAutoRoundOne (const API_Guid &elemGuid, const SyncSettings &syncSet
         if (elementType != API_DimensionID)
             return NoError;
     }
-    return DimAutoRound (elemGuid, syncSettings);
+    return DimAutoRound (elemGuid, syncSettings, false);
 }
 
 // -----------------------------------------------------------------------------
 // Обработка одного размера
 // -----------------------------------------------------------------------------
-GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettings) {
+GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettings, bool isUndo) {
     GSErrCode err = NoError;
     API_Element element = {};
     element.header.guid = elemGuid;
@@ -42,12 +43,14 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
         msg_rep ("DimAutoRound", "ACAPI_Element_Get", err, elemGuid);
         return err;
     }
-    // Если нет элементов - выходим
     if (!element.header.hasMemo)
         return err;
     // Повторно проверим тип - проверка бесплатная, но в DimRoundAll() мы можем вызвать DimAutoRound() на всех
     // элементах, а не только на размерах
     if (GetElemTypeID (element.header) != API_DimensionID)
+        return NoError;
+    // Проверяем - на находится ли размер в модуле
+    if (element.header.hotlinkGuid != APINULLGuid)
         return NoError;
     short pen_dimenstion = element.dimension.linPen;
     short pen_original = element.dimension.defNote.notePen;
@@ -92,16 +95,30 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
     if (rules.IsEmpty ())
         return err;
     API_ElementMemo memo = {};
+    auto cleanupMemoContentUStr = [&memo, &element] () {
+        if (memo.dimElems != nullptr) {
+            for (Int32 i = 0; i < element.dimension.nDimElem; i++) {
+                if ((*memo.dimElems)[i].note.contentUStr != nullptr) {
+                    delete (*memo.dimElems)[i].note.contentUStr;
+                    (*memo.dimElems)[i].note.contentUStr = nullptr;
+                }
+            }
+        }
+    };
+    const GS::OnExit memoGuard ([&memo, &cleanupMemoContentUStr] () {
+        cleanupMemoContentUStr ();
+        ACAPI_DisposeElemMemoHdls (&memo);
+    });
+
     err = ACAPI_Element_GetMemo (element.header.guid, &memo);
     if (err != NoError) {
         msg_rep ("DimAutoRound", "ACAPI_Element_GetMemo", err, elemGuid);
-        ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
     if (memo.dimElems == nullptr || element.dimension.nDimElem < 1) {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return NoError;
     }
+
     API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
     API_ElemTypeID elementType = API_ZombieElemID;
 #ifdef ServerMainVers_2600
@@ -110,12 +127,10 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
     elementType = (*memo.dimElems)[0].base.base.typeID;
 #endif // AC_26
     if (elementType == API_OpeningID) {
-        ACAPI_DisposeElemMemoHdls (&memo);
-        return err;
+        return NoError;
     }
     if (is_equal ((*memo.dimElems)[0].dimVal, 0) && elementType == API_ColumnID) {
-        ACAPI_DisposeElemMemoHdls (&memo);
-        return err;
+        return NoError;
     };
     API_Element mask = {};
     ACAPI_ELEMENT_MASK_CLEAR (mask);
@@ -150,12 +165,10 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
 #endif // AC_26
        // TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
         if (is_equal ((*memo.dimElems)[k].dimVal, 0) && elementType == API_ColumnID) {
-            ACAPI_DisposeElemMemoHdls (&memo);
-            return err;
+            return NoError;
         };
         if (elementType == API_OpeningID) {
-            ACAPI_DisposeElemMemoHdls (&memo);
-            return err;
+            return NoError;
         }
         if (is_equal ((*memo.dimElems)[k].dimVal, 0)) {
             continue;
@@ -270,12 +283,17 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
         bef_elemGuid = (*memo.dimElems)[k].base.base.guid;
     }
     if (flag_write) {
-        err = ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
+        if (!isUndo) {
+            err = ACAPI_CallUndoableCommand ("Change dimension text", [&] () -> GSErrCode {
+                return ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
+            });
+        } else {
+            err = ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
+        }
         if (err != NoError) {
             msg_rep ("DimAutoRound", "ACAPI_Element_Change", err, elemGuid);
         }
     }
-    ACAPI_DisposeElemMemoHdls (&memo);
     return err;
 }
 
@@ -430,14 +448,7 @@ void DimRoundAll (const SyncSettings &syncSettings, bool isUndo) {
 #if defined(TESTING)
     DBprnt ("DimRoundAll start");
 #endif
-    if (!isUndo) {
-        ACAPI_CallUndoableCommand ("Change dimension text", [&] () -> GSErrCode {
-            DimRoundByType (API_DimensionID, syncSettings);
-            return NoError;
-        });
-    } else {
-        DimRoundByType (API_DimensionID, syncSettings);
-    }
+    DimRoundByType (API_DimensionID, syncSettings, isUndo);
 #if defined(TESTING)
     DBprnt ("DimRoundAll end");
 #endif
@@ -446,7 +457,7 @@ void DimRoundAll (const SyncSettings &syncSettings, bool isUndo) {
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
-bool DimRoundByType (const API_ElemTypeID &typeID, const SyncSettings &syncSettings) {
+bool DimRoundByType (const API_ElemTypeID &typeID, const SyncSettings &syncSettings, bool isUndo) {
     GSErrCode err = NoError;
     GS::Array<API_Guid> guidArray = {};
     err = ACAPI_Element_GetElemList (typeID,
@@ -459,7 +470,7 @@ bool DimRoundByType (const API_ElemTypeID &typeID, const SyncSettings &syncSetti
     if (guidArray.IsEmpty ())
         return false;
     for (const auto &guid : guidArray) {
-        err = DimAutoRound (guid, syncSettings);
+        err = DimAutoRound (guid, syncSettings, isUndo);
         if (err != NoError)
             msg_rep ("DimAutoRound", "DimAutoRound", err, guid);
 #ifdef ServerMainVers_2700

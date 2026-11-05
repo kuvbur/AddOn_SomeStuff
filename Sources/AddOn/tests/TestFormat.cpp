@@ -4,13 +4,64 @@
 
     #include "api_headers/APIEnvir.h"
 
-    #include "dialogs/CommandHelpers.hpp"
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "tests/TestFunc.hpp"
     #include "tests/TestKit.hpp"
 
 namespace TestFunc {
+
+    // Кодировка строки, уже пришедшей как UniString, определяется однозначно:
+    // строка декодирована, поэтому единственный разумный код для ToCStr — UTF-8.
+    // Перебор однобайтовых кодировок отдавал не-ASCII строки в CC_Korean: кириллица
+    // в CP949 представима, проба проходила, и ToCStr выдавал байты в чужой
+    // кодовой странице. Отдельно проверяется, что ходовые места
+    // (EvalExpression, UniStringToDouble) дают корректный результат на строке
+    // с символом вне CP1251.
+    void TestCharCodeOfUniString () {
+        struct Case {
+            const char *label;
+            GS::UniString input;
+        };
+
+        const Case cases[] = {
+            {"ascii", "100 * 2"},
+            {"cyrillic", "Координата"},
+            {"cyrillic quotes", "«кавычки»"},
+            {"cyrillic euro", "цена €"},
+            {"outside cp1251 arrow", "Площадь→кв"},
+            {"outside cp1251 squared", "кв.м ²"},
+            {"outside cp1251 minus", "темп −5"},
+            {"outside cp1251 sqrt", "√2 + 1"},
+            {"mixed cyrillic latin", "КоординатаX"},
+        };
+
+        for (const Case &c : cases) {
+            const GSCharCode code = GetCharCode (c.input);
+            DBtest (code == CC_UTF8, c.label, "GetCharCode must return CC_UTF8");
+        }
+
+        // Ходовые места: кодировка приходит извне только через ProbeCharCode,
+        // сам GetCharCode(std::string) недостижим из кода.
+
+        // UniStringToDouble: вход декодирован, число читается независимо от кодировки.
+        double value = -1;
+        DBtest (UniStringToDouble ("12.5", value), "UniStringToDouble plain");
+        DBtest (value > 12.49 && value < 12.51, "UniStringToDouble plain value");
+
+        // Ключевой случай правки: формула со строкой, содержащей символ вне CP1251.
+        // При неверно выбранной кодовой странице exprtk получал мусорные байты.
+        GS::UniString formula = "<2*2>";
+        DBtest (EvalExpression (formula), "EvalExpression plain");
+        DBtest (formula, "4", "EvalExpression plain result");
+
+        GS::UniString formulaWithUnit = "кв.м ² <2*2>";
+        DBtest (EvalExpression (formulaWithUnit), "EvalExpression with unit prefix");
+        DBtest (formulaWithUnit.Contains ("4"), "EvalExpression result contains 4");
+        DBtest (formulaWithUnit.GetLength () > 5, "unit prefix preserved");
+
+        return;
+    }
 
     void TestCalc () {
         bool usl = false;
@@ -107,7 +158,7 @@ namespace TestFunc {
             GS::UniString f = formula.Get (j).name;
             pvalue.name = f;
             pvalue.val.uniStringValue = f;
-            pvalue.rawName = FORMULANAMEPREFIX + f.ToLowerCase () + ";" + pvalue.val.uniStringValue + "}";
+            pvalue.rawName = FORMULANAMEPREFIX + UniStringToLower (f) + ";" + pvalue.val.uniStringValue + "}";
             GS::UniString templatestring = pvalue.val.uniStringValue;
             DBtest (ParamHelpers::ParseParamNameMaterial (templatestring, params, false), templatestring);
             pvalue.val.uniStringValue = templatestring;

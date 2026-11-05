@@ -15,6 +15,7 @@
 #include "Helpers.hpp"
 #include "Model3D/MeshBody.hpp"
 #include "Model3D/model.h"
+#include "OnExit.hpp"
 #include "ProfileAdditionalInfo.hpp"
 #include "ProfileVectorImage.hpp"
 #include "ProfileVectorImageOperations.hpp"
@@ -54,7 +55,7 @@ namespace FormatStringFunc {
             n_start = texpression.FindFirst (stringformat_) - 1;
             UInt32 n_end = n_start + stringformat_.GetLength ();
             if (n_end + 1 < texpression.GetLength ()) {
-                GS::UniString endm = texpression.ToLowerCase ().GetSubstring (n_end + 1, 1);
+                GS::UniString endm = UniStringToLower (texpression).GetSubstring (n_end + 1, 1);
                 if (endm.IsEqual (METERS) || endm.IsEqual (DOTSET) || endm.IsEqual (RDSET) || endm.IsEqual (FSET)) {
                     n_end = n_end + 1;
                 }
@@ -357,6 +358,14 @@ bool GetRuleFromSelected (GS::Array<API_Guid> &guidArray,
                           GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
                           const GS::UniString &name,
                           bool check_bracket) {
+    // if (guidArray.IsEmpty ()) {
+    //     GS::UniString soursetype;
+    //     if (name.Contains ("Sum"))
+    //         soursetype = SYNC_COMMAND;
+    //     if (name.Contains (RENUMFLAG))
+    //         soursetype = RENUMFLAG_COMMAND;
+    //     return (!definitions.IsEmpty ());
+    // }
     if (guidArray.GetSize () == 1) {
         GetRuleFromSelected (guidArray[0], definitions, name, check_bracket);
         if (definitions.IsEmpty ())
@@ -513,6 +522,21 @@ GSErrCode AttachObserver (const API_Guid &objectId, const SyncSettings &syncSett
     err = ACAPI_Element_AttachObserver (&elemHead, 0);
 #else
     err = ACAPI_Element_AttachObserver (objectId);
+#endif
+    return err;
+}
+
+// -----------------------------------------------------------------------------
+// Снятие отслеживания (для разных версий)
+// -----------------------------------------------------------------------------
+GSErrCode DetachObserver (const API_Guid &objectId) {
+    GSErrCode err = NoError;
+#ifndef ServerMainVers_2300
+    API_Elem_Head elemHead;
+    elemHead.guid = objectId;
+    err = ACAPI_Element_DetachObserver (&elemHead);
+#else
+    err = ACAPI_Element_DetachObserver (objectId);
 #endif
     return err;
 }
@@ -818,20 +842,8 @@ void CallOnSelectedElemSettings (void (*function) (const API_Guid &, const SyncS
     long time_start = clock ();
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         function (guidArray[i], syncSettings);
-#ifdef ServerMainVers_2700
-        if (i % 10 == 0)
-            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-        if (i % 10 == 0)
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
-#ifdef ServerMainVers_2700
-        if (ACAPI_ProcessWindow_IsProcessCanceled ())
+        if (AdvanceProcessPhase (subtitle, nPhase))
             return;
-#else
-        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-            return;
-#endif
     }
     long time_end = clock ();
     GS::UniString time = GS::UniString::Printf (" %.3f s", (double)(time_end - time_start) / CLOCKS_PER_SEC);
@@ -853,27 +865,11 @@ void CallOnSelectedElem (void (*function) (const API_Guid &),
         long time_start = clock ();
         GS::UniString subtitle ("working...");
         GS::Int32 nPhase = 1;
-#ifdef ServerMainVers_2700
-        bool showPercent = true;
-        Int32 maxval = guidArray.GetSize ();
-#endif
         ProcessWindowGuard pwGuard (funcname, nPhase);
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-#ifdef ServerMainVers_2700
-            if (i % 10 == 0)
-                ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
-            if (i % 10 == 0)
-                ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
             function (guidArray[i]);
-#ifdef ServerMainVers_2700
-            if (ACAPI_ProcessWindow_IsProcessCanceled ())
+            if (AdvanceProcessPhase (subtitle, nPhase))
                 return;
-#else
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
-                return;
-#endif
         }
         long time_end = clock ();
         GS::UniString time =
@@ -923,7 +919,6 @@ void GetRelationsElement (const API_Guid &elemGuid,
 
     GSErrCode err = NoError;
     API_Element element = {};
-    API_ElementMemo memo = {};
 
 #ifdef ServerMainVers_2300
     auto GetHierarchicalOwners =
@@ -954,6 +949,8 @@ void GetRelationsElement (const API_Guid &elemGuid,
             }
             if (element.column.nSegments == 0)
                 return;
+            API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
             if (err == NoError && memo.columnSegments != nullptr) {
                 subelemGuid.SetCapacity (subelemGuid.GetSize () + element.column.nSegments);
@@ -961,7 +958,6 @@ void GetRelationsElement (const API_Guid &elemGuid,
                     subelemGuid.Push (memo.columnSegments[i].head.guid);
                 }
             }
-            ACAPI_DisposeElemMemoHdls (&memo);
         }
         break;
     case API_BeamID:
@@ -974,6 +970,8 @@ void GetRelationsElement (const API_Guid &elemGuid,
             }
             if (element.beam.nSegments == 0)
                 return;
+            API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
             if (err == NoError && memo.beamSegments != nullptr) {
                 subelemGuid.SetCapacity (subelemGuid.GetSize () + element.beam.nSegments);
@@ -981,7 +979,6 @@ void GetRelationsElement (const API_Guid &elemGuid,
                     subelemGuid.Push (memo.beamSegments[i].head.guid);
                 }
             }
-            ACAPI_DisposeElemMemoHdls (&memo);
         }
         break;
 #endif
@@ -1184,9 +1181,9 @@ bool ParamHelpers::ReadMorphParam (const API_Guid &guid, ParamDictValue &pdictva
     DBprnt ("      ReadMorphParam");
 #endif
     API_ElementMemo memo = {};
+    const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
     GSErrCode err = ACAPI_Element_GetMemo (guid, &memo);
     if (err != NoError || memo.morphBody == nullptr) {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return false;
     }
     double L = 0;
@@ -1260,10 +1257,8 @@ bool ParamHelpers::ReadMorphParam (const API_Guid &guid, ParamDictValue &pdictva
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "a", A, true);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "b", B, true);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "zzyzx", ZZYZX, true);
-        ACAPI_DisposeElemMemoHdls (&memo);
         return true;
     } else {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return false;
     }
 }
@@ -1369,6 +1364,8 @@ short ParamHelpers::GetTypeInxByRawnamePrefix (const GS::UniString &rawName) {
         return ELEMENTTYPEINX;
     if (rawName.BeginsWith (FILENAMEPREFIX))
         return FILETYPEINX;
+    if (rawName.BeginsWith (FLAGNAMEPREFIX))
+        return FLAGTYPEINX;
 #if defined(TESTING)
     DBprnt ("ERROR GetTypeInxByRawnamePrefix " + rawName);
 #endif
@@ -1498,13 +1495,13 @@ GS::UniString ParamHelpers::NameToRawName (const GS::UniString &name, FormatStri
     if (name.IsEmpty ())
         return EMPTYSTRING;
     GS::UniString rawname_prefix;
-    GS::UniString name_ = name.ToLowerCase ();
+    GS::UniString name_ = UniStringToLower (name);
     if (name_.Contains (BRACESTART) && name_.Contains (BRACEEND))
         name_ = name_.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
     // Ищём строку с указанием формата вывода (метры/миллиметры)
     GS::UniString stringformat = FormatStringFunc::GetFormatString (name_);
     formatstring = FormatStringFunc::ParseFormatString (stringformat);
-    name_ = GetPropertyENGName (name_).ToLowerCase ();
+    name_ = UniStringToLower (GetPropertyENGName (name_));
 
     // Проверяем - есть ли указатель на тип параметра (GDL, Property, IFC)
     if (name_.Contains (":")) {
@@ -1512,7 +1509,7 @@ GS::UniString ParamHelpers::NameToRawName (const GS::UniString &name, FormatStri
         UInt32 n = StringSplt (name_, ":", partstring, true);
         if (n > 1) {
             rawname_prefix = partstring[0] + ":";
-            name_ = partstring[1].ToLowerCase ();
+            name_ = UniStringToLower (partstring[1]);
         }
     }
     if (rawname_prefix.IsEmpty () && name_.IsEqual ("id"))
@@ -1538,7 +1535,7 @@ void ParamHelpers::AddValueToParamDictValue (ParamDictValue &params, const GS::U
     if (params.ContainsKey (rawName))
         return;
     ParamValue pvalue = {};
-    GS::UniString name_ = name.ToLowerCase ();
+    GS::UniString name_ = UniStringToLower (name);
     pvalue.rawName = rawName;
     pvalue.name = name_;
     pvalue.val.formatstring = formatstring;
@@ -1798,7 +1795,7 @@ bool ParamHelpers::AddProperty (ParamDictValue &params, GS::Array<API_Property> 
         if (hasname) {
             if (pvalue.fromClassification && !pvalue.val.uniStringValue.IsEmpty () &&
                 ClassificationFunc::ReadSystemDict ()) {
-                GS::UniString systemname = pvalue.val.uniStringValue.ToLowerCase ();
+                GS::UniString systemname = UniStringToLower (pvalue.val.uniStringValue);
                 API_Guid classguid = ClassificationFunc::FindClass (pvalue.name, systemname);
                 if (classguid != APINULLGuid && pvalue.val.guidval == APINULLGuid) {
                     pvalue.val.guidval = classguid;
@@ -2070,6 +2067,7 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
         bool bsymb_pos_s_correctu_ = false;
         bool bsymb_pos_correctu_ = false;
         API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         if (ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
             Int32 size = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallSegments)) / sizeof (API_CWSegmentType);
             for (Int32 inx_segment = 0; inx_segment < size; ++inx_segment) {
@@ -2157,7 +2155,6 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                     bsymb_pos_correctu_ = true;
             }
         }
-        ACAPI_DisposeElemMemoHdls (&memo);
         if (skip_north) {
             angznorth = -1.0;
             angznorthtxt = "UNDEF";
@@ -2411,6 +2408,7 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                 skip_north = true;
             Int32 inx_segment = element.cwPanel.segmentID;
             API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             if (ACAPI_Element_GetMemo (owner.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
                 Int32 size = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallSegments)) / sizeof (API_CWSegmentType);
                 if (size > inx_segment) {
@@ -2422,7 +2420,6 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                     isFliped = owner.curtainWall.flipped;
                 }
             }
-            ACAPI_DisposeElemMemoHdls (&memo);
         }
 #endif
     } else {
@@ -3691,6 +3688,8 @@ GS::UniString GetPropertyENGName (GS::UniString &name) {
         return MAT_AREA_SECTION;
     if (name.IsEqual (PROP_WIDTH))
         return MAT_WIDTH;
+    if (name.IsEqual (PROP_STRUCTYPE))
+        return MAT_STRUCTYPE;
     if (name.IsEqual (cache.buildingMaterialNameString))
         return MAT_BUILDING_MATERIAL_NAME;
     if (name.IsEqual (cache.buildingMaterialDescriptionString))
@@ -3743,7 +3742,7 @@ void ParamHelpers::ReplaceProcToBrace (GS::UniString &expression, bool fromMater
                 result.Append (BRACESTART);
             }
             // Добавляем имя свойства в нижнем регистре
-            result.Append (part.ToLowerCase ());
+            result.Append (UniStringToLower (part));
             result.Append (CHARBRACEEND);
         } else {
             result.Append (CHARPROC);
@@ -3861,7 +3860,7 @@ bool ParamHelpers::ParseParamName (GS::UniString &expression, ParamDictValue &pa
             default:
                 break;
             }
-            pvalue.name = part.ToLowerCase ();
+            pvalue.name = UniStringToLower (part);
             pvalue.val.formatstring = formatstring;
             paramDict.Put (part_, std::move (pvalue));
         }
@@ -4829,7 +4828,7 @@ static bool ResolveConstructionAttribute (const ParamValue &value,
             return false;
         key += "_inx_" + GS::UniString::Printf ("%d", static_cast<Int32> (number));
     } else if (value.val.type == API_PropertyStringValueType && !value.val.uniStringValue.IsEmpty ()) {
-        key += "_name_" + value.val.uniStringValue.ToLowerCase ();
+        key += "_name_" + UniStringToLower (value.val.uniStringValue);
     } else {
         return false;
     }
@@ -4940,7 +4939,7 @@ void ParamHelpers::WriteAttribute (const API_Guid &elemGuid, ParamDictValue &par
         desired = API_BasicStructure;
         setIndex = true;
     } else if (kind != nullptr && kind->isValid) {
-        const GS::UniString text = kind->val.uniStringValue.ToLowerCase ();
+        const GS::UniString text = UniStringToLower (kind->val.uniStringValue);
         if (text == "многослойка") {
             desired = API_CompositeStructure;
             index = currentComp;
@@ -5407,11 +5406,7 @@ void ParamHelpers::WriteGDL (const API_Guid &elemGuid, ParamDictValue &params) {
                 // Поиск индекса аттрибута при необходимости
                 API_AttributeIndex attribinx;
                 if (API_AttributeIndexFindByName (pValuePtr->val.uniStringValue, type, attribinx)) {
-#ifdef ServerMainVers_2700
-                    attribinxint = attribinx.ToInt32_Deprecated ();
-#else
-                    attribinxint = attribinx;
-#endif
+                    attribinxint = AttributeIndexGetShort (attribinx);
                 } else {
                     attribinxint = pValuePtr->val.intValue;
                 }
@@ -5558,7 +5553,7 @@ void ParamHelpers::WriteProperty (const API_Guid &elemGuid, ParamDictValue &para
         GS::UniString rawName;
         for (auto &property : properties) {
             GetPropertyFullName (property.definition, fname);
-            rawName = PROPERTYNAMEPREFIX + fname.ToLowerCase () + BRACEEND;
+            rawName = PROPERTYNAMEPREFIX + UniStringToLower (fname) + BRACEEND;
             const auto *paramPtr = params.GetPtr (rawName);
             if (paramPtr == nullptr) {
 #if defined(TESTING)
@@ -5897,7 +5892,7 @@ void ParamHelpers::Read (const API_Guid &elemGuid,
         }
         if (param.fromPropertyDefinition) {
             if (param.definition.description.Contains ("Sync_to{Attribute:Layer}")) {
-                GS::UniString key = "{@attrib:layer_name_" + param.val.uniStringValue.ToLowerCase () + BRACEEND;
+                GS::UniString key = "{@attrib:layer_name_" + UniStringToLower (param.val.uniStringValue) + BRACEEND;
                 ParamValue chacheval = {};
                 if (ParamHelpers::GetParamValueFromCache (key, chacheval)) {
                     param.val = chacheval.val;
@@ -6035,20 +6030,15 @@ bool ParamHelpers::ReadProperty (const API_Guid &elemGuid,
 #endif
     if (propertyDefinitions.IsEmpty ())
         return false;
-    GS::Array<API_Property> properties = {};
-    // Получаем актуальные значения свойств по списку определений.
-    // Это основная точка входа для чтения пользовательских свойств.
-    GSErrCode error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
+    GS::Array<API_Property> properties;
+    properties.SetCapacity (propertyDefinitions.GetSize ());
+    GSErrCode error = NoError;
+    error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
     if (error != NoError) {
         msg_rep ("ParamDictGetPropertyValues", "ACAPI_Element_GetPropertyValues", error, elemGuid);
         return false;
     }
     return (ParamHelpers::AddProperty (params, properties, elemGuid));
-
-#if defined(TESTING)
-    DBprnt ("ReadProperty err", "no property");
-#endif
-    return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -6078,7 +6068,7 @@ bool ParamHelpers::ReadIFC (const API_Guid &elemGuid, ParamDictValue &params) {
         fname.Append (property.head.propertyName);
 
         rawName = IFCNAMEPREFIX;
-        rawName.Append (fname.ToLowerCase ());
+        rawName.Append (UniStringToLower (fname));
         rawName.Append (BRACEEND);
         if (params.ContainsKey (rawName)) {
             ParamValue pvalue;
@@ -6093,7 +6083,7 @@ bool ParamHelpers::ReadIFC (const API_Guid &elemGuid, ParamDictValue &params) {
         } else {
             fname = properties[i].head.propertyName;
             rawName = IFCNAMEPREFIX;
-            rawName.Append (fname.ToLowerCase ());
+            rawName.Append (UniStringToLower (fname));
             rawName.Append (BRACEEND);
             if (params.ContainsKey (rawName)) {
                 ParamValue pvalue = {};
@@ -6238,11 +6228,7 @@ bool ParamHelpers::ReadAttributeValues (const API_Element &element, ParamDictVal
             target->fromAttribElement = true;
             target->val.type = API_PropertyStringValueType;
             if ((i == 0 && structure == API_CompositeStructure) || (i == 1 && structure == API_BasicStructure)) {
-#ifdef ServerMainVers_2700
-                const Int32 index = indices[i].ToInt32_Deprecated ();
-#else
-                const Int32 index = indices[i];
-#endif
+                const Int32 index = (Int32)AttributeIndexGetShort (indices[i]);
                 ParamValue cached;
                 if (index > 0 &&
                     ParamHelpers::GetParamValueFromCache (
@@ -6265,11 +6251,7 @@ bool ParamHelpers::ReadAttributeValues (const API_Element &element, ParamDictVal
         return false;
     p->isValid = true;
     p->fromAttribElement = true;
-#ifdef ServerMainVers_2700
-    GS::Int32 intValue = elem_head.layer.ToInt32_Deprecated ();
-#else
-    GS::Int32 intValue = elem_head.layer;
-#endif
+    const GS::Int32 intValue = AttributeIndexGetShort (elem_head.layer);
     GS::UniString cname = "{@attrib:layer_inx_" + GS::UniString::Printf ("%d", intValue) + BRACEEND;
     ParamValue cacheparam;
     if (GetParamValueFromCache (cname, cacheparam)) {
@@ -6649,10 +6631,10 @@ bool ParamHelpers::GDLParamByName (const API_Element &element,
     API_Guid elemGuid;
     GetGDLParametersHead (element, elem_head, elemType, elemGuid);
     API_ElementMemo memo = {};
+    const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
     GSErrCode err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
     if (err != NoError) {
         msg_rep ("ParamHelpers::GDLParamByName", "GetGDLParameters", err, elemGuid);
-        ACAPI_DisposeElemMemoHdls (&memo);
         return false;
     }
 
@@ -6703,7 +6685,6 @@ bool ParamHelpers::GDLParamByName (const API_Element &element,
             break;
         }
     }
-    ACAPI_DisposeElemMemoHdls (&memo);
     return flagFind;
 }
 
@@ -7581,7 +7562,7 @@ GS::UniString ParamHelpers::GetUnitsPrefix (GS::UniString &unit) {
     }
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString nameunits = RSGetIndString (iseng, 58, ACAPI_GetOwnResModule ());
-    GS::UniString units = unit.ToLowerCase ();
+    GS::UniString units = UniStringToLower (unit);
     if (units.Contains (nameunits)) {
         return EMPTYSTRING;
     }
@@ -7768,6 +7749,13 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
     static const GS::UniString n_ = "{@material:n}";
     static const GS::UniString ns_ = "{@material:ns}";
 
+    static const GS::UniString structype = "{@material:structype}";
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    static const GS::UniString LayerCoreString = RSGetIndString (iseng, LayerCoreStringID, ACAPI_GetOwnResModule ());
+    static const GS::UniString LayerFinishString =
+        RSGetIndString (iseng, LayerFinishStringID, ACAPI_GetOwnResModule ());
+    static const GS::UniString LayerOtherString = RSGetIndString (iseng, LayerOtherStringID, ACAPI_GetOwnResModule ());
+
     auto *layer_thickness_ptr = params.GetPtr (layer_thickness);
     auto *layer_minthickness_ptr = params.GetPtr (layer_minthickness);
     auto *area_ptr = params.GetPtr (area);
@@ -7779,6 +7767,7 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
     auto *unit_prefix_ptr = params.GetPtr (unit_prefix);
     auto *n_ptr = params.GetPtr (n_);
     auto *ns_ptr = params.GetPtr (ns_);
+    auto *structype_ptr = params.GetPtr (structype);
 
     if (n_ptr == nullptr) {
         ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "n", "");
@@ -7787,6 +7776,10 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
     if (ns_ptr == nullptr) {
         ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "ns", "");
         ns_ptr = params.GetPtr (ns_);
+    }
+    if (structype_ptr == nullptr) {
+        ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "structype", "");
+        structype_ptr = params.GetPtr (structype);
     }
 
     API_ElemTypeID eltype = GetElemTypeID (element.header);
@@ -7868,6 +7861,21 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
                             }
                         }
                     }
+                }
+                if (structype_ptr != nullptr) {
+                    const short layerType = param_composite.composite[indx].structype;
+                    structype_ptr->val.uniStringValue = layerType == APICWallComp_Core     ? LayerCoreString
+                                                        : layerType == APICWallComp_Finish ? LayerFinishString
+                                                                                           : LayerOtherString;
+                    structype_ptr->val.intValue = layerType == APICWallComp_Core     ? 2
+                                                  : layerType == APICWallComp_Finish ? 1
+                                                                                     : 0;
+                    structype_ptr->val.doubleValue = layerType == APICWallComp_Core     ? 2
+                                                     : layerType == APICWallComp_Finish ? 1
+                                                                                        : 0;
+                    structype_ptr->val.boolValue = layerType == APICWallComp_Core;
+                    structype_ptr->val.type = API_PropertyStringValueType;
+                    structype_ptr->isValid = true;
                 }
                 // Если нужно заполнить толщину
                 if (layer_thickness_ptr != nullptr) {
@@ -8248,13 +8256,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData &pvalue,
             GSErrCode err = ACAPI_Attribute_Get (&attrib);
             if (err == NoError) {
                 pvalue.type = API_PropertyStringValueType;
-#ifdef ServerMainVers_2700
-                param_bool = (attrInx.ToInt32_Deprecated () != 0);
-                param_int = attrInx.ToInt32_Deprecated ();
-#else
-                param_bool = (attrInx != 0);
-                param_int = attrInx;
-#endif
+                param_int = AttributeIndexGetShort (attrInx);
+                param_bool = (param_int != 0);
                 param_real = param_int / 1.0;
                 pvalue.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
             } else {
@@ -8382,7 +8385,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue &pvalue, const API_AddParType
     }
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = GDLNAMEPREFIX;
-        pvalue.rawName.Append (GS::UniString (nthParameter.name).ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (GS::UniString (nthParameter.name)));
         pvalue.rawName.Append (BRACEEND);
     }
     if (pvalue.name.IsEmpty ())
@@ -8600,7 +8603,7 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue &pvalue, const AP
         UInt32 nparam = StringSplt (definition.description, "to{Class", params, true);
         if (nparam > 1) {
             GS::UniString systemname = params.Get (1).GetSubstring (':', CHARBRACEEND, 0);
-            pvalue.name = systemname.ToLowerCase ();
+            pvalue.name = UniStringToLower (systemname);
         }
         pvalue.fromClassification = true;
         return;
@@ -8676,7 +8679,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue &pvalue, const API_PropertyDe
         GetPropertyFullName (definition, fname);
         if (pvalue.rawName.IsEmpty ()) {
             pvalue.rawName = PROPERTYNAMEPREFIX;
-            pvalue.rawName.Append (fname.ToLowerCase ());
+            pvalue.rawName.Append (UniStringToLower (fname));
             pvalue.rawName.Append (BRACEEND);
         }
         if (pvalue.name.IsEmpty ())
@@ -8702,7 +8705,7 @@ bool ParamHelpers::ConvertStringToParamValue (ParamValue &pvalue,
         pvalue.name = paramName;
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = GDLNAMEPREFIX;
-        pvalue.rawName.Append (paramName.ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (paramName));
         pvalue.rawName.Append (BRACEEND);
         pvalue.typeinx = GDLTYPEINX;
     }
@@ -8734,7 +8737,7 @@ bool ParamHelpers::ConvertBoolToParamValue (ParamValue &pvalue, const GS::UniStr
         pvalue.name = paramName;
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = GDLNAMEPREFIX;
-        pvalue.rawName.Append (paramName.ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (paramName));
         pvalue.rawName.Append (BRACEEND);
         pvalue.typeinx = GDLTYPEINX;
     }
@@ -8770,14 +8773,11 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue &pvalue,
         pvalue.name = paramName;
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = ATTRIBNAMEPREFIX;
-        pvalue.rawName.Append (paramName.ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (paramName));
         pvalue.rawName.Append (BRACEEND);
     }
-#ifdef ServerMainVers_2700
-    pvalue.val.intValue = attr.header.index.ToInt32_Deprecated ();
-#else
-    pvalue.val.intValue = attr.header.index;
-#endif
+
+    pvalue.val.intValue = AttributeIndexGetShort (attr.header.index);
     pvalue.val.doubleValue = pvalue.val.intValue * 1.0;
     pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
     pvalue.val.hasrawDouble = true;
@@ -8799,7 +8799,7 @@ bool ParamHelpers::ConvertIntToParamValue (ParamValue &pvalue, const GS::UniStri
         pvalue.name = paramName;
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = GDLNAMEPREFIX;
-        pvalue.rawName.Append (paramName.ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (paramName));
         pvalue.rawName.Append (BRACEEND);
         pvalue.typeinx = GDLTYPEINX;
     }
@@ -8829,7 +8829,7 @@ bool ParamHelpers::ConvertDoubleToParamValue (ParamValue &pvalue,
         pvalue.name = paramName;
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = GDLNAMEPREFIX;
-        pvalue.rawName.Append (paramName.ToLowerCase ());
+        pvalue.rawName.Append (UniStringToLower (paramName));
         pvalue.rawName.Append (BRACEEND);
         pvalue.typeinx = GDLTYPEINX;
     }
@@ -8857,7 +8857,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue &pvalue, const API_IFCPropert
     if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) {
         GS::UniString fname = property.head.propertySetName + SLASH + property.head.propertyName;
         if (pvalue.rawName.IsEmpty ())
-            pvalue.rawName = IFCNAMEPREFIX + fname.ToLowerCase () + BRACEEND;
+            pvalue.rawName = IFCNAMEPREFIX + UniStringToLower (fname) + BRACEEND;
         if (pvalue.name.IsEmpty ())
             pvalue.name = fname;
     }
@@ -9098,11 +9098,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid &elemguid,
 #if defined(TESTING)
     DBprnt ("        ComponentsCompositeStructure");
 #endif
-#ifdef ServerMainVers_2700
-    Int32 key = constrinx.ToInt32_Deprecated ();
-#else
-    Int32 key = (Int32)constrinx;
-#endif
+    Int32 key = (Int32)AttributeIndexGetShort (constrinx);
     auto &cache = PROPERTYCACHE ().compositeCache;
     if (!cache.ContainsKey (key)) {
 #if defined(TESTING)
@@ -9517,7 +9513,6 @@ bool ParamHelpers::Components (const API_Element &element,
     // Получаем данные о составе конструкции. Т.к. для разных типов элементов
     // информация храница в разных местах - запишем всё в одни переменные
     API_ElemTypeID eltype = GetElemTypeID (elemhead);
-    API_ElementMemo memo = {};
     GSErrCode err = NoError;
     switch (eltype) {
 #ifdef ServerMainVers_2300
@@ -9556,7 +9551,8 @@ bool ParamHelpers::Components (const API_Element &element,
             return false;
         }
         if (element.column.nSegments == 1) {
-            BNZeroMemory (&memo, sizeof (API_ElementMemo));
+            API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
             if (err == NoError && memo.columnSegments != nullptr) {
                 elemhead = memo.columnSegments[0].head;
@@ -9577,7 +9573,6 @@ bool ParamHelpers::Components (const API_Element &element,
                     constrinx = memo.columnSegments[0].assemblySegmentData.profileAttr;
             } else {
                 msg_rep ("ParamHelpers::Components", "ACAPI_Element_GetMemo - ColumnSegment", err, element.header.guid);
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return false;
             }
         } else {
@@ -9594,7 +9589,8 @@ bool ParamHelpers::Components (const API_Element &element,
             return false;
         }
         if (element.beam.nSegments == 1) {
-            BNZeroMemory (&memo, sizeof (API_ElementMemo));
+            API_ElementMemo memo = {};
+            const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
             err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
             if (err == NoError && memo.beamSegments != nullptr) {
                 elemhead = memo.beamSegments[0].head;
@@ -9617,7 +9613,6 @@ bool ParamHelpers::Components (const API_Element &element,
                     constrinx = memo.beamSegments[0].assemblySegmentData.profileAttr;
             } else {
                 msg_rep ("ParamHelpers::Components", "ACAPI_Element_GetMemo - BeamSegment", err, element.header.guid);
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return false;
             }
         } else {
@@ -9668,11 +9663,12 @@ bool ParamHelpers::Components (const API_Element &element,
             constrinx = element.shell.shellBase.buildingMaterial;
         fillThick = element.shell.shellBase.thickness;
         break;
-    case API_MeshID:
+    case API_MeshID: {
         constrinx = element.mesh.buildingMaterial;
         fillThick = 0;
         fillThick_min = element.mesh.skirtLevel;
-        BNZeroMemory (&memo, sizeof (API_ElementMemo));
+        API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_MeshPolyZ);
         if (err == NoError && memo.meshPolyZ != nullptr) {
             Int32 nMeshLevels = BMGetHandleSize ((GSHandle)memo.meshPolyZ) / sizeof (double);
@@ -9685,6 +9681,7 @@ bool ParamHelpers::Components (const API_Element &element,
             fillThick_min = element.mesh.skirtLevel;
         }
         break;
+    }
     case API_MorphID:
         constrinx = element.morph.buildingMaterial;
         fillThick = 0;
@@ -9701,7 +9698,6 @@ bool ParamHelpers::Components (const API_Element &element,
         return false;
         break;
     }
-    ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
     // Получим словарь исключительно с определениями состава
@@ -9763,22 +9759,20 @@ bool ParamHelpers::Components (const API_Element &element,
 #ifndef AC_23
     if (structtype == API_ProfileStructure) {
         API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         UInt64 mask = APIMemoMask_StretchedProfile;
         GSErrCode err = ACAPI_Element_GetMemo (elemhead.guid, &memo, mask);
         if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&memo);
             msg_rep ("ParamHelpers::Components", "err", err, element.header.guid);
             return false;
         }
         if (memo.stretchedProfile == nullptr) {
-            ACAPI_DisposeElemMemoHdls (&memo);
             msg_rep ("ParamHelpers::Components", "Profile not found, missing attribute", NoError, element.header.guid);
             return false;
         }
         ProfileVectorImage profileDescription = *memo.stretchedProfile;
         hasData = ParamHelpers::ComponentsProfileStructure (
             profileDescription, params, paramcomposite, paramsAdd, width, length, needReadQuantities);
-        ACAPI_DisposeElemMemoHdls (&memo);
     }
 #endif
     return hasData;
@@ -9790,13 +9784,8 @@ bool ParamHelpers::Components (const API_Element &element,
 bool ParamHelpers::GetAttributeValues (const API_AttributeIndex &constrinx,
                                        ParamDictValue &params,
                                        ParamDictValue &paramsAdd) {
-#ifdef ServerMainVers_2700
-    Int32 constrinxvalue = constrinx.ToInt32_Deprecated ();
-#else
-    Int32 constrinxvalue = (Int32)constrinx;
-#endif
+    Int32 constrinxvalue = (Int32)AttributeIndexGetShort (constrinx);
     GS::UniString attribsuffix = GS::UniString::Printf ("%d", constrinxvalue);
-
     bool isClassRead = false;   // была попытка чтения классификации
     bool isClassReadOk = false; // Классификация прочитана
     bool isBmatAttribReadOk = false;

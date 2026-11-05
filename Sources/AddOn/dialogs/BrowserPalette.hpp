@@ -52,6 +52,7 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
     enum { BrowserId = 1 };
 
     DG::Browser browser;
+    bool jsObjectRegistered = false;
 
     // -------------------------------------------------------------------------
     // Инициализация браузерного контролла и подключение HTML страницы.
@@ -120,6 +121,7 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
 
     static bool HasInstance ();
     static void CreateInstance ();
+    static void DestroyInstance ();
     static BrowserPalette &GetInstance ();
 
     // reloadContent = false — показ без перезагрузки HTML (путь

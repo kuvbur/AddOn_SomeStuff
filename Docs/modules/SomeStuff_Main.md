@@ -51,7 +51,7 @@
 - Расположение: `Sources/AddOn/SomeStuff_Main.cpp:73`
 - Назначение: события проекта (открытие/закрытие/окно/этаж). [из комментария]
 - Контракт: не проверено.
-- Побочные эффекты: сброс/обновление кэша при смене проекта (PROPERTYCACHE). [по коду]
+- Побочные эффекты: сброс/обновление кэша при смене проекта (PROPERTYCACHE). На APINotify_Quit вызывает BrowserPalette::DestroyInstance до выгрузки DLL; APINotify_Close не уничтожает палитру. [по текущему коду; runtime завершения после правки not verified]
 
 ### `SelectionChangeHandlerProc(const API_Neig *selElemNeig) -> GSErrCode`
 - Расположение: `Sources/AddOn/SomeStuff_Main.cpp:326`

@@ -17,6 +17,10 @@
 
 // RapidJSON входит в DevKit (Support/Modules/RapidJSON, header-only);
 // CMakeCommon.cmake добавляет Modules/* в include path.
+// В AC30 GRAPHISOFT переложил заголовки во вложенную папку: rapidjson/document.h
+// вместо RapidJSON/document.h. Собственные include у rapidjson относительные,
+// поэтому достаточно префикса. Ветка по ServerMainVers_3000, а не по AC_30:
+// константа означает «начиная с этой версии» (ACAPinc.h определяет их все разом).
 // Внутри заголовков rapidjson есть нестрогие memcpy — глушим только здесь,
 // чтобы clangd не поднимал -Wnontrivial-memcall до ошибки в этом файле.
 // Под MSVC прагмы clang неизвестны; до AC25 предупреждение C4068 глушилось
@@ -26,9 +30,15 @@
     #pragma clang diagnostic push
     #pragma clang diagnostic ignored "-Wnontrivial-memcall"
 #endif
-#include "document.h"
-#include "prettywriter.h"
-#include "stringbuffer.h"
+#ifdef ServerMainVers_3000
+    #include "rapidjson/document.h"
+    #include "rapidjson/prettywriter.h"
+    #include "rapidjson/stringbuffer.h"
+#else
+    #include "document.h"
+    #include "prettywriter.h"
+    #include "stringbuffer.h"
+#endif
 #ifdef __clang__
     #pragma clang diagnostic pop
 #endif
@@ -119,74 +129,13 @@ void SyncSettings::EnsureFilterPresets () {
         filterPresets = CreateDefaultFilterPresets ();
 }
 
-// --------------------------------------------------------------------
-// Сериализация / десериализация в бинарный канал — ТОЛЬКО для одноразовой
-// миграции из старого хранилища (.dat / preferences проекта).
-// --------------------------------------------------------------------
-GSErrCode SyncSettings::Read (GS::IChannel &ic) {
-    GS::InputFrame frame (ic, classInfo);
-    ic.Read (syncAll);
-    ic.Read (syncMon);
-    ic.Read (wallS);
-    ic.Read (widoS);
-    ic.Read (objS);
-    ic.Read (cwallS);
-    ic.Read (logMon);
-    ic.Read (showpalette);
-    ic.Read (catchSelectionChanges);
-    ic.Read (maxSelectionCount);
-    USize filterPresetCount = 0;
-    ic.Read (filterPresetCount);
-    filterPresets.Clear ();
-    for (UIndex i = 0; i < filterPresetCount; ++i) {
-        FilterPreset preset;
-        ic.Read (preset.label);
-        ic.Read (preset.query);
-        filterPresets.Push (preset);
-    }
-    if (ic.GetInputStatus () == NoError)
-        EnsureFilterPresets ();
-    return ic.GetInputStatus ();
-}
-
-GSErrCode SyncSettings::Write (GS::OChannel &oc) const {
-    GS::OutputFrame frame (oc, classInfo);
-    oc.Write (syncAll);
-    oc.Write (syncMon);
-    oc.Write (wallS);
-    oc.Write (widoS);
-    oc.Write (objS);
-    oc.Write (cwallS);
-    oc.Write (logMon);
-    oc.Write (showpalette);
-    oc.Write (catchSelectionChanges);
-    oc.Write (maxSelectionCount);
-    oc.Write (filterPresets.GetSize ());
-    for (const FilterPreset &preset : filterPresets) {
-        oc.Write (preset.label);
-        oc.Write (preset.query);
-    }
-    return oc.GetOutputStatus ();
-}
-
-// --------------------------------------------------------------------
-// Локальное (не проектное) хранилище настроек: JSON.
-// ACAPI_SetPreferences пишет блоб аддона В ФАЙЛ ПРОЕКТА (док DevKit-25,
-// Level3/Preferences_Save.html: «The preferences data is also stored in all
-// project files»), т.е. каждая запись модифицирует БД проекта — в Teamwork это
-// давало постоянные локальные изменения («аддон дописывает в файл»).
-// Поэтому настройки хранятся в файле в пользовательской папке настроек
-// (API_GraphisoftPrefsFolderID), а preferences проекта больше не трогаются.
-// Формат — SomeStuffAddonConfig.json (UTF-8) прямо в базовой папке prefs
-// (БЕЗ подпапки SomeStuff): чтение по ключам, неизвестные ключи игнорируются,
-// отсутствующие — дефолты, поэтому поле version информационное
-// (добавление нового поля не отбрасывает файл целиком, как это было в .dat).
-// --------------------------------------------------------------------
 static const GS::UniString SyncSettingsFileName ("SomeStuffAddonConfig.json");
 
+// --------------------------------------------------------------------
 // Возвращает папку файла настроек: Graphisoft prefs → Application prefs →
 // User documents (по убыванию приоритета). Подпапка не создаётся — файл
 // SomeStuffAddonConfig.json лежит прямо в базовой папке.
+// --------------------------------------------------------------------
 static bool GetSyncSettingsFolderLocation (IO::Location &folderLoc) {
     const API_SpecFolderID folderIds[] = {
         API_GraphisoftPrefsFolderID, API_ApplicationPrefsFolderID, API_UserDocumentsFolderID};
@@ -211,28 +160,29 @@ static bool GetSyncSettingsFolderLocation (IO::Location &folderLoc) {
 // --------------------------------------------------------------------
 // Утилиты ключей JSON: отсутствующий ключ или несовместимый тип → дефолт.
 // --------------------------------------------------------------------
+// Старый rapidjson из девкита AC23: FindMember приватный, MemberEnd() нет.
+// Используем публичные HasMember + operator[] (есть и в новых версиях).
 static bool GetJsonBool (const rapidjson::Value &object, const char *key, bool defaultValue) {
-    const auto member = object.FindMember (key);
-    return (member != object.MemberEnd () && member->value.IsBool ()) ? member->value.GetBool () : defaultValue;
+    return (object.HasMember (key) && object[key].IsBool ()) ? object[key].GetBool () : defaultValue;
 }
 
 static USize GetJsonUSize (const rapidjson::Value &object, const char *key, USize defaultValue) {
-    const auto member = object.FindMember (key);
-    if (member == object.MemberEnd ())
+    if (!object.HasMember (key))
         return defaultValue;
-    if (member->value.IsUint64 ())
-        return (USize)member->value.GetUint64 ();
-    if (member->value.IsUint ())
-        return (USize)member->value.GetUint ();
+    const rapidjson::Value &value = object[key];
+    if (value.IsUint64 ())
+        return (USize)value.GetUint64 ();
+    if (value.IsUint ())
+        return (USize)value.GetUint ();
     return defaultValue;
 }
 
 static GS::UniString GetJsonUniString (const rapidjson::Value &object, const char *key) {
-    const auto member = object.FindMember (key);
-    if (member == object.MemberEnd () || !member->value.IsString ())
+    if (!object.HasMember (key) || !object[key].IsString ())
         return GS::UniString ();
+    const rapidjson::Value &value = object[key];
     // Строки JSON — UTF-8, конвертация по явно указанному коду символов.
-    return GS::UniString (member->value.GetString (), member->value.GetStringLength (), CC_UTF8);
+    return GS::UniString (value.GetString (), value.GetStringLength (), CC_UTF8);
 }
 
 // --------------------------------------------------------------------
@@ -242,7 +192,8 @@ static GS::UniString GetJsonUniString (const rapidjson::Value &object, const cha
 // --------------------------------------------------------------------
 static bool ReadSyncSettingsFromJsonText (SyncSettings &syncSettings, const std::string &jsonText) {
     rapidjson::Document document;
-    if (document.Parse (jsonText.c_str (), jsonText.size ()).HasParseError () || !document.IsObject ())
+    // Старый rapidjson из девкита AC23: Parse принимает только нультерминированную строку.
+    if (document.Parse<0> (jsonText.c_str ()).HasParseError () || !document.IsObject ())
         return false;
 
     SyncSettings tempSettings;
@@ -257,10 +208,12 @@ static bool ReadSyncSettingsFromJsonText (SyncSettings &syncSettings, const std:
     tempSettings.SetCatchSelectionChanges (GetJsonBool (document, "catchSelectionChanges", false));
     tempSettings.SetMaxSelectionCount (GetJsonUSize (document, "maxSelectionCount", 10));
 
-    const auto presetsMember = document.FindMember ("filterPresets");
-    if (presetsMember != document.MemberEnd () && presetsMember->value.IsArray ()) {
+    if (document.HasMember ("filterPresets") && document["filterPresets"].IsArray ()) {
         GS::Array<FilterPreset> presets;
-        for (const auto &entry : presetsMember->value.GetArray ()) {
+        // Старый rapidjson не имеет GetArray — обходим через Begin/End.
+        const rapidjson::Value &presetsJson = document["filterPresets"];
+        for (rapidjson::Value::ConstValueIterator it = presetsJson.Begin (); it != presetsJson.End (); ++it) {
+            const rapidjson::Value &entry = *it;
             if (!entry.IsObject ())
                 continue;
             presets.Push (FilterPreset{GetJsonUniString (entry, "label"), GetJsonUniString (entry, "query")});
@@ -302,12 +255,7 @@ static bool ReadSyncSettingsFromFile (SyncSettings &syncSettings) {
     if (!ReadSyncSettingsFromJsonText (syncSettings, std::string (data.data (), (size_t)fileSize)))
         return false;
 
-    // Путь к файлу настроек логируем один раз за сессию: чтение вызывается
-    // в том числе в observer-путях (forceReload на каждое событие проекта),
-    // повторный вывод только замусорил бы лог. Логируем только когда проект
-    // уже открыт: первый успешный reading происходит в Initialize до открытия
-    // проекта, и строка в отчёте сессии тогда теряется (замечено при проверке
-    // #190) — ждём первого чтения в контексте проекта.
+    // Путь к файлу настроек логируем один раз за сессию
     static bool pathLogged = false;
     if (!pathLogged && IsTestProjectOpen ()) {
         msg_rep ("ReadSyncSettingsFromFile", "Settings file: " + fileLoc.ToDisplayText (), NoError, APINULLGuid);
@@ -319,16 +267,25 @@ static bool ReadSyncSettingsFromFile (SyncSettings &syncSettings) {
 // --------------------------------------------------------------------
 // Сериализация настроек в JSON-текст (UTF-8, человекочитаемое форматирование).
 // --------------------------------------------------------------------
+// Старый rapidjson из девкита AC23 не имеет Key() — ключ пишется как String(..., copy = true).
+static void WriteJsonKey (rapidjson::PrettyWriter<rapidjson::StringBuffer> &writer, const char *key) {
+#if !defined(ServerMainVers_2500)
+    writer.String (key, static_cast<rapidjson::SizeType> (std::strlen (key)), true);
+#else
+    writer.Key (key);
+#endif
+}
+
 static std::string SyncSettingsToJsonString (const SyncSettings &syncSettings) {
     rapidjson::StringBuffer stringBuffer;
     rapidjson::PrettyWriter<rapidjson::StringBuffer> writer (stringBuffer);
     writer.StartObject ();
 
-    writer.Key ("version");
+    WriteJsonKey (writer, "version");
     writer.Int (PreferencesVersion);
 
     auto writeBool = [&writer] (const char *key, bool value) {
-        writer.Key (key);
+        WriteJsonKey (writer, key);
         writer.Bool (value);
     };
     writeBool ("syncAll", syncSettings.GetSyncAll ());
@@ -341,23 +298,23 @@ static std::string SyncSettingsToJsonString (const SyncSettings &syncSettings) {
     writeBool ("showpalette", syncSettings.GetShowPalette ());
     writeBool ("catchSelectionChanges", syncSettings.GetCatchSelectionChanges ());
 
-    writer.Key ("maxSelectionCount");
+    WriteJsonKey (writer, "maxSelectionCount");
     writer.Uint64 ((UInt64)syncSettings.GetMaxSelectionCount ());
 
-    writer.Key ("filterPresets");
+    WriteJsonKey (writer, "filterPresets");
     writer.StartArray ();
     for (const FilterPreset &preset : syncSettings.GetFilterPresets ()) {
         writer.StartObject ();
-        writer.Key ("label");
+        WriteJsonKey (writer, "label");
         writer.String (preset.label.ToCStr (0, MaxUSize, CC_UTF8).Get ());
-        writer.Key ("query");
+        WriteJsonKey (writer, "query");
         writer.String (preset.query.ToCStr (0, MaxUSize, CC_UTF8).Get ());
         writer.EndObject ();
     }
     writer.EndArray ();
 
     writer.EndObject ();
-    return std::string (stringBuffer.GetString (), stringBuffer.GetSize ());
+    return std::string (stringBuffer.GetString ());
 }
 
 // --------------------------------------------------------------------
@@ -394,8 +351,7 @@ static bool WriteSyncSettingsFile (const std::string &jsonText) {
 // --------------------------------------------------------------------
 // Сериализация настроек и запись их в локальный файл.
 // skipIfUnchanged — не писать, если JSON-текст не изменился с прошлой
-// успешной записи (в observer-путях запись вызывается часто, сравнение
-// строк дешевле I/O).
+// успешной записи
 // --------------------------------------------------------------------
 static bool WriteSyncSettingsToFile (const SyncSettings &syncSettings, bool skipIfUnchanged) {
     const std::string jsonText = SyncSettingsToJsonString (syncSettings);
@@ -415,15 +371,8 @@ static bool WriteSyncSettingsToFile (const SyncSettings &syncSettings, bool skip
 
 // --------------------------------------------------------------------
 // Чтение настроек: только SomeStuffAddonConfig.json из корня prefs;
-// при отсутствии/битости файла — значения по умолчанию (миграция из старых
-// хранилищ удалена, решение автора #190).
 // --------------------------------------------------------------------
-static bool ReadSyncSettings (SyncSettings &syncSettings) {
-    // Миграция из старых хранилищ (SomeStuff\SyncSettings.json / .dat / prefs
-    // проекта) удалена — аддон ещё не используется другими пользователями
-    // (решение автора, #190).
-    return ReadSyncSettingsFromFile (syncSettings);
-}
+static bool ReadSyncSettings (SyncSettings &syncSettings) { return ReadSyncSettingsFromFile (syncSettings); }
 
 // --------------------------------------------------------------------
 // Кэш настроек
@@ -455,4 +404,30 @@ bool WriteSyncSettingsToPreferences (const SyncSettings &syncSettings) {
     // Обновляем кэш только после успешной записи.
     GetSyncSettingsCache (false) = syncSettings;
     return true;
+}
+
+// --------------------------------------------------------------------
+// Чистим только старые настройки preferences, не данные элементов.
+// Проверка размера через _Platform не требует разбора межплатформенного
+// блоба. Пустую запись проверяем чтением; сохранение и повторное
+// открытие PLN отдельно проверяются в Archicad.
+// --------------------------------------------------------------------
+GSErrCode ClearLegacyProjectPreferences () {
+#ifdef ServerMainVers_2700
+    const auto readPreferences = ACAPI_Preferences_Platform;
+#else
+    const auto readPreferences = ACAPI_GetPreferences_Platform;
+#endif
+    Int32 version = 0;
+    GSSize nByte = 0;
+    GSErrCode err = readPreferences (&version, &nByte, nullptr, nullptr);
+    if (err != NoError || nByte == 0)
+        return err;
+    err = ACAPI_SetPreferences (0, 0, nullptr);
+    if (err != NoError)
+        return err;
+    err = readPreferences (&version, &nByte, nullptr, nullptr);
+    if (err != NoError)
+        return err;
+    return nByte == 0 ? NoError : APIERR_GENERAL;
 }

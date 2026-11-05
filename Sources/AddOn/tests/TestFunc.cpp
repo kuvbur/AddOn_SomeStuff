@@ -1,6 +1,7 @@
 //------------ kuvbur 2022 ------------
 #ifdef TESTING
     #include <cstdlib> // std::getenv для отбора наборов (SMSTF_TEST)
+    #include <cstring>
 
     #include "ACAPinc.h"
 
@@ -77,9 +78,28 @@ namespace TestFunc {
         TestKit::Register ("TestSpecSizes", Groups::Spec, TestSpecSizes);
 
         TestKit::Register ("TestStringSplt", Groups::Core, TestStringSplt);
+    #if defined(ServerMainVers_2400)
+        // Типы Roombook::OtdWall / OtdOpening / RoomSurface есть только в AC >= 24.
         TestKit::Register ("TestBuildOtdByParent", Groups::Core, TestBuildOtdByParent);
+        TestKit::Register ("TestClearZoneGuid", Groups::Core, TestClearZoneGuid);
+        TestKit::Register ("TestRoomMaterialQuantities", Groups::Core, TestRoomMaterialQuantities);
+        TestKit::Register ("TestRoomParameterIsolation", Groups::Core, TestRoomParameterIsolation);
+        TestKit::Register ("TestRoomMaterialFormatting", Groups::Core, TestRoomMaterialFormatting);
+        TestKit::Register ("TestOpeningParameterIsolation", Groups::Core, TestOpeningParameterIsolation);
+        TestKit::Register ("TestRoomParameterResolution", Groups::Core, TestRoomParameterResolution);
+        TestKit::Register ("TestCachedParameterReader", Groups::Core, TestCachedParameterReader);
+        TestKit::Register ("TestRoomMaterialRawNames", Groups::Core, TestRoomMaterialRawNames);
+        TestKit::Register ("TestRoomCompositeSelection", Groups::Core, TestRoomCompositeSelection);
+        TestKit::Register ("TestOpeningAddOne", Groups::Core, TestOpeningAddOne);
+        TestKit::Register ("TestOtdWallDelimOne", Groups::Core, TestOtdWallDelimOne);
+        TestKit::Register ("TestOtdWallDelimAll", Groups::Core, TestOtdWallDelimAll);
+        TestKit::Register ("TestOtdWallAddOne", Groups::Core, TestOtdWallAddOne);
+        TestKit::Register ("TestSetMaterialByType", Groups::Core, TestSetMaterialByType);
+        TestKit::Register ("TestOpeningRevealsCreateOne", Groups::Core, TestOpeningRevealsCreateOne);
+    #endif
 
         TestKit::Register ("TestCalc", Groups::Format, TestCalc);
+        TestKit::Register ("TestCharCodeOfUniString", Groups::Format, TestCharCodeOfUniString);
         TestKit::Register ("TestFormula", Groups::Format, TestFormula);
         TestKit::Register ("TestFormatString", Groups::Format, TestFormatString);
 
@@ -114,6 +134,17 @@ namespace TestFunc {
         TestKit::Register ("TestRenumRunReport", Groups::Renum, TestRenumRunReport);
 
         const char *filter = std::getenv ("SMSTF_TEST");
+    #if defined(ServerMainVers_2500)
+        TestKit::Register ("TestRoomSurfaceTransform", Groups::Core, TestRoomSurfaceTransform);
+        TestKit::Register ("TestRoomSurfacePartition", Groups::Core, TestRoomSurfacePartition);
+        TestKit::Register ("TestFinishReuse", Groups::Core, TestFinishReuse);
+        // Native-наборы меняют временные элементы: широкая группа или пустой фильтр их не запускает.
+        if (filter != nullptr && std::strstr (filter, "TestMeshFloorNative") != nullptr)
+            TestKit::Register ("TestMeshFloorNative", Groups::Core, TestMeshFloorNative);
+        if (filter != nullptr && std::strstr (filter, "TestFinishReuseNative") != nullptr)
+            TestKit::Register ("TestFinishReuseNative", Groups::Core, TestFinishReuseNative);
+    #endif
+
         const int failed = TestKit::Run (filter);
         if (failed > 0)
             // Хвост прогона дублируется через Note: в файле отчёта строка SUMMARY

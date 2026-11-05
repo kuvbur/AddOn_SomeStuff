@@ -136,7 +136,7 @@ namespace Spec {
     // приведение к типу параметра может изменить значение.
     // --------------------------------------------------------------------
     void FillDumpGDLParameter (const API_AddParType &actParam, SpecElementDump &dump) {
-        GS::UniString rawname = GDLNAMEPREFIX + GS::UniString (actParam.name).ToLowerCase () + BRACEEND;
+        GS::UniString rawname = GDLNAMEPREFIX + UniStringToLower (GS::UniString (actParam.name)) + BRACEEND;
         GS::UniString value;
         switch (actParam.typeID) {
         case APIParT_CString:

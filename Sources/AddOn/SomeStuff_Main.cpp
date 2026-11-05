@@ -15,7 +15,7 @@
 #include "json_commands/JsonCommandRegistrar.hpp"
 #include "pk/Revision.hpp"
 #include "Propertycache.hpp"
-#include "Roombook.hpp"
+#include "roombook/Roombook.hpp"
 #include "spec/Spec.hpp"
 #include "Summ.hpp"
 #include "Sync.hpp"
@@ -43,13 +43,18 @@ static GSErrCode __ACENV_CALL ReservationChangeHandler (const GS::HashTable<API_
                                                         const GS::HashSet<API_Guid> &released,
                                                         const GS::HashSet<API_Guid> &deleted) {
 #endif
-    (void)deleted;
-    (void)released;
 #ifdef TESTING
     DBprnt ("ReservationChangeHandler");
 #endif
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings);
+    // При освобождении или удалении элементов в Teamwork снимаем с них наблюдение
+    for (const API_Guid &objectId : released) {
+        DetachObserver (objectId);
+    }
+    for (const API_Guid &objectId : deleted) {
+        DetachObserver (objectId);
+    }
     // здесь только подписка наблюдателей — никакой записи БД и полного обновления кэша.
     for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs (); it != nullptr; ++it) {
 #ifdef ServerMainVers_2800
@@ -83,17 +88,23 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     GSErrCode err = NoError;
     switch (notifID) {
     case APINotify_AllInputFinished:
-        err = TablesNavigator::EnsureNavigatorRoot ();
-#ifdef TESTING
-        if (err != NoError)
-            DBprnt ("TablesNavigator::EnsureNavigatorRoot", "failed");
-#endif
+        //        err = TablesNavigator::EnsureNavigatorRoot ();
+        // #ifdef TESTING
+        //        if (err != NoError)
+        //            DBprnt ("TablesNavigator::EnsureNavigatorRoot", "failed");
+        // #endif
         err = NoError;
         break;
     case APINotify_New:
     case APINotify_NewAndReset:
     case APINotify_Open: {
         ClearSyncThrottleCache ();
+        // Удаляем только старые настройки preferences; данные элементов
+        // и локальный JSON не трогаем. Ошибка не мешает установке монитора
+        // и кэша, но возвращается из обработчика и попадает в отчёт.
+        err = ClearLegacyProjectPreferences ();
+        if (err != NoError)
+            msg_rep ("ProjectEventHandlerProc", "ClearLegacyProjectPreferences err", err, APINULLGuid);
         Do_ElementMonitor (syncSettings.GetSyncMon ());
         PROPERTYCACHE ().Update ();
 #if defined(TESTING)
@@ -116,6 +127,8 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     case APINotify_Close:
     case APINotify_Quit:
         ClearSyncThrottleCache ();
+        if (notifID == APINotify_Quit)
+            BrowserPalette::DestroyInstance ();
 #ifdef ServerMainVers_2700
         ACAPI_Element_CatchNewElement (nullptr, nullptr);
         ACAPI_Element_InstallElementObserver (nullptr);
@@ -128,13 +141,17 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     case APINotify_ChangeWindow:
     case APINotify_ChangeFloor:
         DimRoundAll (syncSettings, false);
+#if defined(TESTING)
+        err = ClearLegacyProjectPreferences ();
+#endif
+        ClearSyncThrottleCache ();
         break;
     default:
         break;
     }
     (void)param;
     ACAPI_KeepInMemory (true);
-    return NoError;
+    return err;
 } // ProjectEventHandlerProc
 
 // -----------------------------------------------------------------------------
@@ -145,57 +162,45 @@ GSErrCode ElementEventHandlerProc (const API_NotifyElementType *elemType) {
 #else
 GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *elemType) {
 #endif
-    ACAPI_KeepInMemory (true);
+#ifdef ServerMainVers_2600
+    const API_ElemVariationID elementVariation = elemType->elemHead.type.variationID;
+#else
+    const API_ElemVariationID elementVariation = elemType->elemHead.variationID;
+#endif
+    // Для новых элементов с variationID == APIVarId_GridElement не выполняем синхронизацию - вылетает на разрезах
+    if (elementVariation == APIVarId_GridElement) {
+        return NoError;
+    }
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings);
     int dummymode = DUMMY_MODE_UNDEF;
     if (!syncSettings.GetSyncMon ())
         return NoError;
-    if (elemType->notifID == APINotifyElement_BeginEvents) {
-        PROPERTYCACHE ().compositeCache.Clear ();
-        return NoError;
-    } else if (elemType->notifID == APINotifyElement_EndEvents) {
-        // EndEvents завершает каждое уведомление, а не весь каскад одного действия.
-        if (PROPERTYCACHE ().hasDimAutotext && !IsDimensionScanThrottled ())
-            DimRoundAll (syncSettings, true);
-        return NoError;
-    }
-    // У граничных уведомлений нет обрабатываемого элемента.
     if (elemType->elemHead.hotlinkGuid != APINULLGuid)
         return NoError;
+    if (elemType->notifID == APINotifyElement_Delete || elemType->notifID == APINotifyElement_Undo_Created ||
+        elemType->notifID == APINotifyElement_Redo_Deleted)
+        DetachObserver (elemType->elemHead.guid);
+    if (elemType->notifID == APINotifyElement_Copy || elemType->notifID == APINotifyElement_Undo_Deleted ||
+        elemType->notifID == APINotifyElement_Redo_Created)
+        AttachObserver (elemType->elemHead.guid, syncSettings);
     const bool isChangeEvent =
         elemType->notifID == APINotifyElement_New || elemType->notifID == APINotifyElement_Change ||
         elemType->notifID == APINotifyElement_Edit || elemType->notifID == APINotifyElement_PropertyValueChange ||
         elemType->notifID == APINotifyElement_ClassificationChange;
     // Смотрим - что поменялось
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
-    switch (elementType) {
-    case API_DimensionID:
-        if (isChangeEvent && PROPERTYCACHE ().hasDimAutotext) {
-            if (elemType->notifID == APINotifyElement_New)
-                AttachObserver (elemType->elemHead.guid, syncSettings);
-            if (ACAPI_Element_Filter (elemType->elemHead.guid,
-                                      APIFilt_InMyWorkspace | APIFilt_HasAccessRight | APIFilt_IsEditable |
-                                          APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay |
-                                          APIFilt_OnVisLayer) &&
-                !IsElementThrottled (elemType->elemHead.guid))
-                DimAutoRoundOne (elemType->elemHead.guid, syncSettings, false);
-        }
-        return NoError;
 #ifdef ServerMainVers_2800
-    case API_ExternalElemID:
+    if (elementType == API_ExternalElemID) {
         MEPv1::ClearRoutingSubelemCache ();
-        break;
-#endif
-    default:
-        break;
     }
+#endif
 #if defined(TESTING)
     DBprnt ("ElementEventHandlerProc start");
 #endif
     if (!isChangeEvent)
         return NoError;
-    if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true, elementType))
+    if (!IsElementEditable (elemType->elemHead, syncSettings, true))
         return NoError;
     if (elemType->notifID == APINotifyElement_New)
         AttachObserver (elemType->elemHead.guid, syncSettings);
@@ -285,6 +290,7 @@ void Do_ElementMonitor (bool syncMon) {
     bool isteamwork = false;
     short userid = 0;
     GSErrCode err = IsTeamwork (isteamwork, userid);
+    (void)err;
     if (syncMon) {
 #if defined(TESTING)
         DBprnt ("Do_ElementMonitor on");
@@ -331,7 +337,6 @@ static GSErrCode SelectionChangeHandlerProc (const API_Neig *selElemNeig) {
 #else
 static GSErrCode __ACENV_CALL SelectionChangeHandlerProc (const API_Neig *selElemNeig) {
 #endif
-    DBprnt ("SelectionChangeHandlerProc ()");
     return BrowserPalette::SelectionChangeHandler (selElemNeig);
 }
 
@@ -374,15 +379,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
 #endif
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings, true);
-#ifdef ServerMainVers_2700
-    ACAPI_UserInput_ClearElementHighlight ();
-#else
-    #ifdef ServerMainVers_2600
-    ACAPI_Interface_ClearElementHighlight ();
-    #else
-    ACAPI_Interface (APIIo_HighlightElementsID);
-    #endif
-#endif
+    ClearElementHighlight ();
     const Int32 AddOnMenuID = ID_ADDON_MENU;
     // Переключатели флагов мониторинга к свойствам не обращаются — кэш не пересобираем
     const bool monitoringToggle =
@@ -458,7 +455,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
             break;
         case RoomBook_CommandID:
             msg_rep ("RoomBook", "============== START ==============", NoError, APINULLGuid);
-            Roombook::RoomBook ();
+            Roombook::RoomBook_Run ();
             msg_rep ("RoomBook", "=============== END ===============", NoError, APINULLGuid);
             break;
 #ifdef ServerMainVers_2300
@@ -532,8 +529,8 @@ GSErrCode __ACDLL_CALL RegisterInterface (void) {
 #else
     err = ACAPI_Register_Menu (ID_ADDON_MENU, ID_ADDON_PROMT + isEng (), MenuCode_Tools, MenuFlag_Default);
 #endif
-    if (err == NoError)
-        err = TablesNavigator::RegisterInterface ();
+    // if (err == NoError)
+    //     err = TablesNavigator::RegisterInterface ();
     ACAPI_KeepInMemory (true);
     return err;
 }
@@ -574,9 +571,9 @@ GSErrCode __ACENV_CALL Initialize (void) {
 #else
     ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
 #endif
-    GSErrCode navigatorErr = TablesNavigator::Initialize ();
-    if (navigatorErr != NoError)
-        return navigatorErr;
+    // GSErrCode navigatorErr = TablesNavigator::Initialize ();
+    // if (navigatorErr != NoError)
+    //     return navigatorErr;
     ACAPI_KeepInMemory (true);
 #ifdef ServerMainVers_2700
     return ACAPI_MenuItem_InstallMenuHandler (ID_ADDON_MENU, MenuCommandHandler);

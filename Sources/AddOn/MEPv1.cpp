@@ -4,6 +4,7 @@
     #include "api_headers/APIEnvir.h"
 
     #include "MEPv1.hpp"
+
 using namespace ACAPI::MEP;
 
 API_Guid GetRigidSegmentClassIDFromRoutingElemClassID (const API_Guid &routingElemClassID) {
@@ -147,7 +148,7 @@ namespace MEPv1 {
                 data.branchTableID = tableID_.Unwrap ();
     #endif
         } else {
-            ACAPI_WriteReport (element.UnwrapErr ().text.c_str (), false);
+            SafeWriteReport (element.UnwrapErr ().text.c_str (), false);
         }
         RoutingElementSharedData *pInserted = nullptr;
         routingElementDataCache.Add (key, std::move (data), &pInserted);
@@ -182,7 +183,7 @@ namespace MEPv1 {
     void GetSubElementOfRouting (const API_Guid &elemGuid, GS::Array<API_Guid> &subelemGuid) {
         ACAPI::Result<RoutingElement> routingElement = RoutingElement::Get (Adapter::UniqueID (elemGuid));
         if (routingElement.IsErr ()) {
-            ACAPI_WriteReport (routingElement.UnwrapErr ().text.c_str (), false);
+            SafeWriteReport (routingElement.UnwrapErr ().text.c_str (), false);
             return;
         }
         std::vector<ACAPI::MEP::UniqueID> routingNodeIds = routingElement->GetRoutingNodeIds ();
@@ -197,7 +198,7 @@ namespace MEPv1 {
         for (const auto &node : routingNodeIds) {
             ACAPI::Result<RoutingNode> routingNode = RoutingNode::Get (node);
             if (routingNode.IsErr ()) {
-                ACAPI_WriteReport (routingNode.UnwrapErr ().text.c_str (), false);
+                SafeWriteReport (routingNode.UnwrapErr ().text.c_str (), false);
                 continue;
             }
             API_Guid rguid = GSGuid2APIGuid (node.GetGuid ());
@@ -220,7 +221,7 @@ namespace MEPv1 {
         for (const auto &segment : routingSegmentIds) {
             ACAPI::Result<RoutingSegment> routingSegment = RoutingSegment::Get (segment);
             if (routingSegment.IsErr ()) {
-                ACAPI_WriteReport (routingSegment.UnwrapErr ().text.c_str (), false);
+                SafeWriteReport (routingSegment.UnwrapErr ().text.c_str (), false);
                 continue;
             }
             API_Guid rguid = GSGuid2APIGuid (segment.GetGuid ());
@@ -319,7 +320,7 @@ namespace MEPv1 {
                     for (const auto &systemId : systems.Unwrap ()[0]) {
                         ACAPI::Result<ACAPI::MEP::PhysicalSystem> system = ACAPI::MEP::PhysicalSystem::Get (systemId);
                         if (system.IsErr ()) {
-                            ACAPI_WriteReport (system.UnwrapErr ().text.c_str (), false);
+                            SafeWriteReport (system.UnwrapErr ().text.c_str (), false);
                             continue;
                         }
                         if (hassystemname) {
@@ -361,7 +362,7 @@ namespace MEPv1 {
                         }
                     }
                 } else {
-                    ACAPI_WriteReport ("No physical system found", false);
+                    SafeWriteReport ("No physical system found", false);
                 }
             }
         }
@@ -371,7 +372,7 @@ namespace MEPv1 {
             if (ParamValue *pval = paramByType.GetPtr (rawnamereferencesetname)) {
                 ACAPI::Result<DuctReferenceSet> ductReferenceSet = GetDuctReferenceSet ();
                 if (ductReferenceSet.IsErr ()) {
-                    ACAPI_WriteReport (ductReferenceSet.UnwrapErr ().text.c_str (), false);
+                    SafeWriteReport (ductReferenceSet.UnwrapErr ().text.c_str (), false);
                     return flag;
                 }
                 ParamHelpers::ConvertStringToParamValue (*pval, EMPTYSTRING, ductReferenceSet->GetName ());
@@ -454,7 +455,7 @@ namespace MEPv1 {
             if (ParamValue *pval = paramByType.GetPtr (rawnamereferencesetname)) {
                 ACAPI::Result<PipeReferenceSet> pipeReferenceSet = GetPipeReferenceSet ();
                 if (pipeReferenceSet.IsErr ()) {
-                    ACAPI_WriteReport (pipeReferenceSet.UnwrapErr ().text.c_str (), false);
+                    SafeWriteReport (pipeReferenceSet.UnwrapErr ().text.c_str (), false);
                     return flag;
                 }
 
@@ -537,7 +538,7 @@ namespace MEPv1 {
         #ifdef MEPAPI_VERSION
         ACAPI::Result<v2::Transition> element = v2::Transition::Get (Adapter::UniqueID (guid));
         if (element.IsErr ()) {
-            ACAPI_WriteReport (element.UnwrapErr ().text.c_str (), false);
+            SafeWriteReport (element.UnwrapErr ().text.c_str (), false);
             return false;
         }
         if (ParamValue *pval = paramByType.GetPtr (rawnameinsulationthickness)) {
@@ -567,13 +568,13 @@ namespace MEPv1 {
             // параметра {@mep:description} в словаре.
             ACAPI::Result<Port> port_1 = Port::Get (element->GetWiderPortID ());
             if (port_1.IsErr ()) {
-                ACAPI_WriteReport (port_1.UnwrapErr ().text.c_str (), false);
+                SafeWriteReport (port_1.UnwrapErr ().text.c_str (), false);
                 return false;
             }
             ediametr = port_1->GetHeight ();
             ACAPI::Result<Port> port_2 = Port::Get (element->GetNarrowerPortID ());
             if (port_2.IsErr ()) {
-                ACAPI_WriteReport (port_2.UnwrapErr ().text.c_str (), false);
+                SafeWriteReport (port_2.UnwrapErr ().text.c_str (), false);
                 return false;
             }
             bdiametr = port_2->GetHeight ();
@@ -632,7 +633,7 @@ namespace MEPv1 {
         ACAPI::Result<Bend> element = Bend::Get (Adapter::UniqueID (guid));
         #endif
         if (element.IsErr ()) {
-            ACAPI_WriteReport (element.UnwrapErr ().text.c_str (), false);
+            SafeWriteReport (element.UnwrapErr ().text.c_str (), false);
             return false;
         }
         diametr = element->GetWidth ();
@@ -691,7 +692,7 @@ namespace MEPv1 {
         }
         ACAPI::Result<RigidSegment> element = RigidSegment::Get (Adapter::UniqueID (guid));
         if (element.IsErr ()) {
-            ACAPI_WriteReport (element.UnwrapErr ().text.c_str (), false);
+            SafeWriteReport (element.UnwrapErr ().text.c_str (), false);
             return false;
         }
         segmentId = element->GetRoutingSegmentId ();
@@ -735,7 +736,7 @@ namespace MEPv1 {
         }
         ACAPI::Result<RoutingSegment> segmentElement = RoutingSegment::Get (segmentId);
         if (segmentElement.IsErr ()) {
-            ACAPI_WriteReport (segmentElement.UnwrapErr ().text.c_str (), false);
+            SafeWriteReport (segmentElement.UnwrapErr ().text.c_str (), false);
             return false;
         }
         ReadRoutingElementData (segmentElement->GetRoutingElementId (), flag, paramByType, tableID);
@@ -792,7 +793,7 @@ namespace MEPv1 {
         if (shape == ConnectorShape::Circular) {
             ACAPI::Result<uint32_t> refid_ = segmentElement->GetCrossSectionReferenceId ();
             if (refid_.IsErr ()) {
-                ACAPI_WriteReport (refid_.UnwrapErr ().text.c_str (), false);
+                SafeWriteReport (refid_.UnwrapErr ().text.c_str (), false);
                 return false;
             }
             refid = refid_.Unwrap ();

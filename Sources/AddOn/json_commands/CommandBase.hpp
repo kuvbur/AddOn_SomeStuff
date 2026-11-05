@@ -1,8 +1,9 @@
 #pragma once
 
-#include "ACAPinc.h"
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
 
 #if defined(ServerMainVers_2500)
+    #include "ACAPinc.h"
 
     #include "api_headers/APIEnvir.h"
 
@@ -128,4 +129,4 @@ GS::ObjectState CreateErrorResponse (GSErrCode errorCode, const GS::UniString &e
 // -----------------------------------------------------------------------------
 GS::ObjectState CreateSuccessResponse ();
 
-#endif // defined (ServerMainVers_2500)
+#endif // ServerMainVers_2500

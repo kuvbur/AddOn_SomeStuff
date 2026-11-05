@@ -1,7 +1,8 @@
 #pragma once
 
-#if defined(ServerMainVers_2500)
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
 
+#if defined(ServerMainVers_2500)
     #include "json_commands/CommandBase.hpp"
 
 class HealthCommand : public CommandBase {
@@ -33,4 +34,4 @@ class HealthCommand : public CommandBase {
                                      GS::ProcessControl &processControl) const override;
 };
 
-#endif // defined (ServerMainVers_2500)
+#endif // ServerMainVers_2500

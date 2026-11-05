@@ -29,6 +29,9 @@
     #ifdef AC_29
         #include "api_headers/APICommon29.h"
     #endif // AC_29
+    #ifdef AC_30
+        #include "api_headers/APICommon30.h"
+    #endif // AC_30
     #include <APIdefs_LibraryParts.h>
     #include <Definitions.hpp>
     #include <DG.h>
@@ -332,6 +335,9 @@ GS::UniString TextToQRCode (const GS::UniString &text, const int error_lvl);
 
 GS::UniString TextToQRCode (const GS::UniString &text);
 
+// Готовый текст отчёта: проценты удаляются из копии перед передачей SDK.
+void SafeWriteReport (GS::UniString text, bool withDial);
+
 void DBprnt (double a, GS::UniString reportString);
 
 void DBprnt (GS::UniString msg, GS::UniString reportString = "");
@@ -486,6 +492,15 @@ bool MenuInvertItemMark (short menuResID, short itemIndex);
 // -----------------------------------------------------------------------------
 GS::UniString StringUnic (const GS::UniString &instring, const GS::UniString &delim);
 
+    // -----------------------------------------------------------------------------
+    // Приведение строки к нижнему регистру - слой совместимости по версиям SDK.
+    // -----------------------------------------------------------------------------
+    #ifdef ServerMainVers_3000
+inline GS::UniString UniStringToLower (const GS::UniString &string) { return string.GetLowerCased (); }
+    #else
+inline GS::UniString UniStringToLower (const GS::UniString &string) { return string.ToLowerCase (); }
+    #endif
+
 // -----------------------------------------------------------------------------
 // Возвращает уникальные вхождения текста
 // -----------------------------------------------------------------------------
@@ -587,6 +602,16 @@ enum class PrepareElementsResult {
 // они требуют разных действий пользователя. При успехе result = Ok.
 //
 bool PrepareElementsForUpdate (UnicGuid &reserv_elements, PrepareElementsResult &result);
+
+void ClearElementHighlight ();
+
+GSErrCode HighlightElements (const UnicGuid &guids);
+
+GSErrCode HighlightElements (const GS::Array<API_Guid> &guids);
+
+short AttributeIndexGetShort (const API_AttributeIndex &attribinx);
+
+bool AdvanceProcessPhase (GS::UniString &funcname, GS::Int32 &nPhase);
 
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &type, API_AttributeIndex &attribinx);
 

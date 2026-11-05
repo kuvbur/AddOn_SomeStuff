@@ -1,16 +1,17 @@
-#include <algorithm>
-#include <chrono>
-#include <vector>
-
-#include "ACAPinc.h"
-
-#include "json_commands/SpecCommand.hpp"
-
-#include "dialogs/SyncSettings.hpp"
-#include "spec/Spec.hpp"
-#include "spec/SpecCompat.hpp"
+#include "ACAPinc.h" // ServerMainVers_* определены здесь - гвард версии должен идти после него
 
 #if defined(ServerMainVers_2500)
+
+    #include <algorithm>
+    #include <chrono>
+    #include <vector>
+
+    #include "ACAPinc.h"
+
+    #include "dialogs/SyncSettings.hpp"
+    #include "json_commands/SpecCommand.hpp"
+    #include "spec/Spec.hpp"
+    #include "spec/SpecCompat.hpp"
 
 // -----------------------------------------------------------------------------
 // Создаёт JSON-команду запуска построения спецификации.
@@ -290,4 +291,4 @@ GS::ObjectState SpecCommand::Execute (const GS::ObjectState &parameters,
     return response;
 }
 
-#endif // defined (ServerMainVers_2500)
+#endif // ServerMainVers_2500

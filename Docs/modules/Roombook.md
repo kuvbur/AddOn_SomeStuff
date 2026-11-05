@@ -1,61 +1,138 @@
-# Roombook — Спецификация отделки
+# Roombook
 
-> Основа: 1e67983 (2026-09-22); дополнение #195 — рабочее дерево после 0cfe635, сборка AC25. Номера строк остальных подсистем ниже относятся к основе и требуют обновления по живому коду. Назначения — по именам функций (при разборе модуля уточнять).
+Модуль расчёта отделки: по зонам строит/обновляет отделочные элементы (стены, плиты, балки-плинтусы, объекты, кровли, проёмы), собирает сводку площадей и материалов, синхронизирует связи и свойства.
 
-## Назначение
-Спецификация отделки: генерация ведомостей отделочных материалов и работ из модели. [по коду]
+Строки ниже — 1-based, сверены с диском на момент коммита `b199125` (`[C3-WIP]` roombook-рефакторинг). Машинные данные: `Docs/_generated/symbols.json` (определения, 1-based) и `Docs/_generated/callgraph.json` (рёбра, метка `roombook_refresh` 2026-10-30).
 
-## Точка входа
-- `RoomBook` (Roombook.cpp:674; AC22–23 — заглушка :23) ← `MenuCommandHandler` (SomeStuff_Main.cpp; граф содержит старые номера строк) и `SomeStuffCommand.RoomBook` (JSON API AC25–29; вызывающий выбирает экземпляр Archicad по HTTP-порту). JSON-команда возвращает время до выхода из `RoomBook`; успех расчёта отдельно не подтверждается. [по коду / DevKit-25 API_AddOnCommand]
-- `GetTargetZones` (Roombook.cpp:34) — выбор выделенных редактируемых зон или fallback на все доступные; возвращает false при ошибке/пустом списке [по коду]
-- `PrepareRoomProcessingContext` (:92) — заполняет контекст: `Class_FindFinClass` → `GetStories` → `Floor_FindAll`; контейнеры живут до выхода из `RoomBook`. [по коду]
-- `BuildElementReadIndex` (:98), `ProcessElementsForRoomData` (:122) — индекс, прогресс/отмена, `ClearZoneGUID`, классификация и dispatch. [по коду]
-- `PrepareReadParams` (:184), `ReadElementParameters` (:186) — подготовка и чтение параметров; `ReadParamsForRoomBook` хранит параметры окон и комнат. [по коду]
-- `ProcessRoomFinishes` (:516) обходит комнаты; `ProcessSlabFinishes` (:209), `ProcessWallFinishes` (:289), `ApplyFavoriteAndMaterialData` (:272) сохраняют порядок создания/настройки отделки. [по коду]
-- `BuildMaterialSummaryForRooms` (:380), `WriteRoomMaterialData` (:485) используют общий `MaterialSummary`; `paramToWrite` затем передаётся `SetSyncOtdWall`. [по коду]
-- `RemoveUnusedFinishingElements` (:571), `PrepareElementsForUpdate` (:609) — сбор GUID на удаление и разблокировка/резервирование; отказ в резервировании завершает `RoomBook` до отрисовки. [по коду]
-- Комментарий `REFACTOR PLAN` в Roombook.cpp:654-673 описывает этот рефакторинг. [из комментария]
-- Исторический список вызовов из Docs/_generated/body_scan.json (96 до #195) устарел после извлечения helpers; актуальные вызовы сверять по `Sources/AddOn/Roombook.cpp`. Подсистемы: `Param_*`, `OtdData_*`, `OtdWall/OtdBeam/Opening/Floor_*`, `Class_*`, `Favorite_*`, Sync, PROPERTYCACHE и SDK ProcessWindow/Teamwork. [по коду; полный граф — не проверено]
+## Файлы модуля
 
-## Функции по подсистемам [по коду / по имени]
+| Файл | Ответственность |
+|---|---|
+| `Sources/AddOn/roombook/Roombook.cpp` (201 стр.) | Вход `RoomBook_Run`, сбор зон, оркестрация конвейера |
+| `Sources/AddOn/roombook/RoombookData.cpp` (9581 стр.) | Чтение зон/конструкций/параметров, `RoomProcessingContext`, словарь избранного, подготовка геометрии отделки |
+| `Sources/AddOn/roombook/RoombookDraw.cpp` (2745 стр.) | Писатели native-элементов: Create/Change/Delete, классификация, синхронизация |
+| `Sources/AddOn/roombook/RoombookQuantities.cpp` (584 стр.) | Сводка площадей/материалов, запись данных в комнаты |
+| `Sources/AddOn/roombook/Roombook.hpp` (+5 .hpp) | Типы `OtdRoom/OtdWall/OtdSlab/OtdBeam`, `RoomBookFinishResult`, объявления API модуля |
 
-### Зоны и сбор данных
-`Otd_GetOtd_ByZone` (:763), `BuildOtdByParent` (:881), `Otd_GetOtd_Parent` (:922), `CollectRoomInfo` (:1211), `ClearZoneGUID` (:3399), `Edges_GetFromRoom` (:3330), `Edge_FindOnEdge` (:3949), `Edge_FindEdge` (:3980), `typeinzone`/`reducededges` — глобальные переменные namespace (:25/:28) [по коду]
+Зависимости: `CommonFunction.hpp`, `Helpers.hpp`, `Propertycache.hpp`; внутримодульные заголовки `roombook/` (`CoordinateSearchCache.hpp`, `FloorCoreGeometry.hpp`, `RoomAnalyticGeometry.hpp`, `RoomSurfaces.hpp`, `RoomSurfaceCandidates.hpp`, `RoomSurfacePartition.hpp`, `RoomSurfaceFinish.hpp`). [по include]
 
-`BuildOtdByParent` преобразует результат `SyncGetSubelement` из формы `GUID базового элемента -> GUID дочерней отделки` в индекс `база -> тип отделки -> GUID отделки`. Внешний ключ остаётся GUID базы, тип определяется по внутреннему GUID отделочного элемента; неизвестные дочерние GUID пропускаются. [по коду; #193]
+## Выбор целевых зон
 
-### Данные отделки (OtdData)
-`OtdData_GetColumnfFormat` (:817), `OtdData_CalcForRoom` (:908), `OtdData_WriteToRoom` (:1001), `OtdData_AddValueToDict` (:1143), `OtdWall_GetArea` (:1172)
+- `RoomBook_Run(results)` сохраняет прежний выбор: доступные выделенные зоны, иначе все доступные зоны. [по коду]
+- `RoomBook_Run(results, const GS::Array<API_Guid>& zones)` использует переданный непустой список без чтения выделения. Пустой список на C++-уровне сохраняет автоматический выбор. Внутри создаётся рабочая копия: последующие Clear/Push не изменяют массив вызывающего. [по коду]
+- JSON `SomeStuffCommand.RoomBook` принимает необязательный `zones: string[]`. Явный список должен быть непустым; до запуска проверяются форма GUID (с парными фигурными скобками или без), ненулевое значение, чтение заголовка, тип Zone и прежние фильтры editable/visible/access/workspace/renovation. Дубли удаляются с сохранением порядка первого вхождения. Ошибка любого участника отклоняет весь запрос до запуска RoomBook; к выделению/всем зонам такой запрос не переходит. Проверка доступности выполняется в текущем виде до переключения сочетания слоёв конвейером. [по коду]
+- Этот вход использует прежние подготовку, поиск существующей отделки по Sync_GUID zone и writers; формат ответа не изменён. `status: returned` по-прежнему означает возврат из void-функции, а не успешное построение всех элементов. Native-приёмка нового параметра — [не проверено].
 
-### Создание элементов отделки
-`OtdWall_Create_FromWall` (:1417), `OtdWall_Create_FromColumn` (:1676), `OtdWall_Add_One` (:1647), `Opening_Create_One` (:1368), `Opening_Add_One` (:1615), `OpeningReveals_Create_One` (:3437), `Floor_FindAll` (:1773), `Floor_FindInOneRoom` (:1819), `Floor_Create_All` (:1864), `Floor_Create_One` (:1917)
+## Входные точки
 
-### Параметры (Param)
-`Param_ToParamDict` (:2085), `Param_GetForWindowParams` (:2099), `Param_GetForBase` (:2151), `Param_GetForRooms` (:2295), `Param_Property_FindInParams` (:2533), `Param_Property_Read` (:2582), `Param_Material_Get` (:2619), `Param_SetToRooms` (:2647), `Param_SetToBase` (:2968), `Param_SetComposite` (:3031), `Param_SetToWindows` (:3145), `Param_AddUnicElementByType` (:5292), `Param_AddUnicGUIDByType` (:5320)
+| Вход | Цепочка |
+|---|---|
+| Меню | `MenuCommandHandler` (`SomeStuff_Main.cpp:375`) → `Roombook::RoomBook_Run` (`SomeStuff_Main.cpp:458`) |
+| JSON-команда `RoomBook` | `RoomBookCommand::Execute` (`json_commands/RoomBookCommand.cpp:65`) → `Roombook::RoomBook_Run(results, zones)` (`:97`, определение `Roombook.cpp:107`); результат `RoomBookFinishResult` сериализуется в прежний ответ |
+| JSON-команда `FavoritesList` | `RoomBookGetFavoritesCommand::Execute` (`RoomBookCommand.cpp:105`) → `Roombook::Favorite_GetDict` (`:108`, def `RoombookData.cpp:8933`) |
+| AC22/AC23 | Заглушка `RoomBook_Run` (`Roombook.cpp:21`) — отчёт «Function not work in AC22 and AC23» |
 
-### Разделение стен и материалы
-`OtdWall_Delim_All` (:3594), `OtdWall_Delim_One` (:3730), `SetMaterialByType` (:3799), `SetMaterialFinish_ByComposite` (:3909), `SetMaterialFinish` (:3920), `RoomRedProc` (:3274)
+## Конвейер `RoomBook_Run` (Roombook.cpp:102)
 
-### Отрисовка (Draw) и дефолты
-`Draw_Elements` (:3997), `OtdWall_Draw` (:4157), `OtdBeam_Draw_Beam` (:4186), `OtdBeam_Draw_Object` (:4258), `OtdWall_Draw_Object` (:4296), `OtdWall_Draw_Wall` (:4455), `Opening_Draw` (:4543), `Floor_Draw` (:4624), `Floor_Draw_Slab` (:4655), `Floor_Draw_Object` (:4756); дефолты: `OtdBeam_GetDefult_Beam` (:4239), `OtdBeam_GetDefult_Object` (:4269), `OtdWall_GetDefult_Object` (:4428), `OtdWall_GetDefult_Wall` (:4514), `Opening_GetDefult` (:4602), `Floor_GetDefult_Object` (:4901), `Floor_GetDefult_Slab` (:4925)
+| Шаг | Вызов (site) | Определение |
+|---|---|---|
+| 1. Применить сочетание слоёв отделки, если настроено | `Roombook.cpp:110` | `LayerCombination_ApplyFinishIfExists` (`Roombook.cpp:68`) |
+| 2. Собрать целевые зоны (выделение или весь проект) | `Roombook.cpp:113` | `Zone_CollectTargets` (`Roombook.cpp:25`) |
+| 3. Контекст обработки | `Roombook.cpp:120` | `RoomProcessingContext_Prepare` (`RoombookData.cpp:4810`) |
+| 3а. Индекс прочитанных элементов | `Roombook.cpp:123` | `RoomProcessingContext_BuildElementReadIndex` (`RoombookData.cpp:4835`) |
+| 3б. Обработать элементы для данных комнат | `Roombook.cpp:125` | `RoomProcessingContext_ProcessElementsForRoomData` (`RoombookData.cpp:4907`) |
+| 3в. Подготовка перегородок | `Roombook.cpp:126` | `RoomProcessingContext_PreparePartitions` (`RoombookData.cpp:4973`) |
+| 3г. Чтение параметров | `Roombook.cpp:130` | `RoomProcessingContext_ReadElementParameters` (`RoombookData.cpp:5028`) |
+| 4. Прогресс/отмена | `Roombook.cpp:132,161` | `AdvanceProcessPhase` (`CommonFunction.cpp:2651`) |
+| 5. Чтение всех элементов (мемо) | `Roombook.cpp:137` | `ElementsRead` (`Helpers.cpp:5583`) |
+| 6. Словарь избранного | `Roombook.cpp:139` | `Favorite_GetDict` (`RoombookData.cpp:8933`) |
+| 7. Отделка по зонам | `Roombook.cpp:144` | `Otd_GetOtd_ByZone` (`RoombookData.cpp:5888`) |
+| 8. Расчёт полов/потолков/стен/откосов | `Roombook.cpp:147` | `OtdRooms_ProcessFinishes` (`RoombookData.cpp:5711`) |
+| 9. Сводка материалов в комнаты | `Roombook.cpp:167,169` | `OtdData_AddRoomToMaterialSummary` (`RoombookQuantities.cpp:61`), `OtdData_WriteRoomMaterialData` (`RoombookQuantities.cpp:137`) |
+| 10. Проверка конфигурации отделки | `Roombook.cpp:174` | `Roombook_CheckFinishConfiguration` (`RoombookData.cpp:9448`) |
+| 11. Рождение/изменение/удаление элементов | `Roombook.cpp:178` | `OtdRooms_Draw` (`RoombookDraw.cpp:2670`) |
 
-### Классификация отделки (Class)
-`Class_SetClass` ×3 (:4952/4963/4976), `Class_GetClassGuid` (:4984), `Class_GetOtdTypeByClass` (:5031), `Class_FindFinClass` (:5075), `Class_IsElementFinClass` (:5277), `SetSyncOtdWall` (:5146)
+## Карта вызовов: от входа до писателей
 
-### Избранное (Favorite)
-`Favorite_GetType` (:5332), `Favorite_GetDict` (:5347), `Favorite_ReadComposite` (:5417), `Favorite_FindName` (:5454), `Favorite_GetByName` ×2 (:5554/5572)
+```
+RoomBook_Run (Roombook.cpp:102)
+├─ подготовка данных — см. конвейер выше
+└─ OtdRooms_Draw (RoombookDraw.cpp:2670)                        [site Roombook.cpp:178]
+   ├─ RoofBatch_Validate (RoombookDraw.cpp:2007)                 [site 2683]
+   │  └─ Roof_Prepare (RoombookDraw.cpp:1625) → OtdSlab_SetRoofEdgeTrims (1463)
+   ├─ OtdRooms_AssignExistingWallFinishes (RoombookDraw.cpp:444) [site 2689]  ← повторное использование
+   │  └─ OtdWall_TakeExistingFinish (RoombookDraw.cpp:397)
+   ├─ PrepareElementsForUpdate (CommonFunction.cpp:2511)         [site 2705]
+   ├─ ACAPI_Element_Delete (deletelist)                          [site 2709]
+   ├─ OtdRoom_Draw (RoombookDraw.cpp:2535)                       [site 2723]  ← на каждую комнату
+   │  ├─ OtdWall_ShouldDrawFinish (373) → OtdWall_Draw (2499)    [site 2548]
+   │  │  └─ Wall_Draw (1183) | Beam_Draw (764) | Object_Draw_Linear (998)   [sites 2509/2512/2515]
+   │  ├─ OtdSlab_ShouldDrawFinish (355) → OtdSlab_Draw (2425)    [site 2576]
+   │  │  └─ Roof_Draw (1950) | Slab_Draw (2038) | Object_Draw_Poly (2261)   [sites 2442/2446/2454]
+   │  ├─ OtdBeam_Draw (2471)                                     [sites 2592/2603]
+   │  │  └─ Beam_Draw (764) | Wall_Draw (1183) | Object_Draw_Linear (998)   [sites 2478/2481/2484]
+   │  ├─ Class_Set (80)                                          [sites 2566/2587/2598/2609]
+   │  └─ Class_Set_OtdOpening (95)                               [site 2568]
+   ├─ CollectRoomFinishes (2654)                                 [site 2730]
+   └─ OtdElements_SetSync (645)                                  [site 2742]
+```
 
-### Прочее
-`Check` (:5594, до :5685 — [назначение не установлено; вероятно, итоговая проверка])
+## Рождение, изменение, удаление отделочных элементов
 
-## Зависимости
-- `CommonFunction.hpp`, `Helpers.hpp`, `Propertycache.hpp` [по include]
+Все записи SDK сосредоточены в `RoombookDraw.cpp`. Шаблон каждого писателя:
 
-## Инварианты и подводные камни
-- Утечка memo при ошибке GetMemo (:2028-2034) — **исправлена** (FIX 2026-09-12) [из комментария + проверено]
-- AGENTS.md §16: recreation of finish elements — out of scope [из AGENTS.md]
-- Глобальные переменные namespace (`reducededges`, `min_dim` в ревью-заметках) — thread-safety ограничение [из ревью; не проверено в этой сессии]
-- Подсчёт пробелов/разделителей для выравнивания текста (`Roombook.cpp:1030`, `:1040`, `:1251`) с 2026-09-28 (#221) идёт через `CommonFunction::DoubleToInt32` — при выходе за диапазон Int32 подставляется граница и выводится сообщение `msg_rep`. [по коду]
-## Версии
-- AC27 (`#170`): материалы сегментов балки — `API_OverriddenAttribute` (`overridden` + `attributeIndex`) заменён на `APIOptional<API_AttributeIndex>` (`hasValue` + `value`, индекс через `ACAPI_CreateAttributeIndex`). [по коду DevKit + сборка AC27]
-- AC27: `ACAPI_ElementGroup_Create` → `ACAPI_ElementSet_Create`; в новом API нет параметра родительской группы, поэтому аддон передаёт только список элементов и выходной GUID. [по коду DevKit]
+1. Прочитать существующий элемент по GUID, если отделка уже существует;
+2. посчитать гвард `needupdate` — `Elems_Check_Update` (`RoombookDraw.cpp:27`: сравнение `floorInd`, `layer`, `renovationStatus` по маске) плюс собственные сравнения полей и memo (геометрия, размеры, материалы, сегменты);
+3. развилка: `is_new` → `ACAPI_Element_Create`; `needupdate` → `ACAPI_Element_Change` с маской; иначе — no-op: GUID и успешный результат сохраняются, Change не вызывается.
+
+| Тип отделки | Писатель (def) | `ACAPI_Element_Create` | Гвард / `ACAPI_Element_Change` |
+|---|---|---|---|
+| Отделочная стена | `Wall_Draw` (`RoombookDraw.cpp:1183`) | `:1244` | гвард `:1288`, сравнения и маски до `:1413`, Change `:1415` |
+| Отделка-объект по линейному основанию | `Object_Draw_Linear` (`:998`) | `:1153` | гвард `:1133`, Change `:1159` |
+| Линейная балка/плинтус | `Beam_Draw` (`:764`) | `:902` | гвард `:799` (вкл. `begC/endC/level`, материалы, memo-сегменты `:801-897`), Change `:904` |
+| Отделочная плита | `Slab_Draw` (`:2038`) | `:2186` | гвард `:2066`, Change `:2229` |
+| Отделка-объект по полигону | `Object_Draw_Poly` (`:2261`) | `:2403` | гвард `:2394`, Change `:2407` |
+| Отделочная кровля | `Roof_WritePrepared` (`:1731`, подготовка `Roof_Prepare` `:1625`) | `:1733` | гвард `:1779`, Change `:1942` |
+| Проём в отделочной стене | `OtdOpening_Draw` (`:264`) | `:309` | изменение не выполняется — проём создаётся внутри новой стены; при неудаче прорезания стена удаляется целиком (`:1434`) |
+
+Выбор варианта построения внутри `Otd*`-маршрутизаторов определяется типом шаблона избранного (`draw.favorite.type`): например, `OtdWall_Draw` → `Wall_Draw` / `Beam_Draw` / `Object_Draw_Linear` (sites 2509/2512/2515), `OtdSlab_Draw` → `Roof_Draw` / `Slab_Draw` / `Object_Draw_Poly` (sites 2442/2446/2454).
+
+Удаления:
+
+| Сайт | Что удаляется |
+|---|---|
+| `Wall_Draw` (`RoombookDraw.cpp:1280`) | старые проёмы (`oldOpenings`) при обновлении отделочной стены |
+| `Wall_Draw` (`:1434`) | только что созданная стена при неудачном прорезании проёма («Непрорезанная оболочка даёт лишнюю отделку; удаляем только новый результат») |
+| `OtdRooms_Draw` (`:2709`) | `deletelist` — неиспользованная существующая отделка, собранная `OtdRooms_CollectUnusedFinishingElements` (`:319`; сбор без удаления, удаление одним пакетом) |
+
+## Повторное использование существующей отделки
+
+- `OtdRooms_Draw` → `OtdRooms_AssignExistingWallFinishes` (`RoombookDraw.cpp:444`): соответствия назначаются только окончательным участкам; один GUID нельзя использовать в двух зонах;
+- → `OtdWall_TakeExistingFinish` (`:397`): существующий отделочный элемент переводится в состояние повторного использования; применимость проверяет `OtdLinearElement_CanDraw` (`:722`);
+- после назначения писатель идёт по ветке `ACAPI_Element_Change` (гварды выше), а не создаёт дубликат.
+
+## Классификация
+
+| Функция | SDK-вызов | Вызывается из |
+|---|---|---|
+| `Class_Set` (`RoombookDraw.cpp:80`) | `ACAPI_Element_AddClassificationItem` `:87` | `OtdRoom_Draw` (sites 2566/2587/2598/2609) |
+| `Class_Set_OtdOpening` (`:95`) | `:102` | `OtdRoom_Draw` (site 2568) |
+
+GUID класса выбирается словарём `Class_GetClassGuid` (`RoombookData.cpp:8647`); для проёмов — класс NoSet, при его отсутствии Wall_Main.
+
+## Финализация
+
+- `CollectRoomFinishes` (`RoombookDraw.cpp:2654`) → `AppendRoomFinish` — наполняет `GS::Array<RoomBookFinishResult>` по комнатам (стены, плиты, кровли, плинтусы; площади через `OtdWall_GetArea`, `RoombookQuantities.cpp:545`);
+- `OtdElements_SetSync` (`RoombookDraw.cpp:645`) — связи отделки с основаниями и зонами, общая запись накопленных свойств, включая сводку площадей;
+- `RoomBookCommand::Execute` сериализует `RoomBookFinishResult` в JSON-ответ.
+
+## Различия версий (текущее поведение)
+
+- AC27+: переопределение материалов сегментов балки — `APIOptional<API_AttributeIndex>` (`hasValue`/`value`, индекс через `ACAPI_CreateAttributeIndex`); в старших версиях — `API_OverriddenAttribute`. [по коду, `RoombookDraw.cpp:890-898`]
+- AC27: `ACAPI_ElementGroup_Create` → `ACAPI_ElementSet_Create` (параметра родительской группы нет — передаётся только список и выходной GUID). [по коду DevKit]
+- AC26–30: `GetElemTypeID`/`SetElemTypeID` вместо прямого `typeID`; variation через `type` (AC26+). [по коду DevKit]
+
+## Актуальность
+
+- `Docs/_generated/symbols.json`: roombook-файлы пересобраны 2026-10-30 (дисковые строки определений), остальные модули — прогоны 2026-10-15/30.
+- `Docs/_generated/callgraph.json`: roombook-срез (807 рёбер) пересобран grep-сканом определений и call-сайтов после `b199125`; входные рёбра из `MenuCommandHandler` и JSON-команд добавлены явно. Остальные срезы — предыдущего прогона (см. `meta`).

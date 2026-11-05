@@ -8,6 +8,7 @@
 
 #include "pk/Revision.hpp"
 
+#include "OnExit.hpp"
 #include "Propertycache.hpp"
 
 namespace Revision {
@@ -115,7 +116,7 @@ namespace Revision {
             GS::UniString name = *layout.value;
             API_Guid guid = *layout.key;
 #endif
-            name = name.ToLowerCase ();
+            name = UniStringToLower (name);
             if (name.Contains ("somestuff_")) {
                 layout_note_guid.Add (name, guid);
             }
@@ -140,7 +141,7 @@ namespace Revision {
             GS::UniString name = *rev.value;
             API_Guid guid = *rev.key;
 #endif
-            name = name.ToLowerCase ();
+            name = UniStringToLower (name);
             if (name.Contains ("somestuff_code_change")) {
                 layout_note_guid.Add ("somestuff_code_change", guid);
                 break;
@@ -578,7 +579,7 @@ namespace Revision {
             if (layout_note_guid.ContainsKey (prop_name)) {
                 API_Guid prop_guid = layout_note_guid.Get (prop_name);
                 if (layoutInfo.customData->ContainsKey (prop_guid)) {
-                    GS::UniString type = layoutInfo.customData->Get (prop_guid).ToLowerCase ();
+                    GS::UniString type = UniStringToLower (layoutInfo.customData->Get (prop_guid));
                     if (type.IsEqual (RVIString)) {
                         if (!layoutRVI.ContainsKey (change.changeId)) {
                             layoutRVI.Add (change.changeId, databaseUnId);
@@ -892,27 +893,24 @@ namespace Revision {
     bool GetMarkerPos (API_Guid &markerguid, API_Coord &startpoint) {
         GSErrCode err = NoError;
         API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         err = ACAPI_Element_GetMemo (markerguid, &memo, APIMemoMask_Polygon);
         if (err == NoError) {
             if (memo.pends == nullptr || memo.coords == nullptr) {
                 msg_rep ("GetMarkerPos", "memo polygon is empty", err, markerguid);
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return false;
             }
             const GSSize nCoords = BMGetHandleSize ((GSHandle)memo.coords) / (GSSize)sizeof (API_Coord);
             if (nCoords <= (GSSize)((*memo.pends)[0] + 1)) {
                 msg_rep ("GetMarkerPos", "memo polygon is empty", err, markerguid);
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return false;
             }
             int begInd = (*memo.pends)[0] + 1;
             startpoint = (*memo.coords)[begInd];
-            ACAPI_DisposeElemMemoHdls (&memo);
             return true;
         } else {
             msg_rep ("GetChangesMarker", "ACAPI_Element_GetMemo_1", err, markerguid);
         }
-        ACAPI_DisposeElemMemoHdls (&memo);
         return false;
     }
 
@@ -925,6 +923,7 @@ namespace Revision {
                         GS::Int32 &code) {
         GSErrCode err = NoError;
         API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         err = ACAPI_Element_GetMemo (markerguid, &memo, APIMemoMask_AddPars);
         bool find_nuch = false;
         bool find_izm = false;
@@ -934,7 +933,6 @@ namespace Revision {
         bool find_code = false;
         if (err == NoError) {
             if (memo.params == nullptr) {
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return false;
             }
             Int32 addParNum = BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
@@ -970,14 +968,12 @@ namespace Revision {
                     find_fam = true;
                 }
                 if (find_nuch && find_izm && find_note && find_type && find_fam && find_code) {
-                    ACAPI_DisposeElemMemoHdls (&memo);
                     return true;
                 }
             }
         } else {
             msg_rep ("GetChangesMarker", "ACAPI_Element_GetMemo_2", err, markerguid);
         }
-        ACAPI_DisposeElemMemoHdls (&memo);
         return find_nuch && find_izm && find_note;
     }
 
@@ -1038,13 +1034,13 @@ namespace Revision {
         API_Element markerMask = {};
         ACAPI_ELEMENT_MASK_CLEAR (markerMask);
         API_ElementMemo memo = {};
+        const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
         err = ACAPI_Element_GetMemo (markerguid, &memo, APIMemoMask_AddPars);
         if (err == NoError) {
             bool find_nuch = false;
             bool find_izm = false;
             bool flag_write = false;
             if (memo.params == nullptr) {
-                ACAPI_DisposeElemMemoHdls (&memo);
                 return;
             }
             Int32 addParNum = BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
@@ -1092,7 +1088,6 @@ namespace Revision {
         } else {
             msg_rep ("ChangeMarkerText", "ACAPI_Element_GetMemo", err, markerguid);
         }
-        ACAPI_DisposeElemMemoHdls (&memo);
         return;
     }
 } // namespace Revision

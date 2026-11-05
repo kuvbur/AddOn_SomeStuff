@@ -2,7 +2,6 @@
 #pragma once
 #if !defined(PROPERTYCACHE_HPP)
     #define PROPERTYCACHE_HPP
-    #include "dialogs/CommandHelpers.hpp"
     #include "Helpers.hpp"
 
     #ifdef ServerMainVers_2900
@@ -14,6 +13,60 @@
         #include "ACAPI/MEPUniqueID.hpp"
         #include "ACAPI/Result.hpp"
     #endif
+
+// -----------------------------------------------------------------------------
+// Парсит полное описание свойства, выделяя все команды (Sync, Renum, Sum, Spec)
+// Возвращает true, если описание содержит хотя бы одну распознанную команду
+// -----------------------------------------------------------------------------
+struct ParsedPropertyCommand {
+    GS::UniString commandType;  // "Sync", "Renum_flag", "Renum", "Sum", "Spec_rule"
+    GS::UniString fullCommand;  // Полная команда с фигурными скобками
+    GS::UniString parameters;   // Параметры внутри скобок
+    bool isValid = false;       // Успешно ли распарсилась команда
+    GS::UniString errorMessage; // Сообщение об ошибке, если isValid == false
+};
+
+// -----------------------------------------------------------------------------
+// Структура для представления правила синхронизации в интерфейсе
+// -----------------------------------------------------------------------------
+struct SyncRuleInfo {
+    GS::UniString
+        commandType; // "Sync_from", "Sync_to", "Sync_from_sub", "Sync_to_sub", "Sync_from_GUID", "Sync_to_GUID"
+    GS::UniString fullCommand; // Полная команда с фигурными скобками
+    GS::UniString parameters;  // Параметры внутри скобок
+    GS::UniString
+        sourceType; // Тип источника: "Property", "GDL", "Coord", "Formula", "ID", "Material", "File", "Classification",
+                    // "Morph", "Info", "IFC", "Glob", "Class", "Attrib", "Listdata", "Element", "MEP"
+    GS::UniString sourceName;            // Имя источника (без префикса типа)
+    GS::UniString targetType;            // Тип цели: "Property", "GDL", "Coord", "Classification", "Attrib", "ID"
+    GS::UniString targetName;            // Имя цели (без префикса типа)
+    GS::UniString formatString;          // Формат строки (например, ".3m", ".3mp", "0mm")
+    GS::Array<GS::UniString> ignoreVals; // Игнорируемые значения
+    bool isValid = false;                // Успешно ли распарсилось правило
+    GS::UniString errorMessage;          // Сообщение об ошибке, если isValid == false
+    bool hasSub = false;                 // Есть ли ссылка на подэлементы (from_sub/to_sub)
+    bool hasGUID = false;                // Есть ли ссылка на другой элемент по GUID (from_GUID/to_GUID)
+    GS::UniString guidSourceProperty;    // Имя свойства-источника GUID (для from_GUID/to_GUID)
+};
+
+// -----------------------------------------------------------------------------
+// Результат парсинга описания свойства
+// -----------------------------------------------------------------------------
+struct ParsePropertyResult {
+    GS::Array<SyncRuleInfo> syncRules;              // Найденные правила синхронизации
+    GS::Array<ParsedPropertyCommand> otherCommands; // Остальные команды (Renum, Sum, Spec)
+    GS::UniString remainingText;                    // Текст, не вошедший в команды
+    bool hasSyncRules = false;                      // Есть ли правила синхронизации
+    bool hasOtherCommands = false;                  // Есть ли другие команды
+};
+
+// -----------------------------------------------------------------------------
+// Парсит описание свойства и возвращает структурированные правила синхронизации
+// для использования в интерфейсе (BrowserPalette).
+// Вызывает ParsePropertyDescription и дополнительно разбирает Sync-команды
+// на отдельные поля для удобного отображения/редактирования.
+// -----------------------------------------------------------------------------
+ParsePropertyResult ParsePropertyDescriptionToRules (const GS::UniString &description);
 
 // Кэш свойств и справочных данных проекта: свойства, атрибуты, классификации,
 // геолокация, форматирование и данные MEP для последующего чтения без повторных запросов.
@@ -32,6 +85,12 @@ bool DimReadPref (DimRules &dimrules, const GS::UniString &autotext, bool &hasLa
 // Обработка текста правила
 // -----------------------------------------------------------------------------
 bool DimParsePref (const GS::UniString &rawrule, DimRule &dimrule, bool &hasexpression, bool &hasLayerNameInDimRules);
+
+// -----------------------------------------------------------------------------
+// Кэшированный признак наличия правила SomeStuff в описании свойства (#158).
+// Парсит описание только при промахе кэша или после изменения описания.
+// -----------------------------------------------------------------------------
+bool GetPropertyRuleFlag (const API_PropertyDefinition &definition);
 
 namespace ParamHelpers {
 
@@ -137,13 +196,16 @@ struct PropertyCache {
     GS::HashTable<GS::UniString, GS::Array<GS::Array<GS::UniString>>> filedata; // Данные в файлах
     ClassificationFunc::SystemDict systemdict;                                  // Словарь систем с вложенными классами
     GS::Array<GS::UniString>
-        classificationOptions;              // Опции классификаций для BrowserPalette — чистится вместе с systemdict
-    UnicGuidByGuidString reversesystemdict; // Получение имени класса по GUID классификации и GUID класса в нём
+        classificationOptions; // Опции классификаций для BrowserPalette — чистится вместе с systemdict
+    ClassificationFunc::ClassificationDict findict; //
+    UnicGuid finclassguids;                         //
+    UnicGuidByGuidString reversesystemdict;         // Получение имени класса по GUID классификации и GUID класса в нём
     GS::HashTable<API_Guid, API_PropertyGroup> propertygroups;
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
     bool hasLayerNameInDimRules;
     GS::HashTable<GS::UniString, FormatString> parsedformatstring;
     GS::HashTable<GS::UniString, GS::UniString> gdlparamname;
+    GS::HashTable<GS::UniString, GS::HashTable<API_Guid, API_PropertyDefinition>> addonrulesbytype;
     FormatStringDict formatstringformeasuretype;
     GS::UniString meterString = "m";
     GS::UniString santimeterString = "cm";
@@ -218,16 +280,8 @@ struct PropertyCache {
     mutable GS::HashTable<API_Guid, GS::Array<GS::ObjectState>> selectionPropertiesCache;
     mutable bool selectionPropertiesCacheValid = false;
 
-    // Кэш правил SomeStuff в описаниях свойств (#158), ключ — GUID определения
+    // Кэш правил SomeStuff в описаниях свойств, ключ — GUID определения
     mutable GS::HashTable<API_Guid, PropertyRuleFlag> propertyRuleFlags;
-
-    // Счётчики кэшей формул EvalExpression (#217), накапливаются за всю сессию.
-    // Намеренно НЕ обнуляются ни в конструкторе, ни в Update(): нужна картина
-    // накопительного попадания и числа сбросов по переполнению, а не состояние
-    // на момент последнего обновления кэша свойств.
-    #if defined(TESTING)
-    mutable FormulaCacheStats formulaCacheStats;
-    #endif
 
     PropertyCache () {
     #if defined(TESTING)
@@ -239,6 +293,8 @@ struct PropertyCache {
         glob.Clear ();
         systemdict.Clear ();
         reversesystemdict.Clear ();
+        findict.Clear ();
+        finclassguids.Clear ();
         classificationOptions.Clear (); // Опции классификаций для палитры — не переживают смену проекта/TW-receive
         propertygroups.Clear ();
         dimrules.Clear ();
@@ -247,6 +303,7 @@ struct PropertyCache {
         filedata.Clear ();
         formatstringformeasuretype.Clear ();
         compositeCache.Clear ();
+        addonrulesbytype.Clear ();
         surv_point_tm = {};
         isEng = 0;
         isEng_OK = false;
@@ -359,6 +416,9 @@ struct PropertyCache {
     #endif
         glob.Clear ();
         unreadedgdlparams.Clear ();
+        addonrulesbytype.Clear ();
+        findict.Clear ();
+        finclassguids.Clear ();
         ReadGetGeoLocation ();
         ReadSurveyPointTransformation ();
         ReadPlaceSets ();
@@ -582,6 +642,7 @@ struct PropertyCache {
     #endif
         property.Clear ();
         propertyRuleFlags.Clear (); // Перечитывание определений удаляет и правила удалённых свойств.
+        addonrulesbytype.Clear ();
         isPropertyDefinitionRead = true;
         isPropertyDefinitionRead_full = true;
         isPropertyDefinition_OK = ParamHelpers::GetAllPropertyDefinitionToParamDict (property);
@@ -701,8 +762,13 @@ struct PropertyCache {
     void AddPropertyDefinition (GS::Array<API_PropertyDefinition> &definitions) {
         isPropertyDefinitionRead = true;
         ParamHelpers::GetArrayPropertyDefinitionToParamDict (property, definitions);
-        if (property.IsEmpty ())
+        if (property.IsEmpty ()) {
             isPropertyDefinition_OK = false;
+        } else {
+            for (const auto &definision : definitions) {
+                GetPropertyRuleFlag (definision);
+            }
+        }
     }
 
     void ReadGroupProperty () {
@@ -749,12 +815,6 @@ GS::UniString GetPropertyNameByGUID (const API_Guid &guid);
 // -----------------------------------------------------------------------------
 GSErrCode GetPropertyFullName (const API_PropertyDefinition &definision, GS::UniString &name);
 
-// -----------------------------------------------------------------------------
-// Кэшированный признак наличия правила SomeStuff в описании свойства (#158).
-// Парсит описание только при промахе кэша или после изменения описания.
-// -----------------------------------------------------------------------------
-bool GetPropertyRuleFlag (const API_PropertyDefinition &definition);
-
     #if defined(TESTING)
 // -----------------------------------------------------------------------------
 // Печатает накопленные счётчики кэшей формул EvalExpression (#217) через DBprnt.
@@ -768,4 +828,7 @@ PropertyCache &GetCache ();
 
 extern PropertyCache &(*PROPERTYCACHE) ();
 
+bool ParsePropertyDescription (const GS::UniString &description,
+                               GS::Array<ParsedPropertyCommand> &commands,
+                               GS::UniString &remainingText);
 #endif

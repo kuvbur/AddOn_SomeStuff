@@ -335,9 +335,6 @@ bool SyncByType (const API_ElemTypeID &elementType,
                  ParamDictElement &paramToWrite,
                  int dummymode,
                  UnicGuid &syncedelem) {
-#if defined(TESTING)
-    DBprnt ("    SyncByType start");
-#endif
     GS::UniString subtitle;
     GSErrCode err = NoError;
     GS::Array<API_Guid> guidArray = {};
@@ -354,6 +351,9 @@ bool SyncByType (const API_ElemTypeID &elementType,
 #endif
     if (guidArray.IsEmpty ())
         return false;
+#if defined(TESTING)
+    DBprnt ("    SyncByType start");
+#endif
 #ifdef ServerMainVers_2600
     API_ElemType elemType;
     elemType.typeID = elementType;
@@ -469,12 +469,15 @@ void SyncSelected (const SyncSettings &syncSettings) {
 
 // -----------------------------------------------------------------------------
 // Запускает обработку переданного массива
-// -----------------------------------------------------------------------------
 // Синхронизирует массив элементов: читает свойства и записывает изменения
 // Для каждого элемента в guidArray вызывает SyncElement, который читает свойства и формирует paramToWrite
 // Если syncSettings.GetSyncMon() включён - привязывает элементы к мониторингу (AttachObserver)
 // Возвращает массив guid элементов, которые были обработаны (для обновления)
-GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_Guid> &guidArray) {
+// Если запускать в UndoableCommand, то isUndo = true, иначе false. В UndoableCommand не открывается ProcessWindow
+// -----------------------------------------------------------------------------
+GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings,
+                               GS::Array<API_Guid> &guidArray,
+                               bool isUndo /*=false*/) {
     GS::Array<API_Guid> rereadelem = {};
     if (guidArray.IsEmpty ())
         return rereadelem;
@@ -490,7 +493,8 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
     bool showPercent = true;
     Int32 maxval = guidArray.GetSize ();
 #endif
-    ProcessWindowGuard pwGuard (funcname, nPhase);
+    if (!isUndo)
+        ProcessWindowGuard pwGuard (funcname, nPhase);
     clock_t start, finish;
     double duration = 0;
     start = clock ();
@@ -523,7 +527,11 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     GS::UniString paramch = CountUnreadGDLParams ();
     msg_rep ("SyncSelected - read", subtitle + intString + paramch + time, NoError, APINULLGuid);
-    if (!paramToWrite.IsEmpty ()) {
+
+    if (paramToWrite.IsEmpty ())
+        msg_rep ("SyncSelected - write", "No data to write", NoError, APINULLGuid);
+
+    if (!isUndo) {
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         GS::UniString undoString = RSGetIndString (iseng, UndoSyncId, ACAPI_GetOwnResModule ());
         ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
@@ -544,10 +552,24 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
             msg_rep ("SyncSelected - write", time, NoError, APINULLGuid);
             return NoError;
         });
+        ParamHelpers::WriteInfo (paramToWrite);
     } else {
-        msg_rep ("SyncSelected - write", "No data to write", NoError, APINULLGuid);
+        start = clock ();
+        GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ());
+        Int32 i = 1;
+#ifdef ServerMainVers_2700
+        ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
+#else
+        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+#endif
+        GS::Array<API_Guid> rereadelem_ = ParamHelpers::ElementsWrite (paramToWrite);
+        if (!rereadelem_.IsEmpty ())
+            rereadelem.Append (rereadelem_);
+        finish = clock ();
+        duration = (double)(finish - start) / CLOCKS_PER_SEC;
+        GS::UniString time = title + GS::UniString::Printf (" %.3f s", duration);
+        msg_rep ("SyncSelected - write", time, NoError, APINULLGuid);
     }
-    ParamHelpers::WriteInfo (paramToWrite);
     return rereadelem;
 }
 
@@ -1029,7 +1051,7 @@ void SyncAddSubelement (const GS::Array<API_Guid> &subelemGuids,
         // Запись в дочерние элементы: правило разворачивается на КАЖДЫЙ подэлемент.
         // ВАЖНО: проверяется именно toSub. Раньше здесь ошибочно стояло fromSub —
         // ветка была недостижима (первая ветка уже сбрасывала fromSub), и правило
-        // to_sub молча не разворачивалось (баг P1, тест TestSyncAddSubelement).
+        // to_sub молча не разворачивалось
         if (mainsyncRule.toSub) {
             for (const API_Guid &elguid : subelemGuids) {
 #if defined(TESTING)
@@ -1086,7 +1108,7 @@ bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
         name = BRACESTART + name;
     if (!name.Contains (BRACEEND))
         name += BRACEEND;
-    const GS::UniString loweredName = name.ToLowerCase ();
+    const GS::UniString loweredName = UniStringToLower (name);
 
     // 1) Каноническая форма rawname '{@prefix:name}': префикс известен — вход уже
     if (loweredName.BeginsWith (PVALPREFIX)) {
@@ -1168,7 +1190,7 @@ bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
     paramName = params.Get (0);
     FormatStringFunc::GetFormatString (paramName);
     paramName.ReplaceAll (SLASHEKR, SLASH);
-    rawname = paramNamePrefix + paramName.ToLowerCase () + BRACEEND;
+    rawname = paramNamePrefix + UniStringToLower (paramName) + BRACEEND;
     return true;
 }
 
@@ -1621,11 +1643,11 @@ bool SyncString (const API_ElemTypeID &elementType,
             GS::Array<GS::UniString> local_scratch;
             GS::UniString rule = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
             param.rawName = paramNamePrefix;
-            param.rawName.Append (rule.ToLowerCase ());
+            param.rawName.Append (UniStringToLower (rule));
             param.name = rule;
             param.rawName.Append (BRACEEND);
             if (StringSplt (rule, SEMICOLON, params, true, &local_scratch) > 1) {
-                GS::UniString type = params[0].ToLowerCase ();
+                GS::UniString type = UniStringToLower (params[0]);
                 if (type.Contains ("lookup") || type.Contains ("lokup"))
                     param.val.array_format_out = FILE_LOOKUP;
                 GS::Array<GS::UniString> params_2;
@@ -1983,6 +2005,33 @@ bool SyncString (const API_ElemTypeID &elementType,
             if (elementType != API_MorphID)
                 synctypefind = false;
         }
+        if (param.fromAttribElement) {
+            if (!rulestring_one.Contains ("Layer")) {
+                if (elementType != API_WallID && elementType != API_SlabID && elementType != API_ColumnID &&
+                    elementType != API_BeamID && elementType != API_RoofID && elementType != API_BeamSegmentID &&
+                    elementType != API_ColumnSegmentID && elementType != API_MeshID && elementType != API_MorphID &&
+                    elementType != API_ShellID)
+                    synctypefind = false;
+                if (synctypefind) {
+                    if (rulestring_one.Contains ("CompositeType")) {
+                        // TODO : добавить проверку на CompositeType
+                    } else {
+                        if (rulestring_one.Contains ("Composite")) {
+                            if (elementType != API_WallID && elementType != API_SlabID && elementType != API_RoofID &&
+                                elementType != API_MeshID && elementType != API_ShellID)
+                                synctypefind = false;
+                        } else {
+                            if (rulestring_one.Contains ("Profile")) {
+                                if (elementType != API_WallID && elementType != API_ColumnID &&
+                                    elementType != API_BeamID && elementType != API_BeamSegmentID &&
+                                    elementType != API_ColumnSegmentID && elementType != API_ShellID)
+                                    synctypefind = false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Проверка включенных флагов
@@ -2018,7 +2067,7 @@ bool SyncString (const API_ElemTypeID &elementType,
 
     if (param.fromMaterial || param.val.hasFormula) {
         param.rawName = paramNamePrefix;
-        param.rawName.Append (paramName.ToLowerCase ());
+        param.rawName.Append (UniStringToLower (paramName));
         param.rawName.Append (SEMICOLON);
         param.rawName.Append (param.val.uniStringValue);
         param.rawName.Append (DOT);
@@ -2030,20 +2079,20 @@ bool SyncString (const API_ElemTypeID &elementType,
     }
     UInt32 start_ignore = 0;
     if (param.fromClassification) {
-        param.name = params.Get (0).ToLowerCase ();
+        param.name = UniStringToLower (params.Get (0));
         param.rawName = paramNamePrefix;
         param.rawName.Append (param.name);
         if (nparam > 1) {
             param.val.uniStringValue = params.Get (1);
             param.rawName.Append (SEMICOLON);
-            param.rawName.Append (param.val.uniStringValue.ToLowerCase ());
+            param.rawName.Append (UniStringToLower (param.val.uniStringValue));
         }
         param.rawName.Append (BRACEEND);
         start_ignore = 1 + nparam;
     }
     if (param.rawName.IsEmpty ()) {
         param.rawName = paramNamePrefix;
-        param.rawName.Append (paramName.ToLowerCase ());
+        param.rawName.Append (UniStringToLower (paramName));
         param.rawName.Append (BRACEEND);
     }
     if (param.name.IsEmpty ())
@@ -2052,7 +2101,7 @@ bool SyncString (const API_ElemTypeID &elementType,
         // Обработка данных о размерах массива и типе чтения
         if (start_ignore == 0)
             start_ignore = 1;
-        GS::UniString arrtype = params[1].ToLowerCase ();
+        GS::UniString arrtype = UniStringToLower (params[1]);
         bool hasArray = false;
         if (!hasArray && (arrtype.Contains ("uniq") || arrtype.Contains ("unic"))) {
             arrtype.ReplaceAll ("uniq", EMPTYSTRING);
@@ -2194,7 +2243,7 @@ bool SyncString (const API_ElemTypeID &elementType,
                 !rawName_col_end.IsEmpty ())
                 param.needPreRead = true;
             param.rawName = paramNamePrefix;
-            param.rawName.Append (paramName.ToLowerCase ());
+            param.rawName.Append (UniStringToLower (paramName));
             param.rawName.Append (GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d",
                                                          array_row_start,
                                                          array_row_end,
@@ -2235,7 +2284,7 @@ bool SyncString (const API_ElemTypeID &elementType,
                     ignorevals.reset_to_def = true;
                     continue;
                 }
-                ignorevals.ignorevals.Push (ignoreval.ToLowerCase ());
+                ignorevals.ignorevals.Push (UniStringToLower (ignoreval));
             }
         }
     }
@@ -2462,7 +2511,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
                     SubElementHotFoundIdString + LINEBRAKE +
                     RSGetIndString (iseng, SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
             }
-            ACAPI_WriteReport (SubElementHotFoundIdString, true);
+            SafeWriteReport (SubElementHotFoundIdString, true);
             return;
         }
     } else {
@@ -2648,7 +2697,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
         GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
         msg_rep (fmane, time, err, APINULLGuid);
         if (!errmsg.IsEmpty ())
-            ACAPI_WriteReport (errmsg, true);
+            SafeWriteReport (errmsg, true);
         return;
     }
     // Шаг 5. Выделяем найденные элементы и приближаем к ним; при частичном
@@ -2670,7 +2719,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
         ShowOtherDbDialog (otherDbTargets);
 #else
     fmane = fmane + " not work in AC22";
-    ACAPI_WriteReport ("Function not work in AC22", true);
+    SafeWriteReport ("Function not work in AC22", true);
 #endif
     finish = clock ();
     duration = (double)(finish - start) / CLOCKS_PER_SEC;
@@ -2964,201 +3013,4 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid> &guidArray,
     }
     ParamHelpers::ElementsRead (paramToRead);
     return !paramToRead.IsEmpty ();
-}
-
-// -----------------------------------------------------------------------------
-// Парсит полное описание свойства, выделяя все команды (Sync, Renum, Sum, Spec)
-// Возвращает true, если описание содержит хотя бы одну распознанную команду
-// -----------------------------------------------------------------------------
-bool ParsePropertyDescription (const GS::UniString &description,
-                               GS::Array<ParsedPropertyCommand> &commands,
-                               GS::UniString &remainingText) {
-    commands.Clear ();
-    remainingText = description;
-
-    if (description.IsEmpty ()) {
-        return false;
-    }
-
-    // Список известных команд для поиска
-    struct CommandPrefix {
-        GS::UniString prefix;      // Префикс команды (например, "Sync_from{")
-        GS::UniString commandType; // Тип команды для классификации
-    };
-
-    GS::Array<CommandPrefix> knownCommands;
-    knownCommands.Push ({SYNCFROMSTRING, "Sync"});
-    knownCommands.Push ({SYNCTOSTRING, "Sync"});
-    knownCommands.Push ({SYNCFROMSUBSTRING, "Sync"});
-    knownCommands.Push ({SYNCTOSUBSTRING, "Sync"});
-    knownCommands.Push ({FROMGUIDBR, "Sync"});
-    knownCommands.Push ({TOGUIDBR, "Sync"});
-
-    // Добавляем Renum команды
-    knownCommands.Push ({GS::UniString ("Renum_flag{"), "Renum_flag"});
-    knownCommands.Push ({GS::UniString ("Renum{"), "Renum"});
-    knownCommands.Push ({GS::UniString ("renum_flag{"), "Renum_flag"});
-    knownCommands.Push ({GS::UniString ("renum{"), "Renum"});
-
-    // Добавляем Sum команды
-    knownCommands.Push ({GS::UniString ("Sum{"), "Sum"});
-    knownCommands.Push ({GS::UniString ("sum{"), "Sum"});
-
-    // Добавляем Spec команды
-    knownCommands.Push ({GS::UniString ("Spec_rule{"), "Spec_rule"});
-    knownCommands.Push ({GS::UniString ("spec_rule{"), "Spec_rule"});
-    knownCommands.Push ({GS::UniString ("Spec_rule_v2{"), "Spec_rule"});
-    knownCommands.Push ({GS::UniString ("spec_rule_v2{"), "Spec_rule"});
-    knownCommands.Push ({GS::UniString ("Spec_rule_v3{"), "Spec_rule"});
-    knownCommands.Push ({GS::UniString ("spec_rule_v3{"), "Spec_rule"});
-
-    // Ищем все вхождения команд в описании
-    GS::Array<std::pair<UIndex, CommandPrefix>> foundCommands;
-
-    for (UIndex i = 0; i < description.GetLength (); ++i) {
-        for (const auto &cmd : knownCommands) {
-            UIndex foundPos = description.FindFirst (cmd.prefix, i);
-            if (foundPos == i) {
-                foundCommands.Push ({i, cmd});
-                i += cmd.prefix.GetLength () - 1;
-                break;
-            }
-        }
-    }
-
-    // Если команды не найдены, возвращаем всё как оставшийся текст
-    if (foundCommands.IsEmpty ()) {
-        remainingText = description;
-        return false;
-    }
-
-    DBprnt ("ParsePropDesc", "After all commands processed");
-
-    // Обрабатываем найденные команды
-    GS::UniString processedText;
-
-    for (UIndex idx = 0; idx < foundCommands.GetSize (); ++idx) {
-        UIndex startPos = foundCommands[idx].first;
-        const CommandPrefix &cmdPrefix = foundCommands[idx].second;
-
-        // Добавляем текст перед командой в remainingText
-        if (startPos > 0) {
-            GS::UniString beforeCmd = description.GetSubstring (0, startPos);
-            if (!beforeCmd.IsEmpty ()) {
-                processedText.Append (beforeCmd);
-            }
-        }
-
-        // Ищем закрывающую скобку для этой команды
-        UIndex braceStart = startPos + cmdPrefix.prefix.GetLength ();
-        UIndex braceEnd = description.FindFirst (BRACEEND, braceStart);
-
-        if (braceEnd == MaxUSize) {
-            // Закрывающая скобка не найдена - команда некорректна
-            ParsedPropertyCommand cmd;
-            cmd.commandType = cmdPrefix.commandType;
-            cmd.fullCommand = description.GetSubstring (startPos, description.GetLength () - startPos);
-            cmd.parameters = EMPTYSTRING;
-            cmd.isValid = false;
-            cmd.errorMessage = "Не найдена закрывающая скобка }";
-            commands.Push (std::move (cmd));
-            continue;
-        }
-
-        // Извлекаем полную команду и параметры
-        GS::UniString fullCommand = description.GetSubstring (startPos, braceEnd - startPos + 1);
-        GS::UniString parameters = description.GetSubstring (braceStart, braceEnd - braceStart);
-
-        ParsedPropertyCommand cmd;
-        cmd.commandType = cmdPrefix.commandType;
-        cmd.fullCommand = cmdPrefix.prefix + parameters + BRACEEND;
-        cmd.parameters = parameters;
-        cmd.isValid = true;
-        cmd.errorMessage = EMPTYSTRING;
-
-        // Дополнительная валидация для Sync команд
-        if (cmdPrefix.commandType == "Sync") {
-            DBprnt ("ParsePropDesc", "Before SyncString");
-            SyncMode syncdirection = SYNC_NO;
-            ParamValue param;
-            SkipValues ignorevals;
-            FormatString stringformat;
-            API_ElemTypeID elementType = API_ObjectID;
-
-            GS::UniString ruleString = cmd.fullCommand;
-            // #184/#185: проверка применимости к типу элемента отключена — elementType здесь
-            // заглушка (API_ObjectID), а правила материалов (Sync_from{Material:Layers; ...})
-            // иначе помечались невалидными и терялись для палитры.
-            if (!SyncString (elementType,
-                             ruleString,
-                             syncdirection,
-                             param,
-                             ignorevals,
-                             stringformat,
-                             true,
-                             // #184/#185: флаги synccoord/syncclass тоже true — правила координат
-                             // и классификации в описании свойства являются правилами, а их
-                             // применимость к элементу проверяется только при синхронизации.
-                             true,
-                             true,
-                             false)) {
-                cmd.isValid = false;
-                cmd.errorMessage = "SyncString не смог распарсить команду";
-            }
-        }
-
-        commands.Push (std::move (cmd));
-    }
-
-    // Оставшийся текст - это всё, что не вошло в команды
-    // Берём текст после последней обработанной команды
-    if (!foundCommands.IsEmpty ()) {
-        UIndex lastEnd = foundCommands[foundCommands.GetSize () - 1].first;
-        const CommandPrefix &lastCmd = foundCommands[foundCommands.GetSize () - 1].second;
-        UIndex braceStart = lastEnd + lastCmd.prefix.GetLength ();
-        UIndex braceEnd = description.FindFirst (BRACEEND, braceStart);
-        if (braceEnd != MaxUSize) {
-            remainingText = description.GetSubstring (braceEnd + 1, description.GetLength () - (braceEnd + 1));
-        } else {
-            remainingText = EMPTYSTRING;
-        }
-    }
-
-    // Удаляем обработанные команды из remainingText (оставляем только текст между командами)
-    GS::UniString cleanRemaining;
-    UIndex prevEnd = 0;
-
-    for (UIndex idx = 0; idx < foundCommands.GetSize (); ++idx) {
-        UIndex startPos = foundCommands[idx].first;
-        const CommandPrefix &cmdPrefix = foundCommands[idx].second;
-        UIndex braceStart = startPos + cmdPrefix.prefix.GetLength ();
-        UIndex braceEnd = description.FindFirst (BRACEEND, braceStart);
-
-        if (braceEnd != MaxUSize) {
-            // Добавляем текст между предыдущей командой и этой
-            if (startPos > prevEnd) {
-                GS::UniString between = description.GetSubstring (prevEnd, startPos - prevEnd);
-                if (!between.IsEmpty ()) {
-                    if (!cleanRemaining.IsEmpty ())
-                        cleanRemaining.Append (" ");
-                    cleanRemaining.Append (between);
-                }
-            }
-            prevEnd = braceEnd + 1;
-        }
-    }
-
-    // Добавляем текст после последней команды
-    if (prevEnd < description.GetLength ()) {
-        GS::UniString afterLast = description.GetSubstring (prevEnd, description.GetLength () - prevEnd);
-        if (!afterLast.IsEmpty ()) {
-            if (!cleanRemaining.IsEmpty ())
-                cleanRemaining.Append (" ");
-            cleanRemaining.Append (afterLast);
-        }
-    }
-
-    remainingText = cleanRemaining;
-
-    return !commands.IsEmpty ();
 }

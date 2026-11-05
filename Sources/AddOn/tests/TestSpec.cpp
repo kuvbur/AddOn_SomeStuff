@@ -831,6 +831,73 @@ namespace TestFunc {
     }
 
     void TestSpecGrouping () {
+        // BEGIN SPEC_REVIEW_GROUPING
+        // Отсутствующая сумма не сдвигает следующие поля. Первый неполный
+        // представитель по-прежнему отвергается; политика stop_on_error прежняя.
+        for (Int32 missing = 0; missing < 3; ++missing) {
+            for (Int32 stop = 0; stop < 2; ++stop) {
+                for (Int32 merge = 0; merge < 2; ++merge) {
+                    SpecFixture f;
+                    const GS::UniString names[] = {f.quantity, "{@property:q-middle}", "{@property:q-last}"};
+                    f.rule.groups[0].sum_paramrawname.Push (names[1]);
+                    f.rule.groups[0].sum_paramrawname.Push (names[2]);
+                    f.rule.out_sum_paramrawname.Push ("{@property:out-middle}");
+                    f.rule.out_sum_paramrawname.Push ("{@property:out-last}");
+                    f.Source (f.first, "A", "Alpha", 10);
+                    f.Number (f.first, names[1], 20);
+                    f.Number (f.first, names[2], 30);
+                    if (merge) {
+                        f.Source (f.second, "A", "Alpha", 1);
+                        f.Number (f.second, names[1], 2);
+                        f.Number (f.second, names[2], 3);
+                    }
+                    f.DropField (merge ? f.second : f.first, names[missing]);
+                    f.rule.stop_on_error = stop != 0;
+                    const Int32 expectedRows = merge && !stop ? 1 : 0;
+                    Spec::SpecChangePlan plan;
+                    DBtest (f.RunWithPlan (plan), expectedRows, "incomplete sum result");
+                    DBtest (f.created.GetSize (), (UInt32)expectedRows, "incomplete sum row count");
+                    DBtest (plan.ReadComplete (), false, "missing sum diagnosed");
+                    if (expectedRows) {
+                        const Spec::Element *row = f.created.GetPtr ("@A");
+                        DBtest (row != nullptr, true, "retained merged row");
+                        if (row != nullptr) {
+                            DBtest (row->OutSumCount (), 3u, "stable sum arity");
+                            for (UInt32 j = 0; j < 3; ++j)
+                                DBtest (row->OutSumValue (j).val.intValue,
+                                        (Int32)((j + 1) * 10 + ((Int32)j == missing ? 0 : j + 1)),
+                                        "sum keeps declared destination");
+                        }
+                    }
+                }
+            }
+        }
+        // Тихий SchemaMismatch после успешной строки не обнуляет счётчик.
+        // fromMaterial подавляет read-error, но НЕ делает схему полной.
+        for (Int32 retained = 0; retained < 3; ++retained) {
+            SpecFixture f;
+            f.rule.stop_on_error = true;
+            f.rule.groups[0].fromMaterial = true;
+            for (Int32 i = 0; i < retained; ++i)
+                f.Source (f.Bench (i), "K" + GS::ValueToUniString (i), "T" + GS::ValueToUniString (i), 2);
+            f.Source (f.extra, "Incomplete", "Incomplete", 3);
+            f.DropField (f.extra, f.quantity);
+            Spec::SpecChangePlan plan;
+            DBtest (f.RunWithPlan (plan), retained, "count equals registered rows");
+            DBtest (f.created.GetSize (), (UInt32)retained, "valid rows retained");
+            DBtest (plan.schemaMismatchCount, 1, "mismatch remains diagnosed");
+        }
+        // Ручная схема без сумм также отвергается, не только parser.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.rule.groups[0].sum_paramrawname.Clear ();
+            f.rule.out_sum_paramrawname.Clear ();
+            DBtest (f.Run (), 0, "no-sum result rejected");
+            DBtest (f.created.IsEmpty (), true, "no-sum creates nothing");
+        }
+        // END SPEC_REVIEW_GROUPING
+
         {
             SpecFixture f;
             f.Shape (f.Run (), 0, 0, 0, 0, "Spec empty");
@@ -960,6 +1027,59 @@ namespace TestFunc {
     }
 
     void TestSpecReconcile () {
+        // BEGIN SPEC_REVIEW_RECONCILE
+        // Общий delete содержит префикс предыдущих правил. Каждый вызов
+        // должен считать только свой суффикс, включая ноль и одно удаление.
+        {
+            GS::Array<API_Guid> accumulated;
+            for (Int32 own : {2, 0, 1, 0}) {
+                SpecFixture f;
+                f.rule.delete_old = true;
+                for (Int32 i = 0; i < own; ++i)
+                    f.Existing (f.Bench (10 + accumulated.GetSize () + i), "Obsolete", 9);
+                const UInt32 offset = accumulated.GetSize ();
+                Spec::SpecChangePlan plan;
+                const Int32 count = Spec::GetElementsForRule (
+                    f.rule, f.context, f.created, f.modified, accumulated, f.errors, false, &plan);
+                DBtest (count, own, "current-rule count excludes earlier deletions");
+                DBtest (accumulated.GetSize (), offset + own, "append own deletions");
+                DBtest (plan.Matches (f.modified, accumulated, offset), true, "plan matches suffix");
+            }
+        }
+        // Совпадение сумм не отменяет смену источников. Проверяем также
+        // реальный builder payload и повторный расчёт после эмуляции read-back.
+        {
+            SpecFixture f;
+            const GS::UniString link = "{@property:spec-link}";
+            f.rule.runState.destinationParamGuidName = link;
+            f.Source (f.first, "A", "Alpha", 1);
+            f.Source (f.second, "A", "Alpha", 1);
+            f.Existing (f.old, "Alpha", 2);
+            f.Text (f.old, link, APIGuidToString (f.extra));
+            f.Shape (f.Run (), 1, 0, 1, 0, "changed source set");
+            const Spec::Element *row = f.modified.GetPtr ("@A");
+            DBtest (row != nullptr, true, "relation update planned");
+            if (row != nullptr) {
+                DBtest (row->exs_guid == f.old, true, "relation preserves destination");
+                ParamDictValue allowed;
+                ParamValue field;
+                field.rawName = link;
+                allowed.Add (link, field);
+                ParamDictValue payload;
+                Spec::BuildRowParamToWrite (*row, allowed, payload);
+                DBtest (payload.ContainsKey (link), true, "relation in real write payload");
+                if (payload.ContainsKey (link)) {
+                    f.Text (f.old, link, payload.Get (link).val.uniStringValue);
+                    f.Shape (f.Run (), 0, 0, 0, 0, "relation second run no-op");
+                }
+            }
+            f.Text (f.old,
+                    link,
+                    APIGuidToString (f.second) + ";" + APIGuidToString (f.first) + ";" + APIGuidToString (f.second));
+            f.Shape (f.Run (), 0, 0, 0, 0, "order and duplicate GUIDs do not churn");
+        }
+        // END SPEC_REVIEW_RECONCILE
+
         {
             SpecFixture f;
             f.Source (f.first, "A", "Alpha", 2);
@@ -1923,6 +2043,82 @@ namespace TestFunc {
     // источник; раскладка в агрегат проверяется набором TestSpecRowLayout.
 
     void TestSpecContribution () {
+        // BEGIN SPEC_REVIEW_CONTRIBUTION
+        // BuildContribution -> SumContributionIntoRow на реальном reader.
+        // Режимы: обычные поля, материал слоя 1, уже раскрытая строка GDL 2.
+        for (Int32 mode = 0; mode < 3; ++mode) {
+            for (Int32 missing = 0; missing < 3; ++missing) {
+                SpecFixture f;
+                f.Source (f.first, "A", "Alpha", 1);
+                f.rule.groups[0].sum_paramrawname.Clear ();
+                Spec::Element row;
+                const GS::UniString names[] = {
+                    "{@gdl:q1@arr_2_2_1_1_0}", "{@gdl:q2@arr_2_2_1_1_0}", "{@gdl:q3@arr_2_2_1_1_0}"};
+                for (Int32 j = 0; j < 3; ++j) {
+                    f.rule.groups[0].sum_paramrawname.Push (names[j]);
+                    f.Number (f.first, names[j], j + 1);
+                    PushSumSlot (row, Num ((j + 1) * 10));
+                    ParamValue &value = f.context.read.Get (f.first).Get (names[j]);
+                    if (mode == 1) {
+                        value.fromMaterial = true;
+                        if (!f.context.composite.ContainsKey (f.first))
+                            f.context.composite.Add (f.first, ParamDictComposite ());
+                        ParamComposite composite;
+                        ParamValueComposite layer;
+                        layer.val = "unused";
+                        composite.composite.Push (layer);
+                        layer.val = GS::ValueToUniString (j + 1);
+                        composite.composite.Push (layer);
+                        f.context.composite.Get (f.first).Add (names[j], composite);
+                    }
+                    if (mode == 2) {
+                        value.fromGDLArray = true;
+                        value.val.array_row_start = 2;
+                    }
+                    if (j == missing)
+                        value.isValid = false;
+                }
+                f.rule.groups[0].fromMaterial = mode == 1;
+                f.rule.groups[0].n_layer = mode == 1 ? 1 : 0;
+                const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+                ParamDict none;
+                const Spec::RuleContribution c = Spec::BuildContribution (
+                    f.first, 0, f.rule.groups[0], binding, Spec::SpecValueReader (f.context), none, none);
+                DBtest (c.outSumParam.GetSize (), 3u, "contribution keeps missing-slot placeholder");
+                if (c.outSumParam.GetSize () == 3) {
+                    for (Int32 j = 0; j < 3; ++j)
+                        DBtest (c.outSumParam[j].isValid, j != missing, "placeholder validity stays positional");
+                }
+                Spec::SumContributionIntoRow (row, c);
+                for (UInt32 j = 0; j < 3; ++j)
+                    DBtest (row.OutSumValue (j).val.intValue,
+                            (Int32)((j + 1) * 10 + ((Int32)j == missing ? 0 : j + 1)),
+                            "material/array contribution destination");
+            }
+        }
+        // Недоступный флаг включает источник по старой политике,
+        // но не исчезает из диагностики вклада.
+        for (Int32 invalid = 0; invalid < 2; ++invalid) {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 2);
+            f.rule.groups[0].flag_paramrawname = f.flag;
+            if (invalid) {
+                f.Number (f.first, f.flag, 0);
+                f.context.read.Get (f.first).Get (f.flag).isValid = false;
+            }
+            const Spec::GroupSlotBinding binding = Spec::PrepareSlotBindings (f.rule)[0];
+            ParamDict none;
+            const Spec::RuleContribution c = Spec::BuildContribution (
+                f.first, 0, f.rule.groups[0], binding, Spec::SpecValueReader (f.context), none, none);
+            DBtest (c.isIncluded, true, "unreadable flag retains enabled fallback");
+            Spec::SpecRunResult report;
+            const Int32 count = Spec::GetElementsForRule (
+                f.rule, f.context, f.created, f.modified, f.deleted, f.errors, false, nullptr, &report);
+            f.Shape (count, 1, 1, 0, 0, "flag diagnostic is nonfatal");
+            DBtest (report.messages.IsEmpty (), false, "unreadable flag records diagnostic");
+        }
+        // END SPEC_REVIEW_CONTRIBUTION
+
         // --- полный вклад: все слоты прочитаны ---
         {
             SpecFixture f;

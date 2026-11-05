@@ -64,29 +64,6 @@ namespace SyncDialogs {
             return name;
         }
 
-        // Подсвечивает элементы цветом, не меняя выделение. Версионные обёртки
-        // те же, что в Spec.cpp / BrowserPalette.cpp: с AC26 появились функции
-        // без возвращаемого кода, с AC27 — под ACAPI_UserInput_*.
-        void HighlightElements (const GS::Array<API_Guid> &guids) {
-            GS::HashTable<API_Guid, API_RGBAColor> hlElems;
-            const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
-            for (const API_Guid &guid : guids)
-                hlElems.Put (guid, hlColor);
-#ifdef ServerMainVers_2700
-            ACAPI_UserInput_ClearElementHighlight ();
-            ACAPI_UserInput_SetElementHighlight (hlElems);
-#else
-    #ifdef ServerMainVers_2600
-            ACAPI_Interface_ClearElementHighlight ();
-            ACAPI_Interface_SetElementHighlight (hlElems);
-    #else
-            // Вызов без par1 снимает предыдущую подсветку
-            ACAPI_Interface (APIIo_HighlightElementsID);
-            ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
-    #endif
-#endif
-        }
-
         // Переход в 3D-окно и показ элементов сразу из ВСЕХ баз/этажей списка.
         // Выбор строки на результат не влияет: кнопка показывает всю совокупность.
         //

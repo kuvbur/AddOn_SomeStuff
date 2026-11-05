@@ -121,8 +121,9 @@ namespace TestFunc {
     void TestGetPropertyRuleFlag ();
     void TestPropertyRuleFlagOnProjectElements ();
 
-    // --- format: вычисления и форматирование (3) ---
+    // --- format: вычисления и форматирование (4) ---
     void TestCalc ();
+    void TestCharCodeOfUniString ();
     void TestFormula ();
     void TestFormatString ();
 
@@ -134,6 +135,28 @@ namespace TestFunc {
     // --- core: разное (2) ---
     void TestStringSplt ();
     void TestBuildOtdByParent ();
+    void TestClearZoneGuid ();
+    void TestRoomMaterialQuantities ();
+    void TestRoomParameterIsolation ();
+    void TestRoomMaterialFormatting ();
+    void TestOpeningParameterIsolation ();
+    void TestRoomParameterResolution ();
+    void TestCachedParameterReader ();
+    void TestRoomMaterialRawNames ();
+    void TestRoomCompositeSelection ();
+    void TestOpeningAddOne ();
+    void TestOtdWallDelimOne ();
+    void TestOtdWallDelimAll ();
+    void TestOtdWallAddOne ();
+    void TestSetMaterialByType ();
+    void TestOpeningRevealsCreateOne ();
+        #if defined(ServerMainVers_2500)
+    void TestRoomSurfaceTransform ();
+    void TestRoomSurfacePartition ();
+    void TestMeshFloorNative ();
+    void TestFinishReuse ();
+    void TestFinishReuseNative ();
+        #endif
 } // namespace TestFunc
 
     #endif

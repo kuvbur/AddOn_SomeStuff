@@ -40,7 +40,7 @@
 - Расположение: `Sources/AddOn/Propertycache.cpp:11`
 - Назначение: кэшированный признак наличия правила SomeStuff в описании свойства (#158). [из комментария]
 - Контракт: парсит описание только при промахе кэша или изменении описания (копия description — инвалидация). [из комментария, Propertycache.hpp:107-113, 729-732]
-- Побочные эффекты: мутирует кэш `propertyRuleFlags`; парсит через `ParsePropertyDescriptionToRules` (CommandHelpers.cpp:200). [из callgraph.json]
+- Побочные эффекты: мутирует кэш `propertyRuleFlags`; парсит через `ParsePropertyDescriptionToRules` (Propertycache.cpp:1344; перенесено из удалённого dialogs/CommandHelpers.cpp в коммите `485072d`). [по коду]
 - Вызывается из: **только тесты** — `TestGetPropertyRuleFlag` (TestFunc.cpp:2917, 16 вызовов), `TestPropertyRuleFlagOnProjectElements` (:3006, 2). [из callgraph.json]
 
 ### `PropertyCache::Update()`
@@ -58,7 +58,7 @@
 - Инвариант: счётчики в `formulaCacheStats` намеренно не сбрасываются ни в конструкторе `PropertyCache`, ни в `Update()` — нужна картина за всю сессию. [из комментария, Propertycache.hpp:224-230]
 
 ## Зависимости
-- `Helpers.hpp`, `dialogs/CommandHelpers.hpp`, `CommonFunction.hpp`, `ClassificationFunction.hpp` [по include]
+- `Helpers.hpp`, `CommonFunction.hpp`, `ClassificationFunction.hpp` [по include]
 
 ## Зависимости (используется в)
 Sync, Spec, Summ, ResetProperty, Helpers и др. через `PROPERTYCACHE()` [по коду]

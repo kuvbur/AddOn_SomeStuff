@@ -185,6 +185,13 @@ static const Int32 OtherDbShowId = 84;                  // Показать эл
 static const Int32 OtherDbDatabaseId = 85;              // Заголовок столбца базы данных
 static const Int32 OtherDbElementsId = 86;              // Заголовок столбца количества элементов
 static const Int32 OtherDbShow3DId = 87;                // Показать элементы другой базы в 3D-окне
+// Тип слоя состава для шаблона Sync_from{Material:Layers} (плейсхолдер
+// {@material:structype}). Номер строки ресурса — позиция в блоке 'STR#';
+// новые строки идут в конце блока, поэтому их комментарии [100]-[102]
+// совпадают с реальными ID.
+static const Int32 LayerCoreStringID = 100;   // Тип слоя: «ядро»
+static const Int32 LayerFinishStringID = 101; // Тип слоя: «отделка»
+static const Int32 LayerOtherStringID = 102;  // Тип слоя: «другое»
 
 // --- Внутренние пути свойств материалов ---
 static const GS::UniString MAT_SOME_STUFF_TH =               // Путь к свойству толщины стройматериала
@@ -439,8 +446,10 @@ static const GS::UniString PROP_UNIT_PREFIX = "@property:unit_prefix";     // С
 static const GS::UniString PROP_LENGTH = "@property:length";               // Свойство: Длина
 static const GS::UniString PROP_AREA_SECTION = "@property:area_section";   // Свойство: Площадь сечения
 static const GS::UniString PROP_WIDTH = "@property:width";                 // Свойство: Ширина
-static const GS::UniString MAT_BUILDING_MATERIAL_ID =                      // Путь к ID стройматериала
-    "@property:BuildingMaterialProperties/Building Material ID";           // Путь к ID стройматериала
+static const GS::UniString PROP_STRUCTYPE =
+    "@property:structype";                            // Свойство: Тип слоя стройматериала (ядро/отделка/другое)
+static const GS::UniString MAT_BUILDING_MATERIAL_ID = // Путь к ID стройматериала
+    "@property:BuildingMaterialProperties/Building Material ID"; // Путь к ID стройматериала
 
 // --- Строковые ключи свойств компонентов/материалов (@material:) ---
 static const GS::UniString MAT_N = "@material:n";                                     // Материал: Номер/Позиция
@@ -456,6 +465,7 @@ static const GS::UniString MAT_UNIT_PREFIX = "@material:unit_prefix";           
 static const GS::UniString MAT_LENGTH = "@material:length";                           // Материал: Длина
 static const GS::UniString MAT_AREA_SECTION = "@material:area_section";               // Материал: Площадь сечения
 static const GS::UniString MAT_WIDTH = "@material:width";                             // Материал: Ширина
+static const GS::UniString MAT_STRUCTYPE = "@material:structype";                     // Материал: Тип слоя
 
 // --- Полные путевые свойства строительных материалов в системе Archicad ---
 static const GS::UniString MAT_BUILDING_MATERIAL_NAME =                    // Наименование стройматериала
@@ -520,5 +530,39 @@ static const GS::Array<short> paramTypesListWrite = {PROPERTYTYPEINX,
                                                      CLASSTYPEINX,
                                                      ATTRIBTYPEINX,
                                                      COORDTYPEINX}; // Список типов тегов, разрешённых для записи
+
+// Список известных команд для поиска
+struct CommandPrefix {
+    GS::UniString prefix;      // Префикс команды (например, "Sync_from{")
+    GS::UniString commandType; // Тип команды для классификации
+};
+
+static const GS::UniString SYNC_COMMAND = "Sync";
+static const GS::UniString SYNCFLAG_COMMAND = "Sync_flag";
+static const GS::UniString RENUMFLAG_COMMAND = "Renum_flag";
+static const GS::UniString RENUM_COMMAND = "Renum";
+static const GS::UniString SUMM_COMMAND = "Sum";
+static const GS::UniString SPEC_COMMAND = "Spec_rule";
+
+static const GS::Array<CommandPrefix> knownCommands{{SYNCFROMSTRING, SYNC_COMMAND},
+                                                    {SYNCTOSTRING, SYNC_COMMAND},
+                                                    {SYNCFROMSUBSTRING, SYNC_COMMAND},
+                                                    {SYNCTOSUBSTRING, SYNC_COMMAND},
+                                                    {FROMGUIDBR, SYNC_COMMAND},
+                                                    {TOGUIDBR, SYNC_COMMAND},
+                                                    {GS::UniString ("Renum_flag{"), RENUMFLAG_COMMAND},
+                                                    {GS::UniString ("Renum{"), RENUM_COMMAND},
+                                                    {GS::UniString ("renum_flag{"), RENUMFLAG_COMMAND},
+                                                    {GS::UniString ("renum{"), RENUM_COMMAND},
+                                                    {GS::UniString ("Sum{"), SUMM_COMMAND},
+                                                    {GS::UniString ("sum{"), SUMM_COMMAND},
+                                                    {GS::UniString ("Spec_rule{"), SPEC_COMMAND},
+                                                    {GS::UniString ("spec_rule{"), SPEC_COMMAND},
+                                                    {GS::UniString ("Spec_rule_v2{"), SPEC_COMMAND},
+                                                    {GS::UniString ("spec_rule_v2{"), SPEC_COMMAND},
+                                                    {GS::UniString ("Spec_rule_v3{"), SPEC_COMMAND},
+                                                    {GS::UniString ("spec_rule_v3{"), SPEC_COMMAND},
+                                                    {GS::UniString ("Sync_flag"), SYNCFLAG_COMMAND},
+                                                    {GS::UniString ("sync_flag"), SYNCFLAG_COMMAND}};
 
 #endif
