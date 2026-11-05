@@ -1529,6 +1529,9 @@ namespace Roombook {
                 beam.geom.floorInd = wall.geom.floorInd;
                 beam.draw.base_guid = wall.draw.base_guid;
                 beam.draw.base_type = wall.draw.base_type;
+                // Плинтус рисуется балкой; поле хранит тип рисуемого элемента.
+                beam.draw.draw_type = API_BeamID;
+                beam.tip = room.tip_pol; // Тип пола из зоны.
                 beam.wallIndex = static_cast<Int32> (i);
                 prepared.Push (beam);
             }
@@ -1639,9 +1642,12 @@ namespace Roombook {
                             beam.geom.floorInd = wall.geom.floorInd;
                             beam.draw.base_guid = wall.draw.base_guid;
                             beam.draw.base_type = wall.draw.base_type;
+                            // Плинтус рисуется балкой; поле хранит тип рисуемого элемента.
+                            beam.draw.draw_type = API_BeamID;
                             beam.wallIndex = static_cast<Int32> (wi);
                             beam.slabIndex = static_cast<Int32> (si);
                             beam.draw.type = slab.draw.type == Floor ? Floor_Skirting : Ceil_Cornice;
+                            beam.tip = slab.tip; // Тип пола/потолка из зоны, проставлен в OtdSlab_ProcessFinishes.
                             auto &output = slab.draw.type == Floor ? floors : ceilings;
                             const API_Coord3D origin = {
                                 beam.geom.seg.begC.x, beam.geom.seg.begC.y, beam.geom.seg.begC.z};
@@ -2862,6 +2868,7 @@ namespace Roombook {
             slab.floorInd = floorInd;
             slab.draw.base_guid = piece.baseGuid;
             slab.draw.base_type = piece.baseType;
+            slab.draw.draw_type = API_SlabID;
             slab.draw.type = piece.normal.z < 0 ? Floor : Ceil;
             slab.surface_geometry = true;
             results.Push (slab);
@@ -3571,6 +3578,7 @@ namespace Roombook {
                                 wall.geom.height = height;
                                 wall.draw.base_guid = slab.draw.base_guid;
                                 wall.draw.base_type = API_SlabID;
+                                wall.draw.draw_type = API_WallID;
                                 wall.draw.type = type;
                                 wall.geom.floorInd = floorInd;
                                 wall.draw.material = nominal->draw.material;
@@ -4621,6 +4629,7 @@ namespace Roombook {
             base.base_th = wall.thickness;
             base.draw.base_guid = source.baseGuid;
             base.draw.base_type = API_WallID;
+            base.draw.draw_type = API_WallID;
             base.draw.type = Wall_Main;
             base.base_flipped = side == 1;
             if (side < 2)
@@ -4754,6 +4763,7 @@ namespace Roombook {
         slab.reference_z = reference;
         slab.draw.base_guid = source.baseGuid;
         slab.draw.base_type = API_SlabID;
+        slab.draw.draw_type = API_SlabID;
         slab.floorInd = element.header.floorInd;
         bases.Push (slab);
         source.origin = RoomSurfaceOrigin::PreparedAnalytic;
@@ -5560,6 +5570,9 @@ namespace Roombook {
         }
         GS::HashTable<API_Guid, bool> wholeZoneBeams;
         for (const auto &part : room.surfaceCandidates.beamParts) {
+            if (!ACAPI_Element_Filter (
+                    part.guid, APIFilt_IsInStructureDisplay | APIFilt_IsVisibleByRenovation | APIFilt_OnVisLayer))
+                continue;
             API_Guid classguid = APINULLGuid;
             if (Class_IsElementFinClass (part.guid, finclassguids, classguid, cache))
                 continue;
@@ -6151,6 +6164,7 @@ namespace Roombook {
     #endif
         otdslab.draw.base_type = API_ZoneID;
         otdslab.draw.base_guid = zoneGuid;
+        otdslab.draw.draw_type = API_SlabID;
         otdslab.floorInd = zoneelement.header.floorInd;
         roominfo.poly = otdslab;
         if (!walledges.IsEmpty ()) {
@@ -6520,6 +6534,7 @@ namespace Roombook {
         wallotd.geom.seg.begC = {walledge.c1.x, walledge.c1.y, zBottom};
         wallotd.geom.seg.endC = {walledge.c2.x, walledge.c2.y, zBottom};
         wallotd.draw.base_type = API_WallID;
+        wallotd.draw.draw_type = API_WallID;
         wallotd.draw.type = Wall_Main;
         return true;
     }
@@ -7013,6 +7028,17 @@ namespace Roombook {
 
         zoneparam_name = "om_ceil.rawname_bytype";
         zoneparam.rawnames.Push ("some_stuff_fin_ceil_result_bytype");
+        zoneparams.Add (zoneparam_name, zoneparam);
+        zoneparam.rawnames.Clear ();
+
+        // Отделка длины плинтуса потолка - запись результатов
+        zoneparam_name = "om_ceil_cornice.rawname";
+        zoneparam.rawnames.Push ("some_stuff_fin_ceil_cornice_result");
+        zoneparams.Add (zoneparam_name, zoneparam);
+        zoneparam.rawnames.Clear ();
+
+        zoneparam_name = "om_ceil_cornice.rawname_bytype";
+        zoneparam.rawnames.Push ("some_stuff_fin_ceil_cornice_result_bytype");
         zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
@@ -8014,9 +8040,9 @@ namespace Roombook {
 
     // -----------------------------------------------------------------------------
     // Создание стенок для откосов одного проёма
-    // -----------------------------------------------------------------------------
     // Заполняет геометрию стенки откоса и наследует основание, этаж, материал и состав от отделочной стены.
     // Устанавливает тип основания API_WindowID, тип отделки Reveal_Main и заданный тип рисования.
+    // -----------------------------------------------------------------------------
     static void OtdWall_InitializeOpeningReveal (const OtdWall &otdw,
                                                  OtdWall &wallotd,
                                                  double height,
@@ -9095,6 +9121,8 @@ namespace Roombook {
                                          MatarialToFavoriteDict &favdict) {
         room.otdbeam_floor.Clear ();
         room.otdbeam_ceil.Clear ();
+        for (auto &slab : room.otdslab)
+            slab.length_skirting = 0;
         GS::Array<OtdSlab> faces = room.otdslab;
         for (auto &face : faces) {
             if (!face.isValid || (face.draw.type != Floor && face.draw.type != Ceil))
@@ -9137,7 +9165,13 @@ namespace Roombook {
             return false;
         GS::UniString tip;
         for (auto *beams : {&room.otdbeam_floor, &room.otdbeam_ceil}) {
-            for (auto &beam : *beams)
+            for (auto &beam : *beams) {
+                // Суммируем готовые стыки в метрах, независимо от последующей записи native-элементов.
+                if (beam.slabIndex >= 0 && static_cast<UIndex> (beam.slabIndex) < room.otdslab.GetSize ()) {
+                    const double length = beam.geom.Length ();
+                    if (std::isfinite (length))
+                        room.otdslab[static_cast<UIndex> (beam.slabIndex)].length_skirting += length;
+                }
                 Favorite_FindName (beam.draw.favorite,
                                    beam.draw.material,
                                    beam.draw.type,
@@ -9146,6 +9180,7 @@ namespace Roombook {
                                    compositeParam,
                                    tip,
                                    favdict);
+            }
         }
         return true;
     }
@@ -9275,20 +9310,28 @@ namespace Roombook {
                                    ParamValue &param_composite,
                                    GS::UniString &tip,
                                    MatarialToFavoriteDict &favdict) {
+        if (favdict.IsEmpty ()) {
+            return;
+        }
         API_ElemTypeID possibly_type = draw_type;
-        const bool isSkirting = type == Floor_Skirting || type == Ceil_Cornice;
         GS::UniString fav_name = favorite.name;
-        if (isSkirting) {
+
+        // Обработка плинтусов/карнизов: если имя не задано, ищем в словаре по рекомендуемому имени
+        if (type == Floor_Skirting || type == Ceil_Cornice) {
             if (fav_name.IsEmpty ())
                 fav_name = type == Floor_Skirting ? favorite_floor_skirting : favorite_ceil_cornice;
             favorite = MatarialToFavorite{};
             const auto *entry = favdict.GetPtr (fav_name);
-            if (entry != nullptr && entry->type == API_BeamID)
+            if (entry != nullptr && (entry->type == API_BeamID || entry->type == API_ObjectID))
                 favorite = *entry;
+            if (favorite.name.IsEmpty ()) {
+                favorite.type = draw_type;
+            }
             return;
         }
-        if (favdict.IsEmpty ())
-            return;
+
+        // Обработка имени избранного, заданного в имени покрытия материала; при наличии @ извлекает имя избранного от @
+        // и до конца строки
         if (material.smaterial.Contains (ATSIGN)) {
             GS::UniString part = UniStringToLower (material.smaterial) + '@';
             part = part.GetSubstring ('@', '@', 0);
@@ -9315,6 +9358,8 @@ namespace Roombook {
                 }
             }
         }
+
+        // Ищет имя избранного в составе конструкции.
         if (!fav_name.IsEmpty ()) {
             if (auto *favPtr = favdict.GetPtr (fav_name)) {
                 if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
@@ -9327,6 +9372,7 @@ namespace Roombook {
             }
         }
 
+        // Обработка полов/потолков.
         if (favorite.type == API_ZombieElemID && (type == Ceil || type == Floor) && !tip.IsEmpty ()) {
             GS::UniString tipLower = "_";
             tipLower += UniStringToLower (tip);
@@ -9351,6 +9397,8 @@ namespace Roombook {
             }
         }
 
+        // Если не найдено ни одного совпадения, ищет рекомендуемое имя избранного по типу отделки и проверяет его
+        // наличие в словаре.
         if (favorite.type == API_ZombieElemID) {
             GS::UniString favorite_name_defult = Favorite_GetDefultName (type, draw_type, favdict);
             Favorite_GetPossiblyType (type, draw_type, possibly_type, favdict);
@@ -9364,8 +9412,11 @@ namespace Roombook {
                 }
             }
         }
-        if (favorite.name.IsEmpty ())
+
+        // Если не найдено ни одного совпадения, оставляет пустое имя и устанавливает тип в draw_type.
+        if (favorite.name.IsEmpty ()) {
             favorite.type = draw_type;
+        }
         return;
     }
 
@@ -9513,7 +9564,7 @@ namespace Roombook {
         errors.Clear ();
         bool ok = true;
         // Проверка наличия классов
-        const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+        static const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         if (finclass.IsEmpty ()) {
             GS::UniString msgString = RSGetIndString (iseng, 50, ACAPI_GetOwnResModule ());
             msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);

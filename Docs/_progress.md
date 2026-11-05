@@ -4,6 +4,14 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Адресный вход RoomBook zones (#309, 2026-11-05)
+
+- Карточки Roombook/json_commands описывают необязательный zones:string[], отказ всего запроса при ошибке, дедупликацию и const-copy входа. Исходный HEAD f2d94a2; описана только рабочая дельта #309, прочие исторические координаты не пересобраны.
+- symbols.json: обновлены существовавшие записи RoomBookCommand.cpp и добавлен RoomBook_IsGuidString; в Roombook.cpp раздельно отражены wrapper и const-перегрузка. Использованы raw documentSymbol независимого свежего LSP (MCP Roombook вернул старый AST), все добавленные/изменённые координаты проверены по source. Неактивная AC22/23-заглушка сохранена и сверена по диску. Остальные записи/порядок сохранены; отсутствующие в старом JSON-срезе sibling-команды не добавлялись.
+- Артефакты и hashes: Hermes scratch/roombook-zones-20261105/review-validation/ и generated-acceptance.json. Полные TU SDK25/C++14 в scratch obj успешны; canonical addon build/native не выполнялись при активной VS Run.
+- SDK25 standalone JSON105/0 и защита входа Run34/0 повторены родителем; schema/source invariants21/0 отдельно. Native JSON-schema enforcement (включая zones:null, теряемый SDK25 ObjectState conversion) не выполнялся. Исходники после принятых compile/LSP/tests не менялись.
+- callgraph.json не обновлён: унаследованные RoomBook_Run-рёбра содержат старые координаты и неоднозначное сопоставление одноимённых перегрузок/неактивной заглушки. Не выдавать его за актуальную карту вызовов; для нового входа источники — live source и обновлённые карточки. Полная регенерация графа — отдельная документационная задача.
+
 ## Адресная сверка Spec (2026-11-04)
 
 - Обновлены текущие контракты Spec/SpecPlanning по рабочей дельте к `13dfb0c`:

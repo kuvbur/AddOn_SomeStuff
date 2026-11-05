@@ -2937,63 +2937,70 @@
     "kind": "Constructor",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 7
+    "line": 15
   },
   {
     "name": "RoomBookCommand::GetName",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 18
+    "line": 20
   },
   {
     "name": "RoomBookCommand::GetInputParametersSchema",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 23
+    "line": 25
+  },
+  {
+    "name": "RoomBook_IsGuidString",
+    "kind": "Function",
+    "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
+    "module": "json_commands",
+    "line": 40
   },
   {
     "name": "RoomBookCommand::GetResponseSchema",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 28
+    "line": 60
   },
   {
     "name": "RoomBookCommand::Execute",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 33
+    "line": 65
   },
   {
     "name": "RoomBookGetFavoritesCommand::GetName",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 96
+    "line": 156
   },
   {
     "name": "RoomBookGetFavoritesCommand::GetInputParametersSchema",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 98
+    "line": 158
   },
   {
     "name": "RoomBookGetFavoritesCommand::GetResponseSchema",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 100
+    "line": 160
   },
   {
     "name": "RoomBookGetFavoritesCommand::Execute",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 105
+    "line": 165
   },
   {
     "name": "SpecCommand::SpecCommand",
@@ -3350,7 +3357,14 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/Roombook.cpp",
     "module": "roombook",
-    "line": 102
+    "line": 99
+  },
+  {
+    "name": "Roombook::RoomBook_Run",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/Roombook.cpp",
+    "module": "roombook",
+    "line": 107
   },
   {
     "name": "Roombook::Roombook::GuidByZ.r",

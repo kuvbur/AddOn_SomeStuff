@@ -53,7 +53,7 @@
 | `CommandBase` | CommandBase.hpp:17 | Базовый `API_AddOnCommand`: namespace `SomeStuffCommand` (CommandBase.cpp:8), политика `ScheduleForExecutionOnMainThread` (CommandBase.cpp:23) [по коду] |
 | `ReadOnlyCommand` | CommandBase.hpp:68 | Подкласс без undo; унаследован `HealthCommand` (зарегистрирован с 2026-10-30), `RoomBookGetFavoritesCommand` и `RoomBookCheckFinishConfigCommand` [по коду] |
 | `ModifyCommand` | CommandBase.hpp:87 | Подкласс с поддержкой undo; в актуальном коде не используется — команды-изменения наследуют `CommandBase` напрямую [по коду] |
-| `RoomBookCommand` | RoomBookCommand.hpp:8 | Команда без параметров, free-form ответ: rooms → types → elements [по коду] |
+| `RoomBookCommand` | RoomBookCommand.hpp:8 | Необязательный `zones: string[]`; free-form ответ: rooms → types → elements [по коду] |
 | `RoomBookGetFavoritesCommand` | RoomBookCommand.hpp:36 | Read-only команда `FavoritesList`: словарь избранного (имя и тип каждого элемента) [по коду] |
 | `RoomBookCreateFavoriteCommand` | RoomBookCommand.hpp:46 | Команда `Favorite_CreateOtd`: создаёт избранное (параметры `type`/`name`/`folder`) [по коду] |
 | `RoomBookCheckFinishConfigCommand` | RoomBookCommand.hpp:61 | Read-only команда `Roombook_CheckFinishConfiguration`: проверка классов отделки и свойств Sync_GUID [по коду] |
@@ -71,7 +71,7 @@
 | `CommandBase::GetExecutionPolicy` | CommandBase.cpp:23 | `ScheduleForExecutionOnMainThread` — модифицирующие команды только в главном потоке [из комментария] |
 | `CommandBase::IsProcessWindowVisible` | CommandBase.cpp:32 | AC26+ (`#ifdef ServerMainVers_2600`): сообщает Archicad о показе окна процесса — `true` (команды длительные, в главном потоке) [по коду; DevKit-пример AddOnCommandTest] |
 | `RoomBookCommand::GetName` | RoomBookCommand.cpp:18 | Имя команды `RoomBook` [по коду] |
-| `RoomBookCommand::Execute` | RoomBookCommand.cpp:33 | Запускает `Roombook::RoomBook_Run(&results)` (:37); ответ `{status:"returned", rooms:[{zone_guid, types:[{TypeOtd, elements:[{otd_guid, base_guid, write_succeeded, was_created, length, area, material, bmaterial, structtype}]}]}]}` — группировка по комнате/типу (:36–93) [по коду] |
+| `RoomBookCommand::Execute` | RoomBookCommand.cpp:65 | Проверяет необязательный `zones` и запускает `Roombook::RoomBook_Run(&results, zones)` (:97); ответ `{status:"returned", rooms:[{zone_guid, types:[{TypeOtd, elements:[{otd_guid, base_guid, write_succeeded, was_created, length, area, material, bmaterial, structtype}]}]}]}` — группировка по комнате/типу [по коду] |
 | `RoomBookGetFavoritesCommand::Execute` | RoomBookCommand.cpp:105 | Собирает словарь избранного через `Roombook::Favorite_GetDict` (:108) и возвращает имя и тип каждого элемента [по коду] |
 | `RoomBookCreateFavoriteCommand::Execute` | RoomBookCommand.cpp:154 | Требует `type`/`name`/`folder` (иначе `CreateErrorResponse(APIERR_BADPARS)`); создаёт избранное через `Roombook::Favorite_CreateOtd` (:167) [по коду] |
 | `RoomBookCheckFinishConfigCommand::Execute` | RoomBookCommand.cpp:189 | Вызывает `Roombook::Roombook_CheckFinishConfiguration(errors)` (:192); ответ `{succeeded, errors}` (по одной ошибке на строку) [по коду] |
@@ -104,11 +104,12 @@
 - Runtime: AC25, test_25.pln, порт 19723 — `{"succeeded":true,"result":{"addOnCommandResponse":{"status":"returned","elapsedSeconds":4.1818899}}}`; корректность синхронизации и отмена — not verified. AC26–29 — not verified.
 
 ### `RoomBookCommand::Execute(parameters, processControl) -> GS::ObjectState`
-- Расположение: `Sources/AddOn/json_commands/RoomBookCommand.cpp:33`
-- Назначение: запускает полное построение отделки без UI. [из комментария]
-- Контракт: параметров нет (`GetInputParametersSchema` — `NoValue`); `processControl` игнорируется — отмена не поддерживается. Ответ `status:"returned"` + `rooms[]` (уникальные `zone_guid`, внутри — `types[]` по `draw.type`, внутри — `elements[]` с `otd_guid`/`base_guid`/`write_succeeded`/`was_created`/`length`/`area`/`material`/`bmaterial`/`structtype`); элементы с `otd_guid == APINULLGuid` (не созданные) в ответ не попадают [по коду; #205].
+- Расположение: `Sources/AddOn/json_commands/RoomBookCommand.cpp:65`
+- Назначение: запускает построение отделки целевых зон; UI-поведение прежнего конвейера не меняет. [по коду]
+- Контракт: `zones` — необязательный непустой массив строк GUID. Без него сохраняется выбор из выделения/всего проекта; с ним обрабатывается только переданный список, повторы исключаются. GUID принимаются с парными фигурными скобками или без, в любом регистре; пробелы, лишний хвост и нулевой GUID отклоняются. Все GUID проверяются до запуска: ошибка чтения заголовка возвращается как есть, не-зона — `APIERR_BADELEMENTTYPE`, неверный вход или недоступная зона — `APIERR_BADPARS`. Доступность определяется прежними фильтрами editable/visible/access/workspace/renovation в текущем виде до смены сочетания слоёв. Любой отказ прекращает весь запрос без fallback и без вызова RoomBook. `processControl` не используется. [по коду; #309]
+- Ответ сохранён: `status:"returned"` + `rooms[]` (уникальные `zone_guid`, внутри — `types[]` по `draw.type`, внутри — `elements[]` с `otd_guid`/`base_guid`/`write_succeeded`/`was_created`/`length`/`area`/`material`/`bmaterial`/`structtype`); элементы с `otd_guid == APINULLGuid` (не созданные) в ответ не попадают. `returned` не подтверждает успех всех записей/отсутствие отмены. [по коду]
 - Побочные эффекты: модификация БД (создание/пересоздание элементов отделки) в главном потоке; длительность ~15–318 с (замеры runtime AC25: 15.09 с и 318.39 с, #205/#206).
-- Вызывает: `Roombook::RoomBook_Run` (Roombook.cpp:102; см. Docs/modules/Roombook.md).
+- Вызывает: `Roombook::RoomBook_Run(results, zones)` (Roombook.cpp:107; см. Docs/modules/Roombook.md).
 - Вызывается из: диспетчеризации Archicad по имени команды (внешний HTTP-вызов); в коде вызовов нет. [по коду]
 
 ### `SpecCommand::Execute(parameters, processControl) -> GS::ObjectState`

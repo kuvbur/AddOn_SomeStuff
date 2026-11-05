@@ -345,13 +345,18 @@ namespace Roombook {
         double width = 0;              // Ширина (для откоса)
         double length = 0;             // Длина (для откоса)
         short floorInd = 0;            // Этаж
+
+        // Длина сегмента по координатам начала и конца
+        double Length () const {
+            return std::hypot (std::hypot (seg.endC.x - seg.begC.x, seg.endC.y - seg.begC.y), seg.endC.z - seg.begC.z);
+        }
     };
 
     struct OtdDrawData {
         API_Guid base_guid = APINULLGuid;            // GUID базового элемента
         API_Guid otd_guid = APINULLGuid;             // GUID созданного/найденного элемента
         API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента
-        API_ElemTypeID draw_type = API_SlabID;       // Тип отрисовываемого элемента
+        API_ElemTypeID draw_type = API_ZombieElemID; // Тип отрисовываемого элемента
         TypeOtd type = NoSet;                        // В какую графу заносить элемент (пол, потолок, стены и т.д.)
         OtdMaterial material;
         MatarialToFavorite favorite;
@@ -376,7 +381,8 @@ namespace Roombook {
         double zBottom = 0; // Аболютная координата z низа
         short floorInd = 0; // Этаж
         double height = 0;
-        double reference_z = 0; // Исходная абсолютная отметка reference plane основания
+        double length_skirting = 0; // Длина примыкающих плинтусов
+        double reference_z = 0;     // Исходная абсолютная отметка reference plane основания
         API_Coord plane_origin = {0, 0};
         double slope_x = 0;
         double slope_y = 0;
@@ -417,7 +423,8 @@ namespace Roombook {
     struct OtdBeam {
         OtdLinearElement geom;
         OtdDrawData draw;
-        Int32 wallIndex = -1; // Индекс в итоговом otdwall для последующей связи с созданной стеной.
+        GS::UniString tip = EMPTYSTRING; // Тип пола/потолка из зоны
+        Int32 wallIndex = -1;            // Индекс в итоговом otdwall для последующей связи с созданной стеной.
         Int32 slabIndex = -1;
     };
 
@@ -466,18 +473,20 @@ namespace Roombook {
         GS::Array<OtdBeam> otdbeam_ceil;  // Потолочные плинтуса
         bool has_ceil = true;
         bool has_floor = true;
-        bool ceil_by_slab = false;           // Создавать потолок только по перекрытиям
-        bool floor_by_slab = false;          // Создавать потолок только по перекрытиям
-        GS::UniString tip_pot = EMPTYSTRING; // Тип потолка для записи в аксессуар
-        GS::UniString tip_pol = EMPTYSTRING; // Тип пола для записи в аксессуар
-        GS::UniString tip_otd = EMPTYSTRING; // Тип отделки для разбивки
-        API_Guid zone_guid = APINULLGuid;    // GUID базового элемента
-        bool isValid = true;                 // Зона считана нормально
-        bool create_ceil_elements = true;    // Создавать элементы отделки потолка
-        bool create_floor_elements = true;   // Создавать элементы отделки пола
-        bool create_wall_elements = true;    // Создавать элементы отделки стен
-        bool create_column_elements = true;  // Создавать элементы отделки колонн
-        bool create_reveal_elements = true;  // Создавать элементы отделки откосов
+        bool ceil_by_slab = false;                 // Создавать потолок только по перекрытиям
+        bool floor_by_slab = false;                // Создавать потолок только по перекрытиям
+        GS::UniString tip_pot = EMPTYSTRING;       // Тип потолка для записи в аксессуар
+        GS::UniString tip_pol = EMPTYSTRING;       // Тип пола для записи в аксессуар
+        GS::UniString tip_plint_pot = EMPTYSTRING; // Тип плинтуса потолка
+        GS::UniString tip_plint_pol = EMPTYSTRING; // Тип плинтуса пола
+        GS::UniString tip_otd = EMPTYSTRING;       // Тип отделки для разбивки
+        API_Guid zone_guid = APINULLGuid;          // GUID базового элемента
+        bool isValid = true;                       // Зона считана нормально
+        bool create_ceil_elements = true;          // Создавать элементы отделки потолка
+        bool create_floor_elements = true;         // Создавать элементы отделки пола
+        bool create_wall_elements = true;          // Создавать элементы отделки стен
+        bool create_column_elements = true;        // Создавать элементы отделки колонн
+        bool create_reveal_elements = true;        // Создавать элементы отделки откосов
     }; // Структура для хранения информации о зоне
 
     typedef GS::HashTable<API_Guid, OtdRoom> OtdRooms; // Словарь отделки всех зон
@@ -736,6 +745,9 @@ namespace Roombook {
     // Запуск построения и записи информации об отделке
     // -----------------------------------------------------------------------------
     void RoomBook_Run (GS::Array<RoomBookFinishResult> *results = nullptr);
+
+    // Непустой список задаёт целевые зоны; пустой сохраняет выбор из выделения/всего проекта. Вход не изменяется.
+    void RoomBook_Run (GS::Array<RoomBookFinishResult> *results, const GS::Array<API_Guid> &zones);
 
     GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_Guid> &zones,
                                                                const UnicGuid &finclassguids,

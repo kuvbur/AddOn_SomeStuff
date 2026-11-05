@@ -20,9 +20,39 @@ RoomBookCommand::RoomBookCommand () : CommandBase (CommonSchema::NotUsed) {}
 GS::String RoomBookCommand::GetName () const { return "RoomBook"; }
 
 // -----------------------------------------------------------------------------
-// Указывает, что команда построения отделки не принимает параметры.
+// Принимает необязательный непустой список GUID зон; без него сохраняется интерактивный отбор.
 // -----------------------------------------------------------------------------
-GS::Optional<GS::UniString> RoomBookCommand::GetInputParametersSchema () const { return GS::NoValue; }
+GS::Optional<GS::UniString> RoomBookCommand::GetInputParametersSchema () const {
+    return R"({
+        "type": "object",
+        "properties": {
+            "zones": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "minItems": 1
+            }
+        },
+        "additionalProperties": false
+    })";
+}
+
+// Проверяет форму до SDK-конвертации: не допускает усечённые GUID, пробелы и лишний хвост.
+static bool RoomBook_IsGuidString (const GS::UniString &value) {
+    const bool hasBraces = value.GetLength () == 38 && value[0] == '{' && value[37] == '}';
+    if (!hasBraces && value.GetLength () != 36)
+        return false;
+    const UIndex offset = hasBraces ? 1 : 0;
+    for (UIndex i = 0; i < 36; ++i) {
+        const auto c = value[offset + i];
+        if (i == 8 || i == 13 || i == 18 || i == 23) {
+            if (c != '-')
+                return false;
+        } else if (!c.IsASCIIHexaDigit ()) {
+            return false;
+        }
+    }
+    return true;
+}
 
 // -----------------------------------------------------------------------------
 // Указывает, что команда построения отделки возвращает свободный ответ.
@@ -34,9 +64,37 @@ GS::Optional<GS::UniString> RoomBookCommand::GetResponseSchema () const { return
 // -----------------------------------------------------------------------------
 GS::ObjectState RoomBookCommand::Execute (const GS::ObjectState &parameters,
                                           GS::ProcessControl & /*processControl*/) const {
-    (void)parameters;
+    GS::Array<API_Guid> zones;
+    if (parameters.Contains ("zones")) {
+        GS::Array<GS::UniString> zoneStrings;
+        if (!parameters.Get ("zones", zoneStrings) || zoneStrings.IsEmpty ())
+            return CreateErrorResponse (APIERR_BADPARS, "zones must be a non-empty array of GUID strings");
+        for (const GS::UniString &zoneString : zoneStrings) {
+            if (!RoomBook_IsGuidString (zoneString))
+                return CreateErrorResponse (APIERR_BADPARS, GS::UniString ("Invalid zone GUID: ") + zoneString);
+            const API_Guid guid = APIGuidFromString (zoneString.ToCStr (0, MaxUSize, GChCode));
+            if (guid == APINULLGuid)
+                return CreateErrorResponse (APIERR_BADPARS, "Zone GUID must not be null");
+            if (zones.Contains (guid))
+                continue;
+            API_Elem_Head header = {};
+            header.guid = guid;
+            const GSErrCode err = ACAPI_Element_GetHeader (&header);
+            if (err != NoError)
+                return CreateErrorResponse (err, GS::UniString ("Cannot read zone: ") + zoneString);
+            if (GetElemTypeID (header) != API_ZoneID)
+                return CreateErrorResponse (APIERR_BADELEMENTTYPE,
+                                            GS::UniString ("Element is not a zone: ") + zoneString);
+            if (!ACAPI_Element_Filter (guid,
+                                       APIFilt_IsEditable | APIFilt_OnVisLayer | APIFilt_HasAccessRight |
+                                           APIFilt_InMyWorkspace | APIFilt_IsVisibleByRenovation))
+                return CreateErrorResponse (APIERR_BADPARS,
+                                            GS::UniString ("Zone is not editable or visible: ") + zoneString);
+            zones.Push (guid);
+        }
+    }
     GS::Array<Roombook::RoomBookFinishResult> results;
-    Roombook::RoomBook_Run (&results);
+    Roombook::RoomBook_Run (&results, zones);
     GS::ObjectState response;
     response.Add ("status", "returned");
     const auto addRoom = response.AddList<GS::ObjectState> ("rooms");

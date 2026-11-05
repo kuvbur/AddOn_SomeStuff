@@ -1,12 +1,52 @@
 ﻿# Current Task Roombook: исправление плинтусов и surface skips (#270/#252)
 
+
 ## #312 — тип слоя в шаблоне состава
-Scope: подстановка %structype% в Sync_from{Material:Layers} с существующими RU/ENG ресурсами; сохранить незакоммиченные изменения пользователя. Проверка AC25 Windows; другие версии и macOS отдельно не проверяются. Без изменения модели, перезапуска, push и закрытия issue.
-Status: WAITING_FOR_TEST.
+Scope: подстановка %structype% в Sync_from{Material:Layers} с существующими RU/ENG ресурсами; сохранить незакоммиченные изменения пользователя. Проверка AC25 Windows; другие версии и macOS отдельно не проверяются. Владелец разрешил финальный запуск скрипта и закрытие issue; push не разрешён.
+Status: ISSUE CLOSED по запросу владельца; native-приёмка не выполнена.
 Plan: [x] изучить пользовательские правки и маршрут разбора/подстановки, сохранить baseline; [x] дополнить реализацию; [x] проверить формат, диагностики, AC25 сборку и изолированное выполнение блока; [ ] проверить полный шаблон в Archicad и обновить generated-документацию.
 Last Completed: ReadMaterial заполняет локализованный structype по composite[indx] до подстановки; сохранены предварительные правки пользователя. AC25 Debug BuildAddOn.py exit 0, LNK4099; clang-format и diff --check успешны. Извлечённый блок с подменными типами проверен для трёх значений, обоих порядков и null; полный маршрут и native не выполнялись. LSP возвращает 19 диагностик неиспользуемых значений/переменных и две unused-include, в добавленном блоке нет. LightRAG запрос превысил таймаут; использован существующий код. Docs/modules/Helpers.md обновлён, generated не обновлялся. PLN после сборки по SHA совпадает с исходным.
-Next Step: проверить полный Sync_from{Material:Layers; "%structype%"} в Archicad на разных типах и порядках слоёв и на обоих языках; обновить generated-документацию.
+Финальная проверка: restart_archicad_for_test.ps1 собрал AC25, но завершился exit 70; отчёт C++ от 17:42 старше APX 21:17, поэтому 203 ошибки не относятся достоверно к этому запуску. Процесс Archicad был обнаружен скриптом, затем не обнаружен; загрузка аддона не подтверждена. JSON-тесты пропущены: скрипт отсутствует; Debug output pane не найден. Issue #312 закрыт по запросу, с указанием непроверенной загрузки и шаблона.
+Next Step: при отдельной проверке запустить полный Sync_from{Material:Layers; "%structype%"} в Archicad на разных типах и порядках слоёв и на обоих языках; обновить generated-документацию.
 Last Checkpoint: коммит #312 (проверка Archicad остаётся открытой).
+
+## #310 — линия и текст объекта отделки по реальным точкам полигона
+
+Scope: AC25 Windows; только RoombookDraw.cpp: новые static-хелперы (Line_Cross, Segments_ProperCross, Poly_PickLineEnds) и блок pos_x1/pos_y1/pos_x2/pos_y2/pos_xtxt/pos_ytxt в Object_Draw_Poly. GDL-избранное, поле fieldorig, geometрия и чужие дельты вне scope. Без commit/push/restart. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/310.
+Status: WAITING_FOR_BUILD — правка внесена при активной VS Run (Archicad под отладчиком), canonical build/native не выполнялись.
+Plan: [x] issue #310 и baseline (SHA d9207722…, scratch/object-line-poly-20261105); [x] правка: Poly_PickLineEnds ищет самую нижнюю левую вершину внешнего контура (минимум x+y) и верхнюю правую по убыванию x+y, отрезок которой не пересекает граней контура и дырок (касание в общих вершинах не считается); [x] Ceil: pos2 = выбранная вершина, текст = середина отрезка; Floor: pos1 = нижняя левая; fallback на прежний расчёт по боксу, если пары нет; [x] clang-format (чужие регионы не задеты — diff только свои hunks), diff-check 0, LSP AC25 0 diagnostics; [x] standalone-проверка алгоритма (прямоугольник/вогнутый L/дырка/вырожденный); [ ] canonical AC25 build и native-приёмка после согласованного завершения отладки.
+Next Step: собрать AC25 (BuildAddOn.py) и проверить в Archicad линию/текст на потолках и полах разной формы.
+Last Checkpoint: нет; commit не запрошен.
+
+## #309 — список GUID зон в JSON RoomBook
+
+Scope: AC25 Windows; входные параметры RoomBookCommand и перегрузка RoomBook_Run, адресные регрессии и документация. Геометрия/избранное/writers/PLN и чужие правки вне scope. Без commit/push/Save/restart; активную VS Run не останавливать. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/309.
+Status: WAITING_FOR_BUILD — код и офлайн-проверки завершены; canonical build/reload/native при активной VS Run не выполнялись.
+Plan: [x] IDEA/module cards/dirty baseline/callers/SDK lookup и issue; [x] JSON zones с проверкой всего списка и рабочая копия зон; [x] адресные регрессии, format/LSP/full-TU/review; [x] адресная документация/generated/память; [ ] согласованные canonical build/reload и native-приёмка.
+Last Completed: RoomBookCommand принимает zones:string[] и проверяет форму/нулевой GUID/GetHeader/Zone/прежние selection-фильтры до запуска; дубли исключены. RoomBook_Run принимает const-массив и копирует его перед прежними Clear/Push. Без zones передаётся пустой массив, прежний selection/fallback сохранён. Format/diff-check PASS; Python Draft4 schema/source invariants21/0, serializer/sibling commands и5защищённых файлов неизменны. SDK25 headers подтверждают ObjectState::Get/errorCode, GetHeader/Filter и IsASCIIHexaDigit; начальная неоднозначность UniChar>=char устранена SDK-предикатом. MCP diagnostics0, но Roombook documentSymbols stale (одна перегрузка/старый end), не принят для generated. Baseline/evidence: Hermes scratch/roombook-zones-20261105/. VS Run AC25, host не тронут.
+Validation: full-TU MSVC/SDK25 C++14 /WX → scratch obj для обоих cpp exit0; родитель прочитал логи и сверил весь manifest/исходники. Fresh LSP version1: JSON0, Run2unused-includes, hpp1unused-include, ошибок нет; parent independently проверил517symbol ranges/text hashes. Независимое review: No issues found in inspected scope. Scoped generated15joins,1115внешних записей/порядок сохранены; старый callgraph не обновлён и явно помечен как неактуальный. Каноническая сборка/relink/native не выполнялись. Процедура сохранена в archicad-json-commands/references/optional-zone-guid-list.md.
+Regression: parent реально повторил JSON SDK25/MSVC C++14 RED105checks/60FAIL → GREEN105/0 и input-protection полного production Run34/3 →34/0. Все139GREEN проверок проходят, Python schema/invariants21/0 отдельно. Read-only GetHeader/Filter корректного префикса допустимы до позднего ошибочного GUID: leaf ошибочно потребовал0reads; исправлен только scratch expectation в RED/GREEN, начальные106/1 evidence сохранены. SDK25 JSON conversion удаляет zones:null; Python schema его отклоняет, native enforcement not verified. Артефакты/body/source hashes приняты в regression-acceptance.json. Final format/diff-check PASS, чужие5файлов/serializer byte-identical. Issue309 статус обновлён и read-back6659803148 принят; issue открыт. Memory: процедура в skill и источник передан OpenViking extraction.
+Next Step: с разрешения владельца безопасно собрать/загрузить аддон и проверить выбор одной/нескольких зон, отсутствие обновлений посторонних зон, повтор и native schema-отказ null/пустого списка. На старом loaded binary malformed request не пробовать: он игнорирует zones и может запустить весь legacy набор. Не Stop/Save/restart/commit/push/IssueClose без разрешения; другие версии/macOS не проверялись.
+Last Checkpoint: нового нет; commit не запрошен.
+
+## #308 — длина плинтусов каждого OtdSlab
+
+Scope: AC25 Windows; подсчёт готовых нижних/верхних отрезков в OtdSlab.length_skirting (метры), через OtdBeam.slabIndex и geom.Length(). Геометрия/дедуп/избранное/native-writers не меняются; свойства/GDL и room-level суммы не подключены. Без commit/push/restart/Save. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/308.
+Status: WAITING_FOR_BUILD — подсчёт реализован, offline-проверки завершены; canonical build/native не выполнялись при активной VS Run.
+Plan: [x] живой producer/caller/индексы и baseline; [x] сброс до ранних отказов, сумма конечных 3D-отрезков; [x] RED/GREEN, format/diff-check, full-TU SDK25, fresh LSP и независимое review; [x] собственная дельта/issue read-back/память; [ ] согласованная canonical build/native-приёмка.
+Last Completed: изменена только OtdBeam_ProcessFinishes (Data9118–9186): сброс всех slab.length_skirting; после успешного builder сумма конечных geom.Length по неотрицательному/in-range slabIndex, нечисловые/бесконечные длины пропускаются. Считается подготовленная геометрия, не результат native-записи. Exact-production function/geom structs с controlled builder/Favorite/lightweight boundary types: MSVC C++14 baseline18PASS/12FAIL → GREEN30/0, все18 прежних GREEN неизменны. Разные Floor/Ceil/split индексы, уклон/Mesh, повтор/исчезновение контактов, неверные индексы/nonfinite и ранние отказы проверены; настоящая SDK-геометрия в этом стенде не выполняется.
+Validation: весь Data.cpp MSVC/SDK25 C++14→scratch obj exit0, НЕ linked addon. Свежий publishDiagnostics version1, source-text SHA и namespace end9682 подтверждены; в изменённой функции diagnostics0, вне неё3unused-variable severity1+5unused-includes на прежних baseline-строках. Независимое review: No issues found in inspected scope. Parent прочитал артефакты и принял source/header/LSP/obj hashes; Data SHA f977eac0c5f978424deadeb9d0ec633b99452c83b5f59efca803084458cd63fc. Format/diff-check PASS, Data вне функции нормализованно неизменен, остальные6 baseline файлов byte-identical. Evidence: Hermes scratch/skirting-length-count-308/{own.diff,red,green,parent-check.json,accepted.json,independent-validation/}. Issue308 обновлён и exact read-back принят. Процедура: archicad-cpp-tdd-patterns/references/per-slab-skirting-lengths.md.
+Next Step: по разрешению выполнить canonical build и при необходимости проверить заполненные значения в Archicad; текущую VS/модель не останавливать. Docs/generated отложены до отдельной pre-checkpoint команды, актуальность не заявляется. Свойства/GDL не подключать без следующего этапа. Появившийся во время проверки untracked wiki/files/Отделка_25.pln не тронут, происхождение не проверялось.
+Last Checkpoint: нового нет; commit не запрошен.
+
+## Beam_Draw — синхронизация anchorPoint существующей балки
+
+Scope: AC25 Windows; только сравнение anchorPoint существующей балки с прочитанными настройками избранного в Beam_Draw, присваивание и Change mask до расчёта upper-reveal offset. Геометрические формулы, остальные writers, избранное и PLN не менять. Без issue по прямому указанию владельца; без commit/push/restart.
+Status: WAITING_FOR_TEST — код реализован и standalone проверен, native-приёмка не выполнялась.
+Plan: [x] текущий writer/default reader и SDK25 field/Change mask; [x] адресная RED/GREEN и минимальная правка; [x] format, свежая LSP, отдельная TU и собственное source-review; [ ] согласованная native-приёмка.
+Last Completed: только пять строк в Beam_Draw: сравнение anchorPoint с settings, маска, присваивание и needupdate до upper-reveal offset. SDK25 APIdefs_Elements.h:1187 и ACAPI_Element_Change.html подтверждают поле short и mask-path, числовая интерпретация не менялась. Точное production-тело + реальные SDK25 types/helpers при контролируемых readers/Create/Change/Dispose: RED1145/631FAIL → GREEN1145/0; все пары0..8 обычных/upper, row-only/column changes, точная маска, повтор no-op, создание, ошибки и сохранение memo. MSVC C++14 SDK25 полная TU→scratch obj exit0; это НЕ canonical addon build. clang-format/dry-run/diff-check PASS; diff против dirty-baseline строго +5строк, executed-source hash совпал. MCP stale (Beam end928 вместо933), его0 не принят. Изолированный fresh LSP version1/namespace end2753: пять unused-variable и один unused-include вне правки; изменённый блок без diagnostics. Собственное review: No issues found in inspected scope. Evidence: Hermes scratch/beam-anchor-update-20261105/{before.cpp,own.diff,red,green,tu,fresh-lsp.json,lsp-messages.json}. Memory: lightrag/SKILL.md — anchor перед offset; archicad-cpp-tdd-patterns reference — не извлекать тело от forward declaration.
+Next Step: при согласованной сборке/загрузке проверить изменение привязки существующей балки и повтор в Archicad. Полная сборка/relink/native not verified; host/PLN не тронуты. Docs/generated отложены до отдельной pre-checkpoint команды по действующему порядку, актуальность не заявляется.
+Last Checkpoint: нового нет; commit не запрошен.
 
 ## Финальное ревью перед релизом — 2026-11-05
 
@@ -134,6 +174,17 @@ Last Checkpoint: нового нет; commit/push не разрешены.
 
 ## #295 — привязка избранного и сторона верхнего откоса
 
+### Уточнение нижней левой привязки — 2026-11-05
+
+Scope: AC25 Windows; только горизонтальная компенсация UpperReveal_GetBeamOffset в RoombookDraw.cpp и адресная standalone-регрессия. Для нижней левой привязки дополнительный offset=0 по уточнению владельца. Не менять anchorPoint, высоту, begC/endC, Wall_Draw, избранное, PLN и чужие дельты; без commit/push/закрытия issue, остановки VS и перезапуска.
+Status: WAITING_FOR_TEST — минимальная правка и независимый review завершены; addon build/native не выполнены из-за активной отладки и запрета перезапуска без согласования.
+Plan: [x] текущий writer/producer, issue295 OPEN и dirty-baseline; [x] RED-регрессия и минимальная коррекция столбцов; [x] format, свежая LSP/отдельная TU; [x] независимый review и итоговые границы native; [ ] согласованные canonical build и native-приёмка.
+Last Completed: в Draw заменены только формула и комментарий: левый столбец0, центр-width/2, правый-width; anchor/высота/ось/Wall_Draw неизменны. Точная production-функция + caller-блок, реальные SDK25 types/masks и is_equal, MSVC C++14: RED654checks/90fail → GREEN654/0, включая reset прежнего offset, mask, повтор, другие роли и отказы. Весь Draw скомпилирован в scratch .obj exit0, не linked addon. clang-format/dry-run/diff-check0. Свежий direct clangd: те же5 unused-variable,64 инструментальных ExtractFunction failures; MCP0 не принят как свежий GREEN. SHA Draw6b38edab… совпал при компиляции/прогоне/LSP; оба PLN и чужие исходники SHA сохранены, VS Run не тронута. SDK25 не расшифровывает short anchorPoint; LightRAG naive beam-семантику не подтвердил, онлайн сетка относится к AC30. Evidence: Hermes scratch/upper-reveal-anchor-20261105/{baseline.json,own.diff,red,green,tu,lsp-summary.json}; независимый review deleg_e61a1cbb: No issues found in inspected scope. Parent после review повторно сверил live SHA с GREEN/TU и hashes защищённых файлов.
+Next Step: согласовать безопасные canonical build/reload и native create/update/repeat с нижней левой привязкой. Нативные знаки остальных привязок/направлений AC25 not verified. Не останавливать отладку, не трогать PLN/избранное. Docs/generated отложены до отдельной документационной поставки, символы/координаты этой двухстрочной дельтой не меняются. Memory: lightrag/SKILL.md дополнён независимым zero-offset oracle; источник передан OpenViking extraction.
+Last Checkpoint: нового нет; commit/push не запрошены. Backlink: #295 kuvbur/AddOn_SomeStuff.
+
+### Предыдущая реализация — 2026-10-29
+
 Scope: AC25 Windows; Beam_Draw / Wall_Draw, коррекция размещения верхних откосов без смены линии привязки и оси. Минимальный флаг геометрической роли в OtdDrawData/подготовке нужен, поскольку Reveal_Up — высотная полоса, а не верх проёма. PLN, избранное, расчётные координаты geom, прочие роли и чужие изменения не менять; commit/push не выполнять. Issue #295 создана и прочитана обратно.
 Status: WAITING_FOR_TEST — код внесён, review-замечание устранено и воспроизведено адресной RED/GREEN-регрессией. Нативная SDK25-матрица flipped/sign не проверена; сдвиг оси запрещён. Центральные/core wall-привязки теперь отклоняются до native-вызова, без подмены привязки и без использования старого offset. Повторная компиляция Data заблокирована посторонним новым блоком FavoriteDefaultOtd с дублирующими полями; его не изменять в #295. Native/restart не выполнять.
 Plan: [x] writers/default reader/подготовка и issue; [x] ограничения SDK25 wall.offset; [x] ручные baseline скриншоты и запрет сдвига оси; [x] внесена адресная правка, format/diff-check и standalone checks144/0; [x] независимый source-review и исправление замечания; [ ] устранение внешней compile-блокировки, canonical build и полная native-матрица знаков/привязок AC25 по отдельному разрешению.
@@ -253,6 +304,8 @@ Previous Python Checkpoint: 981d11f — по команде владельца �
 - [ ] Остатки SDK-error/deleted/multiple-body и остальных неподдержанных геометрий/избранного — отдельным этапом.
 
 ## Decisions
+- Issue #312 — Синхронизация: добавить вывод типа слоя (ядро/отделка/другое) в Sync_from{Material:Layers} по плейсхолдеру %structype% (2026-11-05).
+- Issues #311 — Обработка размеров: подсветка непривязанных элементов размерной цепочки цветом (2026-11-05).
 
 - #285 https://github.com/kuvbur/AddOn_SomeStuff/issues/285 — OPEN. Расширение контура перекрытия пола в дверные проёмы на глубину откоса (base_reveal_width). Проёмы берутся из отделочных стен (otdw.openings) с отметкой низа <= отметки низа зоны (op.zBottom <= otd.zBottom + Tolerance). Расширяется то перекрытие пола (OtdSlab с type == Floor), которое примыкает к проёму, без создания отдельного участка, независимо от флага создания откосов (op.create_reveal).
 
@@ -379,6 +432,8 @@ Last Checkpoint: нет; чужие правки сохраняются.
 
 ## Archive
 
+- Комплект `wiki/llm/archicad-zone-finish`: скилл, JSON-справки и read-only поиск зон; проверены JSON-примеры, ссылки, mock-сценарии и поиск на AC25. Создание классификаций и избранного в runtime не проверялось. Checkpoint: нет, коммит не запрошен. Следующее действие: при отдельном разрешении проверить создание в тестовом проекте.
+
 ### #313 — безопасный переводчик вики RU → EN
 
 Scope: только wiki/tools/{translate_ru2eng.py,wiki_translation.py,test_translate_ru2eng.py,requirements.txt,README.md,.gitignore} и запись состояния. RU/EN страницы, legacy translation_hashes.json, C++, PLN и чужие дельты не менялись. Версия AC не применима; без платных API-запросов, push/IssueClose. Коммит разрешён владельцем.
@@ -388,6 +443,24 @@ Last Completed: прежний CLI entrypoint делегирует wiki_translat
 Review: leaf проверял старый SHA9dd8d6c1…; коллизии имён/reference links/вложенные картинки уже исправлены к возврату. Parent подтвердил остававшиеся email-local-part и неверный CURRENT при повреждённых blocks/checksum, добавил RED и исправил. Все5адресных регрессий повторены parent на принятом SHA c4b911c0c4dc3dae6a7627617804fb37b7987df92f3a3bc0029c61b699083e9e. Это разбор замечаний и собственная приёмка правок, не независимый clean-verdict финального snapshot. Evidence: Hermes scratch/wiki-translation-fix/{final-tests.log,review-red.log,email-red.log,review-acceptance.json,cli-report.json,final-manifest.json,corpus-final/corpus-report.json}.
 Next Step: при отдельном согласовании — пробный платный перевод выбранной страницы и лингвистическая проверка. До этого live API/model quality not verified; HTML-блоки и shortcut reference IDs намеренно не переводятся. README описывает ограничения, стоимость первого перевода с новым кэшем и запрет одновременных процессов с одним кэшем. Issue313 открыт; итоговый комментарий6665478786 прочитан обратно и совпал с отправленным текстом. Процедура сохранена в somestuff-wiki-docs/references/translation-script-review.md.
 Last Checkpoint: [wiki-translation], Refs: #313 (коммит по команде владельца); push/IssueClose не запрошены. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/313.
+
+### Python README — RU/EN
+
+Scope: python_scripts/Readme.md и эта запись; по уточнению владельца — краткое назначение и общая логика обеих EXE-утилит, без Python-команд, CLI/API-инструкций. Скрипты, EXE и проект Archicad не изменять; версия AC не применима к правке документа.
+Status: COMPLETED.
+Plan: [x] сверить оба исходника; [x] описать roombook_setup и somestuff_updater на русском и английском с запуском через EXE; [x] проверить соответствие коду и diff.
+Last Completed: описаны проверка/настройка свойств проекта и обновление существующего аддона Release/Test с резервной копией; ограничения отделены от возможностей. Проверка структуры RU/EN, имён и наличия обоих EXE и отсутствие CLI-примеров — PASS; git diff --check PASS, diff скриптов/spec пуст. Сборка и runtime EXE не выполнялись; соответствие готовых EXE текущим исходникам не проверялось. Уточнение владельца передано OpenViking extraction.
+Next Step: обязательных действий нет.
+Last Checkpoint: нет; commit/push не запрошены.
+
+### Переводчик вики — read-only ревью (2026-11-05)
+
+Scope: анализ wiki/tools/translate_ru2eng.py, текущих Markdown/image fixtures; сам скрипт, хэши и страницы вики не менять. Без API-запросов, установки зависимостей, commit/push; версия AC не применима.
+Status: COMPLETED — ревью, не исправление.
+Plan: [x] прочитать реализацию и примеры; [x] воспроизвести дефекты в scratch; [x] определить приоритеты улучшения.
+Last Completed: 14 офлайн-сценариев на реальных FunctionDef скрипта с identity/failure переводчиком: 13 демонстрируют нежелательное поведение, 1 подтверждает сохранность старого EN при API-ошибке. Подтверждены преждевременный cache commit, потеря преамбулы/строк, разрезание fences, незначащие коллизии нормализации хэша, пропуск удаления хвоста, глобальная замена имени внутри inline code, необработанные heading URLs и потеря регистра PNG. Реальные Home.md/Home-en.md и report-en.PNG согласуются с замечаниями; авторство существующего EN не устанавливалось. Source SHA после проверок неизменен. Evidence: C:/Users/da-rogojin/AppData/Local/hermes/cache/scratch/wiki-translation-review/{probe.py,report.json}. Процедура сохранена в somestuff-wiki-docs/references/translation-script-review.md.
+Next Step: после согласования отдельной реализации — issue/dedup, регрессии, сначала безопасная запись+кэш и Markdown/protected tokens, затем CLI/сетевые отказы. Live-провайдер и качество перевода not verified.
+Last Checkpoint: нового нет; commit/push не запрошены.
 
 ### Вики: состав конструкций — редактура и актуализация
 

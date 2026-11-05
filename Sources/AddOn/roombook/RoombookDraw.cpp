@@ -8,6 +8,7 @@
 #include <limits>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "api_headers/APIEnvir.h"
 
@@ -115,6 +116,7 @@ namespace Roombook {
         SetElemTypeID (element, eltype);
         err = ACAPI_Element_GetDefaults (&element, nullptr);
         if (err != NoError) {
+            msg_rep ("GetDefault", "ACAPI_Element_GetDefaults", err, APINULLGuid);
             return false;
         }
         return true;
@@ -134,7 +136,7 @@ namespace Roombook {
         SetElemTypeID (element, eltype);
         err = ACAPI_Element_GetDefaults (&element, &memo);
         if (err != NoError) {
-            ACAPI_DisposeElemMemoHdls (&memo);
+            msg_rep ("GetDefault", "ACAPI_Element_GetDefaults", err, APINULLGuid);
             return false;
         }
         return true;
@@ -169,16 +171,12 @@ namespace Roombook {
             return false;
         }
         wallelement.wall.zoneRel = APIZRel_None;
-        wallelement.wall.referenceLineLocation = APIWallRefLine_Inside;
-        wallelement.wall.flipped = false;
-    #ifdef ServerMainVers_2600
-    #else
-        wallelement.wall.refMat.overridden = true;
-        wallelement.wall.oppMat.overridden = true;
-        wallelement.wall.sidMat.overridden = true;
-    #endif
-        wallelement.wall.modelElemStructureType = API_BasicStructure;
-        wallelement.wall.thickness = otd_thickness;
+        if (favorite_name.IsEmpty ()) {
+            wallelement.wall.referenceLineLocation = APIWallRefLine_Inside;
+            wallelement.wall.flipped = false;
+            wallelement.wall.modelElemStructureType = API_BasicStructure;
+            wallelement.wall.thickness = otd_thickness;
+        }
         return true;
     }
 
@@ -208,11 +206,13 @@ namespace Roombook {
         if (!GetDefault (favorite_name, element, memo, API_ObjectID)) {
             return false;
         }
-        element.object.angle = 0;
-        element.object.isAutoOnStoryVisibility = false;
-        element.object.useObjPens = true;
-        element.object.useObjLtypes = true;
-        element.object.useObjMaterials = true;
+        if (favorite_name.IsEmpty ()) {
+            element.object.angle = 0;
+            element.object.isAutoOnStoryVisibility = false;
+            element.object.useObjPens = true;
+            element.object.useObjLtypes = true;
+            element.object.useObjMaterials = true;
+        }
         return true;
     }
 
@@ -224,15 +224,17 @@ namespace Roombook {
         if (!GetDefault (favorite_name, element, API_SlabID)) {
             return false;
         }
-        element.slab.offsetFromTop = 0;
-        element.slab.materialsChained = true;
+        if (favorite_name.IsEmpty ()) {
+            element.slab.offsetFromTop = 0;
+            element.slab.materialsChained = true;
     #ifdef ServerMainVers_2600
     #else
-        element.slab.sideMat.overridden = true;
-        element.slab.topMat.overridden = true;
-        element.slab.botMat.overridden = true;
+            element.slab.sideMat.overridden = true;
+            element.slab.topMat.overridden = true;
+            element.slab.botMat.overridden = true;
     #endif
-        element.slab.modelElemStructureType = API_BasicStructure;
+            element.slab.modelElemStructureType = API_BasicStructure;
+        }
         return true;
     }
 
@@ -541,7 +543,7 @@ namespace Roombook {
                     ready = Wall_GetDefault (wall.draw.favorite.name, wall.draw.type, target);
                     if (wall.surface_geometry)
                         target.wall.type = APIWtyp_Normal;
-                } else if (wall.draw.favorite.type == API_ObjectID && wall.draw.draw_type != API_BeamID) {
+                } else if (wall.draw.favorite.type == API_ObjectID) {
                     ready = Object_GetDefault (wall.draw.favorite.name, wall.draw.type, target, memo);
                 } else if (wall.draw.favorite.type == API_BeamID) {
                     ready = Beam_GetDefault (wall.draw.favorite.name, wall.draw.type, target, memo);
@@ -734,11 +736,11 @@ namespace Roombook {
     }
 
     // Верх проёма подготовлен слева направо: глубина лежит справа от оси.
-    // Столбцы сетки Beam anchorPoint: 0/3/6 — слева, 1/4/7 — центр, 2/5/8 — справа.
+    // Столбцы Beam anchorPoint: 0/3/6 — без отступа, 1/4/7 — полуширина, 2/5/8 — ширина.
     static bool UpperReveal_GetBeamOffset (short anchorPoint, double width, double &offset) {
         if (anchorPoint < 0 || anchorPoint > 8 || !std::isfinite (width) || width <= min_dim)
             return false;
-        offset = -width * (2 - anchorPoint % 3) / 2;
+        offset = -width * (anchorPoint % 3) / 2;
         return true;
     }
 
@@ -798,6 +800,11 @@ namespace Roombook {
         API_Coord endC = {geom.seg.endC.x, geom.seg.endC.y};
         bool needupdate = Elems_Check_Update (
             beamelement.header, mask, geom.floorInd, settings.header.layer, settings.header.renovationStatus);
+        if (beamelement.beam.anchorPoint != settings.beam.anchorPoint) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, anchorPoint);
+            beamelement.beam.anchorPoint = settings.beam.anchorPoint;
+            needupdate = true;
+        }
         if (beamelement.beam.begC.x != begC.x || beamelement.beam.begC.y != begC.y) {
             ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, begC);
             beamelement.beam.begC = begC;
@@ -930,6 +937,7 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     // ParamToMemo возвращает полноту поиска, а не наличие отличий. Убираем равные
     // параметры до записи; отсутствующие и неподдерживаемые параметры не меняют объект.
+    // -----------------------------------------------------------------------------
     static bool Object_UpdateParams (API_ElementMemo &memo, GDLHelpers::ParamDict &params) {
         if (memo.params == nullptr)
             return false;
@@ -1122,10 +1130,12 @@ namespace Roombook {
         Vector2D wallvect = walldir.Get ().ToVector2D ();
         double ang = wallvect.CalcAngleToReference (ref);
         if (wallobjelement.object.angle != ang) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, angle);
             wallobjelement.object.angle = ang;
             needupdate = true;
         }
         if (wallobjelement.object.pos.x != geom.seg.endC.x || wallobjelement.object.pos.y != geom.seg.endC.y) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, pos);
             wallobjelement.object.pos = {geom.seg.endC.x, geom.seg.endC.y};
             needupdate = true;
         }
@@ -1136,26 +1146,25 @@ namespace Roombook {
     #ifdef ServerMainVers_2700
         API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (draw.material.material);
         if (wallobjelement.object.mat != ematerial) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, mat);
             wallobjelement.object.mat = ematerial;
             needupdate = true;
         }
     #else
         if (wallobjelement.object.mat != draw.material.material) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, mat);
             wallobjelement.object.mat = draw.material.material;
             needupdate = true;
         }
     #endif
         if (wallobjelement.object.level != level) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, level);
             wallobjelement.object.level = level;
             needupdate = true;
         }
         if (is_new) {
             err = ACAPI_Element_Create (&wallobjelement, &wallobjmemo);
         } else if (needupdate) {
-            ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, pos);
-            ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, angle);
-            ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, level);
-            ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, mat);
             err = ACAPI_Element_Change (&wallobjelement, &mask, &wallobjmemo, APIMemoMask_AddPars, true);
         }
         draw.draw_error = err;
@@ -1188,8 +1197,9 @@ namespace Roombook {
         const API_Guid existingGuid = draw.otd_guid;
         draw.otd_guid = APINULLGuid;
         draw.draw_error = APIERR_BADPARS;
-        if (!OtdLinearElement_CanDraw (geom, true))
+        if (!OtdLinearElement_CanDraw (geom, true)) {
             return;
+        }
         const double level = GetOffsetFromStory (geom, storyLevels);
         if (!std::isfinite (level))
             return;
@@ -1237,21 +1247,23 @@ namespace Roombook {
         wallelement.wall.oppMat.attributeIndex = draw.material.material;
         wallelement.wall.sidMat.attributeIndex = draw.material.material;
     #endif
-        wallelement.wall.zoneRel = APIZRel_None;
         if (!is_upper_reveal)
             wallelement.wall.flipped = false;
         if (existingGuid == APINULLGuid) {
             err = ACAPI_Element_Create (&wallelement, nullptr);
+            draw.draw_error = err;
             if (err != NoError) {
-                draw.draw_error = err;
+                msg_rep ("Wall_Draw err", "ACAPI_Element_Create", err, APINULLGuid);
                 return;
             }
+            draw.otd_guid = wallelement.header.guid;
         } else {
             API_Element current = {};
             current.header.guid = existingGuid;
             err = ACAPI_Element_Get (&current);
+            draw.draw_error = err;
             if (err != NoError) {
-                draw.draw_error = err;
+                msg_rep ("Wall_Draw err", "ACAPI_Element_Get", err, APINULLGuid);
                 return;
             }
             if (GetElemTypeID (current) != API_WallID || current.wall.type == APIWtyp_Poly ||
@@ -1278,8 +1290,9 @@ namespace Roombook {
             // Один раз на стену, даже когда новый список проёмов пуст.
             if (!oldOpenings.IsEmpty ()) {
                 err = ACAPI_Element_Delete (oldOpenings);
+                draw.draw_error = err;
                 if (err != NoError) {
-                    draw.draw_error = err;
+                    msg_rep ("Wall_Draw err", "ACAPI_Element_Delete", err, APINULLGuid);
                     return;
                 }
             }
@@ -1291,38 +1304,47 @@ namespace Roombook {
                                                   wallelement.header.layer,
                                                   wallelement.header.renovationStatus);
             if (current.wall.begC.x != wallelement.wall.begC.x || current.wall.begC.y != wallelement.wall.begC.y) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, begC);
                 current.wall.begC = wallelement.wall.begC;
                 needupdate = true;
             }
             if (current.wall.endC.x != wallelement.wall.endC.x || current.wall.endC.y != wallelement.wall.endC.y) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, endC);
                 current.wall.endC = wallelement.wall.endC;
                 needupdate = true;
             }
             if (current.wall.height != wallelement.wall.height) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, height);
                 current.wall.height = wallelement.wall.height;
                 needupdate = true;
             }
             if (current.wall.bottomOffset != wallelement.wall.bottomOffset) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, bottomOffset);
                 current.wall.bottomOffset = wallelement.wall.bottomOffset;
                 needupdate = true;
             }
             if (current.wall.topOffset != wallelement.wall.topOffset) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, topOffset);
                 current.wall.topOffset = wallelement.wall.topOffset;
                 needupdate = true;
             }
             if (current.wall.relativeTopStory != wallelement.wall.relativeTopStory) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, relativeTopStory);
                 current.wall.relativeTopStory = wallelement.wall.relativeTopStory;
                 needupdate = true;
             }
             if (current.wall.thickness != wallelement.wall.thickness) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, thickness);
                 current.wall.thickness = wallelement.wall.thickness;
                 needupdate = true;
             }
             if (current.wall.thickness1 != wallelement.wall.thickness1) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, thickness1);
                 current.wall.thickness1 = wallelement.wall.thickness1;
                 needupdate = true;
             }
             if (current.wall.type != wallelement.wall.type) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, type);
                 current.wall.type = wallelement.wall.type;
                 needupdate = true;
             }
@@ -1331,36 +1353,44 @@ namespace Roombook {
                 needupdate = true;
             }
             if (current.wall.referenceLineLocation != wallelement.wall.referenceLineLocation) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, referenceLineLocation);
                 current.wall.referenceLineLocation = wallelement.wall.referenceLineLocation;
                 needupdate = true;
             }
             if (current.wall.offset != wallelement.wall.offset) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, offset);
                 current.wall.offset = wallelement.wall.offset;
                 needupdate = true;
             }
             if (current.wall.modelElemStructureType != wallelement.wall.modelElemStructureType) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, modelElemStructureType);
                 current.wall.modelElemStructureType = wallelement.wall.modelElemStructureType;
                 needupdate = true;
             }
             if (wallelement.wall.modelElemStructureType == API_BasicStructure &&
                 current.wall.buildingMaterial != wallelement.wall.buildingMaterial) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, buildingMaterial);
                 current.wall.buildingMaterial = wallelement.wall.buildingMaterial;
                 needupdate = true;
             }
             if (wallelement.wall.modelElemStructureType == API_CompositeStructure &&
                 current.wall.composite != wallelement.wall.composite) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, composite);
                 current.wall.composite = wallelement.wall.composite;
                 needupdate = true;
             }
             if (current.wall.profileType != wallelement.wall.profileType) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, profileType);
                 current.wall.profileType = wallelement.wall.profileType;
                 needupdate = true;
             }
             if (current.wall.slantAlpha != wallelement.wall.slantAlpha) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, slantAlpha);
                 current.wall.slantAlpha = wallelement.wall.slantAlpha;
                 needupdate = true;
             }
             if (current.wall.slantBeta != wallelement.wall.slantBeta) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, slantBeta);
                 current.wall.slantBeta = wallelement.wall.slantBeta;
                 needupdate = true;
             }
@@ -1374,52 +1404,33 @@ namespace Roombook {
                     pair.first->attributeIndex != pair.second->attributeIndex) {
     #endif
                     *pair.first = *pair.second;
+                    ACAPI_ELEMENT_MASK_SET (mask, API_WallType, refMat);
+                    ACAPI_ELEMENT_MASK_SET (mask, API_WallType, oppMat);
+                    ACAPI_ELEMENT_MASK_SET (mask, API_WallType, sidMat);
                     needupdate = true;
                 }
             }
             if (current.wall.zoneRel != wallelement.wall.zoneRel) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, zoneRel);
                 current.wall.zoneRel = wallelement.wall.zoneRel;
                 needupdate = true;
             }
             if (current.wall.flipped != wallelement.wall.flipped) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, flipped);
                 current.wall.flipped = wallelement.wall.flipped;
                 needupdate = true;
             }
             wallelement = current;
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, begC);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, endC);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, height);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, bottomOffset);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, topOffset);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, relativeTopStory);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, thickness);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, thickness1);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, type);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, angle);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, referenceLineLocation);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, offset);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, modelElemStructureType);
-            if (wallelement.wall.modelElemStructureType == API_BasicStructure)
-                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, buildingMaterial);
-            if (wallelement.wall.modelElemStructureType == API_CompositeStructure)
-                ACAPI_ELEMENT_MASK_SET (mask, API_WallType, composite);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, profileType);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, slantAlpha);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, slantBeta);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, refMat);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, oppMat);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, sidMat);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, zoneRel);
-            ACAPI_ELEMENT_MASK_SET (mask, API_WallType, flipped);
-            if (needupdate)
+            if (needupdate) {
                 err = ACAPI_Element_Change (&wallelement, &mask, nullptr, 0, true);
+                draw.draw_error = err;
+                if (err != NoError) {
+                    msg_rep ("Wall_Draw err", "ACAPI_Element_Change", err, APINULLGuid);
+                    return;
+                }
+            }
         }
 
-        draw.draw_error = err;
-        if (err != NoError) {
-            msg_rep ("Wall_Draw err", "ACAPI_Element_Create", err, APINULLGuid);
-            return;
-        }
         draw.otd_guid = wallelement.header.guid;
         for (OtdOpening &op : openings) {
             op.otd_guid = APINULLGuid;
@@ -1986,7 +1997,7 @@ namespace Roombook {
 
     // Только выбранный Slab: Object не подменяется крышей, отсутствующее избранное не заменяется defaults.
     static bool Roof_ReadSlabSettings (const OtdSlab &floor, API_Element &settings) {
-        if (floor.draw.type != Floor || floor.draw.draw_type != API_RoofID || floor.draw.favorite.type != API_SlabID ||
+        if (floor.draw.type != Floor || floor.draw.favorite.type != API_SlabID ||
             !Favorite_ReadByName (floor.draw.favorite.name, settings) || GetElemTypeID (settings) != API_SlabID)
             return false;
     #ifdef ServerMainVers_2700
@@ -2069,18 +2080,22 @@ namespace Roombook {
         if (surface_geometry) {
             if (slabelement.slab.referencePlaneLocation != APISlabRefPlane_Top) {
                 slabelement.slab.referencePlaneLocation = APISlabRefPlane_Top;
+                ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, referencePlaneLocation);
                 needupdate = true;
             }
             if (slabelement.slab.offsetFromTop != 0) {
+                ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, offsetFromTop);
                 slabelement.slab.offsetFromTop = 0;
                 needupdate = true;
             }
             if (draw.favorite.name.IsEmpty ()) {
                 if (slabelement.slab.modelElemStructureType != API_BasicStructure) {
+                    ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, modelElemStructureType);
                     slabelement.slab.modelElemStructureType = API_BasicStructure;
                     needupdate = true;
                 }
                 if (slabelement.slab.thickness != otd_thickness) {
+                    ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, thickness);
                     slabelement.slab.thickness = otd_thickness;
                     needupdate = true;
                 }
@@ -2090,6 +2105,7 @@ namespace Roombook {
                 level += slabelement.slab.thickness;
         }
         if (slabelement.slab.level != level) {
+            ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, level);
             slabelement.slab.level = level;
             needupdate = true;
         }
@@ -2219,13 +2235,6 @@ namespace Roombook {
             ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, poly.nSubPolys);
             ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, poly.nCoords);
             ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, poly.nArcs);
-            ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, level);
-            if (surface_geometry) {
-                ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, referencePlaneLocation);
-                ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, offsetFromTop);
-                ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, thickness);
-                ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, modelElemStructureType);
-            }
             err = ACAPI_Element_Change (&slabelement,
                                         &mask,
                                         &memo,
@@ -2254,6 +2263,98 @@ namespace Roombook {
             break;
         }
         return;
+    }
+
+    // Знаковая площадь (векторное произведение) точки c относительно отрезка a->b.
+    static double Line_Cross (const Coord &a, const Coord &b, const Coord &c) {
+        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    }
+
+    // Допуск точных совпадений/касаний при проверке пересечений (координаты в метрах).
+    static const double kLineEps = 1e-9;
+
+    // Честное пересечение отрезков p1p2 и q1q2: касание в общей вершине и
+    // соприкосновение концами пересечением не считаются, наложение вдоль
+    // коллинеарной грани — считается.
+    static bool Segments_ProperCross (const Coord &p1, const Coord &p2, const Coord &q1, const Coord &q2) {
+        const double d1 = Line_Cross (q1, q2, p1);
+        const double d2 = Line_Cross (q1, q2, p2);
+        const double d3 = Line_Cross (p1, p2, q1);
+        const double d4 = Line_Cross (p1, p2, q2);
+        if (((d1 > kLineEps && d2 < -kLineEps) || (d1 < -kLineEps && d2 > kLineEps)) &&
+            ((d3 > kLineEps && d4 < -kLineEps) || (d3 < -kLineEps && d4 > kLineEps)))
+            return true;
+        const bool pCollinear = std::fabs (d1) <= kLineEps && std::fabs (d2) <= kLineEps;
+        const bool qCollinear = std::fabs (d3) <= kLineEps && std::fabs (d4) <= kLineEps;
+        if (!pCollinear && !qCollinear)
+            return false;
+        // Коллинеарность: пересечение только при наложении длиннее точки касания.
+        const double overlapX = std::min (std::max (p1.x, p2.x), std::max (q1.x, q2.x)) -
+                                std::max (std::min (p1.x, p2.x), std::min (q1.x, q2.x));
+        const double overlapY = std::min (std::max (p1.y, p2.y), std::max (q1.y, q2.y)) -
+                                std::max (std::min (p1.y, p2.y), std::min (q1.y, q2.y));
+        return overlapX > kLineEps || overlapY > kLineEps;
+    }
+
+    // Ищет пару вершин "самая нижняя левая — верхняя правая" по реальным точкам
+    // внешнего контура так, чтобы отрезок между ними не пересекал ни одной
+    // грани полигона (контур и дырки). false — подходящей пары нет, caller
+    // возвращается к прежнему расчёту по ограничивающему боксу.
+    static bool Poly_PickLineEnds (const Geometry::Polygon2DData &pd, Coord &llOut, Coord &urOut) {
+        if (pd.nVertices < 3 || pd.nContours < 1 || pd.vertices == nullptr || pd.contourEnds == nullptr)
+            return false;
+        // Внешний контур: уникальные вершины (последняя замыкает контур — дубль первой).
+        const UInt32 outerBeg = (*pd.contourEnds)[0] + 1;
+        const UInt32 outerEnd = (*pd.contourEnds)[1];
+        if (outerEnd <= outerBeg)
+            return false;
+        std::vector<Coord> verts;
+        verts.reserve (outerEnd - outerBeg);
+        for (UInt32 k = outerBeg; k < outerEnd; ++k)
+            verts.push_back ((*pd.vertices)[k]);
+        // Все грани всех контуров (включая дырки).
+        std::vector<std::pair<Coord, Coord>> edges;
+        for (UInt32 j = 1; j <= pd.nContours; ++j) {
+            const UInt32 beg = (*pd.contourEnds)[j - 1] + 1;
+            const UInt32 end = (*pd.contourEnds)[j];
+            for (UInt32 k = beg; k < end; ++k)
+                edges.push_back ({(*pd.vertices)[k], (*pd.vertices)[k + 1]});
+        }
+        // Самая нижняя левая: минимум x+y, при равенстве — меньший x.
+        Coord ll = verts.front ();
+        for (const Coord &c : verts) {
+            const double kC = c.x + c.y;
+            const double kL = ll.x + ll.y;
+            if (kC < kL - kLineEps || (std::fabs (kC - kL) <= kLineEps && c.x < ll.x))
+                ll = c;
+        }
+        // Кандидаты "верхняя правая": строго правее и выше ll, по убыванию x+y.
+        std::vector<Coord> cands;
+        for (const Coord &c : verts)
+            if (c.x > ll.x + kLineEps && c.y > ll.y + kLineEps)
+                cands.push_back (c);
+        std::sort (cands.begin (), cands.end (), [] (const Coord &a, const Coord &b) {
+            const double kA = a.x + a.y;
+            const double kB = b.x + b.y;
+            if (std::fabs (kA - kB) > kLineEps)
+                return kA > kB;
+            return a.x > b.x;
+        });
+        for (const Coord &ur : cands) {
+            bool crosses = false;
+            for (const auto &e : edges) {
+                if (Segments_ProperCross (ll, ur, e.first, e.second)) {
+                    crosses = true;
+                    break;
+                }
+            }
+            if (!crosses) {
+                llOut = ll;
+                urOut = ur;
+                return true;
+            }
+        }
+        return false;
     }
 
     // Создаёт или обновляет объект пола/потолка, передавая контуры и параметры отделки в GDL.
@@ -2359,15 +2460,36 @@ namespace Roombook {
         accsessoryparams.Add ("{@gdl:ac_coords}", ac_coords);
         if (is_new) {
             if (draw.type == Ceil) {
-                p.num = bbox.xMax - bbox.xMin - 0.1;
-                accsessoryparams.Add ("{@gdl:pos_x2}", p);
-                p.num = bbox.yMax - bbox.yMin - 0.1;
-                accsessoryparams.Add ("{@gdl:pos_y2}", p);
-
-                p.num = (bbox.xMax - bbox.xMin - 0.1) / 2;
-                accsessoryparams.Add ("{@gdl:pos_xtxt}", p);
-                p.num = (bbox.yMax - bbox.yMin - 0.1) / 2;
-                accsessoryparams.Add ("{@gdl:pos_ytxt}", p);
+                // Линия по реальным точкам полигона: pos1 = самая нижняя левая,
+                // pos2 = верхняя правая, у которой отрезок pos1->pos2 не задевает
+                // граней полигона; текст - середина отрезка.
+                Coord lineLL = {};
+                Coord lineUR = {};
+                const bool haveLine = Poly_PickLineEnds (polygon2DData, lineLL, lineUR);
+                if (haveLine) {
+                    p.num = lineUR.x - bbox.xMin;
+                    accsessoryparams.Add ("{@gdl:pos_x2}", p);
+                    p.num = lineUR.y - bbox.yMin;
+                    accsessoryparams.Add ("{@gdl:pos_y2}", p);
+                    p.num = lineLL.x - bbox.xMin;
+                    accsessoryparams.Add ("{@gdl:pos_x1}", p);
+                    p.num = lineLL.y - bbox.yMin;
+                    accsessoryparams.Add ("{@gdl:pos_y1}", p);
+                    p.num = (lineLL.x + lineUR.x) / 2 - bbox.xMin;
+                    accsessoryparams.Add ("{@gdl:pos_xtxt}", p);
+                    p.num = (lineLL.y + lineUR.y) / 2 - bbox.yMin;
+                    accsessoryparams.Add ("{@gdl:pos_ytxt}", p);
+                } else {
+                    // Подходящей пары вершин нет - прежнее поведение по боксу.
+                    p.num = bbox.xMax - bbox.xMin - 0.1;
+                    accsessoryparams.Add ("{@gdl:pos_x2}", p);
+                    p.num = bbox.yMax - bbox.yMin - 0.1;
+                    accsessoryparams.Add ("{@gdl:pos_y2}", p);
+                    p.num = (bbox.xMax - bbox.xMin - 0.1) / 2;
+                    accsessoryparams.Add ("{@gdl:pos_xtxt}", p);
+                    p.num = (bbox.yMax - bbox.yMin - 0.1) / 2;
+                    accsessoryparams.Add ("{@gdl:pos_ytxt}", p);
+                }
             }
             if (draw.type == Floor) {
                 p.num = poly.GetCenter ().x - bbox.xMin;
@@ -2455,6 +2577,7 @@ namespace Roombook {
                     storyLevels, otdslab.poly, otdslab.zBottom, otdslab.floorInd, otdslab.tip, otdslab.draw);
                 break;
             default:
+                msg_rep ("Roombook", "OtdSlab_Draw - wrong type", APIERR_BADPARS, otdslab.draw.otd_guid);
                 otdslab.draw.otd_guid = APINULLGuid;
                 otdslab.draw.draw_error = APIERR_BADPARS;
                 break;
@@ -2484,6 +2607,7 @@ namespace Roombook {
             Object_Draw_Linear (storyLevels, beam.geom, beam.draw, openings);
             break;
         default:
+            msg_rep ("Roombook", "OtdBeam_Draw - wrong type", APIERR_BADPARS, beam.draw.otd_guid);
             beam.draw.draw_error = APIERR_BADPARS;
             break;
         }
@@ -2515,10 +2639,13 @@ namespace Roombook {
             Object_Draw_Linear (storyLevels, edges.geom, edges.draw, edges.openings);
             break;
         default:
+            msg_rep ("Roombook", "OtdWall_Draw - wrong type", APIERR_BADPARS, edges.draw.otd_guid);
             edges.draw.otd_guid = APINULLGuid;
             edges.draw.draw_error = APIERR_BADPARS;
             break;
         }
+        if (edges.draw.draw_error != NoError)
+            return;
         // Привязка элемента к отделке
         Param_AddUnicElementByType (edges.draw.base_guid,
                                     edges.draw.otd_guid,
@@ -2646,10 +2773,7 @@ namespace Roombook {
         results.Push (result);
     }
 
-    static double FinishLinearLength (const OtdLinearElement &geom) {
-        return std::hypot (std::hypot (geom.seg.endC.x - geom.seg.begC.x, geom.seg.endC.y - geom.seg.begC.y),
-                           geom.seg.endC.z - geom.seg.begC.z);
-    }
+    static double FinishLinearLength (const OtdLinearElement &geom) { return geom.Length (); }
 
     static void CollectRoomFinishes (const OtdRoom &room, GS::Array<RoomBookFinishResult> &results) {
         for (const OtdWall &wall : room.otdwall)

@@ -96,22 +96,29 @@ namespace Roombook
         return false;
     }
 
+    void RoomBook_Run (GS::Array<RoomBookFinishResult> *results) {
+        GS::Array<API_Guid> zones;
+        RoomBook_Run (results, zones);
+    }
+
     // Собирает данные зон и конструкций, рассчитывает отделку и подготавливает результаты по материалам.
     // Проверяет классификации и доступность существующей отделки, затем вызывает отрисовку и запись связей; при ошибках
     // или отмене выходит.
-    void RoomBook_Run (GS::Array<RoomBookFinishResult> *results) {
+    void RoomBook_Run (GS::Array<RoomBookFinishResult> *results, const GS::Array<API_Guid> &requestedZones) {
         if (results != nullptr)
             results->Clear ();
+        // Конвейер переиспользует список зон; входной массив вызывающего не изменяем.
+        GS::Array<API_Guid> zones = requestedZones;
         GS::UniString funcname ("RoomBook");
         GS::Int32 nPhase = 1;
         // Окно прогресса помогает видеть, на каком этапе выполняется расчёт отделки.
         ProcessWindowGuard pwGuard (funcname, nPhase);
 
         LayerCombination_ApplyFinishIfExists ();
-
-        GS::Array<API_Guid> zones;
-        if (!Zone_CollectTargets (zones))
-            return;
+        if (zones.IsEmpty ()) {
+            if (!Zone_CollectTargets (zones))
+                return;
+        }
 
         funcname = GS::UniString::Printf ("Collect info from %d room(s)", zones.GetSize ());
         // Сбор данных: основания, контакты поверхностей и параметры всех обрабатываемых комнат.

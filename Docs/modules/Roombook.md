@@ -16,12 +16,19 @@
 
 Зависимости: `CommonFunction.hpp`, `Helpers.hpp`, `Propertycache.hpp`; внутримодульные заголовки `roombook/` (`CoordinateSearchCache.hpp`, `FloorCoreGeometry.hpp`, `RoomAnalyticGeometry.hpp`, `RoomSurfaces.hpp`, `RoomSurfaceCandidates.hpp`, `RoomSurfacePartition.hpp`, `RoomSurfaceFinish.hpp`). [по include]
 
+## Выбор целевых зон
+
+- `RoomBook_Run(results)` сохраняет прежний выбор: доступные выделенные зоны, иначе все доступные зоны. [по коду]
+- `RoomBook_Run(results, const GS::Array<API_Guid>& zones)` использует переданный непустой список без чтения выделения. Пустой список на C++-уровне сохраняет автоматический выбор. Внутри создаётся рабочая копия: последующие Clear/Push не изменяют массив вызывающего. [по коду]
+- JSON `SomeStuffCommand.RoomBook` принимает необязательный `zones: string[]`. Явный список должен быть непустым; до запуска проверяются форма GUID (с парными фигурными скобками или без), ненулевое значение, чтение заголовка, тип Zone и прежние фильтры editable/visible/access/workspace/renovation. Дубли удаляются с сохранением порядка первого вхождения. Ошибка любого участника отклоняет весь запрос до запуска RoomBook; к выделению/всем зонам такой запрос не переходит. Проверка доступности выполняется в текущем виде до переключения сочетания слоёв конвейером. [по коду]
+- Этот вход использует прежние подготовку, поиск существующей отделки по Sync_GUID zone и writers; формат ответа не изменён. `status: returned` по-прежнему означает возврат из void-функции, а не успешное построение всех элементов. Native-приёмка нового параметра — [не проверено].
+
 ## Входные точки
 
 | Вход | Цепочка |
 |---|---|
 | Меню | `MenuCommandHandler` (`SomeStuff_Main.cpp:375`) → `Roombook::RoomBook_Run` (`SomeStuff_Main.cpp:458`) |
-| JSON-команда `RoomBook` | `RoomBookCommand::Execute` (`json_commands/RoomBookCommand.cpp:33`) → `Roombook::RoomBook_Run` (`:37`); результат `RoomBookFinishResult` сериализуется в ответ (элементы с материалом: `:85-86`) |
+| JSON-команда `RoomBook` | `RoomBookCommand::Execute` (`json_commands/RoomBookCommand.cpp:65`) → `Roombook::RoomBook_Run(results, zones)` (`:97`, определение `Roombook.cpp:107`); результат `RoomBookFinishResult` сериализуется в прежний ответ |
 | JSON-команда `FavoritesList` | `RoomBookGetFavoritesCommand::Execute` (`RoomBookCommand.cpp:105`) → `Roombook::Favorite_GetDict` (`:108`, def `RoombookData.cpp:8933`) |
 | AC22/AC23 | Заглушка `RoomBook_Run` (`Roombook.cpp:21`) — отчёт «Function not work in AC22 and AC23» |
 
