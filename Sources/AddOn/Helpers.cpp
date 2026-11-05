@@ -3686,6 +3686,8 @@ GS::UniString GetPropertyENGName (GS::UniString &name) {
         return MAT_AREA_SECTION;
     if (name.IsEqual (PROP_WIDTH))
         return MAT_WIDTH;
+    if (name.IsEqual (PROP_STRUCTYPE))
+        return MAT_STRUCTYPE;
     if (name.IsEqual (cache.buildingMaterialNameString))
         return MAT_BUILDING_MATERIAL_NAME;
     if (name.IsEqual (cache.buildingMaterialDescriptionString))
@@ -7745,6 +7747,13 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
     static const GS::UniString n_ = "{@material:n}";
     static const GS::UniString ns_ = "{@material:ns}";
 
+    static const GS::UniString structype = "{@material:structype}";
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    static const GS::UniString LayerCoreString = RSGetIndString (iseng, LayerCoreStringID, ACAPI_GetOwnResModule ());
+    static const GS::UniString LayerFinishString =
+        RSGetIndString (iseng, LayerFinishStringID, ACAPI_GetOwnResModule ());
+    static const GS::UniString LayerOtherString = RSGetIndString (iseng, LayerOtherStringID, ACAPI_GetOwnResModule ());
+
     auto *layer_thickness_ptr = params.GetPtr (layer_thickness);
     auto *layer_minthickness_ptr = params.GetPtr (layer_minthickness);
     auto *area_ptr = params.GetPtr (area);
@@ -7756,6 +7765,7 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
     auto *unit_prefix_ptr = params.GetPtr (unit_prefix);
     auto *n_ptr = params.GetPtr (n_);
     auto *ns_ptr = params.GetPtr (ns_);
+    auto *structype_ptr = params.GetPtr (structype);
 
     if (n_ptr == nullptr) {
         ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "n", "");
@@ -7764,6 +7774,10 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
     if (ns_ptr == nullptr) {
         ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "ns", "");
         ns_ptr = params.GetPtr (ns_);
+    }
+    if (structype_ptr == nullptr) {
+        ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "structype", "");
+        structype_ptr = params.GetPtr (structype);
     }
 
     API_ElemTypeID eltype = GetElemTypeID (element.header);
@@ -7845,6 +7859,21 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
                             }
                         }
                     }
+                }
+                if (structype_ptr != nullptr) {
+                    const short layerType = param_composite.composite[indx].structype;
+                    structype_ptr->val.uniStringValue = layerType == APICWallComp_Core     ? LayerCoreString
+                                                        : layerType == APICWallComp_Finish ? LayerFinishString
+                                                                                           : LayerOtherString;
+                    structype_ptr->val.intValue = layerType == APICWallComp_Core     ? 2
+                                                  : layerType == APICWallComp_Finish ? 1
+                                                                                     : 0;
+                    structype_ptr->val.doubleValue = layerType == APICWallComp_Core     ? 2
+                                                     : layerType == APICWallComp_Finish ? 1
+                                                                                        : 0;
+                    structype_ptr->val.boolValue = layerType == APICWallComp_Core;
+                    structype_ptr->val.type = API_PropertyStringValueType;
+                    structype_ptr->isValid = true;
                 }
                 // Если нужно заполнить толщину
                 if (layer_thickness_ptr != nullptr) {

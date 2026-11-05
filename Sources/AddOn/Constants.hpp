@@ -185,6 +185,13 @@ static const Int32 OtherDbShowId = 84;                  // Показать эл
 static const Int32 OtherDbDatabaseId = 85;              // Заголовок столбца базы данных
 static const Int32 OtherDbElementsId = 86;              // Заголовок столбца количества элементов
 static const Int32 OtherDbShow3DId = 87;                // Показать элементы другой базы в 3D-окне
+// Тип слоя состава для шаблона Sync_from{Material:Layers} (плейсхолдер
+// {@material:structype}). Номер строки ресурса — позиция в блоке 'STR#';
+// новые строки идут в конце блока, поэтому их комментарии [100]-[102]
+// совпадают с реальными ID.
+static const Int32 LayerCoreStringID = 100;   // Тип слоя: «ядро»
+static const Int32 LayerFinishStringID = 101; // Тип слоя: «отделка»
+static const Int32 LayerOtherStringID = 102;  // Тип слоя: «другое»
 
 // --- Внутренние пути свойств материалов ---
 static const GS::UniString MAT_SOME_STUFF_TH =               // Путь к свойству толщины стройматериала
@@ -439,8 +446,10 @@ static const GS::UniString PROP_UNIT_PREFIX = "@property:unit_prefix";     // С
 static const GS::UniString PROP_LENGTH = "@property:length";               // Свойство: Длина
 static const GS::UniString PROP_AREA_SECTION = "@property:area_section";   // Свойство: Площадь сечения
 static const GS::UniString PROP_WIDTH = "@property:width";                 // Свойство: Ширина
-static const GS::UniString MAT_BUILDING_MATERIAL_ID =                      // Путь к ID стройматериала
-    "@property:BuildingMaterialProperties/Building Material ID";           // Путь к ID стройматериала
+static const GS::UniString PROP_STRUCTYPE =
+    "@property:structype";                            // Свойство: Тип слоя стройматериала (ядро/отделка/другое)
+static const GS::UniString MAT_BUILDING_MATERIAL_ID = // Путь к ID стройматериала
+    "@property:BuildingMaterialProperties/Building Material ID"; // Путь к ID стройматериала
 
 // --- Строковые ключи свойств компонентов/материалов (@material:) ---
 static const GS::UniString MAT_N = "@material:n";                                     // Материал: Номер/Позиция
@@ -456,6 +465,7 @@ static const GS::UniString MAT_UNIT_PREFIX = "@material:unit_prefix";           
 static const GS::UniString MAT_LENGTH = "@material:length";                           // Материал: Длина
 static const GS::UniString MAT_AREA_SECTION = "@material:area_section";               // Материал: Площадь сечения
 static const GS::UniString MAT_WIDTH = "@material:width";                             // Материал: Ширина
+static const GS::UniString MAT_STRUCTYPE = "@material:structype";                     // Материал: Тип слоя
 
 // --- Полные путевые свойства строительных материалов в системе Archicad ---
 static const GS::UniString MAT_BUILDING_MATERIAL_NAME =                    // Наименование стройматериала
