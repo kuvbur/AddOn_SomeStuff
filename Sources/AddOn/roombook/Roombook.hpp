@@ -988,7 +988,8 @@ namespace Roombook {
     bool Favorite_GetDict (MatarialToFavoriteDict &favdict);
     void Favorite_ReadComposite (const ParamValue &param_composite,
                                  ParamDictValue &paramToRead_favorite,
-                                 const GS::UniString &fav_name);
+                                 const GS::UniString &fav_name,
+                                 MatarialToFavoriteDict &favdict);
     bool Favorite_GetByName (const GS::UniString &favorite_name, API_Element &element);
     bool Favorite_ReadByName (const GS::UniString &favorite_name, API_Element &element);
     bool Favorite_GetByName (const GS::UniString &favorite_name, API_Element &element, API_ElementMemo &memo);
@@ -1036,6 +1037,7 @@ namespace Roombook {
         ParamDictElement paramToRead;
         ParamValue param_composite;
         ParamDictValue paramDict_favorite;
+        MatarialToFavoriteDict favdict;
         UnicGUIDByType guidselementToRead;
         GS::HashTable<API_Guid, GS::Array<OtdOpening>> openinginwall;
         GS::HashTable<API_Guid, GS::Array<API_Guid>> slabsinzone;
@@ -1048,8 +1050,6 @@ namespace Roombook {
         ReadParams windowParams = Param_GetForWindowParams ();
         ReadParams roomParams = Param_GetForRooms ();
     };
-
-    extern MatarialToFavoriteDict favdict;
 
     bool RoomProcessingContext_Prepare (RoomProcessingContext &context, const GS::Array<API_Guid> &zones);
     bool RoomProcessingContext_BuildElementReadIndex (const GS::Array<API_Guid> &zones,

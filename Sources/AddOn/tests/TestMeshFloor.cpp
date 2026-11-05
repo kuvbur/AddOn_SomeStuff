@@ -27,10 +27,6 @@
     // Тесты используют Favorite_* и Roombook-типы, объявленные только для AC >= 24.
     #if defined(ServerMainVers_2400)
 
-namespace Roombook {
-    extern MatarialToFavoriteDict favdict;
-}
-
 namespace TestFunc {
     void TestMeshFloorNative () {
         const char *filter = std::getenv ("SMSTF_TEST");
@@ -50,7 +46,7 @@ namespace TestFunc {
             const GS::UniString favoriteName = "smstf test readonly slab fixture";
             GS::UniString layerName = "SomeStuff test readonly owned layer";
             const short protectedBits = APILay_Hidden | APILay_Locked;
-            const MatarialToFavoriteDict savedFavdict = Roombook::favdict;
+            MatarialToFavoriteDict favoritesByName;
             API_Attribute ownedLayer = {};
             bool layerOwned = false;
             bool favoriteOwned = false;
@@ -91,10 +87,6 @@ namespace TestFunc {
                 } else if (layerOwned) {
                     check (false, "cleanup blocked: Favorite retained; owned layer deliberately retained");
                 }
-                // GetDict заново потерял бы старые cached composite/is_composite_read.
-                Roombook::favdict = savedFavdict;
-                check (Roombook::favdict.GetSize () == savedFavdict.GetSize (),
-                       "restored Favorite dictionary retains original entry count");
             });
 
             const auto runFavoriteLayerFixture = [&] () {
@@ -156,10 +148,10 @@ namespace TestFunc {
                 check (actualSettings, "setup actual Favorite Get proves Slab and owned layer");
                 if (!actualSettings)
                     return;
-                // SUT читает глобальный словарь; локальный GetDict не вооружил бы проверку.
-                const bool dictionaryLoaded = Favorite_GetDict (Roombook::favdict);
-                check (dictionaryLoaded, "setup public Favorite_GetDict loads actual global dictionary");
-                auto *entry = Roombook::favdict.GetPtr (favoriteName);
+                // SUT получает тот же локальный словарь, который загружен настоящим GetDict.
+                const bool dictionaryLoaded = Favorite_GetDict (favoritesByName);
+                check (dictionaryLoaded, "setup public Favorite_GetDict loads actual fixture dictionary");
+                auto *entry = favoritesByName.GetPtr (favoriteName);
                 const bool selected = dictionaryLoaded && entry != nullptr && entry->name == favoriteName &&
                                       entry->type == API_SlabID && !entry->is_composite_read &&
                                       entry->composite.IsEmpty ();
@@ -180,7 +172,7 @@ namespace TestFunc {
                 missingRequest.rawName = "{@material:smstf_test_missing_request}";
                 ParamDictValue requests;
                 check (!requests.ContainsKey (missingRequest.rawName), "request key demonstrably absent");
-                Favorite_ReadComposite (missingRequest, requests, favoriteName);
+                Favorite_ReadComposite (missingRequest, requests, favoriteName, favoritesByName);
 
                 API_Attribute after = {};
                 after.header.typeID = API_LayerID;
@@ -194,7 +186,7 @@ namespace TestFunc {
                     check (after.header.flags == before.header.flags,
                            "read-only composite retrieval preserves entire layer flags");
                 }
-                entry = Roombook::favdict.GetPtr (favoriteName);
+                entry = favoritesByName.GetPtr (favoriteName);
                 check (entry != nullptr && entry->is_composite_read,
                        "legacy early is_composite_read timing preserved on missing request");
                 check (entry != nullptr && entry->composite.IsEmpty (),
@@ -230,8 +222,8 @@ namespace TestFunc {
                     if (!invalidArmed)
                         return; // Отказ чтения Slab не доказывал бы отказ обработки шаблона.
 
-                    // Сбрасываем только свою запись; внешний cleanup восстанавливает исходный словарь.
-                    entry = Roombook::favdict.GetPtr (favoriteName);
+                    // Сбрасываем только свою запись в словаре этой fixture.
+                    entry = favoritesByName.GetPtr (favoriteName);
                     check (entry != nullptr && entry->name == favoriteName,
                            "invalid template setup selects only owned Favorite entry");
                     if (entry == nullptr || entry->name != favoriteName)
@@ -263,14 +255,14 @@ namespace TestFunc {
                     if (!presentArmed)
                         return;
 
-                    Favorite_ReadComposite (invalidRequest, invalidRequests, favoriteName);
+                    Favorite_ReadComposite (invalidRequest, invalidRequests, favoriteName, favoritesByName);
 
                     const ParamValue *readback = invalidRequests.GetPtr (invalidRequest.rawName);
                     check (readback != nullptr && readback->fromMaterial &&
                                readback->rawName == invalidRequest.rawName && !readback->isValid &&
                                readback->val.uniStringValue.IsEmpty (),
                            "present material request read-back remains invalid with empty template");
-                    entry = Roombook::favdict.GetPtr (favoriteName);
+                    entry = favoritesByName.GetPtr (favoriteName);
                     check (entry != nullptr && entry->is_composite_read,
                            "legacy early attempted-read flag retained on invalid template");
                     check (entry != nullptr && entry->composite.IsEmpty (),

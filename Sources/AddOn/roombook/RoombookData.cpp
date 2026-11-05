@@ -135,14 +135,15 @@ namespace Roombook {
                                    const API_ElemTypeID &draw_type,
                                    ParamDictValue &paramToRead_favorite,
                                    ParamValue &param_composite,
-                                   GS::UniString &tip);
+                                   GS::UniString &tip,
+                                   MatarialToFavoriteDict &favdict);
 
-    static bool OtdBeam_ProcessFinishes (OtdRoom &room, ParamDictValue &favoriteParams, ParamValue &compositeParam);
+    static bool OtdBeam_ProcessFinishes (OtdRoom &room,
+                                         ParamDictValue &favoriteParams,
+                                         ParamValue &compositeParam,
+                                         MatarialToFavoriteDict &favdict);
 
     RoomEdges *reducededges = nullptr; // Указатель для обработки полигонов зоны
-
-    // Словарь избранного нужен для выбора подходящего шаблона отделки по материалу и типу поверхности.
-    MatarialToFavoriteDict favdict;
 
     void OtdLinearSegment_SetZBottom (OtdLinearElement &el, double zBottom) {
         el.seg.begC.z = zBottom;
@@ -5063,7 +5064,8 @@ namespace Roombook {
                                          GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,
                                          ParamDictCompositeElement &paramCompositeToRead,
 
-                                         bool has_base_element) {
+                                         bool has_base_element,
+                                         MatarialToFavoriteDict &favdict) {
 
         for (OtdSlab &otdslab : otd.otdslab) {
             bool base_flipped = false;
@@ -5090,7 +5092,8 @@ namespace Roombook {
                                otdslab.draw.base_type == API_MeshID ? API_SlabID : otdslab.draw.draw_type,
                                paramDict_favorite,
                                param_composite,
-                               otdslab.tip);
+                               otdslab.tip,
+                               favdict);
             // Roof сохраняет выбранный Slab-состав и тот же материальный результат, что стеновой маршрут.
             if (otdslab.draw.base_type == API_MeshID && otdslab.draw.favorite.is_composite_read &&
                 !otdslab.draw.favorite.composite.IsEmpty ()) {
@@ -5128,7 +5131,8 @@ namespace Roombook {
     // учитывает в материале.
     static void OtdWall_ApplyFavoriteAndMaterialData (GS::Array<OtdWall> &opw,
                                                       ParamDictValue &paramDict_favorite,
-                                                      ParamValue &param_composite) {
+                                                      ParamValue &param_composite,
+                                                      MatarialToFavoriteDict &favdict) {
         GS::UniString tip;
         for (OtdWall &otdw : opw) {
             if (!otdw.isValid)
@@ -5139,7 +5143,8 @@ namespace Roombook {
                                otdw.draw.draw_type,
                                paramDict_favorite,
                                param_composite,
-                               tip);
+                               tip,
+                               favdict);
             if (otdw.draw.favorite.is_composite_read && !otdw.draw.favorite.composite.IsEmpty ()) {
                 OtdMaterial_SetFinishByComposite (otdw.draw.material, otdw.draw.favorite.composite);
                 otdw.base_composite.Append (otdw.draw.favorite.composite);
@@ -5156,7 +5161,8 @@ namespace Roombook {
                                          ParamDictValue &paramDict_favorite,
                                          ReadParams &windowParams,
                                          ParamDictCompositeElement &paramCompositeToRead,
-                                         const MixedFloorProvenance &floorProvenance) {
+                                         const MixedFloorProvenance &floorProvenance,
+                                         MatarialToFavoriteDict &favdict) {
 
         GS::Array<OtdWall> opw; // Подготовленные стены и откосы; native-элементы ещё не созданы.
         // Состав оснований и исходные участки стен.
@@ -5308,7 +5314,7 @@ namespace Roombook {
                                otd.om_zone);
         } // Разбивка стен
         // Избранное и окончательный состав материалов: добавленные слои затем участвуют в ведомости.
-        OtdWall_ApplyFavoriteAndMaterialData (opw, paramDict_favorite, param_composite);
+        OtdWall_ApplyFavoriteAndMaterialData (opw, paramDict_favorite, param_composite, favdict);
         // Допустимость стены-перепада для выбранного избранного.
         // Проверяем тот же выбор избранного/defaults и запрет профиля, что и штатный surface-writer.
         for (auto &wall : opw) {
@@ -5320,7 +5326,7 @@ namespace Roombook {
                 settings.wall.modelElemStructureType != API_ProfileStructure;
         }
         // Окончательный массив подготовленной отделки; создание в модели выполняется позже.
-        otd.otdwall = opw;
+        otd.otdwall = std::move (opw);
         return true;
     }
 
@@ -5372,14 +5378,11 @@ namespace Roombook {
         return true;
     }
 
-    // Подготавливает геометрию для прежних материальных правил и writers; элементы здесь не создаются.
-    static bool OtdRoom_BuildSurfaceFinishes (OtdRoom &room,
-                                              const UnicGuid &finclassguids,
+    static void OtdRoom_CollectOrdinaryWalls (const OtdRoom &room,
                                               RoomSurfaceCache *cache,
-                                              MixedFloorProvenance &floorProvenance) {
+                                              GS::Array<OtdWall> &ordinaryWalls) {
         // Обычные (не профильные) стены сохраняем из аналитического расчёта по wallPart (как в v1.77).
         // 3D-поверхности строятся только для сложных стен (профили, наклонные, дуги) и балок.
-        GS::Array<OtdWall> ordinaryWalls;
         for (const auto &wall : room.otdwall) {
             if (wall.draw.base_type == API_WallID) {
                 const auto base = Element_Read (wall.draw.base_guid, cache);
@@ -5388,11 +5391,9 @@ namespace Roombook {
                 }
             }
         }
+    }
 
-        room.otdwall.Clear ();
-        room.otdslab.Clear ();
-        bool hasSkippedPieces = false;
-        bool hasAmbiguousPieces = false;
+    static bool OtdRoom_BuildHorizontalFinishes (OtdRoom &room, MixedFloorProvenance &floorProvenance) {
         GS::Array<OtdSlab> slabFinishes;
         auto slabSources = room.slabSources;
         auto floors = room.floorslab;
@@ -5474,6 +5475,13 @@ namespace Roombook {
             slab.draw.material = slab.draw.type == Floor ? room.om_floor : room.om_ceil;
             room.otdslab.Push (std::move (slab));
         }
+        return true;
+    }
+
+    static bool OtdRoom_BuildPartitionWallFinishes (OtdRoom &room,
+                                                    RoomSurfaceCache *cache,
+                                                    bool &hasSkippedPieces,
+                                                    bool &hasAmbiguousPieces) {
         // Убираем лишь внутренние швы совместимых контактов; исходный partition сохраняет provenance.
         GS::Array<RoomSurfacePiece> grouped;
         if (!SurfaceWallPieces_Group (room.surfacePartition.pieces, room.floorInd, grouped)) {
@@ -5533,7 +5541,13 @@ namespace Roombook {
             correctedWalls.Append (corrected);
         }
         room.otdwall = std::move (correctedWalls);
-        room.otdwall.Append (ordinaryWalls);
+        return true;
+    }
+
+    static void OtdRoom_BuildBeamFinishes (OtdRoom &room,
+                                           const UnicGuid &finclassguids,
+                                           RoomSurfaceCache *cache,
+                                           bool &hasSkippedPieces) {
         GS::HashTable<API_Guid, const API_BeamPart *> shortestBeamParts;
         for (const auto &part : room.surfaceCandidates.beamParts) {
             if (!std::isfinite (part.tBeg) || !std::isfinite (part.tEnd) || part.tEnd < part.tBeg)
@@ -5676,6 +5690,25 @@ namespace Roombook {
                 }
             }
         }
+    }
+
+    // Подготавливает геометрию для прежних материальных правил и writers; элементы здесь не создаются.
+    static bool OtdRoom_BuildSurfaceFinishes (OtdRoom &room,
+                                              const UnicGuid &finclassguids,
+                                              RoomSurfaceCache *cache,
+                                              MixedFloorProvenance &floorProvenance) {
+        GS::Array<OtdWall> ordinaryWalls;
+        OtdRoom_CollectOrdinaryWalls (room, cache, ordinaryWalls);
+        room.otdwall.Clear ();
+        room.otdslab.Clear ();
+        bool hasSkippedPieces = false;
+        bool hasAmbiguousPieces = false;
+        if (!OtdRoom_BuildHorizontalFinishes (room, floorProvenance))
+            return false;
+        if (!OtdRoom_BuildPartitionWallFinishes (room, cache, hasSkippedPieces, hasAmbiguousPieces))
+            return false;
+        room.otdwall.Append (ordinaryWalls);
+        OtdRoom_BuildBeamFinishes (room, finclassguids, cache, hasSkippedPieces);
         if (hasAmbiguousPieces)
             msg_rep ("Surface finish", "Ambiguous surface contacts were not assigned", NoError, room.zone_guid);
         if (hasSkippedPieces)
@@ -5776,7 +5809,8 @@ namespace Roombook {
                                      context.paramDict_favorite,
                                      context.exsistot_byzone,
                                      paramCompositeToRead,
-                                     has_base_element);
+                                     has_base_element,
+                                     context.favdict);
             // Стены и откосы: здесь же пол расширяется в проёмы, независимо от флага создания откосов.
             // Откосы нужны и при отсутствии представимых основных surface-стен.
             Geometry::MultiPolygon2D profileExclusion;
@@ -5797,7 +5831,8 @@ namespace Roombook {
                                                       context.paramDict_favorite,
                                                       readParams.windowParams,
                                                       paramCompositeToRead,
-                                                      floorProvenance)) {
+                                                      floorProvenance,
+                                                      context.favdict)) {
                 msg_rep (
                     "Mesh floor", "Uncovered opening demand; existing finishes retained", APIERR_BADPARS, zoneGuid);
                 return false;
@@ -5842,7 +5877,7 @@ namespace Roombook {
                          "Accepted slab side remainder is ambiguous or unrepresentable",
                          APIERR_BADPARS,
                          zoneGuid);
-            if (!OtdBeam_ProcessFinishes (otd, context.paramDict_favorite, context.param_composite)) {
+            if (!OtdBeam_ProcessFinishes (otd, context.paramDict_favorite, context.param_composite, context.favdict)) {
                 msg_rep ("Skirting", "Cannot prepare final floor/ceiling beam arrays", APIERR_BADPARS, zoneGuid);
                 return false;
             }
@@ -9054,7 +9089,10 @@ namespace Roombook {
     }
 
     // Подготавливает плинтусы до записи модели; исходные OtdSlab не сдвигает.
-    static bool OtdBeam_ProcessFinishes (OtdRoom &room, ParamDictValue &favoriteParams, ParamValue &compositeParam) {
+    static bool OtdBeam_ProcessFinishes (OtdRoom &room,
+                                         ParamDictValue &favoriteParams,
+                                         ParamValue &compositeParam,
+                                         MatarialToFavoriteDict &favdict) {
         room.otdbeam_floor.Clear ();
         room.otdbeam_ceil.Clear ();
         GS::Array<OtdSlab> faces = room.otdslab;
@@ -9106,7 +9144,8 @@ namespace Roombook {
                                    API_BeamID,
                                    favoriteParams,
                                    compositeParam,
-                                   tip);
+                                   tip,
+                                   favdict);
         }
         return true;
     }
@@ -9115,7 +9154,8 @@ namespace Roombook {
     // сбрасывает. При наличии требуемого параметра и состава материала заполняет composite через Param_SetComposite.
     void Favorite_ReadComposite (const ParamValue &param_composite,
                                  ParamDictValue &paramToRead_favorite,
-                                 const GS::UniString &fav_name) {
+                                 const GS::UniString &fav_name,
+                                 MatarialToFavoriteDict &favdict) {
 
         // ОПТИМИЗАЦИЯ: 1 поиск в favdict вместо 5 (!) с одновременной проверкой флага
         auto *favData = favdict.GetPtr (fav_name);
@@ -9152,7 +9192,8 @@ namespace Roombook {
 
     static void Favorite_GetPossiblyType (const TypeOtd &type,
                                           const API_ElemTypeID &draw_type,
-                                          API_ElemTypeID &possibly_type) {
+                                          API_ElemTypeID &possibly_type,
+                                          const MatarialToFavoriteDict &favdict) {
         GS::UniString favorite_name_defult;
         switch (type) {
         case Reveal_Main:
@@ -9181,7 +9222,9 @@ namespace Roombook {
         return;
     }
 
-    static GS::UniString Favorite_GetDefultName (const TypeOtd &type, const API_ElemTypeID &draw_type) {
+    static GS::UniString Favorite_GetDefultName (const TypeOtd &type,
+                                                 const API_ElemTypeID &draw_type,
+                                                 const MatarialToFavoriteDict &favdict) {
         GS::UniString favorite_name_defult;
         switch (type) {
         case Wall_Main:
@@ -9230,7 +9273,8 @@ namespace Roombook {
                                    const API_ElemTypeID &draw_type,
                                    ParamDictValue &paramToRead_favorite,
                                    ParamValue &param_composite,
-                                   GS::UniString &tip) {
+                                   GS::UniString &tip,
+                                   MatarialToFavoriteDict &favdict) {
         API_ElemTypeID possibly_type = draw_type;
         const bool isSkirting = type == Floor_Skirting || type == Ceil_Cornice;
         GS::UniString fav_name = favorite.name;
@@ -9253,7 +9297,7 @@ namespace Roombook {
                 GS::UniString part_full = part + "_" + fav_name;
                 if (auto *favPtr = favdict.GetPtr (part_full)) {
                     if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
-                        Favorite_ReadComposite (param_composite, paramToRead_favorite, part_full);
+                        Favorite_ReadComposite (param_composite, paramToRead_favorite, part_full, favdict);
                         if (auto *updatedFavPtr = favdict.GetPtr (part_full)) {
                             favorite = *updatedFavPtr;
                         }
@@ -9263,7 +9307,7 @@ namespace Roombook {
             }
             if (auto *favPtr = favdict.GetPtr (part)) {
                 if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
-                    Favorite_ReadComposite (param_composite, paramToRead_favorite, part);
+                    Favorite_ReadComposite (param_composite, paramToRead_favorite, part, favdict);
                     if (auto *updatedFavPtr = favdict.GetPtr (part)) {
                         favorite = *updatedFavPtr;
                     }
@@ -9274,7 +9318,7 @@ namespace Roombook {
         if (!fav_name.IsEmpty ()) {
             if (auto *favPtr = favdict.GetPtr (fav_name)) {
                 if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
-                    Favorite_ReadComposite (param_composite, paramToRead_favorite, fav_name);
+                    Favorite_ReadComposite (param_composite, paramToRead_favorite, fav_name, favdict);
                     if (auto *updatedFavPtr = favdict.GetPtr (fav_name)) {
                         favorite = *updatedFavPtr;
                     }
@@ -9296,7 +9340,7 @@ namespace Roombook {
                 if (fav.Contains (tipLower) && fav.Contains (favorite_suffix)) {
                     if (auto *favPtr = favdict.GetPtr (fav)) {
                         if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
-                            Favorite_ReadComposite (param_composite, paramToRead_favorite, fav);
+                            Favorite_ReadComposite (param_composite, paramToRead_favorite, fav, favdict);
                             if (auto *updatedFavPtr = favdict.GetPtr (fav)) {
                                 favorite = *updatedFavPtr;
                             }
@@ -9308,11 +9352,11 @@ namespace Roombook {
         }
 
         if (favorite.type == API_ZombieElemID) {
-            GS::UniString favorite_name_defult = Favorite_GetDefultName (type, draw_type);
-            Favorite_GetPossiblyType (type, draw_type, possibly_type);
+            GS::UniString favorite_name_defult = Favorite_GetDefultName (type, draw_type, favdict);
+            Favorite_GetPossiblyType (type, draw_type, possibly_type, favdict);
             if (auto *favPtr = favdict.GetPtr (favorite_name_defult)) {
                 if (favPtr->type == possibly_type || favPtr->type == API_ObjectID) {
-                    Favorite_ReadComposite (param_composite, paramToRead_favorite, favorite_name_defult);
+                    Favorite_ReadComposite (param_composite, paramToRead_favorite, favorite_name_defult, favdict);
                     if (auto *updatedFavPtr = favdict.GetPtr (favorite_name_defult)) {
                         favorite = *updatedFavPtr;
                     }

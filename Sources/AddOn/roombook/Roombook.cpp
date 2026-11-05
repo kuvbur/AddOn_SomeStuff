@@ -136,7 +136,7 @@ namespace Roombook
         ListData::LibElements paramListDataToRead;
         ParamHelpers::ElementsRead (context.paramToRead, paramCompositeToRead, paramListDataToRead, true, false);
         // Словарь избранного нужен для выбора подходящего шаблона отделки по материалу и типу поверхности.
-        Favorite_GetDict (favdict);
+        Favorite_GetDict (context.favdict);
         // Ищём уже существующие элементы отделки и определяем, к каким базовым элементам они привязаны.
         // Это нужно, чтобы не создавать дубли и правильно обновлять существующие элементы.
         bool has_base_element = false;
