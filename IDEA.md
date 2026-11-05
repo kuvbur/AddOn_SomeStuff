@@ -379,6 +379,16 @@ Last Checkpoint: нет; чужие правки сохраняются.
 
 ## Archive
 
+### #313 — безопасный переводчик вики RU → EN
+
+Scope: только wiki/tools/{translate_ru2eng.py,wiki_translation.py,test_translate_ru2eng.py,requirements.txt,README.md,.gitignore} и запись состояния. RU/EN страницы, legacy translation_hashes.json, C++, PLN и чужие дельты не менялись. Версия AC не применима; без платных API-запросов, push/IssueClose. Коммит разрешён владельцем.
+Status: COMPLETED — реализация и офлайн-приёмка; live-перевод отдельно не проверен.
+Plan: [x] baseline/issue; [x] RED9/9; [x] защищённый Markdown/ссылки и точный кэш переводов; [x] атомарная запись EN перед кэшем, CLI/lazy client/HTTP validation/retries; [x] GREEN46/0 и corpus20; [x] разобрать пять замечаний независимого review, проверить регрессии и документацию.
+Last Completed: прежний CLI entrypoint делегирует wiki_translation.py. Сохраняются преамбула/код/технические маркеры/email/reference IDs, проверяется весь документ; новые картинки локализуются из raw-URL кэша без повторного перевода. Общий validator проверяет схему/контрольные суммы кэша и в --check. Новый translation_cache.v2.json не доверяет legacy-хэшам. Final unit46/0; py_compile трёх Python-файлов→scratch; все20RU реально прошли pipeline с identity callback и0callback на повторе, code blocks сохранены.40исходных RU/EN/legacy-cache файлов совпали с baselineSHA. CLI из scratch: dry-run exit0, обычный check stale20 exit1, check временного корпуса current20 exit0; всё без API/записей в repo wiki.
+Review: leaf проверял старый SHA9dd8d6c1…; коллизии имён/reference links/вложенные картинки уже исправлены к возврату. Parent подтвердил остававшиеся email-local-part и неверный CURRENT при повреждённых blocks/checksum, добавил RED и исправил. Все5адресных регрессий повторены parent на принятом SHA c4b911c0c4dc3dae6a7627617804fb37b7987df92f3a3bc0029c61b699083e9e. Это разбор замечаний и собственная приёмка правок, не независимый clean-verdict финального snapshot. Evidence: Hermes scratch/wiki-translation-fix/{final-tests.log,review-red.log,email-red.log,review-acceptance.json,cli-report.json,final-manifest.json,corpus-final/corpus-report.json}.
+Next Step: при отдельном согласовании — пробный платный перевод выбранной страницы и лингвистическая проверка. До этого live API/model quality not verified; HTML-блоки и shortcut reference IDs намеренно не переводятся. README описывает ограничения, стоимость первого перевода с новым кэшем и запрет одновременных процессов с одним кэшем. Issue313 открыт; итоговый комментарий6665478786 прочитан обратно и совпал с отправленным текстом. Процедура сохранена в somestuff-wiki-docs/references/translation-script-review.md.
+Last Checkpoint: [wiki-translation], Refs: #313 (коммит по команде владельца); push/IssueClose не запрошены. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/313.
+
 ### Вики: состав конструкций — редактура и актуализация
 
 Scope: wiki/ru/Construction-Composition-ru.md и запись состояния; сверка исходников, версионного ограничения — по установленным SDK29/30. C++, ресурсы, Docs/generated, PLN и Archicad не изменялись этой задачей. Параллельная разработка %structype% (#312) сюда не включена.
