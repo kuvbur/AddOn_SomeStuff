@@ -1364,6 +1364,8 @@ short ParamHelpers::GetTypeInxByRawnamePrefix (const GS::UniString &rawName) {
         return ELEMENTTYPEINX;
     if (rawName.BeginsWith (FILENAMEPREFIX))
         return FILETYPEINX;
+    if (rawName.BeginsWith (FLAGNAMEPREFIX))
+        return FLAGTYPEINX;
 #if defined(TESTING)
     DBprnt ("ERROR GetTypeInxByRawnamePrefix " + rawName);
 #endif
