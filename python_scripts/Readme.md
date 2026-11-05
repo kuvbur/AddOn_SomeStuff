@@ -1,108 +1,122 @@
-# Python Scripts for SomeStuff Add-on
+# Утилиты SomeStuff / SomeStuff Utilities
 
-## Overview
+## Русский
 
-This directory contains Python utilities for interacting with Archicad via its JSON API.
+В папке находятся исходники двух утилит для аддона SomeStuff.
+Для работы используются готовые Windows-приложения в папке `dist`:
+`roombook_setup.exe` и `somestuff_updater.exe`. Запуск — двойным щелчком по EXE;
+отдельно устанавливать Python не требуется.
 
-## roombook_setup.py
+### roombook_setup — проверка и настройка проекта для отделки
 
-### Purpose
+**Исходник:** `roombook_setup.py`. **Приложение:** `dist/roombook_setup.exe`.
 
-Read-only pre-flight check: is the current Archicad project ready for the
-Roombook finishing function? It verifies:
+Помогает проверить готовность открытого проекта Archicad к функции отделки
+Roombook и связать существующие свойства проекта с назначениями отделки.
 
-1. **Connectivity** — auto-detects running Archicad instances (ports 19723–19743).
-2. **SomeStuff add-on loaded** — calls the add-on `Health` command
-   (namespace `SomeStuffCommand`); reports code 4010 if the add-on is absent.
-3. **Favorites** — `smstf wall/floor/ceil/window` (required) and
-   `smstf reveal side/up` (optional, fallback `smstf wall`).
-   The stock AC25 JSON API cannot enumerate favorites — the script reports
-   this honestly until an add-on command exists.
-4. **Zone property markers** — searches `some_stuff_fin_*` markers in
-   property *descriptions* (add-on logic: contains marker, not marker + `_`),
-   via `GetAllPropertyNames` → `GetPropertyIds` → `GetDetailsOfProperties`.
-5. **Classification classes** — `some_stuff_fin_*` items across all
-   classification systems, via `GetAllClassificationSystems` +
-   `GetAllClassificationsInSystem` (recursive tree with `children`).
-6. **Layer combination** — `smstf_fin` suffix check requires an add-on
-   command (stock API cannot read layer combinations).
+**Как работает:**
 
-### Requirements
+- Находит запущенные экземпляры Archicad и позволяет выбрать проект для проверки.
+- Через локальное JSON-соединение проверяет доступность SomeStuff, избранное
+  отделки, маркеры в описаниях свойств и элементы классификации.
+- Показывает отчёт: что найдено, чего не хватает и что не удалось проверить.
+  В частности, проверка комбинации слоёв пока не реализована, а ненайденное
+  избранное помечается как неподтверждённое, а не как заведомо отсутствующее.
+- В разделе свойств позволяет выбрать существующие свойства проекта и добавить
+  в их описания понятный текст с маркером `some_stuff_fin_*`, по которому их
+  распознаёт аддон. Сохраняет блок форматирования `{...}`; замена другого
+  непустого описания требует включения опции перезаписи.
 
-- Python 3.7+ with tkinter (standard library only)
-- Archicad running with JSON API enabled (port 19723+)
-- No external libraries (uses only standard library)
-- Note: Cyrillic in `curl` from the console breaks UTF-8 (error 2001) — the
-  script uses `urllib` with explicit UTF-8 encoding, which is safe.
+Для работы нужен открытый проект Archicad с доступным JSON-соединением;
+проверка избранного и изменение описаний требуют соответствующих команд SomeStuff.
+Сама проверка проект не изменяет. Применение описаний — отдельное действие.
+Создание недостающих элементов классификации предусмотрено отдельно в консольном
+режиме исходного скрипта, а не кнопкой в графическом интерфейсе.
+Утилита не строит отделку и не создаёт свойства, избранное или комбинации слоёв.
 
-### Usage
+### somestuff_updater — обновление установленного аддона
 
-```bash
-python python_scripts/roombook_setup.py                    # GUI, select a project and port
-python python_scripts/roombook_setup.py --cli              # all running instances
-python python_scripts/roombook_setup.py --cli --port 19723 # one port
-python python_scripts/roombook_setup.py --create-classes --port 19723
-```
+**Исходник:** `somestuff_updater.py`. **Приложение:** `dist/somestuff_updater.exe`.
 
-GUI checks the selected instance by default; checking all instances is an
-explicit option. Refresh and Run are disabled while a task is active.
-Worker errors are displayed separately from an empty instance list.
+Помогает найти установленный SomeStuff и заменить его новой сборкой
+для выбранной версии Archicad на Windows.
 
-### Properties tab (GUI)
+**Как работает:**
 
-For each required `some_stuff_fin_*` marker the tab shows a searchable
-dropdown (filter by first letters, with a contains-fallback) listing the
-project's UserDefined properties. "Apply selected" sets the chosen property's
-description to a readable text (the "Назначение" wording of
-`wiki/ru/Finishing-ru.md`) followed by the marker in parentheses, via the
-add-on command `SetPropertyDescription` (issue #304). The marker must stay in
-the description — the add-on finds finish properties by `Contains(marker)`
-search over descriptions. An existing different description is skipped unless the
-"Overwrite existing description" option is enabled. Property listing and
-application run in a background thread; every applied change is verified by a
-read-back and can be undone in Archicad (in-memory only until the project is
-saved).
+- Находит установки Archicad и аддон в стандартных папках, включая вложенные,
+  а также по пользовательским путям из реестра. Если найдено несколько копий
+  аддона, сообщает о конфликте.
+- Читает сведения об установленной сборке и сравнивает их с каналом GitHub:
+  **Release** — релизные версии, **Test** — тестовые сборки.
+- По команде пользователя ждёт закрытия выбранной установки Archicad,
+  скачивает подходящий архив и извлекает `SomeStuff.apx`.
+- Перед заменой переименовывает прежний файл в резервную копию
+  `SomeStuff.apx._old_version_...`. При ошибке копирования пытается вернуть
+  старую версию и показывает результат в журнале.
 
-CLI exit codes: `0` — all checks passed; `1` — no Archicad found;
-`2` — at least one check failed; `3` — checks incomplete (no explicit failures);
-`4` — class creation failed (system not readable, no confirmation, or creation errors).
+Для проверки и загрузки нужен доступ к GitHub, для установки — права записи
+в папку аддона. Утилита не закрывает Archicad принудительно и не редактирует
+проект. Это обновление существующей установки SomeStuff, а не первичная установка.
 
-### Creating finish classes (--create-classes)
+---
 
-Interactive CLI mode backed by the add-on command `CreateClassificationItem`
-(namespace `SomeStuffCommand`, issue #303). The stock AC25/AC30 JSON API has no
-classification-creation commands, so creation goes through the add-on:
+## English
 
-1. Lists existing classification systems (`GetAllClassificationSystems`).
-2. Reads the tree of the chosen system (`GetAllClassificationsInSystem`,
-   nodes carry item GUIDs) and lets you pick the parent branch (`0` = root).
-3. Compares `FINISH_CLASSES` (13 items from `RoombookConstants.hpp`:
-   id = marker = description, name = human-readable Russian) against markers
-   found in descriptions and creates **only the missing ones**; existing
-   classes are never touched, a repeated run is a no-op.
-4. Re-runs the read-only classification check and prints the result.
+This folder contains the source code for two SomeStuff utilities.
+Use the ready-made Windows applications in `dist`:
+`roombook_setup.exe` and `somestuff_updater.exe`. Double-click the EXE to start;
+a separate Python installation is not required.
 
-The add-on finds finish classes by searching `some_stuff_fin_*` in item
-*descriptions* (`Class_FindFinClass`), so `description` carries the marker.
+### roombook_setup — project checks and setup for room finishes
 
-### Notes
+**Source:** `roombook_setup.py`. **Application:** `dist/roombook_setup.exe`.
 
-- **Important**: The addon's own command to list property definitions
-  (`GetPropertyDefinitions`) was removed. The script uses standard Archicad
-  commands instead.
+Helps check whether an open Archicad project is ready for Roombook finishing
+and associate existing project properties with their finishing roles.
 
-### What it does NOT do
+**How it works:**
 
-The read-only check mode never creates or modifies definitions.
-The only modifying path is the explicit `--create-classes` mode (above): it
-creates missing classification items and nothing else. It does not create
-properties, favorites, layer combinations, or classification systems — the
-system itself must already exist (owner decision, issue #303).
+- Finds running Archicad instances and lets you select a project to check.
+- Uses a local JSON connection to check SomeStuff availability, finishing
+  favorites, markers in property descriptions, and classification items.
+- Reports what was found, what is missing, and what could not be checked.
+  In particular, the layer-combination check is not implemented yet, and
+  favorites that are not found are marked as unconfirmed rather than
+  definitely missing.
+- In the properties section, lets you select existing project properties and
+  add readable descriptions containing the `some_stuff_fin_*` markers used by
+  the add-on. Preserves the `{...}` formatting block; replacing a different
+  non-empty description requires enabling the overwrite option.
 
-### Output
+Requires an open Archicad project with an available JSON connection;
+favorite checks and description changes require the corresponding SomeStuff
+commands. Checking alone does not modify the project. Applying descriptions
+is a separate action. Creating missing classification items is available
+separately in the source script's console mode, not through a GUI button.
+The utility does not generate finishes or create properties, favorites,
+or layer combinations.
 
-The script prints:
+### somestuff_updater — updating the installed add-on
 
-- Connection status
-- List of missing property markers
-- List of missing favorites (if detectable)
+**Source:** `somestuff_updater.py`. **Application:** `dist/somestuff_updater.exe`.
+
+Helps locate an installed copy of SomeStuff and replace it with a newer build
+for the selected Archicad version on Windows.
+
+**How it works:**
+
+- Finds Archicad installations and the add-on in standard folders, including
+  subfolders, and through custom paths stored in the registry. Reports a
+  conflict if multiple copies of the add-on are found.
+- Reads the installed build information and compares it with the selected
+  GitHub channel: **Release** for release versions or **Test** for test builds.
+- When the user starts an update, waits for the selected Archicad installation
+  to close, downloads the matching archive, and extracts `SomeStuff.apx`.
+- Renames the previous file to a backup named
+  `SomeStuff.apx._old_version_...` before replacement. If copying fails,
+  attempts to restore the previous version and reports the result in the log.
+
+Checking and downloading require access to GitHub; installation requires
+write permission to the add-on folder. The utility does not forcibly close
+Archicad or edit the project. It updates an existing SomeStuff installation
+rather than performing a first-time installation.
