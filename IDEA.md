@@ -1,5 +1,15 @@
 ﻿# Current Task Roombook: исправление плинтусов и surface skips (#270/#252)
 
+## CI macOS — диагностика 2026-11-06
+
+Scope: Tools/CMakeCommon.cmake: исключение unnecessary-virtual-specifier для macOS AC25–30 с сохранением общего -Werror; локальные проверки и коммит разрешены. Без issue по прямому указанию владельца; без push/перезапуска CI, правок C++ и workflow.
+Status: WAITING_FOR_CI — локальное исправление и проверки завершены; полная macOS-сборка требует отдельного CI-запуска.
+Plan: [x] 1. Диагностика jobs/logs и настроек; [x] 2. Исключение предупреждения и локальная валидация; [ ] 3. Проверить AC25–30 macOS в Actions после разрешённого push.
+Last Completed: run42105791876, HEAD5cfb333: все шесть build_mac падают на exprtk.h:7111/7113, -Werror,-Wunnecessary-virtual-specifier (Xcode26.6); Windows25–30 success. Tools/CMakeCommon.cmake:165 включает -Wall -Wextra -Werror. Предыдущий run42104672988 падал раньше, на Setup Xcode; 14c6de3 сменил macos-14 на macos-latest, 5cfb333 убрал выбор Xcode15.1. Исходник string_range_node final содержит два новых virtual ref().
+Validation: Tools/CMakeCommon.cmake добавляет только -Wno-unnecessary-virtual-specifier в существующий non-Windows список; общий -Werror сохранён, exprtk/workflow не изменены. Локальный Clang22.1.8: минимальный final/ref reproducer RED exit1 (две точные диагностики) → GREEN exit0. Реальная SetCompilerOptions выполнена через cmake -P с перехватом target-команд: все шесть macOS25–30 наборов отличаются от HEAD ровно одним флагом, все шесть Windows наборов идентичны. Это проверка функции CMake/диагностики, не полная конфигурация/сборка аддона и не Apple Clang. git diff --check PASS. Артефакты: Hermes scratch/mac-ci-warning-fix/{verify.py,report.json,baseline.txt,candidate.txt}.
+Next Step: после отдельного разрешения на push проверить полную матрицу AC25–30 macOS в Actions; compiled/tested addon not performed. Issue не создаётся по явному указанию владельца.
+Last Checkpoint: локальный коммит [CI-mac] Suppress exprtk final-class virtual warning (IDEA.md step 2); push не разрешён.
+
 
 ## #312 — тип слоя в шаблоне состава
 Scope: подстановка %structype% в Sync_from{Material:Layers} с существующими RU/ENG ресурсами; сохранить незакоммиченные изменения пользователя. Проверка AC25 Windows; другие версии и macOS отдельно не проверяются. Владелец разрешил финальный запуск скрипта и закрытие issue; push не разрешён.

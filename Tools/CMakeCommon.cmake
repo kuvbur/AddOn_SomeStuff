@@ -188,6 +188,8 @@ function (SetCompilerOptions target acVersion)
             -Wno-switch
             -Wno-missing-template-arg-list-after-template-kw
             -Wno-ambiguous-operators
+            # exprtk: virtual ref() в final-классе вызывает ошибку в новых Apple Clang.
+            -Wno-unnecessary-virtual-specifier
             -Wno-unknown-warning-option
         )
         if (${acVersion} LESS_EQUAL "24")
