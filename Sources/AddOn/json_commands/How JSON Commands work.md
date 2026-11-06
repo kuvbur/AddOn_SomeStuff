@@ -1,17 +1,19 @@
 # JSON Commands Architecture — ArchiCAD Add-On SomeStuff
 
-> Обновлено: 2026-09-27 — добавлена команда SyncAll (#213); ранее после восстановления инфраструктуры JSON-команд (#205), команды Spec (#206, #207/#208).
+> Обновлено: 2026-11-06 — приведено к текущему набору команд (9 зарегистрированных), описаны параметры/ответы и сверка с исходниками; пользовательское описание команд — `wiki/ru/JSON-Commands-ru.md`.
 
 ## Текущая структура файлов
 
 ```
 Sources/AddOn/json_commands/
-├── CommandBase.hpp/cpp          # Базовый класс CommandBase (+ заготовки ReadOnly/Modify)
-├── JsonCommandRegistrar.hpp/cpp # Регистрация команд в ArchiCAD (RoomBook, Spec, SyncAll)
-├── RoomBookCommand.hpp/cpp      # Запуск построения отделки (изменяет модель)
+├── CommandBase.hpp/cpp          # Базовый класс CommandBase (+ заготовки ReadOnly/Modify, CreateError/SuccessResponse)
+├── JsonCommandRegistrar.hpp/cpp # Регистрация всех 9 команд в ArchiCAD
+├── RoomBookCommand.hpp/cpp      # RoomBook + FavoritesList + Favorite_CreateOtd +
+│                                #   Roombook_CheckFinishConfiguration +
+│                                #   CreateClassificationItem + SetPropertyDescription
 ├── SpecCommand.hpp/cpp          # Запуск построения спецификаций (изменяет модель)
 ├── SyncAllCommand.hpp/cpp       # Запуск полной синхронизации (изменяет модель)
-├── HealthCommand.hpp/cpp        # Health check + версия аддона (в дереве, НЕ регистрируется)
+├── HealthCommand.hpp/cpp        # Health check + версия аддона + имя проекта
 └── How JSON Commands work.md    # Этот файл
 ```
 
@@ -28,9 +30,9 @@ API.ExecuteAddOnCommand
     ↓
 CommandBase::Execute  (главный поток)
     ↓
-Roombook::RoomBook()  /  Spec::SpecAll(syncSettings)  /  SyncAndMonAll(syncSettings)
+Roombook::RoomBook_Run / Spec::SpecAll / SyncAndMonAll / ACAPI_* (остальные команды)
     ↓
-GS::ObjectState → {"status":"returned","elapsedSeconds":...}
+GS::ObjectState → addOnCommandResponse
 ```
 
 ## Архитектура команд
@@ -48,61 +50,59 @@ class CommandBase : public API_AddOnCommand {
 ```
 
 - Общий namespace всех команд — `SomeStuffCommand` (`CommandNamespace()` в `CommandBase.cpp`).
-- Выполнение — **только главный поток**: политика задана в базе как `override final`, per-command выбор политики невозможен. Читающие команды (Health) тоже выполняются на главном потоке.
-- Заготовки `ReadOnlyCommand` / `ModifyCommand` в заголовке есть, но текущие команды наследуют `CommandBase` напрямую.
-- Помощники ответов — свободные функции `CreateErrorResponse(errorCode, message)` / `CreateSuccessResponse()` (`CommandBase.cpp`); текущие команды их не используют.
+- Выполнение — **только главный поток**: политика задана в базе как `override final`, per-command выбор политики невозможен. Читающие команды (Health, FavoritesList, CheckFinishConfiguration) тоже выполняются на главном потоке.
+- Заготовки `ReadOnlyCommand` / `ModifyCommand` в заголовке есть; `Roombook_CheckFinishConfiguration` наследует `ReadOnlyCommand`, остальные команды — `CommandBase` напрямую.
+- Помощники ответов — свободные функции `CreateErrorResponse(errorCode, message)` / `CreateSuccessResponse()` (`CommandBase.cpp`); используются в командах с проверкой параметров (Favorite_CreateOtd, SetPropertyDescription и др.).
 
 ---
 
 ## Реализованные команды
 
-### 1. `RoomBook` (CommandBase) — issue #205
+Все имена (`GetName()`) и параметры сверены с исходниками; namespace общий — `SomeStuffCommand`.
 
-**Назначение:** запускает `Roombook::RoomBook()` — построение/обновление ведомости отделки.
+| # | `commandName` | Класс | Меняет модель |
+|---|---------------|-------|---------------|
+| 1 | `FavoritesList` | `RoomBookGetFavoritesCommand` | нет |
+| 2 | `RoomBook` | `RoomBookCommand` | да |
+| 3 | `Favorite_CreateOtd` | `RoomBookCreateFavoriteCommand` | да |
+| 4 | `Roombook_CheckFinishConfiguration` | `RoomBookCheckFinishConfigCommand` | нет |
+| 5 | `Spec` | `SpecCommand` | да |
+| 6 | `SyncAll` | `SyncAllCommand` | да |
+| 7 | `Health` | `HealthCommand` | нет |
+| 8 | `CreateClassificationItem` | `RoomBookCreateClassificationItemCommand` | да |
+| 9 | `SetPropertyDescription` | `RoomBookSetPropertyDescriptionCommand` | да |
 
-**Входные параметры:** нет.
+### 1. `RoomBook` — issue #205, отчёт #314
 
-**Ответ:**
-```json
-{ "status": "returned", "elapsedSeconds": 15.0850313 }
-```
+**Назначение:** запускает `Roombook::RoomBook_Run (&results, zones)` — построение/обновление ведомости отделки.
 
-**Семантика ответа:**
-- `status="returned"` — только факт возврата из функции, **не** успех расчёта и **не** корректность модели.
-- `elapsedSeconds` — длительность вызова `RoomBook()` (steady_clock).
-- Изменение модели (создание/удаление элементов отделки) выполняет сам `Roombook` внутри собственного undo-скоупа; команда undo отдельно не открывает.
-- Выбор экземпляра Archicad — на вызывающей стороне: HTTP-порт соответствует конкретному запущенному процессу.
+**Входные параметры** (`GetInputParametersSchema`):
+- `zones` — необязательный непустой массив строк-GUID зон (36 символов с дефисами либо в фигурных скобках, `additionalProperties: false`). Без него — интерактивный отбор.
+- Каждый GUID проверяется до запуска: форма (`RoomBook_IsGuidString`), существование (`ACAPI_Element_GetHeader`), тип (`API_ZoneID`), редактируемость/видимость (`ACAPI_Element_Filter` по `APIFilt_IsEditable|OnVisLayer|HasAccessRight|InMyWorkspace|IsVisibleByRenovation`). Ошибка — `CreateErrorResponse` с GUID зоны.
+- Повторяющиеся GUID отбрасываются.
 
-**Runtime (AC25, test_25.pln, порт 19723):** endpoint вернул `{"status":"returned","elapsedSeconds":15.0850313}` — dispatch и возврат подтверждены; корректность созданной отделки и отмена — not verified.
+**Ответ:** `{"status":"returned","rooms":[...]}` — при заданном `zones` отчёт по результатам, сгруппированный по зонам и типам отделки:
+- `rooms[].zone_guid`, `types[].TypeOtd`, `elements[]` с полями `otd_guid`, `base_guid`, `write_succeeded`, `was_created`, `is_valid`, `drawing_enabled`, `draw_error`, `length`/`length_available`, `area`/`area_available`, `material`, `bmaterial`, `structtype`.
+- Дубликаты по зоне (sentinel-записи без элемента) в отчёт не попадают; полный состав подготовленных массивов — задача #314.
 
----
+**Семантика:** `status="returned"` — факт возврата, не успех расчёта. Undo открывает сам `Roombook`. Выбор экземпляра Archicad — на вызывающей стороне (HTTP-порт процесса).
 
-### 2. `Spec` (CommandBase) — issue #206
+### 2. `Spec` — issue #206, non-interactive запуск
 
-**Назначение:** запускает построение спецификаций:
+**Назначение:** `Spec::SpecAll (syncSettings, ruleNames?, &placementPoint, &runResult)` — построение спецификаций без диалогов.
 
-```cpp
-SyncSettings syncSettings;
-LoadSyncSettingsFromPreferences (syncSettings);   // dialogs/SyncSettings.hpp — локальный JSON-конфиг (#190)
-Spec::SpecAll (syncSettings);                     // spec/Spec.cpp — единая точка входа меню Spec
-```
+**Входные параметры:**
+- `placementPoint` `{x, y}` — **обязателен**; точка вставки элементов на плане.
+- `ruleNames` — необязательный массив строк (≥1): имена правил; без него — все правила.
+- `includeParameters` — необязательный bool (по умолчанию `false`): дамп свойств/GDL-параметров созданных/изменённых элементов.
 
-**Входные параметры:** нет. Источник элементов `SpecAll` определяет сам: выделение → правила элемента по умолчанию → все видимые элементы.
+**Ответ:** `status` (текст результата `GSErrCode`), `resultCode`, `elementsToCreate/Modify/Delete`, `elapsedSeconds`, `includeParameters`; всегда — счётчики этапов `create/grouping/gdl/deleteOld` (`attempted/succeeded/failed`), `hasPrimaryError`, `hasRecoveryError`, `hasUnconfirmedCreate`, `prepareFailureStage` (строка: `none|rulesNotFound|readParamsNotFound|writeParamsNotFound|placeParamsNotFound|tooManyErrorElements|emptyElementsList|nothingCreated|canceledByUser|existingElementsLocked|unknown`). При `includeParameters: true` — также `created`/`modified` (дампы: `guid`, `favoriteName`, `sourceElement[]`, `property[]`, `gdlParameter[]`), `deleted[]`, `rules[]` (created/modified/deleted по правилу), `messages[]`. Списки наполняются `AddList` (`ObjectState::Add` требует уникального имени поля); имена в дампах сортированы — форма ответа не зависит от порядка хеш-таблицы.
 
-**Ответ:** как у RoomBook:
-```json
-{ "status": "returned", "elapsedSeconds": 42.1 }
-```
+**Runtime:** endpoint вызывался на AC25; корректность созданной спецификации проверяется по содержательному ответу, не по `status`.
 
-**Семантика:** `status="returned"` = только факт возврата; `SpecAll` возвращает `GSErrCode`, но команда его наружу не пробрасывает. Создание/обновление/удаление элементов спецификации выполняет сам `SpecAll` (`ACAPI_Element_Create` внутри `ACAPI_CallUndoableCommand` в `spec/Spec.cpp`).
+### 3. `SyncAll` — issue #213
 
-**Runtime:** endpoint-вызов — not verified (требуется вызов `API.ExecuteAddOnCommand` на запущенном Archicad); clang-format, clangd (0 диагностик) и `BuildAddOn.py -v 25` — пройдены.
-
----
-
-### 3. `SyncAll` (CommandBase) — issue #213
-
-**Назначение:** запускает полную синхронизацию:
+**Назначение:** полная синхронизация:
 
 ```cpp
 SyncSettings syncSettings;
@@ -113,76 +113,78 @@ SyncAndMonAll (syncSettings);                          // Sync.cpp — та же
 
 **Входные параметры:** нет.
 
-**Ответ:**
-```json
-{ "status": "returned", "elapsedSeconds": 4.1818899 }
-```
+**Ответ:** `{"status":"returned","elapsedSeconds":...}`.
 
 **Семантика:**
-- `SyncAndMonAll` объявлена как `void`, поэтому доказуемы только факт возврата и длительность вызова. Успех синхронизации, доступность undo, корректность модели и признак раннего выхода по `ResetProperty()` не заявляются: наружу их передать нечем.
+- `SyncAndMonAll` объявлена как `void`, поэтому доказуемы только факт возврата и длительность вызова. Успех синхронизации, доступность undo, корректность модели не заявляются.
 - Пункт меню `SyncAll_CommandID` дополнительно вызывает `DimRoundAll`, пишет настройки и обновляет меню — команда этого не делает (решение автора, #213).
-- Настройки перечитываются с `forceReload = true`: у внешнего вызова нет интерфейса, которым обычно включают флаги обхода. Состав обхода определяют `wallS/widoS/objS/cwallS`; флаг `syncAll` в логике не читается (только сериализация).
-- Прогресс-окно и фазы `SyncAndMonAll` не подавляются — правок `Sync.cpp` в #213 нет.
-- Изменение модели выполняет сама `SyncAndMonAll` внутри своего `ACAPI_CallUndoableCommand`; команда undo отдельно не открывает.
+- Настройки перечитываются с `forceReload = true`: у внешнего вызова нет интерфейса флагов обхода. Состав обхода определяют `wallS/widoS/objS/cwallS`; флаг `syncAll` в логике не читается (только сериализация).
+- Прогресс-окно и фазы `SyncAndMonAll` не подавляются.
+- Изменение модели выполняет сама `SyncAndMonAll` внутри своего `ACAPI_CallUndoableCommand`.
 
-**Runtime (AC25, test_25.pln, порт 19723):** `{"succeeded":true,"result":{"addOnCommandResponse":{"status":"returned","elapsedSeconds":4.1818899}}}` — dispatch и возврат подтверждены; корректность синхронизации и отмена — not verified. AC26–29 — not verified.
+**Runtime (AC25, test_25.pln):** dispatch и возврат подтверждены; корректность синхронизации — проверяется обычными средствами.
 
----
+### 4. `Health` — зарегистрирован
 
-### 4. `Health` (CommandBase) — в коде, НЕ зарегистрирован
-
-**Назначение:** проверка доступности аддона + версия.
-
-**Входные параметры:** нет.
+**Назначение:** проверка доступности аддона и выбор экземпляра.
 
 **Ответ:**
 ```json
-{ "status": "ok", "version": "1.2.3", "addon": "SomeStuff" }
+{ "status": "ok", "version": "...", "addon": "SomeStuff", "projectName": "..." }
 ```
+- Версия — `RSGetIndString (ID_ADDON_STRINGS = 32501, VersionId = 49)`.
+- `projectName` — `ACAPI_ProjectOperation_Project` (AC27+) / `ACAPI_Environment (APIEnv_ProjectID)`; `"untitled"`, если проект не сохранён или недоступен.
 
-Версия берётся из ресурсов:
-```cpp
-GS::UniString version = RSGetIndString (ID_ADDON_STRINGS, VersionId, ACAPI_GetOwnResModule ());
-// ID_ADDON_STRINGS = 32501 (api_headers/ResourceIds.hpp), VersionId = 49 (Constants.hpp)
-```
+### 5. `FavoritesList`
 
-По решению #205 в регистратор включён минимальный набор (RoomBook, Spec); Health оставлен в дереве как готовый шаблон read-only команды — включается в `RegisterJsonCommands()` при появлении внешнего потребителя.
+**Назначение:** возвращает словарь избранного Roombook (`Roombook::Favorite_GetDict`).
 
-**Удалённая команда:** `GetPropertyDefinitions` — в восстановленный набор не входит (файлов в `json_commands/` нет, не регистрируется). Историческое описание удалено.
+**Входные параметры:** нет. **Ответ:** `{"favorites":[{"name":...,"type":...}]}` — имя и числовой тип каждого избранного.
+
+### 6. `Favorite_CreateOtd`
+
+**Назначение:** создаёт избранное отделки — `Roombook::Favorite_CreateOtd (type, name, folder)`.
+
+**Входные параметры:** `type` (число, код `TypeOtd`), `name`, `folder` — все обязательны; пустое `name` → ошибка.
+
+**Ответ:** `CreateSuccessResponse()` либо `CreateErrorResponse(APIERR_GENERAL, ...)` при неудаче.
+
+### 7. `Roombook_CheckFinishConfiguration`
+
+**Назначение:** проверка классов отделки и свойств `Sync_GUID` — `Roombook::Roombook_CheckFinishConfiguration (errors)`.
+
+**Входные параметры:** нет. **Ответ:** `{"succeeded":bool,"errors":"строка (по ошибке на строку)"}`.
+
+### 8. `CreateClassificationItem` — issue #303
+
+**Назначение:** создание элемента классификации через `ACAPI_Classification_CreateClassificationItem (item, systemGuid, parentGuid, APINULLGuid)`.
+
+**Входные параметры:** `systemGuid`, `itemId`, `itemName`, `itemDescription` — обязательны; `parentItemGuid` — необязателен (пустой/опущенный → корневой элемент). Нечитаемый `systemGuid` → `APINULLGuid` → ошибка.
+
+**Ответ:** `{"itemGuid": "..."}` — GUID созданного элемента.
+
+### 9. `SetPropertyDescription`
+
+**Назначение:** меняет описание определения свойства (`ACAPI_Property_ChangePropertyDefinition` внутри `ACAPI_CallUndoableCommand`). Свойство ищется в PropertyCache по `propertyGuid` или по полному имени `"Группа/Имя"` (`FindPropertyGuidInCache`, запасной `FindPropertyGuidByGroups`); перед записью определение перечитывается по GUID (ChangePropertyDefinition пишет структуру целиком — устаревшая копия из кэша затёрла бы чужие поля); после записи обновляется кэш (`UpdatePropertyDescriptionInCache` → `GetPropertyRuleFlag` + `ReadFileFromDefinition`).
+
+**Входные параметры:** `description` — обязателен (пустая строка очищает описание); `propertyGuid` или `name` — один из них обязателен.
+
+**Ответ:** `{"propertyGuid":..., "changed":bool, "description":<прочитано обратно из модели>}`; `changed: false` — описание уже совпадало.
 
 ---
 
 ## Регистрация команд (`JsonCommandRegistrar.cpp`)
 
-Фактический код (AC25+):
-
-```cpp
-void RegisterJsonCommands () {
-    GS::Owner<RoomBookCommand> roomBookCommand = GS::NewOwned<RoomBookCommand> ();
-    const GSErrCode roomBookErr = ACAPI_Install_AddOnCommandHandler (roomBookCommand.Pass ());
-    if (roomBookErr != NoError)
-        DBprnt ("Failed to register RoomBookCommand, error: " + GS::ValueToUniString (roomBookErr));
-
-    GS::Owner<SpecCommand> specCommand = GS::NewOwned<SpecCommand> ();
-    const GSErrCode specErr = ACAPI_Install_AddOnCommandHandler (specCommand.Pass ());
-    if (specErr != NoError)
-        DBprnt ("Failed to register SpecCommand, error: " + GS::ValueToUniString (specErr));
-
-    GS::Owner<SyncAllCommand> syncAllCommand = GS::NewOwned<SyncAllCommand> ();
-    const GSErrCode syncAllErr = ACAPI_Install_AddOnCommandHandler (syncAllCommand.Pass ());
-    if (syncAllErr != NoError)
-        DBprnt ("Failed to register SyncAllCommand, error: " + GS::ValueToUniString (syncAllErr));
-}
-```
+Для каждой команды: `GS::NewOwned<XxxCommand>()` + установка хендлера; на AC27+ — `ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler`, на AC25/26 — `ACAPI_Install_AddOnCommandHandler`. Ошибка — `DBprnt` с `GS::ValueToUniString(err)`, не фатальна для старта аддона. Зарегистрированы (порядок кода): `RoomBookGetFavoritesCommand`, `RoomBookCommand`, `RoomBookCreateFavoriteCommand`, `RoomBookCheckFinishConfigCommand`, `SpecCommand`, `SyncAllCommand`, `HealthCommand`, `RoomBookCreateClassificationItemCommand`, `RoomBookSetPropertyDescriptionCommand`.
 
 - Регистрация вызывается из `SomeStuff_Main.cpp`, `Initialize()`:
 ```cpp
 // Регистрация JSON команд
 RegisterJsonCommands ();
 ```
-- Несколько команд в одном аддоне — штатно (примеры Tapir/Dotbim в cpprag): каждый вызов `ACAPI_Install_AddOnCommandHandler` добавляет одну команду, диспетчеризация — по `commandName`.
-- Логирование — только при ошибке: `DBprnt` + `GS::ValueToUniString(err)`; "registered successfully"-логи не пишутся.
-- Шаблон добавления новой команды: создать `XxxCommand.hpp/cpp` по образцу `SpecCommand`, добавить include и блок регистрации; `CommonSchema::NotUsed` — если команда не использует общий контракт схем.
+- Несколько команд в одном аддоне — штатно (примеры Tapir/Dotbim в cpprag): каждый вызов добавляет одну команду, диспетчеризация — по `commandName`.
+- "registered successfully"-логи не пишутся.
+- Шаблон добавления новой команды: класс в подходящем `.hpp/cpp` (или новом файле — подхватывается GLOB_RECURSE), `GetName()`, схемы параметров/ответа, include и блок регистрации; `CommonSchema::NotUsed` — если команда не использует общий контракт схем.
 
 ---
 
@@ -198,7 +200,7 @@ payload = {
     "parameters": {
         "addOnCommandId": {
             "commandNamespace": "SomeStuffCommand",  # CommandBase::GetNamespace()
-            "commandName": "Spec"                    # Command::GetName(): Spec | RoomBook | Health
+            "commandName": "Spec"                    # Command::GetName() — см. таблицу выше
         },
         "addOnCommandParameters": {}
     }
@@ -211,6 +213,7 @@ result = body.get("result", {})
 response_data = result.get("addOnCommandResponse", {})
 # Данные команды находятся в response_data
 ```
+Ошибки команды приходят в `addOnCommandResponse` как `{"errorCode":..., "error":...}` (помощник `CreateErrorResponse`).
 
 - Порт определяется автообнаружением в python (скан 19723–19743), не передаётся снаружи.
 - Команды выполнять после инициализации аддона и открытия проекта; runner (`restart_archicad_for_test.ps1`) ждёт 15 секунд после запуска Archicad.
@@ -220,11 +223,12 @@ response_data = result.get("addOnCommandResponse", {})
 ## Важные правила
 
 1. **Поток выполнения:** все команды `SomeStuffCommand` выполняются в главном потоке Archicad (`ScheduleForExecutionOnMainThread` в `CommandBase`, `override final`) — они читают/изменяют БД. Параллельного режима нет.
-2. **Undo:** undo-скоуп открывает обёрнутая бизнес-логика (`Roombook`, `Spec` — внутри `ACAPI_CallUndoableCommand`). Команда не создаёт и не дублирует undo.
-3. **Контракт ответа:** `status="returned"` + `elapsedSeconds` = факт возврата и длительность. Не заявлять успех операции, доступность отмены или корректность модели без проверяемого сигнала.
+2. **Undo:** undo-скоуп открывает обёрнутая бизнес-логика (`Roombook`, `Spec`, `SyncAndMonAll`, `SetPropertyDescription` — внутри `ACAPI_CallUndoableCommand`). Команда не создаёт и не дублирует undo.
+3. **Контракт ответа:** `status="returned"` + `elapsedSeconds` = факт возврата и длительность, не успех. Команды с проверяемым сигналом возвращают содержательные поля (`Spec` — счётчики этапов, `RoomBook` — отчёт по элементам, `SetPropertyDescription` — read-back).
 4. **Порядок include:** `ACAPinc.h` до `#if defined(ServerMainVers_2500)` в каждом `.cpp`/`.hpp` команды.
-5. **Ошибки:** `DBprnt` с `GS::ValueToUniString(err)`; ошибки регистрации не фатальны для старта аддона.
-6. **Кодировка строк:** `GS::UniString` везде; в C-строку — `.ToCStr().Get()`; в ответ — `response.Add("key", ...)`.
+5. **Ошибки:** `DBprnt` с `GS::ValueToUniString(err)` при регистрации; ошибки выполнения — `CreateErrorResponse(errorCode, message)`.
+6. **Кодировка строк:** `GS::UniString` везде; в C-строку — `.ToCStr().Get()`; в ответ — `response.Add("key", ...)`, повторяющиеся поля — только через `AddList`.
+7. **Схемы:** `GetInputParametersSchema` описывает форму до SDK-конвертации (нестрогие команды возвращают `GS::NoValue`); обязательность полей дополнительно проверяется в `Execute`.
 
 ---
 
@@ -233,18 +237,20 @@ response_data = result.get("addOnCommandResponse", {})
 | Символ/контракт | Статус |
 |-----------------|--------|
 | `ACAPI_Install_AddOnCommandHandler(GS::Owner<API_AddOnCommand>)` | ✅ verified — LightRAG + ACAPinc.h DevKit-25 |
+| `ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler` (AC27+) | ✅ verified — используется в регистраторе |
 | `API_AddOnCommand::Execute(const GS::ObjectState&, GS::ProcessControl&) -> GS::ObjectState` | ✅ verified — LightRAG |
 | `ScheduleForExecutionOnMainThread` для команд, трогающих БД | ✅ verified — LightRAG |
 | Несколько команд на аддон (примеры Tapir/Dotbim) | ✅ verified — примеры cpprag |
-| `ACAPI_CallUndoableCommand` | ✅ verified — AC25 (используется в Roombook/Spec) |
-| `RSGetIndString` | ✅ verified — AC25 |
+| `ACAPI_CallUndoableCommand` | ✅ verified — AC25 (Roombook/Spec/Sync/SetPropertyDescription) |
+| `ACAPI_Classification_CreateClassificationItem` | ✅ verified — AC25 (CreateClassificationItem, #303) |
+| `ACAPI_Property_ChangePropertyDefinition` | ✅ verified — AC25 (SetPropertyDescription) |
+| `RSGetIndString`, `ACAPI_ProjectOperation_Project` / `APIEnv_ProjectID` | ✅ verified — AC25 |
 
 ---
 
 ## Следующие шаги
 
-1. ✅ `RoomBook` — endpoint подтверждён runtime (AC25, 15.085 c, порт 19723)
-2. ✅ `Spec` — реализована и собрана (AC25, #206); endpoint-вызов — ожидает проверки на запущенном Archicad
-3. ✅ `SyncAll` — реализована (#213); endpoint подтверждён runtime (AC25, 4.182 c, порт 19723)
-4. ⏳ `Health` — включить в регистратор при появлении внешнего потребителя
-5. ⏳ ParseProperty / Renum-команды, MCP-сервер — отдельные задачи
+1. ✅ `RoomBook` / `Spec` / `SyncAll` / `Health` — реализованы, зарегистрированы
+2. ✅ `FavoritesList`, `Favorite_CreateOtd`, `Roombook_CheckFinishConfiguration`, `CreateClassificationItem` (#303), `SetPropertyDescription` — реализованы и зарегистрированы
+3. ⏳ Отчёт `RoomBook` по всем подготовленным записям (#314) — приёмка по состоянию задачи
+4. ⏳ ParseProperty / Renum-команды, MCP-сервер — отдельные задачи

@@ -53,6 +53,8 @@
 > ## [Вывод QR](https://github.com/kuvbur/AddOn_SomeStuff/wiki/QR-Code-Output-ru)
 >
 > ## [Изменения на макетах](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Layout-Changes-ru)
+>
+> ## [JSON-команды](https://github.com/kuvbur/AddOn_SomeStuff/wiki/JSON-Commands-ru)
 
 ## [Файлы-примеры](https://github.com/kuvbur/AddOn_SomeStuff/tree/master/wiki/files)
 
