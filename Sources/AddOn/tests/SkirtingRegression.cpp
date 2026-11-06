@@ -4,14 +4,14 @@
     // Roombook.hpp только для Archicad >= 24; для AC 22 файл отключается.
     #if defined(ServerMainVers_2400)
 
-    #include <algorithm>
-    #include <cmath>
-    #include <cstdio>
-    #include <cstring>
-    #include <initializer_list>
-    #include <limits>
+        #include <algorithm>
+        #include <cmath>
+        #include <cstdio>
+        #include <cstring>
+        #include <initializer_list>
+        #include <limits>
 
-    #include "roombook/Roombook.hpp"
+        #include "roombook/Roombook.hpp"
 
 namespace {
     bool Equal (double a, double b) { return std::fabs (a - b) < 1e-8; }
@@ -541,13 +541,13 @@ int main () {
         generic.item.guid.time_low = 203;
         lower.item.guid.time_low = 201;
         upper.item.guid.time_low = 202;
-        check (!Roombook_CheckFinishConfiguration (classes, recognized),
-               "preflight empty class dict rejected");
+        check (!Roombook_CheckFinishConfiguration (classes, recognized), "preflight empty class dict rejected");
 
         auto &cache = PROPERTYCACHE ();
         const ParamDictValue original = cache.property;
         const bool originalFull = cache.isPropertyDefinitionRead_full;
         const bool originalOK = cache.isPropertyDefinition_OK;
+
         struct CacheRestore {
             PropertyCache &cache;
             ParamDictValue property;
@@ -564,6 +564,7 @@ int main () {
                 cache.isPropertyDefinition_OK = ok;
             }
         } restore (cache);
+
         cache.isPropertyDefinitionRead_full = true;
         cache.isPropertyDefinition_OK = true;
 
@@ -571,8 +572,7 @@ int main () {
         recognized.Clear ();
         recognized.Add (generic.item.guid, false);
         cache.property.Clear ();
-        check (!Roombook_CheckFinishConfiguration (classes, recognized),
-               "preflight zone property missing rejected");
+        check (!Roombook_CheckFinishConfiguration (classes, recognized), "preflight zone property missing rejected");
 
         ParamValue zone;
         zone.definition.description = SYNCGUID + " zone";
@@ -584,13 +584,11 @@ int main () {
         recognized.Set (generic.item.guid, false);
         zone.definition.description = "zone";
         cache.property.Set ("zone", zone);
-        check (!Roombook_CheckFinishConfiguration (classes, recognized),
-               "preflight missing Sync_GUID marker rejected");
+        check (!Roombook_CheckFinishConfiguration (classes, recognized), "preflight missing Sync_GUID marker rejected");
 
         zone.definition.description = SYNCGUID + " zone";
         cache.property.Set ("zone", zone);
-        check (Roombook_CheckFinishConfiguration (classes, recognized),
-               "preflight recovers after invalid definition");
+        check (Roombook_CheckFinishConfiguration (classes, recognized), "preflight recovers after invalid definition");
 
         // Роли плинтуса/карниза в recognized покрываются тем же механизмом, что и стены.
         recognized.Set (generic.item.guid, true);
@@ -605,7 +603,7 @@ int main () {
         check (Roombook_CheckFinishConfiguration (classes, recognized),
                "preflight skirting roles covered by zone property accepted");
     }
-    #if defined(SKIRTING_PROCESS_REGRESSION)
+        #if defined(SKIRTING_PROCESS_REGRESSION)
     {
         for (const auto role : {Skirting_Down, Skirting_Up}) {
             const GS::UniString defaultName = role == Skirting_Down ? "smstf plinth down" : "smstf plinth up";
@@ -658,8 +656,8 @@ int main () {
         check (accessory.name == GS::UniString ("custom floor") && accessory.type == API_ObjectID,
                "dispatch selector preserves adjacent floor accessory selection");
     }
-    #endif
-    #if defined(SKIRTING_PROCESS_REGRESSION)
+        #endif
+        #if defined(SKIRTING_PROCESS_REGRESSION)
     {
         const auto polygon = [] (double left, double right, bool hole) {
             GS::Array<Point2D> points = {{left, 19}, {right, 19}, {right, 21}, {left, 21}};
@@ -769,9 +767,9 @@ int main () {
                    SkirtingProcessFavoriteReadsForRegression () == 2,
                "accessory fix preserves native Slab settings thickness path");
     }
-    #endif
+        #endif
     std::printf ("passed=%d failed=%d\n", passed, failed);
     return failed == 0 ? 0 : 1;
 }
-#endif
+    #endif
 #endif
