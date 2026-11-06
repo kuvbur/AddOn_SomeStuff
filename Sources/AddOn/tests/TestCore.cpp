@@ -1615,13 +1615,13 @@ namespace TestFunc {
                 Roombook::OtdRoom room;
                 room.zone_guid = zones[0];
                 room.height = 3;
-                room.tip_pot = "ceiling sentinel";
+                room.tip_ceil = "ceiling sentinel";
                 room.tip_otd = "finish sentinel";
-                room.tip_pol = "floor sentinel";
-                const GS::UniString initial[] = {room.tip_pot, room.tip_otd, room.tip_pol};
+                room.tip_floor = "floor sentinel";
+                const GS::UniString initial[] = {room.tip_ceil, room.tip_otd, room.tip_floor};
                 Roombook::ReadParams work = requests;
                 Roombook::Param_SetToRooms (materials, room, inputs, work);
-                const GS::UniString actual[] = {room.tip_pot, room.tip_otd, room.tip_pol};
+                const GS::UniString actual[] = {room.tip_ceil, room.tip_otd, room.tip_floor};
                 for (UInt32 field = 0; field < 3; ++field) {
                     const GS::UniString expected = field != targetIndex || mode < 2 ? initial[field]
                                                    : mode == 5                      ? GS::UniString ("preset type")
@@ -1672,9 +1672,9 @@ namespace TestFunc {
                         Roombook::OtdRoom room;
                         room.zone_guid = zones[0];
                         room.height = 3;
-                        room.tip_pot = "ceiling sentinel";
+                        room.tip_ceil = "ceiling sentinel";
                         room.tip_otd = "finish sentinel";
-                        room.tip_pol = "floor sentinel";
+                        room.tip_floor = "floor sentinel";
                         bool *has[] = {&room.has_ceil, &room.has_floor};
                         bool *bySlab[] = {&room.ceil_by_slab, &room.floor_by_slab};
                         *has[side] = (initial & 1u) != 0;
@@ -1688,8 +1688,8 @@ namespace TestFunc {
                         DBtest (*has[side] == expectedHas, "Room availability absent invalid false true and type");
                         DBtest (*bySlab[side] == expectedSlab, "Room slab gate uses applied availability");
                         DBtest (!*has[1 - side] && *bySlab[1 - side], "Room slab opposite side unchanged");
-                        DBtest (room.tip_pot == "ceiling sentinel" && room.tip_otd == "finish sentinel" &&
-                                    room.tip_pol == "floor sentinel" && room.height_main == 2.5 &&
+                        DBtest (room.tip_ceil == "ceiling sentinel" && room.tip_otd == "finish sentinel" &&
+                                    room.tip_floor == "floor sentinel" && room.height_main == 2.5 &&
                                     room.height_up == 0.5,
                                 "Room slab unrelated types and readable anchor");
                         for (UInt32 j = 0; j < 2; ++j) {
@@ -1863,14 +1863,15 @@ namespace TestFunc {
                 Roombook::OtdRoom room;
                 room.zone_guid = zones[i];
                 room.height = i == 0 ? 3 : 4.5;
-                room.tip_pol = "keep floor B";
+                room.tip_floor = "keep floor B";
                 room.ceil_by_slab = true;
                 room.floor_by_slab = i != 0;
                 Roombook::Param_SetToRooms (materials, room, read, work);
                 DBtest (room.tip_otd == data[i].Get ("tip_otd").val.uniStringValue,
                         "Room params independent zone Unicode finish");
-                DBtest (room.tip_pot == data[i].Get ("tip_pot").val.uniStringValue, "Room params independent ceiling");
-                DBtest (room.tip_pol == (i == 0 ? "floor A" : "keep floor B"),
+                DBtest (room.tip_ceil == data[i].Get ("tip_ceil").val.uniStringValue,
+                        "Room params independent ceiling");
+                DBtest (room.tip_floor == (i == 0 ? "floor A" : "keep floor B"),
                         "Room params invalid value does not inherit first zone");
                 DBtest (room.height_main == (i == 0 ? 2 : 2.5) && room.height_down == (i == 0 ? 0.5 : 1) &&
                             room.height_up == (i == 0 ? 0.5 : 1),

@@ -4,7 +4,6 @@
     #define ROOMBOOKCONST_HPP
 
 constexpr double DistanceTolerance = 1.0e-6;
-// Допуск плоскости 0,1 мм равен минимальному размеру отделочного элемента.
 constexpr double PlaneTolerance = 1.0e-4;
 constexpr double AreaTolerance = 1.0e-6;
 

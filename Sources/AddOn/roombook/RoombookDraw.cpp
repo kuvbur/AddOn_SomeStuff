@@ -539,7 +539,7 @@ namespace Roombook {
                 API_ElementMemo memo = {};
                 const GS::OnExit memoGuard ([&] () { ACAPI_DisposeElemMemoHdls (&memo); });
                 bool ready = false;
-                if (wall.surface_geometry || wall.draw.favorite.type == API_WallID) {
+                if (wall.draw.favorite.type == API_WallID) {
                     ready = Wall_GetDefault (wall.draw.favorite.name, wall.draw.type, target);
                     if (wall.surface_geometry)
                         target.wall.type = APIWtyp_Normal;
@@ -1007,6 +1007,7 @@ namespace Roombook {
                                     const OtdLinearElement &geom,
                                     OtdDrawData &draw,
                                     GS::Array<OtdOpening> &openings) {
+        draw.draw_error = APIERR_BADPARS;
         const double level = GetOffsetFromStory (geom, storyLevels);
         if (!OtdLinearElement_CanDraw (geom, true) || !std::isfinite (level)) {
             draw.otd_guid = APINULLGuid;
@@ -1033,6 +1034,7 @@ namespace Roombook {
             if (!GetExsist (draw.otd_guid, wallobjelement, wallobjmemo))
                 return;
             if (GetElemTypeID (wallobjelement) != API_ObjectID) {
+                draw.otd_guid = APINULLGuid;
                 return;
             }
         }
@@ -2760,16 +2762,21 @@ namespace Roombook {
                                   double length,
                                   bool hasLength,
                                   double area,
-                                  bool hasArea) {
-        if (!draw.write_succeeded || !draw.was_created || draw.draw_error != NoError || draw.otd_guid == APINULLGuid)
-            return;
+                                  bool hasArea,
+                                  bool isValid,
+                                  bool drawingEnabled) {
         RoomBookFinishResult result;
         result.zone_guid = zone;
         result.draw = draw;
-        result.length = length;
-        result.has_length = hasLength;
-        result.area = area;
-        result.has_area = hasArea;
+        result.draw.was_created = draw.write_succeeded && draw.was_created;
+        // В полный отчёт попадают и невалидные расчётные записи; NaN/Inf не должны портить JSON.
+        result.has_length = hasLength && std::isfinite (length);
+        result.length = result.has_length ? length : 0;
+        result.has_area = hasArea && std::isfinite (area);
+        result.area = result.has_area ? area : 0;
+        result.is_element = true;
+        result.is_valid = isValid;
+        result.drawing_enabled = drawingEnabled;
         results.Push (result);
     }
 
@@ -2777,18 +2784,35 @@ namespace Roombook {
 
     static void CollectRoomFinishes (const OtdRoom &room, GS::Array<RoomBookFinishResult> &results) {
         for (const OtdWall &wall : room.otdwall)
-            AppendRoomFinish (
-                results, room.zone_guid, wall.draw, FinishLinearLength (wall.geom), true, OtdWall_GetArea (wall), true);
+            AppendRoomFinish (results,
+                              room.zone_guid,
+                              wall.draw,
+                              FinishLinearLength (wall.geom),
+                              true,
+                              OtdWall_GetArea (wall),
+                              true,
+                              wall.isValid,
+                              OtdWall_ShouldDrawFinish (room, wall));
         for (const OtdSlab &slab : room.otdslab) {
             const double area =
                 slab.poly.CalcArea () *
                 (slab.draw.base_type == API_MeshID ? std::hypot (1.0, std::hypot (slab.slope_x, slab.slope_y)) : 1.0);
-            AppendRoomFinish (results, room.zone_guid, slab.draw, 0, false, area, true);
+            AppendRoomFinish (results,
+                              room.zone_guid,
+                              slab.draw,
+                              0,
+                              false,
+                              area,
+                              true,
+                              slab.isValid,
+                              OtdSlab_ShouldDrawFinish (room, slab));
         }
         for (const OtdBeam &beam : room.otdbeam_ceil)
-            AppendRoomFinish (results, room.zone_guid, beam.draw, FinishLinearLength (beam.geom), true, 0, false);
+            AppendRoomFinish (
+                results, room.zone_guid, beam.draw, FinishLinearLength (beam.geom), true, 0, false, true, room.isValid);
         for (const OtdBeam &beam : room.otdbeam_floor)
-            AppendRoomFinish (results, room.zone_guid, beam.draw, FinishLinearLength (beam.geom), true, 0, false);
+            AppendRoomFinish (
+                results, room.zone_guid, beam.draw, FinishLinearLength (beam.geom), true, 0, false, true, room.isValid);
     }
 
     void OtdRooms_Draw (GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,

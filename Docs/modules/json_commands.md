@@ -1,5 +1,12 @@
 # json_commands — JSON-команды аддона (AC25–29)
 
+## RoomBook: полный подготовленный набор (#314, 2026-11-06)
+
+- Рабочая дельта к `04e4dd9`, AC25 Windows. Входной `zones` и группировка `rooms → types → elements` сохранены. В elements теперь входят все подготовленные записи комнаты: новые, обновлённые/no-op, отключённые или локально не записанные, включая null GUID. Служебная запись комнаты исключается отдельным внутренним `is_element`, а не проверкой GUID; несколько null-GUID элементов одного типа не схлопываются. [по коду]
+- К прежним полям добавлены `is_valid`, `drawing_enabled`, `draw_error`. `drawing_enabled` описывает допуск по предикату комнаты/типа, не факт вызова или успеха writer. Для подготовленных beams он равен валидности комнаты. `write_succeeded`/`was_created` сохранены; successful existing/no-op имеет was_created=false, а неуспешная запись не выдаётся за создание. `is_valid` у beams=true (отдельной валидности в OtdBeam нет). [по коду]
+- `otd_guid` может быть нулевым GUID для расчётной записи без native-элемента. Флаги `area_available`/`length_available` обязательны для интерпретации чисел; нефинитные значения превращаются в 0 с unavailable, формулы конечных величин не меняются. Это не native-измерения и не раскрытие base_composite. [по коду]
+- Сбор и публикация остаются внутри прежней границы успешной draw-транзакции: при rollback результатов нет. `status:returned`, ранние отказы, побочные эффекты и последующая запись свойств не изменены. Полный инвентарь модели, не попавший в подготовленные массивы, не добавляется. [по коду]
+
 ## Z7 #252 — текущий scoped diagnostic contract
 
 - TESTING && ServerMainVers_2500, read-only `RoomGeometryDiagnostic`: приоритет `partitionSelfTest=true` → `transformSelfTest=true` → `partitionSurfaces=true` → обычный guid/collectRoomInfo/Inventory. `partitionSurfaces` требует guid зоны; без guid InvalidInput/partitionComplete=false, не Inventory. `partitionSelfTest` выполняет partition/beamFinish/native-adapter/canonical-grouping checks; фактический итог60checks/0failed, не полный TestKit. [по коду + parent runtime]

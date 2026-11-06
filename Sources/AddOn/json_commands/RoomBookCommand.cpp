@@ -112,11 +112,11 @@ GS::ObjectState RoomBookCommand::Execute (const GS::ObjectState &parameters,
         room.Add ("zone_guid", APIGuidToString (results[i].zone_guid));
         const auto addGroup = room.AddList<GS::ObjectState> ("types");
         for (UIndex j = i; j < results.GetSize (); ++j) {
-            if (results[j].zone_guid != results[i].zone_guid || results[j].draw.otd_guid == APINULLGuid)
+            if (results[j].zone_guid != results[i].zone_guid || !results[j].is_element)
                 continue;
             bool seenType = false;
             for (UIndex k = i; k < j; ++k) {
-                if (results[k].zone_guid == results[i].zone_guid && results[k].draw.otd_guid != APINULLGuid &&
+                if (results[k].zone_guid == results[i].zone_guid && results[k].is_element &&
                     results[k].draw.type == results[j].draw.type) {
                     seenType = true;
                     break;
@@ -129,7 +129,7 @@ GS::ObjectState RoomBookCommand::Execute (const GS::ObjectState &parameters,
             const auto addElement = group.AddList<GS::ObjectState> ("elements");
             for (UIndex k = j; k < results.GetSize (); ++k) {
                 const auto &result = results[k];
-                if (result.zone_guid != results[i].zone_guid || result.draw.otd_guid == APINULLGuid ||
+                if (result.zone_guid != results[i].zone_guid || !result.is_element ||
                     result.draw.type != results[j].draw.type)
                     continue;
                 GS::ObjectState element;
@@ -137,6 +137,9 @@ GS::ObjectState RoomBookCommand::Execute (const GS::ObjectState &parameters,
                 element.Add ("base_guid", APIGuidToString (result.draw.base_guid));
                 element.Add ("write_succeeded", result.draw.write_succeeded);
                 element.Add ("was_created", result.draw.was_created);
+                element.Add ("is_valid", result.is_valid);
+                element.Add ("drawing_enabled", result.drawing_enabled);
+                element.Add ("draw_error", result.draw.draw_error);
                 element.Add ("length", result.length);
                 element.Add ("length_available", result.has_length);
                 element.Add ("area", result.area);

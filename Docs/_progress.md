@@ -15,6 +15,11 @@
 - symbols.json: свежие настоящие clangd DocumentSymbol isolated snapshot,236cpp-записей CommonFunction/Helpers/Propertycache проверены по исходникам; восстановлена полнота существующих overload-групп, добавлен ReadStory. Остальные947записей и порядок сохранены из873c58f, не из этой коллекции; их координаты не объявляются актуальными. Заголовки проверены clangd, но в cpp-only artifact не добавлялись. Полный parent-аудит специальных header-имён не завершён; опубликованные cpp-записи проверены отдельно. Callgraph и обзорные документы вне адресного обновления.
 - Артефакты: Hermes scratch/story-315-only-commit/validation/ (final-results.json и snapshot-final). Рабочие исходники не подменялись; Sync-срез сохранён из параллельного коммита, RoomBook WIP не включён.
 
+## R1 — тип matcher линейной отделки (#316, 2026-11-06)
+
+- Адресная карточка Roombook описывает выбор matcher по типу избранного и ошибку раннего отказа Object_Draw_Linear. Две записи symbols.json обновлены по изолированному свежему documentSymbol; MCP-снимок отвергнут как stale (namespace end2748 против текущего2892). Остальные записи и унаследованный callgraph не обновлялись и не объявляются актуальными.
+- Fresh publishDiagnostics version1 на baseline/live имеет одинаковые шесть диагностик (пять unused-variable и один unused-include); SHA256 live совпадает со снимком, все48selection/name joins проверены. Формат/scoped diff-check и canonical AC25 Windows RelWithDebInfo INT build пройдены, Draw перекомпилирован и APX перелинкован. Parent повторил standalone75/19FAIL →75/0: реальные matcher/selection и точный Object-префикс, controlled API/domain fixtures; это не полное выполнение writer/native. Independent review: No issues found in inspected scope. Debug APX/оба PLN по SHA256 неизменны; native-приёмка отдельно. Итог — в IDEA.md #316 и Hermes scratch/roombook-r1-20261106/.
+
 ## Декомпозиция распознавания SyncString (2026-11-06)
 
 - В `Sync.cpp` вынесены локальные распознаватели ID, GDL, Material, Formula, Morph, Coord, Property, Info, IFC, Glob, Class, Element, MEP и ListData. Проверки применимости и общий разбор остаются в `SyncString`; `SyncStringFile`, `SyncStringAttribute` и `SyncStringStory` сохранены как самостоятельные ветви coordinator. [по коду]

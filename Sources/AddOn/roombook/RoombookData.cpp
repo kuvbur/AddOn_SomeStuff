@@ -1531,7 +1531,7 @@ namespace Roombook {
                 beam.draw.base_type = wall.draw.base_type;
                 // Плинтус рисуется балкой; поле хранит тип рисуемого элемента.
                 beam.draw.draw_type = API_BeamID;
-                beam.tip = room.tip_pol; // Тип пола из зоны.
+                beam.tip = room.tip_floor_skirting; // Тип плинтуса пола из зоны.
                 beam.wallIndex = static_cast<Int32> (i);
                 prepared.Push (beam);
             }
@@ -1647,7 +1647,7 @@ namespace Roombook {
                             beam.wallIndex = static_cast<Int32> (wi);
                             beam.slabIndex = static_cast<Int32> (si);
                             beam.draw.type = slab.draw.type == Floor ? Floor_Skirting : Ceil_Cornice;
-                            beam.tip = slab.tip; // Тип пола/потолка из зоны, проставлен в OtdSlab_ProcessFinishes.
+                            beam.tip = room.tip_floor_skirting;
                             auto &output = slab.draw.type == Floor ? floors : ceilings;
                             const API_Coord3D origin = {
                                 beam.geom.seg.begC.x, beam.geom.seg.begC.y, beam.geom.seg.begC.z};
@@ -5091,9 +5091,9 @@ namespace Roombook {
             if (!otdslab.isValid)
                 continue;
             if (otdslab.draw.type == Ceil)
-                otdslab.tip = otd.tip_pot;
+                otdslab.tip = otd.tip_ceil;
             if (otdslab.draw.type == Floor)
-                otdslab.tip = otd.tip_pol;
+                otdslab.tip = otd.tip_floor;
             otdslab.draw.favorite.name = fav_name;
             OtdMaterial_SetFinish (otdslab.draw.material, otdslab.base_composite);
             Favorite_FindName (otdslab.draw.favorite,
@@ -6945,10 +6945,22 @@ namespace Roombook {
         zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
+        zoneparam_name = "tip_plint_pot";
+        zoneparam.rawnames.Push ("some_stuff_fin_type_ceil_cornice");
+        zoneparam.rawnames.Push ("{@gdl:tip_plint_pot}");
+        zoneparams.Add (zoneparam_name, zoneparam);
+        zoneparam.rawnames.Clear ();
+
         // Тип пола
         zoneparam_name = "tip_pol";
         zoneparam.rawnames.Push ("some_stuff_fin_type_floor");
         zoneparam.rawnames.Push ("{@gdl:tip_pol}");
+        zoneparams.Add (zoneparam_name, zoneparam);
+        zoneparam.rawnames.Clear ();
+
+        zoneparam_name = "tip_plint_pol";
+        zoneparam.rawnames.Push ("some_stuff_fin_type_floor_skirting");
+        zoneparam.rawnames.Push ("{@gdl:tip_plint_pol}");
         zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
@@ -7443,6 +7455,20 @@ namespace Roombook {
                 roominfo.om_column.rawname_bytype = val.uniStringValue;
             }
         }
+        param_name = "om_floor_skirting.rawname_bytype";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_floor_skirting.rawname_bytype = val.uniStringValue;
+            }
+        }
+        param_name = "om_ceil_cornice.rawname_bytype";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.om_ceil_cornice.rawname_bytype = val.uniStringValue;
+            }
+        }
     }
 
     // Переносит высоты нижней и основной отделки; при отсутствии height_down использует параметры химеры.
@@ -7495,7 +7521,15 @@ namespace Roombook {
         if (const auto *p = readparams.GetPtr (param_name)) {
             if (p->isValid) {
                 val = p->val;
-                roominfo.tip_pot = val.uniStringValue;
+                roominfo.tip_ceil = val.uniStringValue;
+            }
+        }
+
+        param_name = "tip_plint_pot";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.tip_ceil_cornice = val.uniStringValue;
             }
         }
 
@@ -7510,7 +7544,14 @@ namespace Roombook {
         if (const auto *p = readparams.GetPtr (param_name)) {
             if (p->isValid) {
                 val = p->val;
-                roominfo.tip_pol = val.uniStringValue;
+                roominfo.tip_floor = val.uniStringValue;
+            }
+        }
+        param_name = "tip_plint_pol";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                roominfo.tip_floor_skirting = val.uniStringValue;
             }
         }
         param_name = "has_ceil";
@@ -9169,8 +9210,12 @@ namespace Roombook {
                 // Суммируем готовые стыки в метрах, независимо от последующей записи native-элементов.
                 if (beam.slabIndex >= 0 && static_cast<UIndex> (beam.slabIndex) < room.otdslab.GetSize ()) {
                     const double length = beam.geom.Length ();
-                    if (std::isfinite (length))
+                    if (std::isfinite (length)) {
                         room.otdslab[static_cast<UIndex> (beam.slabIndex)].length_skirting += length;
+                        if (!beam.tip.IsEmpty ()) {
+                            room.otdslab[static_cast<UIndex> (beam.slabIndex)].tip_skirting = beam.tip;
+                        }
+                    }
                 }
                 Favorite_FindName (beam.draw.favorite,
                                    beam.draw.material,

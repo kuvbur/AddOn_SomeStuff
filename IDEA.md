@@ -1,5 +1,30 @@
 ﻿# Current Task Roombook: исправление плинтусов и surface skips (#270/#252)
 
+## JSON-команды — страница вики
+
+Scope: только wiki/ru/JSON-Commands-ru.md (новая), wiki/ru/_Sidebar.md и Sources/AddOn/json_commands/How JSON Commands work.md (приведён к 9 командам); код, Docs и другие задачи не затрагиваются. Статус: страница и внутренний док созданы/обновлены по текущим исходникам json_commands, UTF-8/CRLF, diff --check чист. Коммит и push не выполнялись.
+
+## #317 — R2: откат разрушительного обновления стены и проёмов
+
+Scope: R2 из Reviews/roombook.md, Wall_Draw и передача ошибки через OtdWall/OtdBeam/OtdRoom, внутреннее состояние OtdDrawData; AC25 Windows. Сохранить R1/#316, #314 и чужие правки. Геометрия, общий deletion/matcher, K1 и native-проект вне scope. Без commit/push/restart/Save/веток. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/317.
+Status: IN_PROGRESS.
+Plan: [x] 1. Dirty-baseline, issue/read-back, исходники и SDK25 undo-signature; [/] 2. Независимая оценка риска и standalone RED/GREEN кандидата; [ ] 3. Минимальная правка writer/callers; [ ] 4. Format/fresh LSP/canonical AC25 build/review; [ ] 5. Итоговое состояние и границы native-приёмки.
+Last Completed: baseline Draw13b75f60…/hpp39e332ab… сохранён в Hermes scratch/roombook-r2-20261106. Причина по исходникам: implementation error — после Delete старых проёмов ошибки могут быть проглочены; failure нового проёма удаляет также reused parent. Candidate только в scratch: явный rollback_required до попытки существующего Delete/Change/opening, без удаления reused parent; отказ cleanup новой стены тоже fatal. Обычные ошибки до мутации сохраняют continue. Полный runtime-откат в Archicad не проверен.
+Next Step: подтвердить RED и unchanged GREEN на candidate, принять design review, применить только адресную дельту и проверить AC25. Источники SDK: ACAPinc.h:345, установленная AC25 HTML CallUndoableCommand:99–115; LightRAG вернул примеры, но явный текст о native-rollback не найден.
+Last Checkpoint: нет; commit не запрошен.
+
+## #316 — R1: тип surface matcher и Object-writer
+
+Scope: только R1 из Reviews/roombook.md; RoombookDraw.cpp, адресные regression/docs. AC25 Windows; другие версии/macOS not verified. Сохранить чужую дельту #314; R2/дуги/геометрию/политику удаления не менять. Без commit/push/restart/Save и новых веток. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/316.
+Status: WAITING_FOR_NATIVE — код R1 исправлен и офлайн-проверки завершены; новая сборка в Archicad не загружалась.
+Plan: [x] 1. Baseline/контракты/issue с read-back; [x] 2. Matcher по favorite.type и отказ несовместимого Object GUID; [x] 3. RED/GREEN, format, fresh LSP, canonical AC25 build и independent review; [x] 4. Адресные docs/generated и итоговое состояние; [ ] 5. Согласованная native-приёмка перехода Wall→Object и повтора.
+Last Completed: baseline Draw b5726d5d… сохранён в Hermes scratch/roombook-r1-20261106; applied13b75f60… отличается ровно условием matcher и двумя присваиваниями в Object_Draw_Linear, чужая #314-дельта сохранена. Причина implementation error; новых ACAPI нет, LightRAG вернул примеры Get/type. clang-format и scoped diff-check PASS. Изолированная fresh LSP version1 baseline/live: те же шесть диагностик,48selection/name joins подтверждены; stale MCP отвергнут. Адресная карточка и две symbols-записи обновлены, прочий callgraph не объявляется актуальным. VS Design, Archicad/PLN не тронуты.
+Validation: canonical BuildAddOn.py -c config.json -v25 -r -l INT exit0; Draw перекомпилирован, APX перелинкован (d2b61d21…). Родитель сверил live Draw с applied13b75f60…; прежний Debug APX и оба test_25.pln SHA256 неизменны. Лог build-ac25.log и build-acceptance.json. Native не выполнялся.
+Review: No issues found in inspected scope; родитель прочитал report.md, сверил семь hashes manifest с артефактами/live. Native boundary untested; R2/K1 вне scope.
+Regression: parent прочитал build_test.py/results/manifest и повторил оба run.cmd: baseline75checks/19FAIL → candidate75/0, все26hashes manifest подтверждены, candidate byte-identical live Draw. Исполнены реальные matcher/TakeExistingFinish/ShouldDraw и точный Object-префикс до Point2D wbegC; настоящие SDK25-типы/GS-контейнеры, облегчённые domain fixtures и controlled API/readers. Полный writer Create/Change/no-op этим стендом не выполнялся. Новых регрессий в проверенной области нет. Memory procedure: archicad-cpp-tdd-patterns/references/roombook-native-type-matcher.md; добавление ссылки в oversized SKILL.md отклонено атомарно, сохранён только reference.
+Next Step: по отдельному разрешению загрузить новую сборку и проверить Wall→Object, повторное сохранение Object GUID и native-геометрию/read-back. R2/K1 остаются отдельными задачами. Issue316 открыт; commit/push/restart/Save не выполнялись. Существующие shared HEAD/index изменения других сессий не принадлежат R1.
+Last Checkpoint: нет; commit не запрошен.
+
 ## #315 — индексный кэш этажей
 
 ### Текущий снимок для коммита [story-315]
@@ -11,6 +36,28 @@ Validation: после параллельного коммита873c58f четы
 Evidence: C:/Users/da-rogojin/AppData/Local/hermes/cache/scratch/story-315-only-commit/validation/ (final-results.json, snapshot-final, *-final.cmd/log/obj, fresh-lsp-no-pch, regression-ui-index). Первый снимок24dc70b сохранён отдельно; после движения HEAD защита остановила staging без изменения index, финальный снимок пересобран поверх873c58f. Sync.cpp и его карточка с Story уже вошли в параллельный коммит, повторно не включаются. LightRAG timeout28; fallback SDK25 API_StoryInfo.html:70–93/headers.
 Next Step: отдельная canonical сборка/загрузка и наблюдение обеих команд в согласованном проекте; issue #315 остаётся открытым. EN и расширение нечислового index вне приёмки.
 Last Checkpoint: [story-315] Add indexed story level and height synchronization; Refs: IDEA.md step 3; Refs: #315. Только файлы/фрагменты #315; push не запрошен.
+
+### Предыдущий этап кэша — исторические проверки до подключения команд
+
+Scope: кэш уровня и высоты по short-индексу в PropertyCache; минимальное дополнение Story/GetStories для сохранения высоты, включая верхний этаж через виртуальный уровень SDK. Проверка AC25 Windows; другие версии/macOS not verified. Пользовательские изменения разбора Story/ReadStory, Helpers.cpp и Sync.cpp не менять. Без commit/push/restart/Save.
+Status: PREPARING_COMMIT — пользователь завершил подключение Story и разрешил коммит только #315 с документацией. Прежний отказ сборки ниже — исторический результат, не утверждение о текущем Sync.cpp.
+Plan: [x] 1. Прочитать пользовательскую дельту, GetStories и lifecycle PropertyCache; проверить высоту в установленном SDK25; [x] 2. Добавить высоту в данные GetStories и индексный словарь с ленивым чтением/обновлением; [x] 3. Проверить регрессии/format/LSP и дополнить карточки (generated отложен явно); [ ] 4. Успешная полная сборка после завершения пользовательского Sync.cpp.
+Last Completed: Story.height и GetStories используют соседний/виртуальный уровень (SDK25 API_StoryInfo.html, Environment_Control.c:963–968); storyCache<short,Story>, ReadStories/GetStory и обновление в Update добавлены. clang-format/diff-check PASS. Fresh LSP publishDiagnostics version1 получен для трёх файлов: Propertycache.hpp0; CommonFunction.cpp7/CommonFunction.hpp5 diagnostic вне изменённых строк. Parent прочитал summary/raw classification и подтвердил byte-identical source snapshots. Полный повторный parent-аудит symbols остановлен после ошибок проверяющего скрипта (JSON wrapper/destructor selectionRange, затем неверный ожидаемый счётчик); весь symbols-аудит parent not verified. Карточки CommonFunction/Propertycache дополнены адресно; generated не изменён: старый срез неоднозначно представляет перегрузки, полноценное обновление отложено.
+Validation: BuildAddOn.py -c config.json -v25 -r реально выполнен, exit1: все57 строк compiler errors относятся к Sync.cpp:1562+ (synctypefind/paramNamePrefix/param, затем синтаксические ошибки). Sync.cpp изменился относительно baseline без моих записей; не исправлялся/не откатывался. Compiled addon: no. Debug APX и оба test_25.pln по SHA256 сохранены. Evidence: C:/Users/da-rogojin/AppData/Local/hermes/cache/scratch/story-cache-315/.
+Regression: parent прочитал independent/report.md, manifest и оба TU-лога, сверил все source/artifact SHA256, повторно выполнил run.cmd: checks75/failed0, api_calls8/disposed_handles6. Настоящие SDK25 GS::Array/HashTable; controlled host API, constructor/Update projections и sparse-reader явно обозначены. Полный CommonFunction.cpp и include-Propertycache.hpp TU скомпилированы MSVC C++14 /WX в scratch obj exit0; это не linked addon/native. Первое parent-прямое выполнение exe без Archicad DLL PATH завершилось127; штатный run.cmd с PATH реально прошёл. Независимое review: No issues found in inspected scope.
+Next Step: проверить изолированный снимок HEAD + только Story в scratch/story-315-only-commit, обновить адресные карточки/generated и создать точечный коммит. Декомпозиция SyncString, RoomBook #314 и удаление FormulaCacheStats исключены; общий рабочий исходник не подменять. Canonical build/native отдельно, Archicad не запускать.
+Last Checkpoint: подготовка [story-315]; commit только #315 разрешён владельцем, push не разрешён. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/315.
+
+## #314 — вся подготовленная отделка в JSON RoomBook
+
+Scope: AC25 Windows; RoomBookFinishResult, AppendRoomFinish/CollectRoomFinishes и сериализация RoomBook. Выводить весь подготовленный набор обработанных валидных зон, включая no-op/обновлённые и отключённые writers; не менять геометрию, запись элементов/свойств, отбор зон или прежнюю защиту rollback. Полный native-инвентарь вне массивов, раскрытие состава и обход ранних отказов вне scope. Без commit/push/restart/Save. Ветка roombook-json-all-results от master. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/314.
+Status: WAITING_FOR_TEST — реализация и офлайн-проверки завершены; native-приёмка новой версии не выполнена.
+Plan: [x] 1. Текущий контракт, docs/guards, чистый baseline и issue/read-back; [x] 2. RED и полный сбор/сериализация с явным sentinel и состояниями; [x] 3. Регрессии, format/fresh LSP/AC25 build и review; [x] 4. Адресная документация/generated и итоговые свидетельства; [ ] 5. Согласованная загрузка и native-приёмка.
+Last Completed: фильтры newly-created/null GUID сняты только в сборщике/сериализаторе; явный is_element сохраняет sentinel, is_valid/drawing_enabled/draw_error дополняют прежние write_succeeded/was_created. NaN/Inf дают unavailable/0, а не невалидный JSON. Состав base_composite и свойства не изменялись. LightRAG timeout (curl28), fallback source/SDK25 headers; новых ACAPI нет.
+Validation: parent повторил SDK25/MSVC C++14 exact extracted collector/serializer: baseline RED277checks/99FAIL → GREEN1287/0, executed source SHA совпадают с live. Геометрические fixtures controlled: wall length*height, пустой SDK slab; это не проверка net/mesh/native. Contract8/0; format/diff-check PASS. Fresh publishDiagnostics version1, source hashes и563symbol/name joins проверены parent: JSON0diagnostics, hpp1unused-include, Draw5unused-variable severity1+1unused-include вне дельты. MCP stale, его пустые diagnostics не приняты. Независимое review до конечного finite guard: No issues found in inspected scope; guard проверен parent и повторными tests/LSP/build. Canonical AC25 RelWithDebInfo BuildAddOn.py -c config.json -v25 -r успешна, финальный Draw перекомпилирован и APX перелинкован в25/INT; Debug APX и оба PLN по SHA256 сохранены. Открытый test_25 использует прежний Debug APX, host не остановлен/не сохранён.
+Documentation: карточки Roombook/json_commands обновлены адресно; symbols8записей сверены с fresh LSP,1122остальные записи/порядок сохранены. Унаследованный callgraph и прочие stale-координаты не пересобирались и не объявляются актуальными. Evidence: C:/Users/da-rogojin/AppData/Local/hermes/cache/scratch/roombook-all-results-20261106/ (regression, validation, review, final-build.log, acceptance.json, SHA256-manifest.json). Процедура сохранена в archicad-json-commands/references/roombook-all-results.md.
+Next Step: по отдельному разрешению безопасно загрузить новую сборку и проверить явный zones-список, повтор/no-op, отключённое построение, native read-back и сохранение изоляции. Затем отдельно продолжить JSON↔свойства: полный набор сам по себе не раскрывает base_composite/привязки result-свойств и не доказывает успешную запись свойств. Issue314 открыт; commit/push/restart/Save не выполнялись.
+Last Checkpoint: нет; commit не запрошен.
 
 ## CI macOS — диагностика 2026-11-06
 
@@ -326,6 +373,7 @@ Previous Python Checkpoint: 981d11f — по команде владельца �
 - [ ] Остатки SDK-error/deleted/multiple-body и остальных неподдержанных геометрий/избранного — отдельным этапом.
 
 ## Decisions
+- Issue #315 — https://github.com/kuvbur/AddOn_SomeStuff/issues/315 — OPEN: отметка и высота этажа по индексу: Sync_from{Story:level; index}, Sync_from{Story:height; index}. Постановка создана и прочитана обратно; следующий шаг — реализация по отдельному запросу. Last Checkpoint: нет, commit не запрошен.
 - Issue #312 — Синхронизация: добавить вывод типа слоя (ядро/отделка/другое) в Sync_from{Material:Layers} по плейсхолдеру %structype% (2026-11-05).
 - Issues #311 — Обработка размеров: подсветка непривязанных элементов размерной цепочки цветом (2026-11-05).
 
@@ -473,6 +521,14 @@ Validation: `clang-format --dry-run -Werror Sources/AddOn/Sync.cpp` и `git diff
 Next Step: обязательных действий нет; runtime-приёмка порядка распознавания — отдельная задача.
 Last Checkpoint: `[syncstring-extract] Extract SyncString recognizers`; Refs: IDEA.md step 3. Push не запрошен.
 
+### #315 — раздел команд этажей в русской вики
+
+Scope: новый раздел в wiki/ru/Property-Commands-List-ru.md и запись состояния; C++, EN, сборка и runtime вне задачи. Версия AC для документационной правки не применима.
+Status: COMPLETED.
+Plan: [x] 1. Сверить текущие SyncStringStory/ReadStory и ключ storyCache; [x] 2. Описать level/height, номер этажа из интерфейса с учётом skipNullFloor и примеры; [x] 3. Проверить дельту, кодировку, ссылки и синтаксис.
+Last Completed: добавлены 11 строк перед обработкой координат. Источники: Sync.cpp:1962–1992, Helpers.cpp:7384–7417, Propertycache.hpp:400–415 (ключ ui_index), CommonFunction.cpp:99–121. Автопроверка: удаление нового раздела даёт byte-identical исходную страницу; ссылки сохранены, UTF-8 без BOM/U+FFFD, CRLF; все четыре примера проходят проверку синтаксиса. git diff --check пройден. Сборка и runtime не выполнялись.
+Next Step: документационная задача завершена; проверка выполнения команд и перевод EN — отдельно по запросу.
+Last Checkpoint: [story-wiki] Document story level and height commands; Refs: IDEA.md step 3; Refs: #315. Коммит разрешён владельцем; push не запрошен.
 
 - Комплект `wiki/llm/archicad-zone-finish`: скилл, JSON-справки и read-only поиск зон; проверены JSON-примеры, ссылки, mock-сценарии и поиск на AC25. Создание классификаций и избранного в runtime не проверялось. Checkpoint: нет, коммит не запрошен. Следующее действие: при отдельном разрешении проверить создание в тестовом проекте.
 

@@ -307,6 +307,11 @@ namespace Roombook {
                     OtdData_AddValueToDict (dct, t, mat, area);
                 }
             }
+            // Обработка плинтусов пола и потолка
+            if (otdslab.length_skirting > 0.001) {
+                const TypeOtd &t = otdslab.draw.type == Floor ? Floor_Skirting : Ceil_Cornice;
+                OtdData_AddValueToDict (dct, t, otdslab.tip_skirting, otdslab.length_skirting);
+            }
         }
     }
 
@@ -324,12 +329,19 @@ namespace Roombook {
         paramnamebytype.Add (Wall_Up,
                              otd.om_up.rawname); // Отделка стен выше потолка
         paramnamebytype.Add (Wall_Main,
-                             otd.om_main.rawname);                 // Отделка стен основная
-        paramnamebytype.Add (Wall_Down, otd.om_down.rawname);      // Отделка низа стен
-        paramnamebytype.Add (Column, otd.om_column.rawname);       // Отделка колонн
-        paramnamebytype.Add (Reveal_Main, otd.om_reveals.rawname); // Отделка откосов
-        paramnamebytype.Add (Floor, otd.om_floor.rawname);         // Отделка пола
-        paramnamebytype.Add (Ceil, otd.om_ceil.rawname);           // Отделка потолка
+                             otd.om_main.rawname);                           // Отделка стен основная
+        paramnamebytype.Add (Wall_Down, otd.om_down.rawname);                // Отделка низа стен
+        paramnamebytype.Add (Column, otd.om_column.rawname);                 // Отделка колонн
+        paramnamebytype.Add (Reveal_Main, otd.om_reveals.rawname);           // Отделка откосов
+        paramnamebytype.Add (Floor, otd.om_floor.rawname);                   // Отделка пола
+        paramnamebytype.Add (Ceil, otd.om_ceil.rawname);                     // Отделка потолка
+        paramnamebytype.Add (Floor_Skirting, otd.om_floor_skirting.rawname); // Плинтус пола
+        paramnamebytype.Add (Ceil_Cornice, otd.om_ceil_cornice.rawname);     // Плинтус потолка
+        // TODO Выделить балки в отдельный столбец, чтобы не мешать отделке стен и потолка. Сейчас они суммируются с
+        // отделкой пола и потолка.
+        paramnamebytype.Add (Beam_Ceil, otd.om_ceil.rawname); // Отделка пола
+        paramnamebytype.Add (Beam_Wall, otd.om_main.rawname); // Отделка потолка
+
         OtdData_WriteToRoom (columnFormat, otd.zone_guid, paramToWrite, paramToRead, dct, paramnamebytype);
         // Формируем словарь для разбивки по типам
 
