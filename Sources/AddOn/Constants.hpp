@@ -189,9 +189,11 @@ static const Int32 OtherDbShow3DId = 87;                // Показать эл
 // {@material:structype}). Номер строки ресурса — позиция в блоке 'STR#';
 // новые строки идут в конце блока, поэтому их комментарии [100]-[102]
 // совпадают с реальными ID.
-static const Int32 LayerCoreStringID = 100;   // Тип слоя: «ядро»
-static const Int32 LayerFinishStringID = 101; // Тип слоя: «отделка»
-static const Int32 LayerOtherStringID = 102;  // Тип слоя: «другое»
+static const Int32 LayerCoreStringID = 100;      // Тип слоя: «ядро»
+static const Int32 LayerFinishStringID = 101;    // Тип слоя: «отделка»
+static const Int32 LayerOtherStringID = 102;     // Тип слоя: «другое»
+static const Int32 SkirtingNotSetStringID = 103; // Плинтус: «не задан»
+static const Int32 SkirtingByTypeStringID = 104; // Плинтус: «по типу»
 
 // --- Внутренние пути свойств материалов ---
 static const GS::UniString MAT_SOME_STUFF_TH =               // Путь к свойству толщины стройматериала

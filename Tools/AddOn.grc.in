@@ -160,6 +160,8 @@
 /* [100] */	"Ядро"
 /* [101] */	"Отделка"
 /* [102] */	"Другое"
+/* [103] */	"Не задан"
+/* [104] */	"По типу"
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -314,6 +316,8 @@
 /* [100] */	"Core"
 /* [101] */	"Finish"
 /* [102] */	"Other"
+/* [103] */	"Not set"
+/* [104] */	"By type"
 }
 
 'GDLG'  32590  Modal | grow         0    0  680  330  "RuleSelect Dialog" {
