@@ -682,6 +682,11 @@ namespace ParamHelpers {
 
     void ReadQuantities (const API_Elem_Head &elemhead, ParamDictValue &params, ParamDictComposite &paramcomposite);
 
+    // -----------------------------------------------------------------------------
+    // Получение информации о этажах в проекте
+    // -----------------------------------------------------------------------------
+    bool ReadStory (ParamDictValue &params);
+
     bool ReadElementValues (const API_Element &element, ParamDictValue &params);
 
     // -----------------------------------------------------------------------------

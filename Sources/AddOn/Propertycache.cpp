@@ -1235,6 +1235,11 @@ static void ExtractSourceInfo (const GS::UniString &rawName, GS::UniString &sour
         sourceName =
             rawName.GetSubstring (MEPNAMEPREFIX.GetLength (), rawName.GetLength () - MEPNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
+    } else if (rawName.BeginsWith (STORYNAMEPREFIX)) {
+        sourceType = "Story";
+        sourceName =
+            rawName.GetSubstring (STORYNAMEPREFIX.GetLength (), rawName.GetLength () - STORYNAMEPREFIX.GetLength ());
+        sourceName.ReplaceAll (BRACEEND, EMPTYSTRING);
     }
 }
 

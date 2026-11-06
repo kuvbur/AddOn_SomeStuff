@@ -1,5 +1,17 @@
 ﻿# Current Task Roombook: исправление плинтусов и surface skips (#270/#252)
 
+## #315 — индексный кэш этажей
+
+### Текущий снимок для коммита [story-315]
+
+Scope: только код команд Story и кэша, русская вики, соответствующие карточки/срез symbols; AC25 Windows. Без рефакторинга SyncString, RoomBook #314, удаления FormulaCacheStats, push, restart и закрытия issue.
+Status: WAITING_FOR_NATIVE — коммит разрешён владельцем, изолированная проверка снимка завершена.
+Plan: [x] 1. Изолировать оставшуюся дельту #315 поверх HEAD873c58f без замены рабочих исходников; [x] 2. Повторно проверить четыре полных TU SDK25/MSVC C++14 /WX и controlled-регрессию; [x] 3. Подготовить адресные docs/generated и точечный коммит; [ ] 4. Canonical build и native-приёмка по отдельному согласованию.
+Validation: после параллельного коммита873c58f четыре полных TU CommonFunction/Helpers/Propertycache/Sync повторно скомпилированы в scratch .obj, все exit0; addon целиком не собирался/не линковался. Controlled SDK-регрессия:64checks/0failed, оба skipNullFloor, нижний/верхний и виртуальный уровни, UI-ключи, lazy/miss/API failure; parent повторил запуск exit0. Parent проверил SHA восьми исходников;236cpp-записей CommonFunction/Helpers/Propertycache сверены со свежими clangd symbols, остальные947записей/порядок сохранены из873c58f. Полный parent-аудит header selectionRange остановлен после двух ошибок проверяющего скрипта на destructor/operator=; опубликованные cpp-записи проверены отдельно.
+Evidence: C:/Users/da-rogojin/AppData/Local/hermes/cache/scratch/story-315-only-commit/validation/ (final-results.json, snapshot-final, *-final.cmd/log/obj, fresh-lsp-no-pch, regression-ui-index). Первый снимок24dc70b сохранён отдельно; после движения HEAD защита остановила staging без изменения index, финальный снимок пересобран поверх873c58f. Sync.cpp и его карточка с Story уже вошли в параллельный коммит, повторно не включаются. LightRAG timeout28; fallback SDK25 API_StoryInfo.html:70–93/headers.
+Next Step: отдельная canonical сборка/загрузка и наблюдение обеих команд в согласованном проекте; issue #315 остаётся открытым. EN и расширение нечислового index вне приёмки.
+Last Checkpoint: [story-315] Add indexed story level and height synchronization; Refs: IDEA.md step 3; Refs: #315. Только файлы/фрагменты #315; push не запрошен.
+
 ## CI macOS — диагностика 2026-11-06
 
 Scope: Tools/CMakeCommon.cmake: исключение unnecessary-virtual-specifier для macOS AC25–30 с сохранением общего -Werror; локальные проверки и коммит разрешены. Без issue по прямому указанию владельца; без push/перезапуска CI, правок C++ и workflow.
@@ -441,6 +453,15 @@ Decisions: GUID выбирается не по геометрии; JSON оста
 Last Checkpoint: нет; чужие правки сохраняются.
 
 ## Archive
+
+### #315 — раздел команд этажей в русской вики
+
+Scope: новый раздел в wiki/ru/Property-Commands-List-ru.md и запись состояния; C++, EN, сборка и runtime вне задачи. Версия AC для документационной правки не применима.
+Status: COMPLETED.
+Plan: [x] 1. Сверить текущие SyncStringStory/ReadStory и ключ storyCache; [x] 2. Описать level/height, номер этажа из интерфейса с учётом skipNullFloor и примеры; [x] 3. Проверить дельту, кодировку, ссылки и синтаксис.
+Last Completed: добавлены 11 строк перед обработкой координат. Источники: Sync.cpp:1962–1992, Helpers.cpp:7384–7417, Propertycache.hpp:400–415 (ключ ui_index), CommonFunction.cpp:99–121. Автопроверка: удаление нового раздела даёт byte-identical исходную страницу; ссылки сохранены, UTF-8 без BOM/U+FFFD, CRLF; все четыре примера проходят проверку синтаксиса. git diff --check пройден. Сборка и runtime не выполнялись.
+Next Step: документационная задача завершена; проверка выполнения команд и перевод EN — отдельно по запросу.
+Last Checkpoint: [story-wiki] Document story level and height commands; Refs: IDEA.md step 3; Refs: #315. Коммит разрешён владельцем; push не запрошен.
 
 ### SyncString — вынос распознавания источников
 

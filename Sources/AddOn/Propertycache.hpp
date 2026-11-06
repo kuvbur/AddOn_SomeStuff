@@ -211,6 +211,9 @@ struct PropertyCache {
     GS::UniString santimeterString = "cm";
     GS::UniString decimeterString = "dm";
     GS::HashTable<Int32, GS::Array<CachedLayer>> compositeCache;
+    GS::HashTable<short, Story> storyCache;
+    bool isStoriesRead;
+    bool isStories_OK;
     GS::UniString buildingMaterialNameString;
     GS::UniString buildingMaterialDescriptionString;
     GS::UniString buildingMaterialDensityString;
@@ -303,6 +306,9 @@ struct PropertyCache {
         filedata.Clear ();
         formatstringformeasuretype.Clear ();
         compositeCache.Clear ();
+        storyCache.Clear ();
+        isStoriesRead = false;
+        isStories_OK = false;
         addonrulesbytype.Clear ();
         surv_point_tm = {};
         isEng = 0;
@@ -407,6 +413,23 @@ struct PropertyCache {
         dontspecstr_2 = RSGetIndString (iseng_, 64, ACAPI_GetOwnResModule ());
     }
 
+    void ReadStories () {
+        storyCache.Clear ();
+        isStoriesRead = true;
+        isStories_OK = false;
+        const Stories stories = GetStories ();
+        for (const auto &story : stories)
+            storyCache.Add (story.ui_index, story);
+        isStories_OK = !storyCache.IsEmpty ();
+    }
+
+    // Указатель действителен до перечитывания кэша; отсутствующий индекс не подменяется другим этажом.
+    const Story *GetStory (short index) {
+        if (!isStoriesRead)
+            ReadStories ();
+        return storyCache.GetPtr (index);
+    }
+
     void Update () {
         clock_t start, finish;
         double duration;
@@ -419,6 +442,7 @@ struct PropertyCache {
         addonrulesbytype.Clear ();
         findict.Clear ();
         finclassguids.Clear ();
+        ReadStories ();
         ReadGetGeoLocation ();
         ReadSurveyPointTransformation ();
         ReadPlaceSets ();

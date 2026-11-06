@@ -7,9 +7,9 @@
 ## Команды этажей #315 — изолированный снимок (2026-11-06)
 
 - Обновлены карточки CommonFunction/Propertycache/Helpers/Sync и русская страница команд: API-index отделён от UI-index, высота верхнего этажа берётся через виртуальный уровень SDK25. Задокументирован числовой index. [по коду]
-- Для точечного коммита собран HEAD24dc70b + только #315, без соседней декомпозиции SyncString/RoomBook. Четыре полных TU SDK25/MSVC C++14 /WX exit0, controlled-регрессия64/0. Это не canonical addon build и не native-приёмка.
-- symbols.json: свежие настоящие clangd DocumentSymbol isolated snapshot,270cpp-записей проверены по исходникам; восстановлена полнота существующих overload-групп, добавлены ReadStory/SyncStringStory. Остальные897записей и порядок сохранены из HEAD, не из этой коллекции; их координаты не объявляются актуальными. Заголовки проверены clangd, но в cpp-only artifact не добавлялись. Полный parent-аудит специальных header-имён не завершён; опубликованные cpp-записи проверены отдельно. Callgraph и обзорные документы вне адресного обновления.
-- Артефакты: Hermes scratch/story-315-only-commit/validation/. Рабочие исходники не подменялись; refactor-срез Sync и RoomBook в общем working tree сохраняются отдельно от коммита #315.
+- После параллельного коммита873c58f со Sync.cpp и частью Story подготовлена только оставшаяся дельта #315; refactor и RoomBook не включаются в неё. Четыре полных TU SDK25/MSVC C++14 /WX повторно exit0 на финальном снимке; controlled-регрессия64/0 повторена parent. Это не canonical addon build и не native-приёмка.
+- symbols.json: свежие настоящие clangd DocumentSymbol isolated snapshot,236cpp-записей CommonFunction/Helpers/Propertycache проверены по исходникам; восстановлена полнота существующих overload-групп, добавлен ReadStory. Остальные947записей и порядок сохранены из873c58f, не из этой коллекции; их координаты не объявляются актуальными. Заголовки проверены clangd, но в cpp-only artifact не добавлялись. Полный parent-аудит специальных header-имён не завершён; опубликованные cpp-записи проверены отдельно. Callgraph и обзорные документы вне адресного обновления.
+- Артефакты: Hermes scratch/story-315-only-commit/validation/ (final-results.json и snapshot-final). Рабочие исходники не подменялись; Sync-срез сохранён из параллельного коммита, RoomBook WIP не включён.
 
 ## Декомпозиция распознавания SyncString (2026-11-06)
 

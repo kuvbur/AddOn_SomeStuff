@@ -52,15 +52,18 @@
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>>
     SortByName; // Словарь для сортировки естественным образом по имени.
 
-// Представление одного этажа проекта: индекс этажа и его абсолютная высота по Z.
+// Представление одного этажа проекта: индекс, абсолютный уровень по Z и высота до следующего этажа.
 struct Story {
-    Story (short _index, double _level) : index (_index), level (_level) {}
+    Story (short _index, short _ui_index, double _level, double _height = 0)
+        : index (_index), ui_index (_ui_index), level (_level), height (_height) {}
 
-    short index;
+    short index;    // Индекс этажа в Archicad (API_StoryIndex)
+    short ui_index; // Индекс этажа в пользовательском интерфейсе c учётом skipNullFloor
     double level;
+    double height;
 };
 
-using Stories = GS::Array<Story>; // Хранение информации об этажах в формате Индекс - Уровень
+using Stories = GS::Array<Story>; // Этажи в порядке уровней снизу вверх.
 
 // Параметры форматирования числовых значений при чтении и записи свойств.
 // Используются для согласованного округления, приведения к единицам измерения и вывода строк.
@@ -189,6 +192,7 @@ struct ParamValue {
     bool fromElement = false;            // Взять из информации об элементе (замена материала и т.д.)
     bool fromMEP = false;                // Взять из информации МЕР
     bool fromFile = false;               // Взять из txt файла
+    bool fromStory = false;              // Взять из данных об этаже
     bool fromListData = false;           // Взять из GDL команды COMPONENT
     bool fromGDLArray = false;           // Взять из массива
     bool toQRCode = false;               // Результат вывести QR

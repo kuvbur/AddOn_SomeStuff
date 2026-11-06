@@ -108,7 +108,12 @@ Stories GetStories () {
         const short numberOfStories = storyInfo.lastStory - storyInfo.firstStory + 1;
         // Создаём список этажей, полученный из настроек проекта
         for (short i = 0; i < numberOfStories; ++i) {
-            stories.PushNew ((*storyInfo.data)[i].index, (*storyInfo.data)[i].level);
+            // После верхнего реального этажа SDK возвращает виртуальный уровень для расчёта его высоты.
+            const double height = (*storyInfo.data)[i + 1].level - (*storyInfo.data)[i].level;
+            short ui_inx = (*storyInfo.data)[i].index;
+            if (ui_inx >= 0 && storyInfo.skipNullFloor)
+                ui_inx += 1;
+            stories.PushNew ((*storyInfo.data)[i].index, ui_inx, (*storyInfo.data)[i].level, height);
         }
         // Освобождаем память, выделенную ArchiCAD для массива storyInfo.data
         BMKillHandle ((GSHandle *)&storyInfo.data);

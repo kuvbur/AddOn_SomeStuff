@@ -1316,6 +1316,9 @@ GS::UniString ParamHelpers::GetRawnamePrefixByTypeInx (const short &inx) {
     case FILETYPEINX:
         return FILENAMEPREFIX;
         break;
+    case STORYTYPEINX:
+        return STORYNAMEPREFIX;
+        break;
     default:
 #if defined(TESTING)
         DBprnt (inx, "ERROR GetRawnamePrefixByTypeInx");
@@ -1366,6 +1369,8 @@ short ParamHelpers::GetTypeInxByRawnamePrefix (const GS::UniString &rawName) {
         return FILETYPEINX;
     if (rawName.BeginsWith (FLAGNAMEPREFIX))
         return FLAGTYPEINX;
+    if (rawName.BeginsWith (STORYNAMEPREFIX))
+        return STORYTYPEINX;
 #if defined(TESTING)
     DBprnt ("ERROR GetTypeInxByRawnamePrefix " + rawName);
 #endif
@@ -1438,6 +1443,9 @@ void ParamHelpers::SetParamValueSourseByName (ParamValue &pvalue) {
         break;
     case FILETYPEINX:
         pvalue.fromFile = true;
+        break;
+    case STORYTYPEINX:
+        pvalue.fromStory = true;
         break;
     default:
         break;
@@ -5866,6 +5874,9 @@ void ParamHelpers::Read (const API_Guid &elemGuid,
         case FILETYPEINX:
             ReadFile (params);
             break;
+        case STORYTYPEINX:
+            ParamHelpers::ReadStory (params);
+            break;
         default:
             break;
         }
@@ -7362,6 +7373,44 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
         }
     }
     return;
+}
+
+// -----------------------------------------------------------------------------
+// Получение информации о этажах в проекте
+// -----------------------------------------------------------------------------
+bool ParamHelpers::ReadStory (ParamDictValue &params) {
+#if defined(TESTING)
+    DBprnt ("      ReadElement");
+#endif
+    bool find = false;
+    auto &cache = PROPERTYCACHE ();
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+#ifdef ServerMainVers_2800
+        ParamValue &param = cIt->value;
+#else
+        ParamValue &param = *cIt->value;
+#endif
+        if (!param.fromStory)
+            continue;
+        short inx = param.composite_pen; // индекс этажа
+        if (const auto *story = cache.GetStory (inx)) {
+            if (param.name.Contains ("level")) {
+                ConvertDoubleToParamValue (param, param.name, story->level);
+                find = true;
+                continue;
+            }
+            if (param.name.Contains ("height")) {
+                ConvertDoubleToParamValue (param, param.name, story->height);
+                param.isValid = true;
+                find = true;
+                continue;
+            }
+        } else {
+            param.isValid = false;
+            continue;
+        }
+    }
+    return find;
 }
 
 // -----------------------------------------------------------------------------

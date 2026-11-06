@@ -18,6 +18,8 @@
 | `FormulaCacheStats` | Счётчики кэшей формул `EvalExpression` (#217): calls/fullHits/exprHits/fullClears/exprClears. Только под `TESTING` [из комментария, Propertycache.hpp:115-129] |
 
 ## Методы PropertyCache
+- `storyCache` — `GS::HashTable<short, Story>`, ключ — отображаемый номер этажа `Story.ui_index` с учётом `skipNullFloor`, а не API-индекс `Story.index`; значения `level`/`height` в метрах. `ReadStories()` полностью заменяет словарь результатом `GetStories()`, в том числе очищает прежние записи при пустом результате. `isStoriesRead` фиксирует попытку чтения, `isStories_OK` — непустой результат. [по коду, Propertycache.hpp, #315]
+- `GetStory(short index)` — лениво читает этажи при первом обращении и возвращает `const Story*` либо `nullptr`; повторные попадания и промахи не перечитывают проект. Указатель действителен до следующего `ReadStories()`/`Update()`. `Update()` перечитывает этажи вместе с остальными справочниками; отдельный обработчик изменения настроек этажей не добавлен. [по коду, Propertycache.hpp, #315]
 - `Update()` — полное обновление всех кэшей (glob, geo, survey, placeSets, locOrigin, classification, groups, definitions, attribute, info, files, MEP) [по коду, Propertycache.hpp:326-355]
 - `Read*()` — перечитывание отдельных кэшей [по коду]
 - `AddFile(fileName)` — чтение внешнего файла (FIX 2026-09-12: GetPtr вместо ContainsKey+Get) [из комментария, Propertycache.hpp:426-448]

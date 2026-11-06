@@ -227,6 +227,8 @@ static const GS::UniString ELEMENTPREF = "Element:";
 static const GS::UniString MEPPREF = "MEP:";
 // Префикс для данных из файлов.
 static const GS::UniString FILEPREF = "File:";
+// Префикс для данных из этажей.
+static const GS::UniString STORYPREF = "Story:";
 // Префикс для данных из списков.
 static const GS::UniString LISTDATAPREF = "Listdata:";
 // Префикс для QR-кодов.
@@ -360,6 +362,9 @@ static const short FILETYPEINX = 17;                   // Индекс типа:
 static const GS::UniString FLAGNAMEPREFIX = "{@flag:"; // Префикс тега флага
 static const short FLAGTYPEINX = 18;                   // Индекс типа: Флаг
 
+static const GS::UniString STORYNAMEPREFIX = "{@story:"; // Префикс тега этажа
+static const short STORYTYPEINX = 19;                    // Индекс типа: этаж
+
 // --- Константы спецсимволов, разделителей и единиц измерения ---
 static const GS::UniString DOT = ".";                             // Точка (строка)
 static const GS::UniString COMMA = ",";                           // Запятая (строка)
@@ -407,6 +412,7 @@ static const GS::UniString TABSTRING = "\t";                      // Симво�
 static const GS::UniString SLASHEKR = "\\/";                      // Экранированный слэш
 static const GS::UniString SLASH = "/";                           // Прямой слэш
 static const GS::UniString ATSIGN = "@";                          // Символ "собачка"
+static const GS::UniChar CHARATSIGN = '@';                        // Символ "собачка"
 static const GS::UniString SYNCFLAG = "Sync_flag";                // Поле флага синхронизации
 static const GS::UniString SYNCCORRECTFLAG = "Sync_correct_flag"; // Поле флага корректировки синхронизации
 static const GS::UniString SYNCCLASSFLAG = "Sync_class_flag";     // Поле флага синхронизации классов
@@ -497,7 +503,8 @@ static const GS::Array<short> paramTypesList = {IDTYPEINX,
                                                 FILETYPEINX,
                                                 FORMULATYPEINX,
                                                 ELEMENTTYPEINX,
-                                                MEPTYPEINX}; // Список поддерживаемых типов тегов для чтения/обработки
+                                                MEPTYPEINX,
+                                                STORYTYPEINX}; // Список поддерживаемых типов тегов для чтения/обработки
 
 static const GS::UniString idRawname = "{@id:id}";               // Готовый тег для получения ID элемента
 static const GS::UniString attrlayerRawname = "{@attrib:layer}"; // Готовый тег для получения слоя элемента
@@ -521,7 +528,8 @@ static const GS::Array<GS::UniString> paramPrefixesList = {"id",
                                                            "element",
                                                            "mep",
                                                            "file",
-                                                           "flag"};
+                                                           "flag",
+                                                           "story"};
 
 // Список индексов типов тегов, в которые разрешена обратная запись параметров
 static const GS::Array<short> paramTypesListWrite = {PROPERTYTYPEINX,

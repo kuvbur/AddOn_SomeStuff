@@ -8,6 +8,10 @@
 ## Файлы
 - `Sources/AddOn/Helpers.cpp/hpp` (hpp 808 строк; symbols.json — 2145 символов)
 
+## Чтение этажей (#315)
+
+`ParamHelpers::Read` направляет `STORYTYPEINX` в `ReadStory(ParamDictValue&)`. Для записей с `fromStory` поле `composite_pen` содержит отображаемый номер этажа; `PROPERTYCACHE().GetStory` возвращает данные по этому номеру. `level` и `height` преобразуются через `ConvertDoubleToParamValue`; при отсутствии этажа запись помечается `isValid = false`. Собственный этаж элемента при выборе источника не используется. [по коду, Helpers.cpp:Read/ReadStory; Propertycache.hpp:GetStory]
+
 ## Ключевые типы [из комментария / по коду, Helpers.hpp:14-63]
 `SortGUID`/`SortInx` — массивы для сортировки; `OrientedSegments` — отрезки с точкой начала (hpp:26); `SkipValues` — правила игнорирования (hpp:34-46); `DimRule`/`DimRules` — правила округления размеров (hpp:48-63).
 
