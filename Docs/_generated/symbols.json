@@ -4225,7 +4225,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookData.cpp",
     "module": "roombook",
-    "line": 3456
+    "line": 3467
   },
   {
     "name": "Roombook::Roombook::OtdSlab_BuildCoverage",
@@ -4533,7 +4533,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookData.cpp",
     "module": "roombook",
-    "line": 5328
+    "line": 5350
   },
   {
     "name": "Roombook::Roombook::OtdRoom_BuildSurfaceFinishes",
@@ -4550,11 +4550,39 @@
     "line": 5687
   },
   {
+    "name": "Roombook::OtdArea_IsBelowMinimum",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoombookData.cpp",
+    "module": "roombook",
+    "line": 49
+  },
+  {
+    "name": "Roombook::OtdRoom_BuildPartitionWallFinishes",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoombookData.cpp",
+    "module": "roombook",
+    "line": 5499
+  },
+  {
+    "name": "Roombook::OtdRoom_BuildBeamFinishes",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoombookData.cpp",
+    "module": "roombook",
+    "line": 5567
+  },
+  {
+    "name": "Roombook::OtdRoom_FilterSmallFinishes",
+    "kind": "Function",
+    "file": "Sources/AddOn/roombook/RoombookData.cpp",
+    "module": "roombook",
+    "line": 5767
+  },
+  {
     "name": "Roombook::Roombook::OtdRooms_ProcessFinishes",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookData.cpp",
     "module": "roombook",
-    "line": 5711
+    "line": 5806
   },
   {
     "name": "Roombook::Roombook::Otd_IsNativeTypeForFinish",

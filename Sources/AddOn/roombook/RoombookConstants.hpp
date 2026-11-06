@@ -10,6 +10,7 @@ constexpr double AreaTolerance = 1.0e-6;
 namespace Roombook {
 
     const double min_dim = 0.0001; // Минимальный размер элемента
+    const double min_area = 0.01;  // Минимальная площадь элемента
     const double otd_thickness = 0.001;
 
     static const GS::UniString IGNORENAME = "----";

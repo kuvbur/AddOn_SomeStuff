@@ -1,5 +1,16 @@
 ﻿# Current Task Roombook: исправление плинтусов и surface skips (#270/#252)
 
+## #320 — минимальная площадь всей площадной отделки
+
+Scope: AC25 Windows; использовать существующий min_area для окончательных стен/колонн/откосов/полов/потолков и малых surface-диагностик. Площадь строго меньше порога игнорируется, равная сохраняется; Mesh — площадь поверхности. Линейные плинтусы без самостоятельного площадного фильтра. Константу владельца, исходное покрытие/provenance и чужие правки сохранить; без commit/push/Save/restart и остановки активной VS Run.
+Status: WAITING_FOR_TEST.
+Plan: [x] 1. Scope, dirty-baseline и issue/read-back; [x] 2. Проверить безопасную финальную точку фильтра и RED-регрессию; [x] 3. Минимальная правка; [x] 4. Format/fresh C++ проверка/регрессии/review; [x] 5. Адресные документы и итоговые границы native; [ ] 6. После разрешённого завершения активной отладки — canonical build и native-приёмка.
+Last Completed: финальная фильтрация после преобразований/provenance до индексов плинтусов, включая floor-only; малые contacts без Ambiguous/adapter warning, старые slab GUID возвращаются в штатное удаление. Константа владельца и #319 WIP сохранены. Data SHA256 1d64becff1ee5a8a5a4322484532f1197616fc7fe68a3579dfa9659eac9e97fc. Одинаковые standalone C++14 assertions RED232/57FAIL → GREEN232/0, повторены parent; controlled SDK/geometry seams, не native. Полный TU SDK25/MSVC /std:c++14 /c /WX exit0 в scratch obj. Fresh clangd: новых диагностик нет, восемь прежних (три unused-variable при /WX, пять unused-include). Независимое ревью без замечаний в дельте. Format/diff-check, карточка и семь generated-записей проверены; прочие generated/callgraph исторические. Evidence: Hermes scratch/min-area-20261106/regression/, validation/. Ошибка zero-reveal fixture (width=0 выбирал обычную стену) исправлена только в harness, оба снимка повторены с одинаковыми assertions.
+Next Step: canonical addon build/link и native-проверка после согласованного завершения активной VS Run; сейчас не выполнялись. Проверить отсутствие мелких результатов, старые GUID и повторный прогон. Предупреждение исходной зоны может остаться: четыре стеновых неоднозначных контакта ~0.18183 м² выше min_area=0.01 и этой политикой не исключаются. Issue320 OPEN; Save/restart/Stop/commit/push не выполнялись.
+Last Checkpoint: нет; commit не запрошен.
+Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/320.
+
+
 ## #319 — пустой тип отключает соответствующий плинтус
 
 Scope: FloorSkirtingSegments_Build, SkirtingSegments_Build и подготовка faces в OtdBeam_ProcessFinishes; AC25 Windows. Сохранить пользовательскую обработку типов; без изменения геометрии, SDK-вызовов, commit/push/restart и остановки активной VS Run.
@@ -511,6 +522,18 @@ Decisions: GUID выбирается не по геометрии; JSON оста
 Last Checkpoint: нет; чужие правки сохраняются.
 
 ## Archive
+
+### Диагностика Ambiguous — зона A2100887-E07B-4DF1-9834-50A4D23FF992, 2026-11-06
+
+Scope: AC25 Windows, запуск через VS и построение только целевой зоны по разрешению владельца; чтение sources неоднозначных участков. Без правок C++, Save, commit/push и изменения допусков.
+Status: DONE — диагностика, не исправление алгоритма.
+Plan: [x] 1. Baseline VS/исходников/PLN; [x] 2. F5 и живое воспроизведение; [x] 3. Sources/геометрия/read-back, удаление своих точек и восстановление прежних.
+Last Completed: F5 действительно перекомпилировал RoombookData/SkirtingRegression и перелинковал Debug APX; canonical BuildAddOn не выполнялся. PID36960, test_25, loaded APX57fbd526…; три исходника и оба PLN по SHA256 неизменны. Свободный orphan lock сохранён в scratch после zero-process/exclusive-handle проверки. JSON остановлен после валидации ровно одной зоны (Command:97), затем в Ambiguous (Data:5507) и на emit (5727). Partition complete, 22 участка:9Matched/5Unmatched/8Ambiguous. ReadProcessMemory с проверенными в текущем binary offsets сохранил ВСЕ sources/contours/vertices.
+Findings: четыре стеновых участка площадью около0.18183м² каждый (ширина55.1мм, высота3.3м), пары969E77C1…/9C8802CE… и969E77C1…/2C304250…; аналитические грани разных стен. Два совпадающих контакта балок3DEA1CF9…/E39BE854… площадями0.00922168054/0.00307241862м². Два микротреугольника стен/перекрытия51B8136E…:8.5589e-8/8.6285e-8м². Это не единый численный шум и не доказательство дублирования элементов. Flag ставится до исключений альтернативных маршрутов; ordinaryWalls8 и итоговый otdwall8 совпали по записанным geometry/owner/validity полям, все три конфликтующих стеновых владельца сохранены. На emit hasAmbiguous=true, hasSkipped=false, otdslab2.
+Validation: предупреждение зоны115 записано в свежую панель Отладка. Команда завершилась, JSON41уникальный GUID, все41write_succeeded/was_created, draw_error0; независимый API.GetAllElements подтвердил наличие всех41 и всех6оснований, Get3DBoundingBoxes сохранён. Это existence/read-back, НЕ доказательство полноты/контуров/проёмов или корректности всех контактов. Модель изменена в памяти, Save не вызывался, PLN неизменны. Все3свои точки удалены, исходные9точек восстановлены с прежним disabled у Propertycache; Archicad оставлен Run. Evidence: Hermes scratch/ambiguous-contacts-20261106-202710 (partition-capture.json, prepared-walls.json, raw memory, response/read-back/debug-output, hashes).
+Дополнительная проверка: все4стеновых Ambiguous-контура целиком входят в соответствующие подготовленные аналитические прямоугольники (плоскость/продольные пределы/z с допуском1e-6); доказательство wall-strip-prepared-coverage.json. Это покрытие подготовленной геометрией, не Boolean-сверка native тел. Все47bbox (41результат+6оснований) прочитаны без per-element errors. Финальные hashes равны snapshot после F5, включая APX и оба PLN; scoped diff-check PASS.
+Next Step: отдельная адресная задача — отделить диагностику реально потерянной отделки от неоднозначности неиспользуемого partition; не скрывать beam/geometry проблемы без проверки покрытия. Production не менялся, исправление not verified.
+Last Checkpoint: нет; commit не запрошен.
 
 ### Удаление остатков TableRenderer / TablesNavigator — 2026-11-06
 

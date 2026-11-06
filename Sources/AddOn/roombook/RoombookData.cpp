@@ -46,6 +46,8 @@ namespace Roombook {
         GS::Array<Sector> gableedges;
     };
 
+    static bool OtdArea_IsBelowMinimum (double area) { return area >= 0 && area < min_area; }
+
     static ElementRead Element_Read (const API_Guid &guid, RoomSurfaceCache *cache = nullptr);
 
     static ClassificationRead Class_ReadItems (const API_Guid &guid, RoomSurfaceCache *cache = nullptr);
@@ -3526,8 +3528,11 @@ namespace Roombook {
                     continue;
                 Geometry::MultiPolygon2D next;
                 for (const auto &part : accepted) {
-                    for (const auto &ambiguous : part.Intersect (candidates[j].slab.poly))
-                        rejected += ambiguous.CalcArea ();
+                    for (const auto &ambiguous : part.Intersect (candidates[j].slab.poly)) {
+                        const double area = ambiguous.CalcArea ();
+                        if (!OtdArea_IsBelowMinimum (area))
+                            rejected += area;
+                    }
                     for (const auto &unique : part.Substract (candidates[j].slab.poly))
                         next.Push (unique);
                 }
@@ -5346,6 +5351,8 @@ namespace Roombook {
                                                const RoomSurfacePiece &piece,
                                                RoomSurfaceCache *cache,
                                                TypeOtd forceType = NoSet) {
+        if (OtdArea_IsBelowMinimum (piece.area))
+            return true;
         if (piece.status != RoomSurfacePieceStatus::Matched || piece.baseGuid == APINULLGuid)
             return false;
         GS::Array<OtdWall> walls;
@@ -5500,6 +5507,8 @@ namespace Roombook {
             return false;
         }
         for (const auto &piece : grouped) {
+            if (OtdArea_IsBelowMinimum (piece.area))
+                continue;
             // Незаявленная поверхность не является отказом writer; владельца неоднозначной не выдумываем.
             if (piece.status == RoomSurfacePieceStatus::Unmatched && piece.sources.IsEmpty ())
                 continue;
@@ -5645,6 +5654,8 @@ namespace Roombook {
                 continue; // Из-за одной ошибки нельзя прерывать всю работу
             }
             for (const auto &beamPiece : finish.pieces) {
+                if (OtdArea_IsBelowMinimum (beamPiece.area))
+                    continue;
                 // Если балка в потолке (beamTop >= ceilingLevel) — верх не отделываем
                 if (!beamBelowCeiling && beamPiece.face == RoomSurfaceBeamFace::Top)
                     continue;
@@ -5753,6 +5764,43 @@ namespace Roombook {
         return true;
     }
 
+    static bool OtdRoom_FilterSmallFinishes (OtdRoom &room,
+                                             GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,
+                                             const GS::Array<OtdDrawData> &slabLinks) {
+        GS::Array<OtdWall> walls;
+        for (const auto &wall : room.otdwall)
+            if (!OtdArea_IsBelowMinimum (OtdWall_GetArea (wall)))
+                walls.Push (wall);
+        GS::Array<OtdSlab> slabs;
+        for (const auto &slab : room.otdslab) {
+            const double area =
+                slab.poly.CalcArea () *
+                (slab.draw.base_type == API_MeshID ? std::hypot (1.0, std::hypot (slab.slope_x, slab.slope_y)) : 1.0);
+            if (!OtdArea_IsBelowMinimum (area))
+                slabs.Push (slab);
+        }
+        // ProcessFinishes уже изъял старые GUID; после вырезания/фильтрации возвращаем неиспользованные.
+        for (const auto &link : slabLinks) {
+            bool retained = false;
+            for (const auto &slab : slabs)
+                retained = retained || slab.draw.otd_guid == link.otd_guid;
+            if (retained)
+                continue;
+            auto *byBase = exsistot_byzone.GetPtr (room.zone_guid);
+            auto *byType = byBase != nullptr ? byBase->GetPtr (link.base_guid) : nullptr;
+            auto *unused = byType != nullptr ? byType->GetPtr (link.type) : nullptr;
+            if (unused == nullptr && byType != nullptr)
+                unused = byType->GetPtr (NoSet);
+            if (unused == nullptr)
+                return false;
+            if (!unused->ContainsKey (link.otd_guid))
+                unused->Add (link.otd_guid, true);
+        }
+        room.otdwall = std::move (walls);
+        room.otdslab = std::move (slabs);
+        return true;
+    }
+
     // Для комнат с прочитанными параметрами рассчитывает полы, потолки, стены и откосы, пропуская недопустимые данные.
     // Использует отдельную копию параметров каждой комнаты; при отмене возвращает false.
     bool OtdRooms_ProcessFinishes (RoomProcessingContext &context,
@@ -5825,6 +5873,10 @@ namespace Roombook {
                                      paramCompositeToRead,
                                      has_base_element,
                                      context.favdict);
+            GS::Array<OtdDrawData> slabLinks;
+            for (const auto &slab : otd.otdslab)
+                if (slab.draw.otd_guid != APINULLGuid)
+                    slabLinks.Push (slab.draw);
             // Стены и откосы: здесь же пол расширяется в проёмы, независимо от флага создания откосов.
             // Откосы нужны и при отсутствии представимых основных surface-стен.
             Geometry::MultiPolygon2D profileExclusion;
@@ -5836,8 +5888,11 @@ namespace Roombook {
                 return false;
             }
             const bool hasWalls = !otd.otdwall.IsEmpty () || !openingWalls.IsEmpty ();
-            if (!hasWalls && profileExclusion.IsEmpty ())
+            if (!hasWalls && profileExclusion.IsEmpty ()) {
+                if (!OtdRoom_FilterSmallFinishes (otd, context.exsistot_byzone, slabLinks))
+                    return false;
                 continue;
+            }
             if (hasWalls && !OtdWall_ProcessFinishes (otd,
                                                       openingWalls,
                                                       context.paramToRead,
@@ -5863,34 +5918,15 @@ namespace Roombook {
                 return false;
             }
             // После расширений и проверки provenance: дробление пола больше не меняет её используемые индексы.
-            GS::Array<OtdDrawData> profileFloorLinks;
-            if (!profileExclusion.IsEmpty ())
-                for (const auto &floor : otd.otdslab)
-                    if (floor.draw.type == Floor && floor.draw.otd_guid != APINULLGuid)
-                        profileFloorLinks.Push (floor.draw);
             if (!FloorContours_SubtractProfileWalls (otd, profileExclusion))
                 return false;
-            // Полностью вырезанный пол возвращаем в список удаления: ProcessFinishes уже изъял его GUID.
-            for (const auto &link : profileFloorLinks) {
-                bool retained = false;
-                for (const auto &floor : otd.otdslab)
-                    retained = retained || floor.draw.otd_guid == link.otd_guid;
-                if (retained)
-                    continue;
-                auto *byBase = context.exsistot_byzone.GetPtr (zoneGuid);
-                auto *byType = byBase != nullptr ? byBase->GetPtr (link.base_guid) : nullptr;
-                auto *unused = byType != nullptr ? byType->GetPtr (link.type) : nullptr;
-                if (unused == nullptr && byType != nullptr)
-                    unused = byType->GetPtr (NoSet);
-                if (unused == nullptr)
-                    return false;
-                unused->Add (link.otd_guid, true);
-            }
             if (!SlabContacts_DeduplicateAccepted (otd))
                 msg_rep ("Surface finish",
                          "Accepted slab side remainder is ambiguous or unrepresentable",
                          APIERR_BADPARS,
                          zoneGuid);
+            if (!OtdRoom_FilterSmallFinishes (otd, context.exsistot_byzone, slabLinks))
+                return false;
             if (!OtdBeam_ProcessFinishes (otd, context.paramDict_favorite, context.param_composite, context.favdict)) {
                 msg_rep ("Skirting", "Cannot prepare final floor/ceiling beam arrays", APIERR_BADPARS, zoneGuid);
                 return false;
