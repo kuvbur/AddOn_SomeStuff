@@ -190,6 +190,7 @@
 - `%BuildingMaterialProperties/Building Material Manufacturer%` — `%производитель%`.
 - `%BuildingMaterialProperties/Building Material Density%` — `%плотность%`.
 - `%BuildingMaterialProperties/Building Material CutFill%` — имя штриховки, то же, что `%штриховка%`.
+- `%structype%` — тип слоя (ядро/отделка/другое)
 
 Другие встроенные свойства материалов:
 
