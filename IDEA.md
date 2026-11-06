@@ -1,5 +1,15 @@
 ﻿# Current Task Roombook: исправление плинтусов и surface skips (#270/#252)
 
+## #319 — пустой тип отключает соответствующий плинтус
+
+Scope: FloorSkirtingSegments_Build, SkirtingSegments_Build и подготовка faces в OtdBeam_ProcessFinishes; AC25 Windows. Сохранить пользовательскую обработку типов; без изменения геометрии, SDK-вызовов, commit/push/restart и остановки активной VS Run.
+Status: WAITING_FOR_NATIVE.
+Plan: [x] 1. Исходники, dirty-baseline и issue с read-back; [x] 2. Независимые guards по типам и корректный потолочный beam.tip; [x] 3. Controlled-регрессия, format/full-TU syntax check и адресная карточка; [ ] 4. Canonical build/native и fresh generated при согласованной приёмке.
+Last Completed: причина implementation error — builders не проверяли пустой тип; добавлены guards в обоих builders и до подготовки faces, потолочный beam.tip теперь из tip_ceil_cornice. Пользовательское чтение параметров сохранено; tests fixtures получили явные типы и новые проверки. clang-format/diff-check PASS. Controlled C++14 regression дословных блоков с подменными типами: baseline62/14FAIL → live62/0; parent повторил оба exe и сверил live SHA256 6e0d7f342cb106bfe0c55ca68c9edf9be89a194365391a993af3854bc08d7155. Это не полные функции/native geometry; repository suite не запускался. Full-TU SDK25 clang-cl /Zs: strict baseline/live имеют те же три unused-variable errors; с единственным Wno-error=unused-variable live exit0. Object compilation/relink не выполнялись. Read-only review пяти production-hunks: дефектов не найдено. Evidence: Hermes scratch/skirting-empty-types/validation. MCP stale; generated не обновлён, актуальность не заявляется.
+Next Step: по согласованию безопасно собрать/загрузить AC25 и проверить оба вида и повтор с очисткой типов; выполнить repository geometry suite и обновить generated свежим LSP. Активная VS Run не остановлена, модель не изменялась. Issue319 открыт; commit выполнен этим снимком; push/restart не выполнялись.
+Last Checkpoint: снимок правок #319 этим коммитом; native-приёмка отложена.
+Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/319.
+
 ## JSON-команды — страница вики
 
 Scope: только wiki/ru/JSON-Commands-ru.md (новая), wiki/ru/_Sidebar.md и Sources/AddOn/json_commands/How JSON Commands work.md (приведён к 9 командам); код, Docs и другие задачи не затрагиваются. Статус: страница и внутренний док созданы/обновлены по текущим исходникам json_commands, UTF-8/CRLF, diff --check чист. Коммит и push не выполнялись.

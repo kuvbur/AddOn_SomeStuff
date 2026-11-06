@@ -1473,7 +1473,7 @@ namespace Roombook {
     bool FloorSkirtingSegments_Build (OtdRoom &room) {
         constexpr double tolerance = FloorCoreGeometry::Tolerance;
         room.otdbeam_floor.Clear ();
-        if (!room.isValid)
+        if (!room.isValid || room.tip_floor_skirting.IsEmpty ())
             return true;
         if (!std::isfinite (room.zBottom))
             return false;
@@ -1544,7 +1544,7 @@ namespace Roombook {
     bool SkirtingSegments_Build (OtdRoom &room, const GS::Array<OtdSlab> &slabFaces) {
         room.otdbeam_floor.Clear ();
         room.otdbeam_ceil.Clear ();
-        if (!room.isValid)
+        if (!room.isValid || (room.tip_floor_skirting.IsEmpty () && room.tip_ceil_cornice.IsEmpty ()))
             return true;
         GS::Array<OtdBeam> floors, ceilings;
         const auto rectangle = [] (double left, double right, double bottom, double top) {
@@ -1590,8 +1590,9 @@ namespace Roombook {
                 const auto &slab = slabFaces[si];
                 if (!slab.isValid || (slab.draw.type != Floor && slab.draw.type != Ceil) || slab.poly.IsEmpty ())
                     continue;
-                if (slab.draw.type == Floor ? (!room.has_floor || !room.create_floor_elements)
-                                            : (!room.has_ceil || !room.create_ceil_elements))
+                if (slab.draw.type == Floor
+                        ? (!room.has_floor || !room.create_floor_elements || room.tip_floor_skirting.IsEmpty ())
+                        : (!room.has_ceil || !room.create_ceil_elements || room.tip_ceil_cornice.IsEmpty ()))
                     continue;
                 if (!std::isfinite (slab.zBottom) || !std::isfinite (slab.plane_origin.x) ||
                     !std::isfinite (slab.plane_origin.y) || !std::isfinite (slab.slope_x) ||
@@ -1647,7 +1648,7 @@ namespace Roombook {
                             beam.wallIndex = static_cast<Int32> (wi);
                             beam.slabIndex = static_cast<Int32> (si);
                             beam.draw.type = slab.draw.type == Floor ? Floor_Skirting : Ceil_Cornice;
-                            beam.tip = room.tip_floor_skirting;
+                            beam.tip = slab.draw.type == Floor ? room.tip_floor_skirting : room.tip_ceil_cornice;
                             auto &output = slab.draw.type == Floor ? floors : ceilings;
                             const API_Coord3D origin = {
                                 beam.geom.seg.begC.x, beam.geom.seg.begC.y, beam.geom.seg.begC.z};
@@ -9168,8 +9169,9 @@ namespace Roombook {
         for (auto &face : faces) {
             if (!face.isValid || (face.draw.type != Floor && face.draw.type != Ceil))
                 continue;
-            if (face.draw.type == Floor ? (!room.has_floor || !room.create_floor_elements)
-                                        : (!room.has_ceil || !room.create_ceil_elements)) {
+            if (face.draw.type == Floor
+                    ? (!room.has_floor || !room.create_floor_elements || room.tip_floor_skirting.IsEmpty ())
+                    : (!room.has_ceil || !room.create_ceil_elements || room.tip_ceil_cornice.IsEmpty ())) {
                 face.isValid = false;
                 continue;
             }

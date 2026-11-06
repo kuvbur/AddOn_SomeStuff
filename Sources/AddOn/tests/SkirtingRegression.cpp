@@ -99,6 +99,7 @@ int main () {
         ok ? ++passed : ++failed;
     };
     OtdRoom room;
+    room.tip_floor_skirting = "floor";
     room.zBottom = 5;
     check (room.otdbeam_floor.IsEmpty () && room.otdbeam_ceil.IsEmpty (), "both arrays start empty");
     OtdBeam ceiling;
@@ -120,6 +121,10 @@ int main () {
            "null-owner geometric door cuts actual wall bottom");
     check (FloorSkirtingSegments_Build (room) && room.otdbeam_floor.GetSize () == 2,
            "repeat replaces rather than appends");
+    room.tip_floor_skirting.Clear ();
+    check (FloorSkirtingSegments_Build (room) && room.otdbeam_floor.IsEmpty () && room.otdbeam_ceil.GetSize () == 1,
+           "empty floor type clears stale floor without touching ceiling");
+    room.tip_floor_skirting = "floor";
     room.otdwall[0].openings[0].lower = 100;
     room.otdwall[0].rise_x = 2;
     room.otdwall[0].surface_geometry = true;
@@ -359,6 +364,8 @@ int main () {
             return length;
         };
         OtdRoom prepared;
+        prepared.tip_floor_skirting = "floor";
+        prepared.tip_ceil_cornice = "ceiling";
         prepared.otdwall.Push (Wall ());
         prepared.otdwall[0].draw.material.smaterial = "@zone wall material@";
         OtdSlab floor;
@@ -372,6 +379,25 @@ int main () {
         check (SkirtingSegments_Build (prepared, prepared.otdslab) && prepared.otdbeam_floor.GetSize () == 1 &&
                    prepared.otdbeam_ceil.GetSize () == 1,
                "pipeline both independent final arrays");
+        check (prepared.otdbeam_floor[0].tip == prepared.tip_floor_skirting &&
+                   prepared.otdbeam_ceil[0].tip == prepared.tip_ceil_cornice,
+               "pipeline uses corresponding zone type for each role");
+        prepared.tip_floor_skirting.Clear ();
+        check (SkirtingSegments_Build (prepared, prepared.otdslab) && prepared.otdbeam_floor.IsEmpty () &&
+                   prepared.otdbeam_ceil.GetSize () == 1,
+               "empty floor type leaves ceiling enabled");
+        prepared.tip_ceil_cornice.Clear ();
+        check (SkirtingSegments_Build (prepared, prepared.otdslab) && prepared.otdbeam_floor.IsEmpty () &&
+                   prepared.otdbeam_ceil.IsEmpty (),
+               "both empty types clear both stale arrays");
+        prepared.tip_floor_skirting = "floor";
+        check (SkirtingSegments_Build (prepared, prepared.otdslab) && prepared.otdbeam_floor.GetSize () == 1 &&
+                   prepared.otdbeam_ceil.IsEmpty (),
+               "empty ceiling type leaves floor enabled");
+        prepared.tip_ceil_cornice = "ceiling";
+        check (SkirtingSegments_Build (prepared, prepared.otdslab) && prepared.otdbeam_floor.GetSize () == 1 &&
+                   prepared.otdbeam_ceil.GetSize () == 1,
+               "restored types rebuild both arrays");
         check (prepared.otdbeam_floor[0].draw.material.smaterial.IsEmpty () &&
                    prepared.otdbeam_ceil[0].draw.material.smaterial.IsEmpty () &&
                    prepared.otdwall[0].draw.material.smaterial == GS::UniString ("@zone wall material@"),
@@ -657,6 +683,8 @@ int main () {
         };
         for (bool surface : {false, true}) {
             OtdRoom ready;
+            ready.tip_floor_skirting = "floor";
+            ready.tip_ceil_cornice = "ceiling";
             ready.otdwall.Push (Wall ());
             OtdSlab lower;
             lower.draw.type = Floor;
@@ -720,6 +748,8 @@ int main () {
                    "accessory malformed plane publishes no partial arrays");
         }
         OtdRoom native;
+        native.tip_floor_skirting = "floor";
+        native.tip_ceil_cornice = "ceiling";
         native.otdwall.Push (Wall ());
         OtdSlab lower;
         lower.draw.type = Floor;
