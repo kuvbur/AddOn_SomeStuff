@@ -4,6 +4,26 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Команды этажей #315 — изолированный снимок (2026-11-06)
+
+- Обновлены карточки CommonFunction/Propertycache/Helpers/Sync и русская страница команд: API-index отделён от UI-index, высота верхнего этажа берётся через виртуальный уровень SDK25. Задокументирован числовой index. [по коду]
+- Для точечного коммита собран HEAD24dc70b + только #315, без соседней декомпозиции SyncString/RoomBook. Четыре полных TU SDK25/MSVC C++14 /WX exit0, controlled-регрессия64/0. Это не canonical addon build и не native-приёмка.
+- symbols.json: свежие настоящие clangd DocumentSymbol isolated snapshot,270cpp-записей проверены по исходникам; восстановлена полнота существующих overload-групп, добавлены ReadStory/SyncStringStory. Остальные897записей и порядок сохранены из HEAD, не из этой коллекции; их координаты не объявляются актуальными. Заголовки проверены clangd, но в cpp-only artifact не добавлялись. Полный parent-аудит специальных header-имён не завершён; опубликованные cpp-записи проверены отдельно. Callgraph и обзорные документы вне адресного обновления.
+- Артефакты: Hermes scratch/story-315-only-commit/validation/. Рабочие исходники не подменялись; refactor-срез Sync и RoomBook в общем working tree сохраняются отдельно от коммита #315.
+
+## Декомпозиция распознавания SyncString (2026-11-06)
+
+- В `Sync.cpp` вынесены локальные распознаватели ID, GDL, Material, Formula, Morph, Coord, Property, Info, IFC, Glob, Class, Element, MEP и ListData. Проверки применимости и общий разбор остаются в `SyncString`; `SyncStringFile`, `SyncStringAttribute` и `SyncStringStory` сохранены как самостоятельные ветви coordinator. [по коду]
+- Карточка Sync отражает текущий порядок вызовов. В `symbols.json` адресно обновлён Sync-срез: 50 записей с обеими перегрузками `SyncElement`; остальные 1098 записей и порядок сохранены. Callgraph не обновлялся: исторические Sync-рёбра не объявляются актуальными.
+- `clang-format --dry-run -Werror` и `git diff --check` для файлов задачи пройдены. Canonical AC25 Windows RelWithDebInfo INT build успешна: `Sync.cpp` перекомпилирован и APX перелинкован. Native-проверка не выполнялась. Диагностики clangd MCP не использованы как приёмка: сервер вернул нулевой набор, противоречащий прежнему baseline.
+- Артефакты: `C:/Users/da-rogojin/AppData/Local/hermes/cache/scratch/syncstring-extract-20261106/`. Независимые structural review и standalone-регрессия относятся к сохранённому applied-снимку до последующей перестановки coordinator; текущая сборка подтверждает компиляцию текущего порядка, но не эквивалентность его прежнему порядку. Без issue по прямому указанию владельца.
+
+## Полный подготовленный JSON-набор RoomBook (#314, 2026-11-06)
+
+- Адресные контракты Roombook/json_commands обновлены по рабочей дельте к04e4dd9: все подготовленные records, отдельный sentinel marker, validity/eligibility/local-error, null GUID и finite/unavailable количества. Полный native-инвентарь и раскрытие состава не добавлялись.
+- symbols.json: адресно сверены четыре helper/orchestrator записи хвоста Draw и четыре сдвинутые Favorites-записи JSON. Использован независимый fresh documentSymbol/version1 после доказанной stale MCP-сессии. Восемь source/name joins приняты; остальные1122записи и порядок сохранены. Прочие исторические координаты Draw и прежний callgraph не пересобирались и не считаются актуальными; полная регенерация вне scope.
+- Parent сверил source/text hashes и563symbol selection ranges трёх изменённых файлов, повторил SDK25/C++14 GREEN1287/0 и baseline RED277/99FAIL. Canonical AC25 Windows RelWithDebInfo build успешна. Native загрузка/приёмка новой версии не выполнялись; открытый host и Debug APX/PLN сохранены. Артефакты: Hermes scratch/roombook-all-results-20261106/. Коммит не запрошен.
+
 ## Адресный вход RoomBook zones (#309, 2026-11-05)
 
 - Карточки Roombook/json_commands описывают необязательный zones:string[], отказ всего запроса при ошибке, дедупликацию и const-copy входа. Исходный HEAD f2d94a2; описана только рабочая дельта #309, прочие исторические координаты не пересобраны.

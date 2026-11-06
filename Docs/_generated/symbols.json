@@ -1876,6 +1876,13 @@
     "line": 404
   },
   {
+    "name": "SyncElement",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 412
+  },
+  {
     "name": "SyncSelected",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
@@ -1957,56 +1964,175 @@
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1200
+    "line": 1201
+  },
+  {
+    "name": "SyncStringFile",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1565
+  },
+  {
+    "name": "SyncStringAttribute",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1684
+  },
+  {
+    "name": "SyncStringMaterial",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1698
+  },
+  {
+    "name": "SyncStringID",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1768
+  },
+  {
+    "name": "SyncStringGDL",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1777
+  },
+  {
+    "name": "SyncStringFormula",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1798
+  },
+  {
+    "name": "SyncStringMorph",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1831
+  },
+  {
+    "name": "SyncStringCoord",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1845
+  },
+  {
+    "name": "SyncStringProperty",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1862
+  },
+  {
+    "name": "SyncStringInfo",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1872
+  },
+  {
+    "name": "SyncStringIFC",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1882
+  },
+  {
+    "name": "SyncStringGlob",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1896
+  },
+  {
+    "name": "SyncStringClass",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1910
+  },
+  {
+    "name": "SyncStringElement",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1920
+  },
+  {
+    "name": "SyncStringMEP",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1934
+  },
+  {
+    "name": "SyncStringListData",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1948
+  },
+  {
+    "name": "SyncStringStory",
+    "kind": "Function",
+    "file": "Sources/AddOn/Sync.cpp",
+    "module": "Sync",
+    "line": 1962
   },
   {
     "name": "SyncString",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1560
+    "line": 2058
   },
   {
     "name": "SyncSetSubelement",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2297
+    "line": 2428
   },
   {
     "name": "SyncSetSubelementScope",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2393
+    "line": 2524
   },
   {
     "name": "SyncShowSubelement",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2462
+    "line": 2593
   },
   {
     "name": "SyncGetParentelement",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2734
+    "line": 2865
   },
   {
     "name": "SyncGetSubelement",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2898
+    "line": 3029
   },
   {
     "name": "SyncGetSyncGUIDProperty",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2959
+    "line": 3090
   },
   {
     "name": "paletteGuid",
@@ -2979,28 +3105,28 @@
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 156
+    "line": 159
   },
   {
     "name": "RoomBookGetFavoritesCommand::GetInputParametersSchema",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 158
+    "line": 161
   },
   {
     "name": "RoomBookGetFavoritesCommand::GetResponseSchema",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 160
+    "line": 163
   },
   {
     "name": "RoomBookGetFavoritesCommand::Execute",
     "kind": "Method",
     "file": "Sources/AddOn/json_commands/RoomBookCommand.cpp",
     "module": "json_commands",
-    "line": 165
+    "line": 168
   },
   {
     "name": "SpecCommand::SpecCommand",
@@ -5156,28 +5282,28 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2630
+    "line": 2757
   },
   {
     "name": "Roombook::FinishLinearLength",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2649
+    "line": 2781
   },
   {
     "name": "Roombook::CollectRoomFinishes",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2654
+    "line": 2783
   },
   {
     "name": "Roombook::OtdRooms_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2670
+    "line": 2816
   },
   {
     "name": "Roombook::OtdData_AddRoomToMaterialSummary",

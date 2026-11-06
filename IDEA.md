@@ -442,6 +442,17 @@ Last Checkpoint: нет; чужие правки сохраняются.
 
 ## Archive
 
+### SyncString — вынос распознавания источников
+
+Scope: декомпозиция блоков распознавания `SyncString` в `Sources/AddOn/Sync.cpp`; AC25 Windows. Пользовательские `SyncStringFile`, `SyncStringAttribute` и реализация `SyncStringStory` сохранены; разбор Story, проверки применимости и общий разбор параметров не менялись этим выносом. Issue не создавался по прямому указанию владельца.
+Status: COMPLETED.
+Plan: [x] 1. Прочитать baseline, карточку Sync и зависимости; [x] 2. Вынести ID/GDL/Material/Formula/Morph/Coord/Property/Info/IFC/Glob/Class/Element/MEP/ListData; [x] 3. Проверить формат, адресную документацию, structural review/regression и собрать текущий AC25 coordinator.
+Last Completed: вынесены 14 распознавателей. Тела веток и coordinator applied-снимка проверены отдельно: structural review — без замечаний; standalone differential regression — 7184 одинаковых случая и 44/0 адресных проверки helper-веток. Текущий coordinator после внешней перестановки сохранён как есть; свежая canonical сборка подтверждает его компиляцию, но не эквивалентность прежнему порядку.
+Validation: `clang-format --dry-run -Werror Sources/AddOn/Sync.cpp` и `git diff --check` для файлов задачи — PASS. `python Tools/BuildAddOn.py -c config.json -v 25 -r -l INT` — exit 0: `Sync.cpp` перекомпилирован, APX перелинкован; только предупреждение `LNK4099` об отсутствующем SDK PDB. Native-приёмка, macOS и другие версии AC не проверялись. clangd MCP вернул противоречащий baseline нулевой набор диагностик и не использован как приёмка. Evidence: `C:/Users/da-rogojin/AppData/Local/hermes/cache/scratch/syncstring-extract-20261106/`.
+Next Step: обязательных действий нет; runtime-приёмка порядка распознавания — отдельная задача.
+Last Checkpoint: `[syncstring-extract] Extract SyncString recognizers`; Refs: IDEA.md step 3. Push не запрошен.
+
+
 - Комплект `wiki/llm/archicad-zone-finish`: скилл, JSON-справки и read-only поиск зон; проверены JSON-примеры, ссылки, mock-сценарии и поиск на AC25. Создание классификаций и избранного в runtime не проверялось. Checkpoint: нет, коммит не запрошен. Следующее действие: при отдельном разрешении проверить создание в тестовом проекте.
 
 ### #313 — безопасный переводчик вики RU → EN
