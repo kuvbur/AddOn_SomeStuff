@@ -48,7 +48,6 @@ Sources/AddOn/
 │   │                          Spec (оркестратор), SpecPlanning (вклад источника),
 │   │                          SpecExecutor (этапы на модели), SpecHelpers (сетка/дамп),
 │   │                          SpecCompat (контракт имён), Spec_libpart (ListData)
-├── table/                   — Рендерер таблиц, навигатор
 ├── pk/                      — Автоматизация, сброс свойств, ревизии
 ├── api_headers/             — Заголовки ArchiCAD API
 └── third_party/             — qrcodegen (встроенная библиотека)
@@ -128,8 +127,6 @@ graph TD
     RB --> Sync
     PK[pk: AutomateFunction/ResetProperty/Revision] --> Helpers
     PK --> CF
-    TR[table/TableRenderer] --> CF
-    TN[table/TablesNavigator]
     BP --> Sync
     BP --> Helpers
 

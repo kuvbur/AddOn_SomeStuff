@@ -454,14 +454,14 @@ Last Checkpoint: нет; чужие правки сохраняются.
 
 ## Archive
 
-### #315 — раздел команд этажей в русской вики
+### Удаление остатков TableRenderer / TablesNavigator — 2026-11-06
 
-Scope: новый раздел в wiki/ru/Property-Commands-List-ru.md и запись состояния; C++, EN, сборка и runtime вне задачи. Версия AC для документационной правки не применима.
-Status: COMPLETED.
-Plan: [x] 1. Сверить текущие SyncStringStory/ReadStory и ключ storyCache; [x] 2. Описать level/height, номер этажа из интерфейса с учётом skipNullFloor и примеры; [x] 3. Проверить дельту, кодировку, ссылки и синтаксис.
-Last Completed: добавлены 11 строк перед обработкой координат. Источники: Sync.cpp:1962–1992, Helpers.cpp:7384–7417, Propertycache.hpp:400–415 (ключ ui_index), CommonFunction.cpp:99–121. Автопроверка: удаление нового раздела даёт byte-identical исходную страницу; ссылки сохранены, UTF-8 без BOM/U+FFFD, CRLF; все четыре примера проходят проверку синтаксиса. git diff --check пройден. Сборка и runtime не выполнялись.
-Next Step: документационная задача завершена; проверка выполнения команд и перевод EN — отдельно по запросу.
-Last Checkpoint: [story-wiki] Document story level and height commands; Refs: IDEA.md step 3; Refs: #315. Коммит разрешён владельцем; push не запрошен.
+Scope: подключения в SomeStuff_Main.cpp и документация удалённого владельцем table-модуля; AC25 Windows. Остальной код, Archicad/PLN, commit/push вне scope. Без issue по прямому указанию владельца.
+Status: DONE.
+Plan: [x] 1. Baseline и поиск остатков; [x] 2. Удалить include, закомментированные подключения и устаревшие документы/индексы; [x] 3. Format, LSP, canonical build и проверка дельты.
+Last Completed: убраны include и закомментированные подключения, четыре документа table, ссылки из обзоров/wiki; удалены 87 symbols и 10 callgraph edges. Родитель подтвердил точное равенство сохранённых 1061 symbols/1319 edges с baseline, их порядок и остальные поля callgraph. Непрокомментированные токены Main равны baseline за вычетом include; исполняемый код сохранён. Format/diff-check PASS; MCP clangd: 0 errors, 2 unused-include warnings. BuildAddOn.py -c config.json -v25 -r -l INT exit0: Main перекомпилирован, APX перелинкован. SHA Main после сборки совпал. Артефакты: Hermes scratch/table-cleanup-20261106, build-ac25.log/verification.json/source-check.json. Teamwork-ограничение сообщено владельцем, runtime не воспроизводился. Прочие унаследованные координаты docs не пересобирались.
+Next Step: работа завершена; commit разрешён владельцем, push и native-проверка не запрошены. Archicad не перезапускался.
+Last Checkpoint: [table-remove] Remove unused table renderer and navigator; Refs: IDEA.md step 3. Только файлы/фрагменты удаления table; без issue по указанию владельца.
 
 ### SyncString — вынос распознавания источников
 

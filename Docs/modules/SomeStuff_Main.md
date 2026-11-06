@@ -19,16 +19,16 @@
 | `MenuSetState` | 337 | Состояние пунктов меню по настройкам синхронизации [из комментария] |
 | `SetPaletteMenuText` | 351 | Тексты пунктов меню по языку [из комментария] |
 | `MenuCommandHandler` | 371 | Маршрутизация команд меню по ID [из комментария]; устанавливается из `Initialize` через `ACAPI_Install_MenuHandler` (Main:588) [по коду] — карточка |
-| `RegisterInterface` | 525 | Регистрация интерфейса/меню/палитры/навитора (включая `TablesNavigator::RegisterInterface` :537) [по коду] |
-| `Initialize` | 544 | Инициализация после открытия проекта: настройки, мониторинг, JSON-команды, палитра, навигатор, menu-handler [по коду] — карточка |
+| `RegisterInterface` | 516 (AC25) | Регистрация меню аддона [по коду, рабочее дерево 2026-11-06] |
+| `Initialize` | 534 (AC25) | Инициализация: настройки, мониторинг, JSON-команды, палитра, menu-handler [по коду, рабочее дерево 2026-11-06] — карточка |
 | `FreeData` | 594 | Освобождение при выгрузке (сейчас только `NoError`; AC28 — 592) [по коду] |
 
 ## Карточки
 
 ### `Initialize() -> GSErrCode`
-- Расположение: `Sources/AddOn/SomeStuff_Main.cpp:544` (AC25; AC28 — 542)
-- Назначение: инициализация после открытия проекта: настройки, мониторинг, JSON-команды, палитра, навигатор, установка menu-handler. [по коду]
-- Контракт: при ошибке `TablesNavigator::Initialize` — возврат её кода; `TestFunc::Test()` — только под `TESTING`; `ACAPI_KeepInMemory(true)`. [по коду]
+- Расположение: `Sources/AddOn/SomeStuff_Main.cpp:534` (AC25; ветвь AC28+ — 532), рабочее дерево 2026-11-06.
+- Назначение: инициализация настроек, мониторинга, JSON-команд, палитры и menu-handler. [по коду]
+- Контракт: возвращает результат установки menu-handler; `ACAPI_KeepInMemory(true)`. C++-тесты запускаются из обработчика открытия проекта под `TESTING`, а не из Initialize. [по коду]
 - Побочные эффекты: `LoadSyncSettingsFromPreferences(syncSettings, true)` (:550, forceReload); `MenuSetState` (:553); `Do_ElementMonitor` (:554); `MonAll` (:555); `RegisterJsonCommands` (:569, AC25+); `BrowserPalette::RegisterPaletteControlCallBack` (:571); `CatchSelectionChange` (:574/576); `InstallMenuHandler` (:586/588). [по коду]
 - Вызывается из: ArchiCAD (лifecycle). [по коду]
 

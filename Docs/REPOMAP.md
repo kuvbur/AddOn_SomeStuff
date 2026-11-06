@@ -39,7 +39,6 @@ D:/SomeStuff_addon/
 │   │   ├── RoomBookCommand.*, SpecCommand.*, SyncAllCommand.*, HealthCommand.*
 │   │   └── How JSON Commands work.md
 │   ├── spec/                   # Spec engine (Spec.*, SpecPlanning.*, SpecHelpers.*, Spec_libpart.*)
-│   ├── table/                  # Table renderer, navigator
 │   ├── pk/                     # Automation, reset, revision
 │   ├── api_headers/            # AC API headers
 │   └── third_party/            # qrcodegen
@@ -59,16 +58,16 @@ D:/SomeStuff_addon/
 │   ├── REPOMAP.md              # This file
 │   ├── DISCREPANCIES.md        # Comment/code mismatches
 │   ├── SEQUENCES.md            # 11 sequence diagrams (Mermaid)
-│   ├── modules/                # Per-module cards (27 файлов: 15 в корне + spec/ 6,
-│   │                            #   dialogs/ 3, table/ 2, third_party/ 1;
+│   ├── modules/                # Per-module cards (25 файлов: 15 в корне + spec/ 6,
+│   │                            #   dialogs/ 3, third_party/ 1;
 │   │                            #   dialogs/OtherDbDialog — описан в карточке Sync.md, #210)
 │   ├── tools/
 │   │   ├── generate_symbols.py  # НЕ запускать для данных: символы — regex-fallback, негоден
 │   │   └── UPDATE_PROCEDURE.md  # Doc update procedure
 │   └── _generated/
-│       ├── symbols.json         # Символы (1128 записей, 47 файлов, строки 1-based;
+│       ├── symbols.json         # Символы (1061 запись, 45 файлов, строки 1-based;
 │       │                            #   roombook-файлы пересобраны по диску 2026-10-30)
-│       └── callgraph.json       # Рёбра вызовов (1329; roombook-срез 807, пересобран
+│       └── callgraph.json       # Рёбра вызовов (1319; roombook-срез 807, пересобран
 │       │                            #   2026-10-30 после b199125; не-spec срезы —
 │       │                            #   прежнего прогона, 140 известных устаревших рёбер)
 ├── compile_commands.json       # LSP compile commands (54 записи, AC25)
@@ -88,7 +87,6 @@ D:/SomeStuff_addon/
 | Automation | Выравнивание, сброс, ревизии | pk/ (AutomateFunction, ResetProperty, Revision) |
 | UI | Dialogs, palette, HTML interface | dialogs/ (BrowserPalette, SyncSettings, OtherDbDialog, DG4rule) |
 | JSON commands | HTTP/JSON API AC25+ | json_commands/ (CommandBase, JsonCommandRegistrar, RoomBook, Spec, SyncAll, Health) |
-| Tables | Table rendering, navigation | table/TableRenderer, table/TablesNavigator |
 | Tests | TESTING-тесты | tests/ (TestFunc, TestKit, TestSpec/Sync/Param/Format/Renum/Core/Util) |
 | Third-party | Embedded libraries | third_party/qrcodegen |
 
