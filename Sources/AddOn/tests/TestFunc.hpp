@@ -68,6 +68,7 @@ namespace TestFunc {
     void TestSpecPlanning ();
     void TestSpecContribution ();
     void TestSpecRowLayout ();
+    void TestSpecRounding ();
     void TestSpecRowSlots ();
     void TestSpecReconcileFixtures ();
     void TestSpecChangePlan ();

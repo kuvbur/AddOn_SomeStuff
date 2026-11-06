@@ -11,6 +11,16 @@ Last Checkpoint: нет; commit не запрошен.
 Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/320.
 
 
+## #318 — применение шага округления к итоговым суммам
+
+Scope: следующий этап #318 по команде владельца «Продолжай реализацию»; AC25 Windows/C++14. Округлять итоговые числовые суммарные слоты вверх к +∞ после полной агрегации, до раннего возврата delete_old=false и сверки. Один шаг правила для всех int/real сумм, не для строк/bool/выходных полей. Без шага прежнее поведение. Helpers.cpp и агрегация read-only; без веток/staging/commit/push/restart/Save/остановки VS Run.
+Status: IN_PROGRESS — правка внесена и офлайн-проверена; независимое ревью в процессе.
+Plan: [x] 1. Parser-only этап (SDK25 stand815/0, TU compile; native не проверен); [x] 2. Контракт числа/raw/запись, baseline и RED (548/7 — все в новом TestSpecRounding, смежные suites 513/0); [x] 3. Минимальная финализация: RoundFinalSums (SpecPlanning.cpp:278, объявление hpp:163), один вызов из GetElementsForRule после PlanRuleRows (Spec.cpp:2140); [x] 4. GREEN 548/0 (все 7 RED прошли), полный TU SDK25 SpecPlanning.cpp/Spec.cpp/TestSpec.cpp exit 0, fresh clangd 0 ошибок (только прежние unused-include), format/diff-check чист; [/] 5. Адресные docs/generated/issue и итоговые границы.
+Last Completed: владелец подтвердил направление «Всегда вверх, в сторону +∞» (clarify). Тесты: фикстура Real, TestSpecRounding (35 проверок: слияние, без шага, отрицательная, точное кратное 0.49/0.07 с защитой is_equal, целые, целый слот с шагом 0.7 не меняется, сверка с шагом и без, строковая сумма), регистрация TestFunc.{hpp,cpp}. Арифметика: ceil частного с защитой точного кратного; ноль без деления; intValue через DoubleToInt32; doubleValue=rawDoubleValue согласованно для сверки (operator== берёт raw) и записи. Карточка SpecPlanning (функция+раздел), Spec.md R4.2-блок дополнен, symbols.json +1 запись (1066), _progress.md обновлён. Docs card хеши не переписывались (не задокументировано — хеш-строка SpecPlanning.md не обновлялась). Callgraph не пересобирался, карточка это оговаривает. Issue: направление/охват/порядок добавлены в body.
+Next Step: дождаться read-only ревью дельты, затем финализировать границы в IDEA/issue и ответить. Порядок обхода словаря не влияет (округление послотовое); повторный запуск идемпотентен (кратные остаются). Canonical build/native/другие SDK — не проверены; активный VS Run (Mode Run, Archicad25) не останавливался.
+Last Checkpoint: нет; commit не запрошен.
+Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/318 (OPEN).
+
 ## #319 — пустой тип отключает соответствующий плинтус
 
 Scope: FloorSkirtingSegments_Build, SkirtingSegments_Build и подготовка faces в OtdBeam_ProcessFinishes; AC25 Windows. Сохранить пользовательскую обработку типов; без изменения геометрии, SDK-вызовов, commit/push/restart и остановки активной VS Run.

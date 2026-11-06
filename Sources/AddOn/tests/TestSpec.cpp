@@ -121,6 +121,17 @@ namespace TestFunc {
                 context.read.Get (guid).Put (name, param);
             }
 
+            // Вещественная сумма: rawDoubleValue = doubleValue, тип Real.
+            // Нужен для проверок шага округления на дробных значениях.
+            void Real (const API_Guid &guid, const GS::UniString &name, double value) {
+                ParamValue param;
+                param.rawName = name;
+                ParamHelpers::ConvertDoubleToParamValue (param, name, value);
+                if (!context.read.ContainsKey (guid))
+                    context.read.Add (guid, ParamDictValue ());
+                context.read.Get (guid).Put (name, param);
+            }
+
             void Source (const API_Guid &guid, const GS::UniString &k, const GS::UniString &t, Int32 q) {
                 rule.runState.elements.Push (guid);
                 Text (guid, key, k);
@@ -740,6 +751,136 @@ namespace TestFunc {
 
             previousMs = ms;
             previousN = n;
+        }
+    }
+
+    // Округление итоговых сумм вверх до кратного шагу (issue #318).
+    // Граница: суммы читаются из фикстуры и агрегируются реальным
+    // PlanRuleRows; проверяется связка «агрегат -> финализация итогов ->
+    // сверка», а не native чтение свойств. Ожидания — по выбранному
+    // владельцем направлению «всегда вверх, к +∞».
+    void TestSpecRounding () {
+        // Вещественные суммы округляются вверх после полной агрегации.
+        {
+            SpecFixture f;
+            f.rule.sum_rounding_step = 0.01;
+            f.Source (f.first, "A", "Alpha", 0);
+            f.Real (f.first, f.quantity, 1.005);
+            f.Source (f.second, "A", "Alpha", 0);
+            f.Real (f.second, f.quantity, 0.006);
+            DBtest (f.Run (), 1, "round real result");
+            DBtest (f.created.GetSize (), 1u, "round real row count");
+            const Spec::Element *row = f.created.GetPtr ("@A");
+            DBtest (row != nullptr, true, "round real row kept");
+            if (row != nullptr && row->OutSumCount () == 1) {
+                DBtest (is_equal (row->OutSumValue (0).val.doubleValue, 1.02), true, "round real doubleValue up");
+                DBtest (is_equal (row->OutSumValue (0).val.rawDoubleValue, 1.02), true, "round real rawDoubleValue up");
+                DBtest (row->OutSumValue (0).val.hasrawDouble, true, "round real raw flag kept");
+                DBtest (row->OutSumValue (0).val.type, API_PropertyRealValueType, "round real type kept");
+            }
+        }
+        // Без шага поведение прежнее: сумма остаётся без округления.
+        {
+            SpecFixture f;
+            f.Source (f.first, "A", "Alpha", 0);
+            f.Real (f.first, f.quantity, 1.005);
+            f.Source (f.second, "A", "Alpha", 0);
+            f.Real (f.second, f.quantity, 0.006);
+            DBtest (f.Run (), 1, "no step result");
+            const Spec::Element *row = f.created.GetPtr ("@A");
+            DBtest (row != nullptr, true, "no step row kept");
+            if (row != nullptr && row->OutSumCount () == 1)
+                DBtest (is_equal (row->OutSumValue (0).val.rawDoubleValue, 1.011), true, "no step sum unchanged");
+        }
+        // Отрицательная сумма округляется вверх к +∞: -0.014 -> -0.01.
+        {
+            SpecFixture f;
+            f.rule.sum_rounding_step = 0.01;
+            f.Source (f.first, "N", "Neg", 0);
+            f.Real (f.first, f.quantity, -0.014);
+            DBtest (f.Run (), 1, "round negative result");
+            const Spec::Element *row = f.created.GetPtr ("@N");
+            DBtest (row != nullptr, true, "round negative row kept");
+            if (row != nullptr && row->OutSumCount () == 1)
+                DBtest (is_equal (row->OutSumValue (0).val.rawDoubleValue, -0.01), true, "round negative toward +inf");
+        }
+        // Точное кратное не сдвигается вверх ошибкой деления: 0.49 с шагом 0.07.
+        {
+            SpecFixture f;
+            f.rule.sum_rounding_step = 0.07;
+            f.Source (f.first, "M", "Multiple", 0);
+            f.Real (f.first, f.quantity, 0.49);
+            DBtest (f.Run (), 1, "exact multiple result");
+            const Spec::Element *row = f.created.GetPtr ("@M");
+            DBtest (row != nullptr, true, "exact multiple row kept");
+            if (row != nullptr && row->OutSumCount () == 1)
+                DBtest (is_equal (row->OutSumValue (0).val.rawDoubleValue, 0.49), true, "exact multiple kept");
+        }
+        // Целые суммы округляются по тому же шагу; тип и intValue согласованы.
+        {
+            SpecFixture f;
+            f.rule.sum_rounding_step = 5;
+            f.Source (f.first, "I", "Int", 12);
+            DBtest (f.Run (), 1, "round int result");
+            const Spec::Element *row = f.created.GetPtr ("@I");
+            DBtest (row != nullptr, true, "round int row kept");
+            if (row != nullptr && row->OutSumCount () == 1) {
+                DBtest (row->OutSumValue (0).val.intValue, 15, "round int intValue up");
+                DBtest (is_equal (row->OutSumValue (0).val.doubleValue, 15), true, "round int doubleValue up");
+                DBtest (row->OutSumValue (0).val.type, API_PropertyIntegerValueType, "round int type kept");
+            }
+        }
+        // Целая сумма с дробным шагом, дающим нецелый результат, не меняется:
+        // 3 с шагом 0.7 -> 3.5 не представимо целым слотом.
+        {
+            SpecFixture f;
+            f.rule.sum_rounding_step = 0.7;
+            f.Source (f.first, "J", "Frac", 3);
+            DBtest (f.Run (), 1, "int fractional step result");
+            const Spec::Element *row = f.created.GetPtr ("@J");
+            DBtest (row != nullptr, true, "int fractional step row kept");
+            if (row != nullptr && row->OutSumCount () == 1)
+                DBtest (row->OutSumValue (0).val.intValue, 3, "int fractional step left unchanged");
+        }
+        // Сверка использует округлённые суммы: округление доходит до
+        // существующего объекта. 15 совпадает с прежним объектом, 12 — нет.
+        {
+            SpecFixture f;
+            f.rule.sum_rounding_step = 5;
+            f.Source (f.first, "C", "Common", 12);
+            f.Existing (f.old, "Common", 15);
+            DBtest (f.Run (), 0, "rounded reconcile no-op result");
+            DBtest (f.modified.GetSize (), 0u, "rounded sum reconciles without change");
+            DBtest (f.created.GetSize (), 0u, "rounded sum creates nothing");
+            f.rule.sum_rounding_step = 0;
+            f.Shape (f.Run (), 1, 0, 1, 0, "unrounded reconcile");
+            DBtest (f.modified.GetSize (), 1u, "unrounded sum updates existing");
+        }
+        // Экстремально малый шаг переполняет частное до inf: слот не меняется,
+        // inf в свойство не уходит (замечание ревью #318).
+        {
+            SpecFixture f;
+            f.rule.sum_rounding_step = 1e-300;
+            f.Source (f.first, "X", "Overflow", 0);
+            f.Real (f.first, f.quantity, 1e30);
+            DBtest (f.Run (), 1, "overflowing step result");
+            const Spec::Element *row = f.created.GetPtr ("@X");
+            DBtest (row != nullptr, true, "overflowing step row kept");
+            if (row != nullptr && row->OutSumCount () == 1) {
+                DBtest (is_equal (row->OutSumValue (0).val.rawDoubleValue, 1e30), true, "overflowing step sum kept");
+            }
+        }
+        // Строковые суммы шаг не затрагивает.
+        {
+            SpecFixture f;
+            f.rule.sum_rounding_step = 0.01;
+            f.Source (f.first, "S", "Text", 0);
+            f.Text (f.first, f.quantity, "Alpha");
+            DBtest (f.Run (), 1, "string sum result");
+            const Spec::Element *row = f.created.GetPtr ("@S");
+            DBtest (row != nullptr, true, "string sum row kept");
+            if (row != nullptr && row->OutSumCount () == 1)
+                DBtest (row->OutSumValue (0).val.uniStringValue, GS::UniString ("Alpha"), "string sum untouched");
         }
     }
 
@@ -4911,12 +5052,11 @@ namespace TestFunc {
             // filter_empty=true убирает пустые части ДО подсчёта, поэтому "x,,y"
             // даёт два имени, а не пустой слот посередине.
             {"x,,y;w", true, {"{@gdl:x}", "{@gdl:y}"}, {"{@gdl:w}"}, "empty name skipped"},
-            // Пустая часть исчезает ДО проверки "ровно две", поэтому "x;" и ";y"
-            // дают одну часть и отвергаются - пустой слот недопустим.
+            // Обе схемы обязательны: пустой слот недопустим.
             {";y", false, {}, {}, "empty output part rejected"},
             {"x;", false, {}, {}, "empty sum part rejected"},
             {"x", false, {}, {}, "one part rejected"},
-            {"x;y;z", false, {}, {}, "three parts rejected"},
+            {"x;y;z", false, {}, {}, "nonnumeric rounding step rejected"},
             {"", false, {}, {}, "empty rejected"},
             // Хвостая запятая внутри части НЕ отвергает правило: часть непуста,
             // пустое имя уходит из неё, и схема остаётся из одного слота.
@@ -4932,6 +5072,73 @@ namespace TestFunc {
             DBtest (rule.parseValid, test.ok, label + " parse flag");
             DBtest (rule.out_paramrawname == test.out, label + " output names");
             DBtest (rule.out_sum_paramrawname == test.sum, label + " sum names");
+            DBtest (rule.sum_rounding_step, 0.0, label + " no rounding step");
+        }
+
+        struct RoundingCase {
+            const char *writePart;
+            double step;
+            Spec::ParseError error;
+            const char *label;
+        };
+
+        const RoundingCase roundingCases[] = {
+            {"x;y;0.01", 0.01, Spec::ParseError::None, "decimal step"},
+            {"x;y;0,01", 0.01, Spec::ParseError::None, "decimal comma"},
+            {"x;y;1", 1.0, Spec::ParseError::None, "integer step"},
+            {"x;y;5", 5.0, Spec::ParseError::None, "arbitrary multiple"},
+            {"x;y; 0.25 ", 0.25, Spec::ParseError::None, "surrounding spaces"},
+            {"x;y;.5", 0.5, Spec::ParseError::None, "leading decimal point"},
+            {"x;y;+0.1", 0.1, Spec::ParseError::None, "positive sign"},
+            {"x;y;1e-3", 0.001, Spec::ParseError::None, "scientific notation"},
+            {"x;y;", 0.0, Spec::ParseError::InvalidRoundingStep, "empty step"},
+            {"x;y;   ", 0.0, Spec::ParseError::InvalidRoundingStep, "blank step"},
+            {"x;y;0", 0.0, Spec::ParseError::InvalidRoundingStep, "zero step"},
+            {"x;y;-0.01", 0.0, Spec::ParseError::InvalidRoundingStep, "negative step"},
+            {"x;y;nan", 0.0, Spec::ParseError::InvalidRoundingStep, "not a number"},
+            {"x;y;inf", 0.0, Spec::ParseError::InvalidRoundingStep, "infinite step"},
+            {"x;y;1e309", 0.0, Spec::ParseError::InvalidRoundingStep, "overflow"},
+            {"x;y;1e-4000", 0.0, Spec::ParseError::InvalidRoundingStep, "underflow to zero"},
+            {"x;y;0.01mm", 0.0, Spec::ParseError::InvalidRoundingStep, "trailing text"},
+            {"x;y;1 2", 0.0, Spec::ParseError::InvalidRoundingStep, "embedded space"},
+            {"x;y;0.01,0.1", 0.0, Spec::ParseError::InvalidRoundingStep, "multiple values"},
+            {"x;y;0.01;0.1", 0.0, Spec::ParseError::OutputPartCount, "extra part"},
+            {"x;y;0.01;", 0.0, Spec::ParseError::OutputPartCount, "extra empty part"},
+            {"x;;0.01", 0.0, Spec::ParseError::OutputPartCount, "missing sum before step"},
+            {";y;0.01", 0.0, Spec::ParseError::OutputPartCount, "missing output before step"},
+            {"x;y;0000000000000000000000000000000000000000000000000000000000000001garbage",
+             0.0,
+             Spec::ParseError::InvalidRoundingStep,
+             "input longer than numeric buffer"},
+        };
+        for (const RoundingCase &test : roundingCases) {
+            Spec::SpecRule rule = {};
+            GS::Array<GS::UniString> scratch;
+            const bool ok = test.error == Spec::ParseError::None;
+            const GS::UniString label = GS::UniString ("Spec schema rounding ") + test.label;
+            DBtest (Spec::ParseOutputSchema (test.writePart, scratch, rule), ok, label + " accepted");
+            DBtest (rule.parseValid, ok, label + " parse flag");
+            DBtest (rule.parseError == test.error, label + " reason");
+            DBtest (rule.sum_rounding_step, test.step, label + " stored step");
+            const GS::Array<GS::UniString> expectedOut =
+                ok ? GS::Array<GS::UniString>{"{@gdl:x}"} : GS::Array<GS::UniString>{};
+            const GS::Array<GS::UniString> expectedSum =
+                ok ? GS::Array<GS::UniString>{"{@gdl:y}"} : GS::Array<GS::UniString>{};
+            DBtest (rule.out_paramrawname == expectedOut, label + " output names");
+            DBtest (rule.out_sum_paramrawname == expectedSum, label + " sum names");
+
+            const GS::UniString description = GS::UniString ("Spec_rule{Fav;g(u;p;f;q)s(") + test.writePart + ")}";
+            const Spec::SpecRule parsed = Spec::GetRuleFromDescription (Spec::NormalizeRuleDescription (description));
+            DBtest (parsed.parseValid, ok, label + " full parser accepted");
+            DBtest (parsed.parseError == test.error, label + " full parser reason");
+            DBtest (parsed.sum_rounding_step, test.step, label + " full parser step");
+        }
+        {
+            Spec::SpecRule rule = {};
+            rule.sum_rounding_step = 0.25;
+            GS::Array<GS::UniString> scratch;
+            DBtest (Spec::ParseOutputSchema ("x;y", scratch, rule), true, "Spec schema without step accepted");
+            DBtest (rule.sum_rounding_step, 0.0, "Spec schema without step resets rounding setting");
         }
         // Схема заполняет ТОЛЬКО выходные поля и не трогает уже разобранные части.
         {
@@ -5313,7 +5520,7 @@ namespace TestFunc {
 
     // Причина отказа в разборе. Парсер пишет её в тех же точках, где
     // сбрасывает parseValid, поэтому набор значений и число точек обязаны
-    // совпадать: 7 значений отказа + None.
+    // совпадать.
     // Ожидания рассчитаны воспроизведением ПОРЯДКА проверок парсера, а не
     // подгонкой под вывод. Ключевой момент - каскад в конце GetRuleFromDescription:
     // три финальные проверки не прерываются, поэтому при нескольких нарушениях
@@ -5335,8 +5542,9 @@ namespace TestFunc {
             {"g@@u@@s@@x;y)", false, Spec::ParseError::GroupNotSplit, "group not split"},
             // Выходная схема из одной части (фильтр пустых не помогает: часть не пуста).
             {"g@@u;p;f;q@@s@@x)", false, Spec::ParseError::OutputPartCount, "one output part"},
-            // Выходная схема из трёх частей.
-            {"g@@u;p;f;q@@s@@x;y;z)", false, Spec::ParseError::OutputPartCount, "three output parts"},
+            // Третья часть допустима только как числовой шаг округления.
+            {"g@@u;p;f;q@@s@@x;y;z)", false, Spec::ParseError::InvalidRoundingStep, "invalid rounding step"},
+            {"g@@u;p;f;q@@s@@x;y;0.01;1)", false, Spec::ParseError::OutputPartCount, "four output parts"},
             // Нет части s@@ вовсе.
             {"g@@u;p;f;q)", false, Spec::ParseError::NoSummary, "no summary part"},
             // s@@ есть, но вторая часть пуста и отфильтровывается - остаётся одна.
@@ -5393,7 +5601,8 @@ namespace TestFunc {
                                             Spec::ParseError::NoSummary,
                                             Spec::ParseError::NoGroupsAccepted,
                                             Spec::ParseError::EmptyOutputSchema,
-                                            Spec::ParseError::EmptySumSchema};
+                                            Spec::ParseError::EmptySumSchema,
+                                            Spec::ParseError::InvalidRoundingStep};
             const UInt32 n = sizeof (all) / sizeof (all[0]);
             for (UInt32 i = 0; i < n; ++i) {
                 const GS::UniString text = Spec::ParseErrorText (all[i]);

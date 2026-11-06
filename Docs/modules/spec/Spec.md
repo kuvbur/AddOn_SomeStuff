@@ -26,7 +26,7 @@
 | Тип | Описание |
 |-----|----------|
 | `GroupSpec` | unic_paramrawname, out_paramrawname, sum_paramrawname, flag_paramrawname, fromMaterial, fromLibData, n_layer [из комментария, Spec.hpp:13-23] |
-| `SpecRule` | rule_name, groups, out_paramrawname, subguid_paramrawname (маркер), subguid_rulename/rulevalue, runState.{elements, selected, destinationReady, destinationParamGuidName, exsist_elements}, rule_definitions, favorite_name, флаги политики [см. карточку ниже] |
+| `SpecRule` | rule_name, groups, out_paramrawname, out_sum_paramrawname, sum_rounding_step (0 — не задан), subguid_paramrawname (маркер), subguid_rulename/rulevalue, runState.{elements, selected, destinationReady, destinationParamGuidName, exsist_elements}, rule_definitions, favorite_name, флаги политики [по коду; см. карточку ниже] |
 | `Element` / `ElementDict` | Временный контейнер создаваемого элемента / словарь по сцепке уникальных параметров [из комментария] |
 | `SpecRuleDict` | HashTable<string, SpecRule> [из комментария] |
 | `SpecElementDump` | Дамп одного созданного/изменённого элемента: `guid`, `favorite_name`, `sourceElements`, `properties`, `gdlParameters` (#227, Spec.hpp) |
@@ -302,20 +302,38 @@ CheckRuleByPropertyGuid ──┬──► NormalizeRuleDescription
 - `local_scratch` остался в парсере: он используется шестью вызовами `StringSplt`
   ниже по функции, и вынос объявления унёс бы его из области видимости.
 
-### R4.2 (второй блок) — выходная схема `s()` вынесена из парсера (#228)
-- `ParseOutputSchema (writePart, scratch, rule)` — `Spec.cpp:2016`, объявление
-  `Spec.hpp:166`, вызов из `GetRuleFromDescription` на `Spec.cpp:2085`. Прежде разбор
-  `s()` был 30 строками внутри парсера и не имел отдельного контракта.
-- Закреплено в `TestSpecOutputSchema` (`TestFunc.cpp:542`, вызов на `:1031`): 11 случаев
-  схемы (ровно две части / одна / три / пустая; срезание `[N]`; пустые имена;
-  хвостая запятая; сохранность уже разобранных полей; отказ при отсутствии `s@@`).
-  Ожидания сверены с воспроизведением алгоритма (11/11).
-- **Поведение, зафиксированное как контракт:** `StringSplt` вызывается с
-  `filter_empty = true`, поэтому пустые части исчезают ДО подсчёта. Следствие:
-  `"x;"`, `";y"` и `""` дают одну часть и отвергаются — пустой выходной слот
-  недопустим; а `"x,,y"` и `"x,;y"` допустимы, потому что пустое имя уходит из
-  непустой части. Имя без префикса получает `@gdl:` по умолчанию
-  (`NameToRawName`, `Helpers.cpp:1509`). [по коду + тест]
+### Выходная схема `s()` и необязательный шаг округления
+
+Адресно сверено 2026-11-06 по рабочей дельте к `a28fe78`; прочие исторические
+таблицы координат этой правкой не пересобирались. [по коду]
+
+- `ParseOutputSchema (writePart, scratch, rule)` — `Spec.cpp:2535`;
+  `GetRuleFromDescription` вызывает её до разбора групп. Формат:
+  `s(Pn1,Pn2; Qn1,Qn2)` либо `s(Pn1,Pn2; Qn1,Qn2; 0.01)`. [по коду]
+- Первые две части обязательны. Разбивка по `;` сохраняет пустые позиции:
+  пустая схема или лишняя часть даёт `OutputPartCount`, явно пустой третий
+  параметр — `InvalidRoundingStep`. Проверки выполняются до заполнения имён.
+  Внутри схем пустые имена по-прежнему пропускаются: `x,,y;w` и `x,;y`
+  допустимы, суффикс `[N]` срезается. [по коду]
+- Третья часть разбирается отдельно от имён свойств как положительное конечное
+  число; поддержаны точка, десятичная запятая и экспоненциальная запись.
+  Неположительное/nonfinite значение, ошибочный хвост, внутренние ASCII-пробелы
+  и ввод длиннее буфера числового конвертера отвергаются. Результат хранится
+  в `SpecRule::sum_rounding_step`; отсутствие параметра даёт 0. [по коду,
+  Spec.hpp:116; Spec.cpp:2543–2555, :2583; CommonFunction.cpp:1007–1049]
+- Настройка применяется один раз после полной агрегации: `Spec::RoundFinalSums`
+  (`SpecPlanning.cpp`, вызов из `GetElementsForRule` после `PlanRuleRows`, до
+  раннего возврата `delete_old = false` и сверки) округляет итоговые числовые
+  суммарные слоты строк **вверх к +∞** до ближайшего кратного шага; точное
+  кратное не сдвигается ошибкой деления, целые слоты с нецелым результатом
+  (например шаг 0.7) не меняются, строковые/логические суммы и выходные
+  слоты не трогаются. Сверка и запись видят уже округлённые значения.
+  [по коду; SpecPlanning.hpp/.cpp `RoundFinalSums`; Spec.cpp `GetElementsForRule`]
+- Адресные регрессии находятся в `tests/TestSpec.cpp`: `TestSpecOutputSchema`
+  проверяет прямой и полный путь через нормализацию, `TestSpecParseError` —
+  причину отказа, `TestSpecRounding` — применение шага к агрегату, сверке,
+  целым/отрицательным/строковым суммам и поведение без шага. Статус
+  исполнения — в `Docs/_progress.md`. [по коду]
 - **Найденная и исправленная регрессия:** первая версия функции сбрасывала
   `rule.parseValid = false` на входе, безусловно, а не только при отказе. Это
   ломало `parseValid` у КАЖДОГО правила — 45 ошибок в тестах, включая все
@@ -381,7 +399,13 @@ CheckRuleByPropertyGuid ──┬──► NormalizeRuleDescription
   месте, просто переехала в конец. Оба раза исправлено на фактический результат
   прогона, а не на догадку. [по факту прогона]
 
-### R4.4 (плановый) - причина отказа в разборе наружу (#228)
+### R4.4 — историческое выделение причины отказа в разборе (#228)
+
+Текущий набор причин также содержит `InvalidRoundingStep`; он возвращается
+при ошибке необязательной третьей части `s()`. Сообщение строит
+`ParseErrorText` (`Spec.cpp:2187`). Исторические счётчики ниже относятся к
+исходному выделению диагностики, а не к текущему парсеру. [по коду]
+
 - `Spec::ParseError` (`enum class`, `Spec.hpp`), поле `SpecRule::parseError`,
   функция `ParseErrorText (ParseError)` (`Spec.cpp`). Значения `None` +
   7 причин отказа.

@@ -1,4 +1,6 @@
 //------------ kuvbur 2022 ------------
+#include <cmath>
+
 #include "ACAPinc.h"
 
 #include "api_headers/APIEnvir.h"
@@ -2132,6 +2134,10 @@ namespace Spec {
         // существующие строки. Здесь фиксируется полнота без решения о применении.
         n_elements = PlanRuleRows (
             rule, context, elements, error_element, showUserInterface, out_param, plan, runResult, &rejected_keys);
+        // Финализация итогов: суммы строк округляются к шагу правила ДО
+        // сверки и создания, чтобы сверка сравнивала уже округлённые
+        // значения и существующие объекты не перезаписывались по два раза.
+        RoundFinalSums (elements, rule.sum_rounding_step);
         if (!rule.delete_old)
             return n_elements;
         // План наблюдает решение сверки, но не становится вторым источником
@@ -2178,8 +2184,9 @@ namespace Spec {
     //   5. Парсит группу s():
     //      - параметры для записи (Pn1,Pn2,Pn3) - part 0
     //      - параметры для записи количества (Qn1,Qn2) - part 1
+    //      - необязательный положительный шаг округления сумм - part 2
     // Возвращает: структуру SpecRule (заполненную на основе описания)
-    // Формат: Spec_rule{КРИТЕРИЙ ;g(U1,U2,U3; P1,P2,P3; F; Q1,Q2) s(Pn1,Pn2,Pn3; Qn1,Qn2)}
+    // Формат: Spec_rule{КРИТЕРИЙ ;g(U1,U2,U3; P1,P2,P3; F; Q1,Q2) s(Pn1,Pn2,Pn3; Qn1,Qn2; шаг)}
     // --------------------------------------------------------------------
     GS::UniString ParseErrorText (ParseError error) {
         switch (error) {
@@ -2188,7 +2195,9 @@ namespace Spec {
         case ParseError::GroupNotSplit:
             return "group body has no semicolon, cannot split into parts";
         case ParseError::OutputPartCount:
-            return "output schema must have exactly two parts";
+            return "output schema must have two non-empty schema parts and an optional rounding step";
+        case ParseError::InvalidRoundingStep:
+            return "rounding step must be a positive finite number";
         case ParseError::NoSummary:
             return "no summary part s@@ or fewer than two parts";
         case ParseError::NoGroupsAccepted:
@@ -2513,29 +2522,42 @@ namespace Spec {
 
     // --------------------------------------------------------------------
     // Разбирает ВЫХОДНУЮ СХЕМУ правила - часть описания после "s@@".
-    // Формат: s (Pn1, Pn2, Pn3; Qn1, Qn2), где
+    // Формат: s (Pn1, Pn2, Pn3; Qn1, Qn2; шаг), где
     //   часть 0 (до точки с запятой) - свойства элемента-результата;
-    //   часть 1 (после)              - свойства для записи количеств.
-    // Требование РОВНО двух частей: одна или три части - невалидное описание, и
-    // парсер обязан отвергнуть всё правило (parseValid = false), а не молча
-    // взять первые две.
+    //   часть 1                     - свойства для записи количеств;
+    //   часть 2 (необязательная)     - положительный конечный шаг округления сумм.
+    // Первые две части обязательны. Явно пустой шаг или лишняя часть отвергают
+    // правило, а не исчезают при фильтрации пустых строк.
     // Внутри части имена чистятся от служебных символов ("proc", "@", фигурные
     // скобки, пробелы), после чего суффикс "[N]" (номер строки массива) срезается
     // и отбрасывается: в выходной схеме он не несёт смысла, разворачивание массива
     // делает группа. Пустые имена пропускаются, поэтому ",," не даёт пустых слотов.
-    // Возвращает false, если частей не две; тогда и только тогда сбрасывается
-    // rule.parseValid, а out_* остаются пустыми. При успехе флаг НЕ трогается:
+    // При неверном числе частей или шаге возвращает false, сбрасывает
+    // rule.parseValid и не заполняет out_*. При успехе флаг НЕ трогается:
     // дальше парсер продолжает разбор групп и вправе сбросить его сам.
     // --------------------------------------------------------------------
     bool ParseOutputSchema (const GS::UniString &writePart, GS::Array<GS::UniString> &scratch, SpecRule &rule) {
         GS::Array<GS::UniString> rulestring_write = {}; // Свойства для записи из группы s()
-        const UInt32 nrule_write = StringSplt (writePart, SEMICOLON, rulestring_write, true, &scratch);
-        if (nrule_write != 2) {
+        const UInt32 nrule_write = StringSplt (writePart, SEMICOLON, rulestring_write, false, &scratch);
+        if (nrule_write < 2 || nrule_write > 3 || rulestring_write[0].IsEmpty () || rulestring_write[1].IsEmpty ()) {
             rule.parseValid = false;
             rule.parseError = ParseError::OutputPartCount;
             return false;
         }
-        for (UInt32 part = 0; part < nrule_write; part++) {
+        double roundingStep = 0.0;
+        if (nrule_write == 3) {
+            const GS::UniString &step = rulestring_write[2];
+            // UniStringToDouble обрезает ввод до 63 символов и удаляет пробелы:
+            // не позволяем принять усечённое число или склеить несколько чисел.
+            if (step.GetLength () >= 64 || step.Contains (" ") || step.Contains ("\t") || step.Contains ("\x0D") ||
+                step.Contains ("\n") || !UniStringToDouble (step, roundingStep) || !std::isfinite (roundingStep) ||
+                roundingStep <= 0.0) {
+                rule.parseValid = false;
+                rule.parseError = ParseError::InvalidRoundingStep;
+                return false;
+            }
+        }
+        for (UInt32 part = 0; part < 2; part++) {
             GS::Array<GS::UniString> rulestring_param = {};
             const UInt32 nrule_param = StringSplt (rulestring_write[part], COMMA, rulestring_param, true, &scratch);
             if (nrule_param > 0) {
@@ -2562,6 +2584,7 @@ namespace Spec {
                 }
             }
         }
+        rule.sum_rounding_step = roundingStep;
         return true;
     }
 

@@ -1,4 +1,6 @@
 //------------ kuvbur 2022 ------------
+#include <cmath>
+
 #include "SpecPlanning.hpp"
 
 // Чтение вклада и сверка строк спецификации.
@@ -264,6 +266,62 @@ namespace Spec {
         row.elements.Push (contribution.source);
         rows.Add (contribution.key, row);
         return RowAddition::Created;
+    }
+
+    // --------------------------------------------------------------------
+    // Округление итоговых сумм вверх к кратному шагу (#318). Подробный
+    // контракт — в объявлении SpecPlanning.hpp.
+    // Арифметика: значение делим на шаг и округляем вверх; однако деление
+    // точного кратного может дать чуть большее частное (0.49/0.07), и
+    // ceil тогда сдвинул бы значение на целый шаг вверх. Поэтому сначала
+    // проверяем ближайшее целое частное на точное кратное (is_equal с
+    // относительным допуском) и только иначе применяем ceil.
+    // --------------------------------------------------------------------
+    void RoundFinalSums (ElementDict &rows, double step) {
+        if (!(step > 0.0))
+            return;
+        for (auto &cIt : rows) {
+#ifdef ServerMainVers_2800
+            Element &row = cIt.value;
+#else
+            Element &row = *cIt.value;
+#endif
+            for (OutputSlot &slot : row.out_slots) {
+                // Суммирование касалось только суммарных слотов: выходные
+                // значения первого источника округлять нельзя.
+                if (!slot.isSum || !slot.value.isValid)
+                    continue;
+                if (slot.value.val.type != API_PropertyIntegerValueType &&
+                    slot.value.val.type != API_PropertyRealValueType)
+                    continue;
+                // Читаем неокруглённое значение: форматные округления не
+                // должны влиять на шаг округления.
+                double value = slot.value.val.hasrawDouble ? slot.value.val.rawDoubleValue : slot.value.val.doubleValue;
+                if (value == 0.0)
+                    continue; // Ноль кратен любому шагу; деление не нужно.
+                const double ratio = value / step;
+                const double nearest = std::floor (ratio + 0.5);
+                double rounded = (is_equal (value, nearest * step) ? nearest : std::ceil (ratio)) * step;
+                // Экстремально малый шаг может переполнить частное до inf:
+                // невыполнимое округление не пишем, слот остаётся как есть.
+                if (!std::isfinite (rounded))
+                    continue;
+                if (slot.value.val.type == API_PropertyIntegerValueType) {
+                    // Целый слот принимает только целый результат: 3 с шагом
+                    // 0.7 дало бы 3.5, такое значение слот не представит.
+                    const double nearestInt = std::floor (rounded + 0.5);
+                    if (!is_equal (rounded, nearestInt))
+                        continue;
+                    rounded = nearestInt;
+                    slot.value.val.intValue = DoubleToInt32 (rounded, "Spec", "округление суммы до шага");
+                }
+                // Согласованность с записью и сверкой: сравнение может брать
+                // rawDoubleValue, а форматирование — doubleValue.
+                slot.value.val.doubleValue = rounded;
+                slot.value.val.rawDoubleValue = rounded;
+                slot.value.val.hasrawDouble = true;
+            }
+        }
     }
 
     // --------------------------------------------------------------------

@@ -11,6 +11,21 @@
 - Standalone C++14: одинаковые assertions RED232/57FAIL → GREEN232/0, parent повторил GREEN. Controlled stages/SDK substitutes, не native-геометрия. Реальный полный Data TU SDK25/MSVC `/std:c++14 /c /WX` exit0, scratch obj; новый clangd имеет те же восемь диагностик, что baseline, новых нет. Canonical addon build/link и native не выполнялись: активный VS Run не останавливался.
 - Evidence: Hermes scratch/min-area-20261106/regression/ и validation/. Без коммита/push/Save/restart.
 
+## Необязательный шаг в s() Spec (#318, 2026-11-06)
+
+- Карточка Spec актуализирована только для parser-only контракта: две обязательные схемы и необязательный положительный конечный шаг, отдельная ошибка InvalidRoundingStep, поле sum_rounding_step. Применение округления к суммам не реализовано по границе текущего этапа. [по коду]
+- symbols.json:111существующих записей Spec.cpp/TestSpec.cpp адресно сверены со свежим isolated clangd documentSymbol;950внешних записей и порядок сохранены. Header symbols не добавлялись. Shared MCP устарел (namespace end3150 против3170), его данные не публиковались. Callgraph не пересобирался и не объявляется актуальным.
+- Родитель подтвердил source hashes, version1 didOpen/publishDiagnostics и364диапазона символов; ошибок нет, только unused-includes. Полные Spec.cpp/TestSpec.cpp скомпилированы MSVC SDK25 C++14 /W3 /WX в scratch obj exit0. Это не canonical addon build/link.
+- Родитель повторил SDK25 standalone: семь parser suites, RED815/123FAIL → GREEN815/0. Настоящие GS::UniString/Array и project parser/числовые функции. Пропущен AddRule/native-dictionary блок ParseError (4 assertions); alias/formula/native locale boundaries fail-closed. Native/runtime и другие SDK/macOS не проверены, активный VS Run не останавливался.
+- Evidence: Hermes scratch/spec318-parser/parent-acceptance.json, regression/, validation/. Код после принятых проверок не менялся. Коммит и push не выполнялись.
+
+## Округление итоговых сумм Spec (#318, 2026-11-06)
+
+- Реализовано применение шага: `Spec::RoundFinalSums` (SpecPlanning.cpp:278, hpp:163) — итоговые числовые суммарные слоты округляются вверх к +∞ после `PlanRuleRows`, до сверки; защита точного кратного через `is_equal`, целые слоты с нецелым результатом не меняются, doubleValue/rawDoubleValue согласованы. [по коду]
+- Регрессия: RED 548/7 → GREEN 548/0 (извлечённый SDK25/C++14 стенд, реальные GS-контейнеры и project helpers; новый TestSpecRounding 35 проверок; смежные suites 513/0). Это не native и не полный addon build. [по коду]
+- Полные TU SDK25 MSVC (SpecPlanning.cpp, Spec.cpp, TestSpec.cpp) скомпилированы exit 0; fresh isolated clangd — 0 ошибок, только прежние unused-include; format и diff --check чист. [по коду]
+- Карточки Spec/SpecPlanning обновлены адресно, symbols.json +1 запись (RoundFinalSums, 1066), callgraph не пересобирался (оговорено в карточке). Evidence: Hermes scratch/spec318-rounding/. Коммит и push не выполнялись.
+
 ## Удаление документации модуля table (2026-11-06)
 
 - Удалены четыре устаревших документа, текущие ссылки обзоров/wiki и table-срез JSON: 87 символов и 10 рёбер. Остальные JSON-записи и их порядок сохранены относительно рабочего baseline; полный сбор не выполнялся. Исторические снимки оставлены. Чекпойнт: [table-remove], без issue по указанию владельца.

@@ -5401,259 +5401,259 @@
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 39
+    "line": 41
   },
   {
     "name": "Spec::SpecAll",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 154
+    "line": 156
   },
   {
     "name": "Spec::SpecFilter",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 250
+    "line": 252
   },
   {
     "name": "Spec::SpecFilter",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 392
+    "line": 394
   },
   {
     "name": "Spec::SpecDG",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 492
+    "line": 494
   },
   {
     "name": "Spec::ShowRunResult",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 545
+    "line": 547
   },
   {
     "name": "Spec::SpecArray",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 632
+    "line": 634
   },
   {
     "name": "Spec::GetRuleFromElement",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1215
+    "line": 1217
   },
   {
     "name": "Spec::NormalizeRuleDescription",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1278
+    "line": 1280
   },
   {
     "name": "Spec::AddRule",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1326
+    "line": 1328
   },
   {
     "name": "Spec::CollectRuleDependencies",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1377
+    "line": 1379
   },
   {
     "name": "Spec::BuildReadParamDict",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1424
+    "line": 1426
   },
   {
     "name": "Spec::GetParamToReadFromRule",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1473
+    "line": 1475
   },
   {
     "name": "Spec::MatchDestinationProperties",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1504
+    "line": 1506
   },
   {
     "name": "Spec::ResolveFavoriteLinks",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1531
+    "line": 1533
   },
   {
     "name": "Spec::SelectExistingElements",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1596
+    "line": 1598
   },
   {
     "name": "Spec::AddExistingReadRequests",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1616
+    "line": 1618
   },
   {
     "name": "Spec::SpecValueReader::Read",
     "kind": "Method",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1656
+    "line": 1658
   },
   {
     "name": "Spec::OutSlotsMatchSchema",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1767
+    "line": 1769
   },
   {
     "name": "Spec::PrepareSlotBindings",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1805
+    "line": 1807
   },
   {
     "name": "Spec::IsSourceVisible",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1837
+    "line": 1839
   },
   {
     "name": "Spec::PlanRuleRows",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 1848
+    "line": 1850
   },
   {
     "name": "Spec::GetElementsForRule",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2105
+    "line": 2107
   },
   {
     "name": "Spec::ParseErrorText",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2184
+    "line": 2187
   },
   {
     "name": "Spec::ApplyRulePolicy",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2216
+    "line": 2221
   },
   {
     "name": "Spec::ExpandGroup",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2259
+    "line": 2264
   },
   {
     "name": "Spec::ParseGroups",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2351
+    "line": 2356
   },
   {
     "name": "Spec::ParseOutputSchema",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2530
+    "line": 2535
   },
   {
     "name": "Spec::GetRuleFromDescription",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2572
+    "line": 2591
   },
   {
     "name": "Spec::EvaluateRuleFlag",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2654
+    "line": 2673
   },
   {
     "name": "Spec::CollectUnreadRuleNames",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2727
+    "line": 2746
   },
   {
     "name": "Spec::GetRulePropertyDefinition",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2766
+    "line": 2785
   },
   {
     "name": "Spec::ReadElementRuleFlag",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2778
+    "line": 2797
   },
   {
     "name": "Spec::CheckRuleByPropertyGuid",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2815
+    "line": 2834
   },
   {
     "name": "Spec::CheckRuleElementByRule",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2955
+    "line": 2974
   },
   {
     "name": "Spec::GetElementForPlaceProperties",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 2976
+    "line": 2995
   },
   {
     "name": "Spec::GetElementForPlace",
     "kind": "Function",
     "file": "Sources/AddOn/spec/Spec.cpp",
     "module": "spec",
-    "line": 3103
+    "line": 3122
   },
   {
     "name": "SpecCompat::ResponseFieldNames::status",
@@ -6088,6 +6088,13 @@
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
     "line": 275
+  },
+  {
+    "name": "Spec::RoundFinalSums",
+    "kind": "Function",
+    "file": "Sources/AddOn/spec/SpecPlanning.cpp",
+    "module": "spec",
+    "line": 278
   },
   {
     "name": "ListData::GetSubposKey",
@@ -7214,49 +7221,49 @@
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 4957
+    "line": 5023
   },
   {
     "name": "TestFunc::TestSpecNormalize",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5020
+    "line": 5086
   },
   {
     "name": "TestFunc::TestSpecParser",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5095
+    "line": 5161
   },
   {
     "name": "TestFunc::TestSpecAddRule",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5245
+    "line": 5311
   },
   {
     "name": "TestFunc::TestSpecParseError",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5324
+    "line": 5390
   },
   {
     "name": "TestFunc::TestSpecSizes",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5434
+    "line": 5502
   },
   {
     "name": "TestFunc::TestSpecRuleCheck",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5490
+    "line": 5558
   },
   {
     "name": "TestFunc::RawNameCase.input",
