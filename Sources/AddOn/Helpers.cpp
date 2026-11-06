@@ -1319,6 +1319,9 @@ GS::UniString ParamHelpers::GetRawnamePrefixByTypeInx (const short &inx) {
     case STORYTYPEINX:
         return STORYNAMEPREFIX;
         break;
+    case FLAGTYPEINX:
+        return FLAGNAMEPREFIX;
+        break;
     default:
 #if defined(TESTING)
         DBprnt (inx, "ERROR GetRawnamePrefixByTypeInx");
