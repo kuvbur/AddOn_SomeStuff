@@ -7561,15 +7561,6 @@ namespace Roombook {
                 roominfo.tip_ceil = val.uniStringValue;
             }
         }
-
-        param_name = "tip_plint_pot";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.tip_ceil_cornice = val.uniStringValue;
-            }
-        }
-
         param_name = "tip_otd";
         if (const auto *p = readparams.GetPtr (param_name)) {
             if (p->isValid) {
@@ -7582,13 +7573,6 @@ namespace Roombook {
             if (p->isValid) {
                 val = p->val;
                 roominfo.tip_floor = val.uniStringValue;
-            }
-        }
-        param_name = "tip_plint_pol";
-        if (const auto *p = readparams.GetPtr (param_name)) {
-            if (p->isValid) {
-                val = p->val;
-                roominfo.tip_floor_skirting = val.uniStringValue;
             }
         }
         param_name = "has_ceil";
@@ -7613,13 +7597,48 @@ namespace Roombook {
                     roominfo.ceil_by_slab = val.boolValue;
             }
         }
-
         param_name = "floor_by_slab";
         if (const auto *p = readparams.GetPtr (param_name)) {
             if (p->isValid) {
                 val = p->val;
                 if (roominfo.has_floor)
                     roominfo.floor_by_slab = val.boolValue;
+            }
+        }
+        param_name = "tip_plint_pot";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                static const GS::UniString notSetText =
+                    RSGetIndString (ID_ADDON_STRINGS + isEng (), SkirtingNotSetStringID, ACAPI_GetOwnResModule ());
+                static const GS::UniString byTypeText =
+                    RSGetIndString (ID_ADDON_STRINGS + isEng (), SkirtingByTypeStringID, ACAPI_GetOwnResModule ());
+                const GS::UniString tipText = UniStringToLower (val.uniStringValue);
+                roominfo.tip_ceil_cornice = val.uniStringValue;
+                if (tipText.Contains (notSetText)) {
+                    roominfo.tip_ceil_cornice = "";
+                }
+                if (tipText.Contains (byTypeText)) {
+                    roominfo.tip_ceil_cornice = roominfo.tip_ceil;
+                }
+            }
+        }
+        param_name = "tip_plint_pol";
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
+                static const GS::UniString notSetText =
+                    RSGetIndString (ID_ADDON_STRINGS + isEng (), SkirtingNotSetStringID, ACAPI_GetOwnResModule ());
+                static const GS::UniString byTypeText =
+                    RSGetIndString (ID_ADDON_STRINGS + isEng (), SkirtingByTypeStringID, ACAPI_GetOwnResModule ());
+                const GS::UniString tipText = UniStringToLower (val.uniStringValue);
+                roominfo.tip_floor_skirting = val.uniStringValue;
+                if (tipText.Contains (notSetText)) {
+                    roominfo.tip_floor_skirting = "";
+                }
+                if (tipText.Contains (byTypeText)) {
+                    roominfo.tip_floor_skirting = roominfo.tip_floor;
+                }
             }
         }
     }
@@ -7700,7 +7719,6 @@ namespace Roombook {
             return;
         }
         OtdRoom_ApplyFinishTypeParameters (readparams, roominfo);
-
         OtdRoom_ApplyMaterialParameters (material_dict, readparams, roominfo);
         OtdRoom_ApplyHeightParameters (readparams, roominfo);
         OtdRoom_ApplyMaterialRawNames (readparams, roominfo);
@@ -9005,8 +9023,8 @@ namespace Roombook {
         return false;
     }
 
-    // Добавляет GUID потомка в массив по типу и GUID родителя, создавая отсутствующие записи; нулевые GUID пропускает.
-    // Повторные GUID не проверяет и не удаляет.
+    // Добавляет GUID потомка в массив по типу и GUID родителя, создавая отсутствующие записи; нулевые GUID
+    // пропускает. Повторные GUID не проверяет и не удаляет.
     void Param_AddUnicElementByType (const API_Guid &parentguid,
                                      const API_Guid &guid,
                                      API_ElemTypeID elemtype,
@@ -9269,7 +9287,8 @@ namespace Roombook {
     }
 
     // Помечает избранное как прочитанное до получения элемента и чтения материалов; при дальнейшей ошибке флаг не
-    // сбрасывает. При наличии требуемого параметра и состава материала заполняет composite через Param_SetComposite.
+    // сбрасывает. При наличии требуемого параметра и состава материала заполняет composite через
+    // Param_SetComposite.
     void Favorite_ReadComposite (const ParamValue &param_composite,
                                  ParamDictValue &paramToRead_favorite,
                                  const GS::UniString &fav_name,
@@ -9413,8 +9432,8 @@ namespace Roombook {
             return;
         }
 
-        // Обработка имени избранного, заданного в имени покрытия материала; при наличии @ извлекает имя избранного от @
-        // и до конца строки
+        // Обработка имени избранного, заданного в имени покрытия материала; при наличии @ извлекает имя избранного
+        // от @ и до конца строки
         if (material.smaterial.Contains (ATSIGN)) {
             GS::UniString part = UniStringToLower (material.smaterial) + '@';
             part = part.GetSubstring ('@', '@', 0);
@@ -9512,8 +9531,9 @@ namespace Roombook {
         return true;
     }
 
-    // Читает избранное с memo; при успехе копирует элемент и memo, вызывает UnhideUnlockElementLayer и возвращает true.
-    // При ошибке чтения освобождает memo избранного; пустое имя и отсутствие ServerMainVers_2300 также дают false.
+    // Читает избранное с memo; при успехе копирует элемент и memo, вызывает UnhideUnlockElementLayer и возвращает
+    // true. При ошибке чтения освобождает memo избранного; пустое имя и отсутствие ServerMainVers_2300 также дают
+    // false.
     bool Favorite_GetByName (const GS::UniString &favorite_name, API_Element &element, API_ElementMemo &memo) {
         GSErrCode err = NoError;
     #ifndef ServerMainVers_2300
