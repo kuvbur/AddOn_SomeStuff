@@ -273,9 +273,9 @@ namespace Spec {
     // контракт — в объявлении SpecPlanning.hpp.
     // Арифметика: значение делим на шаг и округляем вверх; однако деление
     // точного кратного может дать чуть большее частное (0.49/0.07), и
-    // ceil тогда сдвинул бы значение на целый шаг вверх. Поэтому сначала
-    // проверяем ближайшее целое частное на точное кратное (is_equal с
-    // относительным допуском) и только иначе применяем ceil.
+    // ceil тогда сдвинул бы значение на целый шаг вверх. Защищаем только
+    // частное в одном соседнем double от целого; общий is_equal здесь
+    // мог бы выбрать нижнее кратное для действительно некратной суммы.
     // --------------------------------------------------------------------
     void RoundFinalSums (ElementDict &rows, double step) {
         if (!(step > 0.0))
@@ -296,12 +296,21 @@ namespace Spec {
                     continue;
                 // Читаем неокруглённое значение: форматные округления не
                 // должны влиять на шаг округления.
-                double value = slot.value.val.hasrawDouble ? slot.value.val.rawDoubleValue : slot.value.val.doubleValue;
-                if (value == 0.0)
-                    continue; // Ноль кратен любому шагу; деление не нужно.
-                const double ratio = value / step;
-                const double nearest = std::floor (ratio + 0.5);
-                double rounded = (is_equal (value, nearest * step) ? nearest : std::ceil (ratio)) * step;
+                const double value =
+                    slot.value.val.hasrawDouble ? slot.value.val.rawDoubleValue : slot.value.val.doubleValue;
+                double rounded = value;
+                if (value != 0.0) {
+                    const double ratio = value / step;
+                    if (!std::isfinite (ratio))
+                        continue;
+                    const double nearest = std::round (ratio);
+                    const bool exactMultiple = ratio == nearest || std::nextafter (ratio, nearest) == nearest;
+                    rounded = (exactMultiple ? nearest : std::ceil (ratio)) * step;
+                    // Очень малое положительное частное может стать нулём:
+                    // верхнее кратное положительной суммы всё равно равно шагу.
+                    if (rounded == 0.0 && value > 0.0)
+                        rounded = step;
+                }
                 // Экстремально малый шаг может переполнить частное до inf:
                 // невыполнимое округление не пишем, слот остаётся как есть.
                 if (!std::isfinite (rounded))
@@ -313,13 +322,14 @@ namespace Spec {
                     if (!is_equal (rounded, nearestInt))
                         continue;
                     rounded = nearestInt;
-                    slot.value.val.intValue = DoubleToInt32 (rounded, "Spec", "округление суммы до шага");
                 }
-                // Согласованность с записью и сверкой: сравнение может брать
-                // rawDoubleValue, а форматирование — doubleValue.
+                // Даже нулевая raw-сумма могла иметь ненулевой форматный итог.
+                // Integer/String writers читают свои поля, а не doubleValue.
                 slot.value.val.doubleValue = rounded;
                 slot.value.val.rawDoubleValue = rounded;
                 slot.value.val.hasrawDouble = true;
+                slot.value.val.intValue = DoubleToInt32 (rounded, "Spec", "округление суммы до шага");
+                slot.value.val.uniStringValue = ParamHelpers::ToString (slot.value);
             }
         }
     }

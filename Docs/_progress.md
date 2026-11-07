@@ -4,6 +4,14 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Исправление округления Spec (#318, 2026-11-07)
+
+- Область: AC25 Windows/C++14, локальный RoundFinalSums и постоянные TestSpecRounding. Устранены три замечания e84e042: нижнее кратное из-за широкого допуска, несогласованные int/text и пропуск raw-ноля. Карточка SpecPlanning отражает текущий контракт: одно-ULP защита кратного, обработка underflow и согласование представлений штатным форматированием. [по коду]
+- SDK25 stand RED649/24FAIL → GREEN649/0 (TestSpecRounding136, соседние513); parser815/0. Пропущены native-localized Bool case и4 AddRule/native assertions. Полные TU SpecPlanning/Spec/TestSpec MSVC/C++14 exit0; fresh version1 LSP:0ошибок,5прежних unused-includes;169диапазонов проверены с учётом anonymous placeholders и header declarations. Независимое ревью production-дельты без замечаний; последние3табличных кейса после ревью проверены parent. Native persistence не исполнялся.
+- Canonical Tools/BuildAddOn.py -c config.json -v25 -r -l INT выполнен после финальной правки: exit0, AC25 Windows RelWithDebInfo INT, APX перелинкован. Загруженный Debug APX и оба test_25.pln по SHA256 неизменны; host/модель не тронуты. Другие SDK/macOS not verified.
+- symbols.json:85записей двух изменённых .cpp адресно приняты из свежего isolated clangd documentSymbol с hash/range/name guards;983внешних записей и порядок сохранены. Добавлены недостающие SpecFixture::Real и TestSpecRounding:1066→1068. Shared MCP stale (RoundFinalSums отсутствует, конец namespace474 вместо541); его координаты не публиковались. Callgraph и остальные исторические координаты не пересобирались и не объявляются актуальными.
+- #318 OPEN до согласованной native-проверки фактической записи и повтора; body и итоговый comment6704764673 прочитаны обратно. Исправления включены в текущий коммит; push/Save/restart/Stop не выполнялись. Evidence: Hermes scratch/spec318-fix/ (regression/{red-final,green-final}, validation/, parser/green/, build-ac25-final.log, symbols-acceptance.json).
+
 ## Минимальная площадь отделки (#320, 2026-11-06)
 
 - Адресный контракт Roombook: финальная фильтрация всей площадной отделки по `min_area`, сохранение равенства, возврат неиспользованных slab GUID и малые contact-диагностики. [по коду]

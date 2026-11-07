@@ -1,6 +1,7 @@
 //------------ kuvbur 2022 ------------
 #ifdef TESTING
     #include <chrono>
+    #include <limits>
 
     #include "ACAPinc.h"
 
@@ -881,6 +882,133 @@ namespace TestFunc {
             DBtest (row != nullptr, true, "string sum row kept");
             if (row != nullptr && row->OutSumCount () == 1)
                 DBtest (row->OutSumValue (0).val.uniStringValue, GS::UniString ("Alpha"), "string sum untouched");
+        }
+        // Общий допуск сравнения величин не подходит для выбора кратного:
+        // проверяем точные ожидаемые результаты независимо от is_equal.
+        {
+            struct RoundingCase {
+                double value;
+                double step;
+                double expected;
+                const char *name;
+            };
+
+            const RoundingCase cases[] = {{1000000000.1, 1, 1000000001, "large positive"},
+                                          {-1000000000.1, 1, -1000000000, "large negative"},
+                                          {1e-13, 1e-12, 1e-12, "below absolute tolerance"},
+                                          {-1e-13, 1e-12, 0, "negative below absolute tolerance"},
+                                          {1.0000000001, 1, 2, "above unit boundary"},
+                                          {-1.0000000001, 1, -1, "below negative unit boundary"},
+                                          {0.07, 0.01, 0.07, "exact multiple positive division noise"},
+                                          {-0.07, 0.01, -0.07, "exact multiple negative division noise"},
+                                          {4503599627370497.0, 1, 4503599627370497.0, "large exact integer quotient"},
+                                          {std::numeric_limits<double>::min (), 1e308, 1e308, "quotient underflow"}};
+            for (const RoundingCase &test : cases) {
+                SpecFixture f;
+                f.rule.sum_rounding_step = test.step;
+                f.Source (f.first, "B", "Boundary", 0);
+                f.Real (f.first, f.quantity, test.value);
+                const GS::UniString label = GS::UniString ("round boundary ") + test.name;
+                DBtest (f.Run (), 1, label + " result");
+                const Spec::Element *row = f.created.GetPtr ("@B");
+                DBrequire (row != nullptr && row->OutSumCount () == 1, label + " row");
+                DBtest (row->OutSumValue (0).val.rawDoubleValue == test.expected, true, label + " raw exact");
+                DBtest (row->OutSumValue (0).val.doubleValue == test.expected, true, label + " displayed exact");
+                DBtest (row->OutSumValue (0).val.rawDoubleValue >= test.value, true, label + " not below input");
+            }
+        }
+        // Представления результата нужны реальным writers: Integer читает
+        // intValue, а String после BuildRowParamToWrite — uniStringValue.
+        // Проверяем оба типа источника и создание/обновление строки.
+        for (Int32 realSource = 0; realSource < 2; ++realSource) {
+            for (Int32 update = 0; update < 2; ++update) {
+                SpecFixture f;
+                f.rule.sum_rounding_step = 5;
+                f.Source (f.first, "P", "Payload", 12);
+                if (realSource != 0)
+                    f.Real (f.first, f.quantity, 12);
+                if (update != 0)
+                    f.Existing (f.old, "Payload", 12);
+                const GS::UniString label = GS::UniString (realSource != 0 ? "real" : "integer") +
+                                            (update != 0 ? " update payload" : " create payload");
+                DBtest (f.Run (), 1, label + " result");
+                const Spec::Element *row = (update != 0 ? f.modified : f.created).GetPtr ("@P");
+                DBrequire (row != nullptr && row->OutSumCount () == 1, label + " row");
+                ParamValue target;
+                ParamHelpers::ConvertIntToParamValue (target, f.outQuantity, 0);
+                target.fromPropertyDefinition = true;
+                target.definition.valueType = API_PropertyIntegerValueType;
+                ParamDictValue allowed;
+                ParamDictValue payload;
+                allowed.Add (f.outQuantity, target);
+                Spec::BuildRowParamToWrite (*row, allowed, payload);
+                DBrequire (payload.ContainsKey (f.outQuantity), label + " integer present");
+                DBtest (payload.Get (f.outQuantity).val.intValue, 15, label + " integer receives rounded sum");
+                ParamValue stringTarget;
+                ParamHelpers::ConvertStringToParamValue (stringTarget, f.outQuantity, EMPTYSTRING);
+                stringTarget.fromPropertyDefinition = true;
+                stringTarget.definition.valueType = API_PropertyStringValueType;
+                allowed.Clear ();
+                payload.Clear ();
+                allowed.Add (f.outQuantity, stringTarget);
+                Spec::BuildRowParamToWrite (*row, allowed, payload);
+                DBrequire (payload.ContainsKey (f.outQuantity), label + " string present");
+                DBtest (payload.Get (f.outQuantity).val.type, API_PropertyStringValueType, label + " string type");
+                DBtest (payload.Get (f.outQuantity).val.uniStringValue,
+                        GS::UniString ("15"),
+                        label + " string receives rounded sum");
+                if (update != 0) {
+                    f.Number (f.old, f.outQuantity, 15);
+                    DBtest (f.Run (), 0, label + " second run no-op");
+                    DBtest (f.modified.GetSize (), 0u, label + " second run changes nothing");
+                }
+            }
+        }
+        // Текст результата использует штатный формат суммы, включая единицы.
+        {
+            SpecFixture f;
+            f.rule.sum_rounding_step = 5;
+            f.Source (f.first, "F", "Format", 0);
+            f.Real (f.first, f.quantity, 12);
+            ParamValue &source = f.context.read.Get (f.first).Get (f.quantity);
+            source.val.formatstring.koeff = 1000;
+            source.val.formatstring.n_zero = 0;
+            DBtest (f.Run (), 1, "rounded formatted text result");
+            const Spec::Element *row = f.created.GetPtr ("@F");
+            DBrequire (row != nullptr && row->OutSumCount () == 1, "rounded formatted text row");
+            DBtest (row->OutSumValue (0).val.uniStringValue,
+                    GS::UniString ("15000"),
+                    "rounded formatted text respects units");
+        }
+        // Настоящее форматирование вкладов даёт raw0, но отображаемую сумму -1.
+        // При заданном шаге ноль обязан пройти согласование всех представлений.
+        {
+            SpecFixture f;
+            const API_Guid guids[] = {f.first, f.second, f.extra};
+            const double values[] = {0.49, 0.49, -0.98};
+            const double displayed[] = {0, 0, -1};
+            for (UInt32 i = 0; i < 3; ++i) {
+                f.Source (guids[i], "Z", "Zero", 0);
+                f.Real (guids[i], f.quantity, values[i]);
+                ParamValue &source = f.context.read.Get (guids[i]).Get (f.quantity);
+                source.val.formatstring.n_zero = 0;
+                source.val.formatstring.needRound = true;
+                ParamHelpers::ConvertByFormatString (source);
+                DBtest (source.val.doubleValue == displayed[i], true, "raw zero actual source formatting");
+            }
+            DBtest (f.Run (), 1, "raw zero without step result");
+            const Spec::Element *row = f.created.GetPtr ("@Z");
+            DBrequire (row != nullptr && row->OutSumCount () == 1, "raw zero without step row");
+            DBtest (row->OutSumValue (0).val.rawDoubleValue == 0, true, "raw zero cancellation");
+            DBtest (row->OutSumValue (0).val.doubleValue == -1, true, "raw zero without step keeps legacy display");
+            f.rule.sum_rounding_step = 1;
+            DBtest (f.Run (), 1, "raw zero with step result");
+            row = f.created.GetPtr ("@Z");
+            DBrequire (row != nullptr && row->OutSumCount () == 1, "raw zero with step row");
+            DBtest (row->OutSumValue (0).val.doubleValue == 0, true, "raw zero normalizes displayed sum");
+            DBtest (row->OutSumValue (0).val.rawDoubleValue == 0, true, "raw zero stays zero");
+            DBtest (row->OutSumValue (0).val.intValue, 0, "raw zero normalizes integer");
+            DBtest (row->OutSumValue (0).val.uniStringValue, GS::UniString ("0"), "raw zero normalizes text");
         }
     }
 

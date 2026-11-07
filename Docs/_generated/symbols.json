@@ -6038,63 +6038,63 @@
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
-    "line": 9
+    "line": 11
   },
   {
     "name": "Spec::BuildContribution",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
-    "line": 20
+    "line": 22
   },
   {
     "name": "Spec::ReadContributionOutputs",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
-    "line": 114
+    "line": 116
   },
   {
     "name": "Spec::ClassifyContribution",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
-    "line": 146
+    "line": 148
   },
   {
     "name": "Spec::BuildOutputSlots",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
-    "line": 173
+    "line": 175
   },
   {
     "name": "Spec::SumContributionIntoRow",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
-    "line": 197
+    "line": 199
   },
   {
     "name": "Spec::AddContributionToRow",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
-    "line": 226
+    "line": 228
   },
   {
     "name": "Spec::ReconcileExistingRows",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
-    "line": 275
+    "line": 343
   },
   {
     "name": "Spec::RoundFinalSums",
     "kind": "Function",
     "file": "Sources/AddOn/spec/SpecPlanning.cpp",
     "module": "spec",
-    "line": 278
+    "line": 280
   },
   {
     "name": "ListData::GetSubposKey",
@@ -6752,518 +6752,532 @@
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 27
+    "line": 28
   },
   {
     "name": "TestFunc::PushSumSlot",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 37
+    "line": 38
   },
   {
     "name": "TestFunc::PushRawSlot",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 48
+    "line": 49
   },
   {
     "name": "TestFunc::PushOutSlot",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 57
+    "line": 58
   },
   {
     "name": "TestFunc::FmtBench",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 68
+    "line": 69
   },
   {
     "name": "TestFunc::SpecFixture.first",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 75
+    "line": 76
   },
   {
     "name": "TestFunc::SpecFixture.second",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 76
+    "line": 77
   },
   {
     "name": "TestFunc::SpecFixture.old",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 77
+    "line": 78
   },
   {
     "name": "TestFunc::SpecFixture.extra",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 78
+    "line": 79
   },
   {
     "name": "TestFunc::SpecFixture.key",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 79
+    "line": 80
   },
   {
     "name": "TestFunc::SpecFixture.text",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 80
+    "line": 81
   },
   {
     "name": "TestFunc::SpecFixture.quantity",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 81
+    "line": 82
   },
   {
     "name": "TestFunc::SpecFixture.flag",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 82
+    "line": 83
   },
   {
     "name": "TestFunc::SpecFixture.outText",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 83
+    "line": 84
   },
   {
     "name": "TestFunc::SpecFixture.outQuantity",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 84
+    "line": 85
   },
   {
     "name": "TestFunc::SpecFixture.rule",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 85
+    "line": 86
   },
   {
     "name": "TestFunc::SpecFixture.context",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 87
+    "line": 88
   },
   {
     "name": "TestFunc::SpecFixture.created",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 88
+    "line": 89
   },
   {
     "name": "TestFunc::SpecFixture.modified",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 89
+    "line": 90
   },
   {
     "name": "TestFunc::SpecFixture.deleted",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 90
+    "line": 91
   },
   {
     "name": "TestFunc::SpecFixture.errors",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 91
+    "line": 92
   },
   {
     "name": "TestFunc::SpecFixture::SpecFixture",
     "kind": "Constructor",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 93
+    "line": 94
   },
   {
     "name": "TestFunc::SpecFixture::Text",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 106
+    "line": 107
   },
   {
     "name": "TestFunc::SpecFixture::Number",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 115
+    "line": 116
   },
   {
     "name": "TestFunc::SpecFixture::Source",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 124
+    "line": 136
   },
   {
     "name": "TestFunc::SpecFixture::Existing",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 131
+    "line": 143
   },
   {
     "name": "TestFunc::SpecFixture::Bench",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 143
+    "line": 155
   },
   {
     "name": "TestFunc::SpecFixture::Run",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 149
+    "line": 161
   },
   {
     "name": "TestFunc::SpecFixture::RunWithPlan",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 160
+    "line": 172
   },
   {
     "name": "TestFunc::SpecFixture::DropField",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 172
+    "line": 184
   },
   {
     "name": "TestFunc::SpecFixture::Shape",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 177
+    "line": 189
   },
   {
     "name": "TestFunc::SpecFixture::TimeRun",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 197
+    "line": 209
   },
   {
     "name": "TestFunc::SpecFixture::CountRun",
     "kind": "Method",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 216
+    "line": 228
   },
   {
     "name": "TestFunc::TestSpecResponseContract",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 244
+    "line": 256
   },
   {
     "name": "TestFunc::TestSpecRunReport",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 325
+    "line": 337
   },
   {
     "name": "TestFunc::TestSpecRunCounters",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 455
+    "line": 467
   },
   {
     "name": "TestFunc::TestSpecBuildRowParam",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 552
+    "line": 564
   },
   {
     "name": "TestFunc::TestSpecReconcileScaling",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 693
+    "line": 705
   },
   {
     "name": "TestFunc::TestSpecGetParamValue",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 746
+    "line": 1015
   },
   {
     "name": "TestFunc::TestSpecGrouping",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 833
+    "line": 1102
   },
   {
     "name": "TestFunc::TestSpecReconcile",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 1029
+    "line": 1298
   },
   {
     "name": "TestFunc::TestSpecMergeAndKey",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 1154
+    "line": 1423
   },
   {
     "name": "TestFunc::TestSpecRuleDedup",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 1283
+    "line": 1552
   },
   {
     "name": "TestFunc::TestSpecReadPlan",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 1389
+    "line": 1658
   },
   {
     "name": "TestFunc::TestSpecRuleDependencies",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 1446
+    "line": 1715
   },
   {
     "name": "TestFunc::TestSpecFavoriteResolution",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 1638
+    "line": 1907
   },
   {
     "name": "TestFunc::TestSpecValueReader",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 1941
+    "line": 2210
   },
   {
     "name": "TestFunc::TestSpecContribution",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 2045
+    "line": 2314
   },
   {
     "name": "TestFunc::legacy::SumInto",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 2318
+    "line": 2587
   },
   {
     "name": "TestFunc::legacy::PlanRow",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 2334
+    "line": 2603
   },
   {
     "name": "TestFunc::TestSpecEngineEquivalence",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 2409
+    "line": 2678
   },
   {
     "name": "TestFunc::TestSpecReconcileFixtures",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 2601
+    "line": 2870
   },
   {
     "name": "TestFunc::TestSpecChangePlan",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 2807
+    "line": 3076
   },
   {
     "name": "TestFunc::TestSpecRowSlots",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 2998
+    "line": 3267
   },
   {
     "name": "TestFunc::TestSpecRowLayout",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 3174
+    "line": 3443
   },
   {
     "name": "TestFunc::TestSpecPlanning",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 3403
+    "line": 3672
   },
   {
     "name": "TestFunc::TestSpecReadBoundary",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 3524
+    "line": 3793
   },
   {
     "name": "TestFunc::TestSpecValueEdges",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 3737
+    "line": 4006
   },
   {
     "name": "TestFunc::TestSpecOutSlots",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 3808
+    "line": 4077
   },
   {
     "name": "TestFunc::TestSpecSelectionPolicy",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 3875
+    "line": 4144
   },
   {
     "name": "TestFunc::TestSpecRunStateBoundary",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 4286
+    "line": 4555
   },
   {
     "name": "TestFunc::TestSpecSlotOrder",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 4355
+    "line": 4624
   },
   {
     "name": "TestFunc::TestSpecPlanCompleteness",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 4413
+    "line": 4682
   },
   {
     "name": "TestFunc::TestSpecSlotBindings",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 4560
+    "line": 4829
   },
   {
     "name": "TestFunc::TestSpecExpandGroup",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 4692
+    "line": 4961
   },
   {
     "name": "TestFunc::TestSpecGroups",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 4813
+    "line": 5082
   },
   {
     "name": "TestFunc::TestSpecOutputSchema",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 4897
+    "line": 5166
   },
   {
     "name": "TestFunc::TestSpecPolicy",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5023
+    "line": 5292
   },
   {
     "name": "TestFunc::TestSpecNormalize",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5086
+    "line": 5355
   },
   {
     "name": "TestFunc::TestSpecParser",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5161
+    "line": 5430
   },
   {
     "name": "TestFunc::TestSpecAddRule",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5311
+    "line": 5580
   },
   {
     "name": "TestFunc::TestSpecParseError",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5390
+    "line": 5659
   },
   {
     "name": "TestFunc::TestSpecSizes",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5502
+    "line": 5771
   },
   {
     "name": "TestFunc::TestSpecRuleCheck",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSpec.cpp",
     "module": "tests",
-    "line": 5558
+    "line": 5827
+  },
+  {
+    "name": "TestFunc::SpecFixture::Real",
+    "kind": "Method",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 127
+  },
+  {
+    "name": "TestFunc::TestSpecRounding",
+    "kind": "Function",
+    "file": "Sources/AddOn/tests/TestSpec.cpp",
+    "module": "tests",
+    "line": 763
   },
   {
     "name": "TestFunc::RawNameCase.input",
