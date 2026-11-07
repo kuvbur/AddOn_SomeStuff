@@ -7,9 +7,8 @@ Status: WAITING_FOR_TEST.
 Plan: [x] 1. Scope, dirty-baseline и issue/read-back; [x] 2. Проверить безопасную финальную точку фильтра и RED-регрессию; [x] 3. Минимальная правка; [x] 4. Format/fresh C++ проверка/регрессии/review; [x] 5. Адресные документы и итоговые границы native; [ ] 6. После разрешённого завершения активной отладки — canonical build и native-приёмка.
 Last Completed: финальная фильтрация после преобразований/provenance до индексов плинтусов, включая floor-only; малые contacts без Ambiguous/adapter warning, старые slab GUID возвращаются в штатное удаление. Константа владельца и #319 WIP сохранены. Data SHA256 1d64becff1ee5a8a5a4322484532f1197616fc7fe68a3579dfa9659eac9e97fc. Одинаковые standalone C++14 assertions RED232/57FAIL → GREEN232/0, повторены parent; controlled SDK/geometry seams, не native. Полный TU SDK25/MSVC /std:c++14 /c /WX exit0 в scratch obj. Fresh clangd: новых диагностик нет, восемь прежних (три unused-variable при /WX, пять unused-include). Независимое ревью без замечаний в дельте. Format/diff-check, карточка и семь generated-записей проверены; прочие generated/callgraph исторические. Evidence: Hermes scratch/min-area-20261106/regression/, validation/. Ошибка zero-reveal fixture (width=0 выбирал обычную стену) исправлена только в harness, оба снимка повторены с одинаковыми assertions.
 Next Step: canonical addon build/link и native-проверка после согласованного завершения активной VS Run; сейчас не выполнялись. Проверить отсутствие мелких результатов, старые GUID и повторный прогон. Предупреждение исходной зоны может остаться: четыре стеновых неоднозначных контакта ~0.18183 м² выше min_area=0.01 и этой политикой не исключаются. Issue320 OPEN; Save/restart/Stop/commit/push не выполнялись.
-Last Checkpoint: нет; commit не запрошен.
+Last Checkpoint: d066500 — снимок правок #320 (код Roombook, константа, docs/generated-slice); native-приёмка отложена.
 Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/320.
-
 
 ## #318 — применение шага округления к итоговым суммам
 
@@ -31,8 +30,8 @@ Scope: FloorSkirtingSegments_Build, SkirtingSegments_Build и подготовк
 Status: WAITING_FOR_NATIVE.
 Plan: [x] 1. Исходники, dirty-baseline и issue с read-back; [x] 2. Независимые guards по типам и корректный потолочный beam.tip; [x] 3. Controlled-регрессия, format/full-TU syntax check и адресная карточка; [ ] 4. Canonical build/native и fresh generated при согласованной приёмке.
 Last Completed: причина implementation error — builders не проверяли пустой тип; добавлены guards в обоих builders и до подготовки faces, потолочный beam.tip теперь из tip_ceil_cornice. Пользовательское чтение параметров сохранено; tests fixtures получили явные типы и новые проверки. clang-format/diff-check PASS. Controlled C++14 regression дословных блоков с подменными типами: baseline62/14FAIL → live62/0; parent повторил оба exe и сверил live SHA256 6e0d7f342cb106bfe0c55ca68c9edf9be89a194365391a993af3854bc08d7155. Это не полные функции/native geometry; repository suite не запускался. Full-TU SDK25 clang-cl /Zs: strict baseline/live имеют те же три unused-variable errors; с единственным Wno-error=unused-variable live exit0. Object compilation/relink не выполнялись. Read-only review пяти production-hunks: дефектов не найдено. Evidence: Hermes scratch/skirting-empty-types/validation. MCP stale; generated не обновлён, актуальность не заявляется.
-Next Step: по согласованию безопасно собрать/загрузить AC25 и проверить оба вида и повтор с очисткой типов; выполнить repository geometry suite и обновить generated свежим LSP. Активная VS Run не остановлена, модель не изменялась. Issue319 открыт; commit выполнен этим снимком; push/restart не выполнялись.
-Last Checkpoint: снимок правок #319 этим коммитом; native-приёмка отложена.
+Next Step: по согласованию безопасно собрать/загрузить AC25 и проверить оба вида и повтор с очисткой типов; выполнить repository geometry suite и обновить generated свежим LSP. Активная VS Run не остановлена, модель не изменялась. Issue319 открыт; коммит снимка выполнен (99238e6), push/restart не выполнялись.
+Last Checkpoint: снимок правок #319 коммитом 99238e6; native-приёмка отложена.
 Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/319.
 
 ## JSON-команды — страница вики
@@ -536,6 +535,21 @@ Decisions: GUID выбирается не по геометрии; JSON оста
 Last Checkpoint: нет; чужие правки сохраняются.
 
 ## Archive
+
+### #321 — неблокирующий отказ Roof при построении отделки (2026-11-07)
+
+Scope: AC25 Windows; test_25.pln, Roof preflight/matcher/writers/deferred Mesh-cleanup, диагностика применимости многослойки. Без смены избранного/атрибута, веток/push/Save; #317 не менялся. Владелец разрешил коммит всех текущих изменений.
+Status: DONE_WITH_LIMITS — исходный отказ воспроизведён, исправлен и проверен natively; дополнительный controlled stand blocked.
+Plan: [x] 1. Живое воспроизведение; [x] 2. Подтвердить причину и безопасный дизайн; [x] 3. Минимальное исправление; [x] 4. Format/fresh LSP/canonical AC25 build/native/review/docs; [ ] Необязательный controlled stand — не исполнялся, two-failure guard.
+Last Completed: изменённая владельцем зона1139C2FDFDA… воспроизвела Roof_Prepare APIERR_BADPARS до Create: composite153 flags2, без Roof4, избранное ар/пол_тип_1_smstf. Старый общий preflight давал rooms[]. Это input-data problem и отдельный implementation error общей блокировки. Теперь per-patch draw_error, failed Mesh не идёт в matcher/writer; runtime Roof error продолжает комнату; старый unused-остаток zone/base/role удаляется после writers только при успехе набора. Никаких ложных success/created/новых связей; конфигурация не меняется. Сводные количества остаются расчётными.
+Validation: canonical Tools/BuildAddOn.py-c config.json-v25 Debug Windows exit0, clang-format/diff-check PASS. Source a24c88e8/APXfc7c51f2/build-PLN1a1b53b6 неизменны через F5 и оба native-прогона; repo-PLNb92a5a0c также сохранён. GREEN113:26rows/22success/4error, все4прежнихRoofGUID сохранены. GREENall:25зон/1172rows/1168success/4error только113,24другихзоны обработаны; все successful GUID прочитаны независимо. Debug pane подтвердил новую причину/избранное; payload clipped, полного TestKit verdict из него нет.
+Review/LSP: No issues found in inspected scope; fresh version1 имеет те же5unused-variable+1unused-include, новых нет. Parent проверил manifest,16hashes и49диапазонов. Только Draw generated42→48,общий1068→1074,1026внешних записей/порядок неизменны; callgraph не пересобирался. Полная геометрия, произвольные native Create/Change failure/rollback, другие SDK/macOS not verified.
+Additional stand: scratch-only SDK25/C++14 harness с точными production-функциями не запущен — два failed preparation cycles, последняя линковка LNK2019 ACAPI_Element_Tool/LNK1120. RED/GREEN и исполненные assertions НЕ заявляются. Повторов после guard не было; canonical/native доказательства независимы от стенда.
+Next Step: владелец может разрешить применение composite153 для крыш и повторить113; commit всех текущих изменений разрешён; закрытие issue только отдельно по команде, перед закрытием final runner с защитой сохранённого build-PLN. Дополнительный стенд — только отдельный согласованный retry; текущая исходная задача не заблокирована им.
+Last Checkpoint: текущий коммит [roombook-321] Неблокирующие ошибки построения крыш (#321), IDEA step4. Issue321OPEN; push/закрытие не запрошены, итог comment6705435769 прочитан обратно.
+State: Archicad оставлен Run с изменениями только в памяти; Save не выполнялся, оба PLN неизменны, все8исходныхBP восстановлены, собственных нет. Evidence: Hermes scratch/roof-nonblocking/ (baseline/saved-fixtures, red113*, green113/all-acceptance, green-postrun-hashes, validation/parent-acceptance.json, regression/blocked-report.json). Урок сохранён в lightrag/references/somestuff-mesh-shell-ac25.md.
+
+Commit validation: Перед коммитом владелец оставил только английский текст диагностики. Единственная дельта к native-снимку a24c88e8 — это сообщение; текущий Draw11bfe814 проверен повторным canonical AC25 Debug build exit0, APXaa2e7e14. Новый native-прогон не выполнялся, host закрыт; оба PLN восстановлены побайтово. 48 Draw-координат перенесены по точному diff и проверены source/name join, внешний generated-срез и порядок неизменны; fresh LSP выше относится к прежнему native-снимку.
 
 ### Диагностика Ambiguous — зона A2100887-E07B-4DF1-9834-50A4D23FF992, 2026-11-06
 

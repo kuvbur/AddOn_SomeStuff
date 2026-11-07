@@ -4,6 +4,16 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Неблокирующий отказ Mesh-пола / Roof (#321, 2026-11-07)
+
+- Адресный контракт Roombook: поэлементные ошибки Roof, отсутствие ложного success, продолжение остальных writers/комнат и отложенный cleanup старого Mesh-остатка с сохранением при отказе того же zone/base/role. Диагностика указывает избранное и composite без изменения атрибута. [по коду]
+- Исходный отказ зоны113 воспроизведён под VS: composite153 разрешён только для Slab, Roof_Prepare возвращает APIERR_BADPARS до Create, старый batch даёт rooms[]. Canonical AC25 Windows Debug BuildAddOn.py-v25 exit0; источник a24c88e8/APXfc7c51f2 и оба сохранённых PLN сверены до/после F5/native. GREEN113:26результатов/22success/4error, прежние4Roof сохранены. GREENall:25зон/1172результата/1168success/4error только113;24другихзоны обработаны, successful GUID прочитаны независимо. Геометрическая полнота и native-инъекция Create/Change не заявляются.
+- Fresh isolated clangd version1: шесть прежних диагностик baseline (пять unused-variable, одно unused-include), новых нет; parent сверил manifest,16hashes и49selection/range/name joins, namespace end2972. Только Draw-срез symbols.json42→48,1068→1074;1026внешних записей/порядок сохранены. Добавлены новый cleanup-helper и прежние пропуски, включая forward declaration. Остальные координаты/callgraph исторические, не из этой коллекции. Независимое ревью дельты без дефектов.
+- Дополнительный SDK25/C++14 controlled stand остановлен по two-failure guard: сначала ошибки seams harness, затем LNK2019 ACAPI_Element_Tool; проверки НЕ исполнялись и RED/GREEN не получены. Это не отказ canonical сборки или уже пройденной native-приёмки. Артефакты и blocker сохранены, очередной retry не выполнялся.
+- IDEA321 архивирован как завершённое исходное исправление с явными границами. Issue321OPEN; итоговый comment6705435769 прочитан обратно, код и документы включены в текущий коммит по команде владельца; push/Save не выполнялись. Во время native-приёмки host оставлен Run, изменения только в памяти,8исходныхBP восстановлены, собственных нет. Другие SDK/macOS/final issue-closing runner не проверены. Evidence: Hermes scratch/roof-nonblocking/ (green*-acceptance.json, build-ac25.log, validation/parent-acceptance.json, regression/blocked-report.json).
+
+- Перед коммитом владелец оставил только английский текст диагностики. Единственная дельта к native-снимку a24c88e8 — это сообщение; текущий Draw11bfe814 проверен повторным canonical AC25 Debug build exit0, APXaa2e7e14. Новый native-прогон не выполнялся, host закрыт; оба PLN восстановлены побайтово. 48 Draw-координат перенесены по точному diff и проверены source/name join, внешний generated-срез и порядок неизменны; fresh LSP выше относится к прежнему native-снимку.
+
 ## Исправление округления Spec (#318, 2026-11-07)
 
 - Область: AC25 Windows/C++14, локальный RoundFinalSums и постоянные TestSpecRounding. Устранены три замечания e84e042: нижнее кратное из-за широкого допуска, несогласованные int/text и пропуск raw-ноля. Карточка SpecPlanning отражает текущий контракт: одно-ULP защита кратного, обработка underflow и согласование представлений штатным форматированием. [по коду]

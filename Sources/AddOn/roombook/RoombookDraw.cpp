@@ -562,6 +562,8 @@ namespace Roombook {
                     slab.draw.otd_guid != APINULLGuid || !std::isfinite (area) || area < 0.0001 ||
                     !std::isfinite (slab.zBottom))
                     continue;
+                if (slab.draw.base_type == API_MeshID && slab.draw.draw_error != NoError)
+                    continue;
                 auto *pool = findPool (slab.draw);
                 if (pool == nullptr || pool->IsEmpty ())
                     continue;
@@ -581,6 +583,10 @@ namespace Roombook {
                 if (!ready)
                     return APIERR_BADPARS;
                 const GSErrCode err = assign (slab.draw, target, *pool);
+                if (err != NoError && slab.draw.base_type == API_MeshID) {
+                    slab.draw.draw_error = err;
+                    continue;
+                }
                 if (err != NoError)
                     return err;
             }
@@ -1654,8 +1660,14 @@ namespace Roombook {
             const GSErrCode error = ACAPI_Attribute_Get (&composite);
             if (error != NoError)
                 return error;
-            if ((composite.header.flags & APICWall_ForRoof) == 0)
+            if ((composite.header.flags & APICWall_ForRoof) == 0) {
+                GS::UniString message =
+                    "Floor composite is not enabled for Roofs. Enable Roof in the composite's Use with settings. Favorite: ";
+                message += floor.draw.favorite.name;
+                message += GS::UniString::Printf (" (composite #%d)", AttributeIndexGetShort (settings.composite));
+                msg_rep ("Mesh floor", message, APIERR_BADPARS, floor.draw.base_guid);
                 return APIERR_BADPARS;
+            }
             thickness = composite.compWall.totalThick;
         } else if (settings.modelElemStructureType != API_BasicStructure) {
             return APIERR_BADPARS;
@@ -2017,7 +2029,7 @@ namespace Roombook {
         return true;
     }
 
-    static GSErrCode RoofBatch_Validate (const Stories &stories, OtdRooms &rooms) {
+    static void RoofBatch_Validate (const Stories &stories, OtdRooms &rooms) {
         for (auto it = rooms.EnumeratePairs (); it != nullptr; ++it) {
     #ifdef ServerMainVers_2800
             OtdRoom &room = it->value;
@@ -2027,23 +2039,72 @@ namespace Roombook {
             for (auto &floor : room.otdslab) {
                 if (floor.draw.base_type != API_MeshID || !OtdSlab_ShouldDrawFinish (room, floor))
                     continue;
+                floor.draw.draw_error = NoError;
+                floor.draw.write_succeeded = false;
+                floor.draw.was_created = false;
                 API_Element settings = {};
                 if (!Roof_ReadSlabSettings (floor, settings)) {
                     msg_rep ("Mesh floor",
                              "Selected floor Favorite cannot be rendered as Roof",
                              APIERR_BADPARS,
                              floor.draw.base_guid);
-                    return APIERR_BADPARS;
+                    floor.draw.draw_error = APIERR_BADPARS;
+                    continue;
                 }
                 API_Element element = {};
                 API_ElementMemo memo = {};
                 const GS::OnExit memoGuard ([&memo] () { ACAPI_DisposeElemMemoHdls (&memo); });
                 const GSErrCode err = Roof_Prepare (stories, floor, settings, nullptr, element, memo);
+                floor.draw.draw_error = err;
                 if (err != NoError)
-                    return err;
+                    msg_rep ("Mesh floor",
+                             "Roof preparation failed; other finishes will continue",
+                             err,
+                             floor.draw.base_guid);
             }
         }
-        return NoError;
+    }
+
+    // Matcher уже исключил переиспользованные GUID. Остаток Mesh-набора удаляется
+    // только после записи всех его участков: заранее неизвестный отказ Create/Change не должен его уничтожить.
+    static UnicGuid RoofBatch_CollectUnused (const OtdRooms &rooms,
+                                             const GS::HashTable<API_Guid, UnicGuidByBase> &byZone,
+                                             const ClassificationFunc::ClassificationDict &finclass,
+                                             bool failedOnly) {
+        UnicGuid unused;
+        for (auto roomIt = rooms.EnumeratePairs (); roomIt != nullptr; ++roomIt) {
+    #ifdef ServerMainVers_2800
+            const OtdRoom &room = roomIt->value;
+    #else
+            const OtdRoom &room = *roomIt->value;
+    #endif
+            const auto *byBase = byZone.GetPtr (room.zone_guid);
+            if (byBase == nullptr)
+                continue;
+            for (const auto &floor : room.otdslab) {
+                if (floor.draw.base_type != API_MeshID || !OtdSlab_ShouldDrawFinish (room, floor) ||
+                    (failedOnly && floor.draw.draw_error == NoError))
+                    continue;
+                const auto *byType = byBase->GetPtr (floor.draw.base_guid);
+                if (byType == nullptr)
+                    continue;
+                const API_Guid classGuid = Class_GetClassGuid (floor.draw.type, finclass);
+                const TypeOtd matchedType = Class_GetOtdTypeByClass (classGuid, finclass, API_ZombieElemID);
+                for (const TypeOtd type : {floor.draw.type, matchedType, NoSet}) {
+                    const auto *pool = byType->GetPtr (type);
+                    if (pool == nullptr)
+                        continue;
+                    for (auto it = pool->EnumeratePairs (); it != nullptr; ++it) {
+    #ifdef ServerMainVers_2800
+                        unused.Add (it->key, true);
+    #else
+                        unused.Add (*it->key, true);
+    #endif
+                    }
+                }
+            }
+        }
+        return unused;
     }
 
     // Создаёт или изменяет перекрытие по готовой геометрии; GUID публикует только при успешной записи.
@@ -2702,11 +2763,11 @@ namespace Roombook {
             otdslab.draw.write_succeeded = false;
             if (!OtdSlab_ShouldDrawFinish (otd, otdslab))
                 continue;
+            if (otdslab.draw.base_type == API_MeshID && otdslab.draw.draw_error != NoError)
+                continue;
             OtdSlab_Draw (storyLevels, otdslab, subelementByparent);
             if (otdslab.draw.draw_error != NoError) {
                 msg_rep ("OtdRoom_Draw", "OtdSlab_Draw err", otdslab.draw.draw_error, otdslab.draw.otd_guid);
-                if (otdslab.draw.base_type == API_MeshID)
-                    return otdslab.draw.draw_error;
                 continue;
             }
             Param_AddUnicElementByType (otd.zone_guid,
@@ -2827,12 +2888,8 @@ namespace Roombook {
                         GS::Int32 &nPhase,
                         GS::Array<RoomBookFinishResult> *results) {
         GS::Array<RoomBookFinishResult> pendingResults;
-        // Проверяем все Roof до очистки и записи модели; memo освобождаются внутри проверки.
-        const GSErrCode roofErr = RoofBatch_Validate (storyLevels, roomsinfo);
-        if (roofErr != NoError) {
-            msg_rep ("Mesh floor", "Roof preflight failed; existing finishes retained", roofErr, APINULLGuid);
-            return;
-        }
+        // Ошибка Roof относится к участку, а не ко всему пакету отделки.
+        RoofBatch_Validate (storyLevels, roomsinfo);
         // Повторный запуск: назначаем совместимые существующие GUID окончательным участкам отделки.
         const GSErrCode matchErr = OtdRooms_AssignExistingWallFinishes (roomsinfo, exsistot_byzone, finclass);
         if (matchErr != NoError) {
@@ -2841,6 +2898,15 @@ namespace Roombook {
         }
         // Только список удаления; модель изменяется ниже, внутри команды создания и обновления.
         OtdRooms_CollectUnusedFinishingElements (exsistot_byzone, deletelist);
+        const UnicGuid roofUnused = RoofBatch_CollectUnused (roomsinfo, exsistot_byzone, finclass, false);
+        GS::Array<API_Guid> earlyDelete;
+        GS::Array<API_Guid> roofDelete;
+        for (const API_Guid &guid : deletelist) {
+            if (roofUnused.ContainsKey (guid))
+                roofDelete.Push (guid);
+            else
+                earlyDelete.Push (guid);
+        }
         UnicElementByType subelementByparent; // Словарь с созданными родительскими
                                               // и дочерними элементами
         // Отрисовка элементов отделки
@@ -2853,8 +2919,8 @@ namespace Roombook {
             if (!PrepareElementsForUpdate (reserv_elements, prepareResult))
                 return APIERR_CANCEL;
             // Удаляем устаревшие элементы отделки
-            if (!deletelist.IsEmpty ()) {
-                GSErrCode err = ACAPI_Element_Delete (deletelist);
+            if (!earlyDelete.IsEmpty ()) {
+                GSErrCode err = ACAPI_Element_Delete (earlyDelete);
                 if (err != NoError) {
                     msg_rep ("RoomBook", "Cannot remove obsolete finishing elements", err, APINULLGuid);
                     return err;
@@ -2876,6 +2942,18 @@ namespace Roombook {
                     roomResult.zone_guid = otd.zone_guid;
                     pendingResults.Push (roomResult);
                     CollectRoomFinishes (otd, pendingResults);
+                }
+            }
+            const UnicGuid retained = RoofBatch_CollectUnused (roomsinfo, exsistot_byzone, finclass, true);
+            GS::Array<API_Guid> obsoleteRoofs;
+            for (const API_Guid &guid : roofDelete)
+                if (!retained.ContainsKey (guid))
+                    obsoleteRoofs.Push (guid);
+            if (!obsoleteRoofs.IsEmpty ()) {
+                const GSErrCode err = ACAPI_Element_Delete (obsoleteRoofs);
+                if (err != NoError) {
+                    msg_rep ("RoomBook", "Cannot remove obsolete Mesh finishes", err, APINULLGuid);
+                    return err;
                 }
             }
             return NoError;
