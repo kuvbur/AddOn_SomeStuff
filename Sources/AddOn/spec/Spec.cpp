@@ -1894,7 +1894,8 @@ namespace Spec {
                     elemguid, group_index, group, binding, reader, not_found_paramname, not_found_unic);
                 // Нечитаемый флаг по прежнему контракту включает источник.
                 // Сообщаем один раз на поле правила, не превращая fallback в отказ.
-                if (contribution.flagReadFailed && !reported_flags.Contains (group.flag_paramrawname)) {
+                if (contribution.flagReadFailed && !reported_flags.Contains (group.flag_paramrawname) &&
+                    contribution.isComplete) {
                     reported_flags.Add (group.flag_paramrawname);
                     const GS::UniString message =
                         "Group flag not readable; using enabled fallback: " + group.flag_paramrawname;

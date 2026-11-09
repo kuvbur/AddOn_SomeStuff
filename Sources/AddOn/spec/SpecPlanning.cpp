@@ -291,13 +291,9 @@ namespace Spec {
                 // значения первого источника округлять нельзя.
                 if (!slot.isSum || !slot.value.isValid)
                     continue;
-                if (slot.value.val.type != API_PropertyIntegerValueType &&
-                    slot.value.val.type != API_PropertyRealValueType)
+                if (!slot.value.val.canCalculate)
                     continue;
-                // Читаем неокруглённое значение: форматные округления не
-                // должны влиять на шаг округления.
-                const double value =
-                    slot.value.val.hasrawDouble ? slot.value.val.rawDoubleValue : slot.value.val.doubleValue;
+                const double value = slot.value.val.doubleValue;
                 double rounded = value;
                 if (value != 0.0) {
                     const double ratio = value / step;
