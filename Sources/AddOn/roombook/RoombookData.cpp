@@ -6716,9 +6716,9 @@ namespace Roombook {
 
     // -----------------------------------------------------------------------------
     // Обработка полов и потолков
-    // -----------------------------------------------------------------------------
     // Опоры ниже/на полу и пересекающие пол; потолки строго выше пола независимо от верха зоны.
     // Добавляет перекрытие в список чтения параметров, если обработана хотя бы одна валидная зона.
+    // -----------------------------------------------------------------------------
     static void OtdSlab_FindInRoom (const Stories &storyLevels,
                                     API_Guid &elGuid,
                                     const GS::Array<API_Guid> &zoneGuids,
@@ -6739,7 +6739,7 @@ namespace Roombook {
                                   element.header.floorInd,
                                   storyLevels);
         double zUp = zBottom + element.slab.thickness;
-        for (const API_Guid &zoneGuid : zoneGuids) { // ОПТИМИЗАЦИЯ: Передаем по ссылке, а не копируем 16 байт GUID
+        for (const API_Guid &zoneGuid : zoneGuids) {
             OtdRoom *roominfoPtr = roomsinfo.GetPtr (zoneGuid);
             if (roominfoPtr == nullptr || !roominfoPtr->isValid)
                 continue;
@@ -7554,11 +7554,22 @@ namespace Roombook {
         GS::UniString param_name;
         ParamValueData val;
 
+        static const GS::UniString notSetText =
+            RSGetIndString (ID_ADDON_STRINGS + isEng (), SkirtingNotSetStringID, ACAPI_GetOwnResModule ());
+        static const GS::UniString byTypeText =
+            RSGetIndString (ID_ADDON_STRINGS + isEng (), SkirtingByTypeStringID, ACAPI_GetOwnResModule ());
+
         param_name = "tip_pot";
         if (const auto *p = readparams.GetPtr (param_name)) {
             if (p->isValid) {
                 val = p->val;
                 roominfo.tip_ceil = val.uniStringValue;
+                roominfo.tip_ceil.Trim ();
+                const GS::UniString tipText = UniStringToLower (val.uniStringValue);
+                if (tipText.Contains (notSetText)) {
+                    roominfo.tip_ceil = "";
+                }
+                roominfo.has_ceil = roominfo.tip_ceil.IsEmpty ();
             }
         }
         param_name = "tip_otd";
@@ -7573,6 +7584,13 @@ namespace Roombook {
             if (p->isValid) {
                 val = p->val;
                 roominfo.tip_floor = val.uniStringValue;
+
+                roominfo.tip_floor.Trim ();
+                const GS::UniString tipText = UniStringToLower (val.uniStringValue);
+                if (tipText.Contains (notSetText)) {
+                    roominfo.tip_floor = "";
+                }
+                roominfo.has_floor = roominfo.tip_floor.IsEmpty ();
             }
         }
         param_name = "has_ceil";
@@ -7609,10 +7627,6 @@ namespace Roombook {
         if (const auto *p = readparams.GetPtr (param_name)) {
             if (p->isValid) {
                 val = p->val;
-                static const GS::UniString notSetText =
-                    RSGetIndString (ID_ADDON_STRINGS + isEng (), SkirtingNotSetStringID, ACAPI_GetOwnResModule ());
-                static const GS::UniString byTypeText =
-                    RSGetIndString (ID_ADDON_STRINGS + isEng (), SkirtingByTypeStringID, ACAPI_GetOwnResModule ());
                 const GS::UniString tipText = UniStringToLower (val.uniStringValue);
                 roominfo.tip_ceil_cornice = val.uniStringValue;
                 if (tipText.Contains (notSetText)) {
@@ -7621,16 +7635,14 @@ namespace Roombook {
                 if (tipText.Contains (byTypeText)) {
                     roominfo.tip_ceil_cornice = roominfo.tip_ceil;
                 }
+                if (!roominfo.has_ceil)
+                    roominfo.tip_ceil_cornice = "";
             }
         }
         param_name = "tip_plint_pol";
         if (const auto *p = readparams.GetPtr (param_name)) {
             if (p->isValid) {
                 val = p->val;
-                static const GS::UniString notSetText =
-                    RSGetIndString (ID_ADDON_STRINGS + isEng (), SkirtingNotSetStringID, ACAPI_GetOwnResModule ());
-                static const GS::UniString byTypeText =
-                    RSGetIndString (ID_ADDON_STRINGS + isEng (), SkirtingByTypeStringID, ACAPI_GetOwnResModule ());
                 const GS::UniString tipText = UniStringToLower (val.uniStringValue);
                 roominfo.tip_floor_skirting = val.uniStringValue;
                 if (tipText.Contains (notSetText)) {
@@ -7639,6 +7651,8 @@ namespace Roombook {
                 if (tipText.Contains (byTypeText)) {
                     roominfo.tip_floor_skirting = roominfo.tip_floor;
                 }
+                if (!roominfo.has_floor)
+                    roominfo.tip_floor_skirting = "";
             }
         }
     }
@@ -9256,7 +9270,13 @@ namespace Roombook {
                     : (face.draw.favorite.name.IsEmpty () ? otd_thickness : face.draw.favorite.thickness);
             if (!std::isfinite (thickness) || thickness <= 0)
                 return false;
-            face.zBottom += face.draw.type == Floor ? thickness : -thickness;
+            if (face.draw.type == Floor) {
+                if (face.draw.base_type != API_ZoneID)
+                    face.zBottom += thickness;
+            }
+            if (face.draw.type == Ceil) {
+                face.zBottom -= thickness;
+            }
         }
         if (!SkirtingSegments_Build (room, faces))
             return false;

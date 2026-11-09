@@ -1242,22 +1242,24 @@ namespace Roombook {
         }
         wallelement.header.floorInd = geom.floorInd;
         wallelement.wall.bottomOffset = level;
+        if (draw.material.material > 0) {
     #ifdef ServerMainVers_2700
-        API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (draw.material.material);
-        wallelement.wall.refMat.hasValue = true;
-        wallelement.wall.oppMat.hasValue = true;
-        wallelement.wall.sidMat.hasValue = true;
-        wallelement.wall.refMat.value = ematerial;
-        wallelement.wall.oppMat.value = ematerial;
-        wallelement.wall.sidMat.value = ematerial;
+            API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (draw.material.material);
+            wallelement.wall.refMat.hasValue = true;
+            wallelement.wall.oppMat.hasValue = true;
+            wallelement.wall.sidMat.hasValue = true;
+            wallelement.wall.refMat.value = ematerial;
+            wallelement.wall.oppMat.value = ematerial;
+            wallelement.wall.sidMat.value = ematerial;
     #else
-        wallelement.wall.refMat.overridden = true;
-        wallelement.wall.oppMat.overridden = true;
-        wallelement.wall.sidMat.overridden = true;
-        wallelement.wall.refMat.attributeIndex = draw.material.material;
-        wallelement.wall.oppMat.attributeIndex = draw.material.material;
-        wallelement.wall.sidMat.attributeIndex = draw.material.material;
+            wallelement.wall.refMat.overridden = true;
+            wallelement.wall.oppMat.overridden = true;
+            wallelement.wall.sidMat.overridden = true;
+            wallelement.wall.refMat.attributeIndex = draw.material.material;
+            wallelement.wall.oppMat.attributeIndex = draw.material.material;
+            wallelement.wall.sidMat.attributeIndex = draw.material.material;
     #endif
+        }
         if (!is_upper_reveal)
             wallelement.wall.flipped = false;
         if (existingGuid == APINULLGuid) {
@@ -1408,20 +1410,22 @@ namespace Roombook {
                 current.wall.slantBeta = wallelement.wall.slantBeta;
                 needupdate = true;
             }
-            for (const auto &pair : {std::make_pair (&current.wall.refMat, &wallelement.wall.refMat),
-                                     std::make_pair (&current.wall.oppMat, &wallelement.wall.oppMat),
-                                     std::make_pair (&current.wall.sidMat, &wallelement.wall.sidMat)}) {
+            if (draw.material.material > 0) {
+                for (const auto &pair : {std::make_pair (&current.wall.refMat, &wallelement.wall.refMat),
+                                         std::make_pair (&current.wall.oppMat, &wallelement.wall.oppMat),
+                                         std::make_pair (&current.wall.sidMat, &wallelement.wall.sidMat)}) {
     #ifdef ServerMainVers_2700
-                if (pair.first->hasValue != pair.second->hasValue || pair.first->value != pair.second->value) {
+                    if (pair.first->hasValue != pair.second->hasValue || pair.first->value != pair.second->value) {
     #else
-                if (pair.first->overridden != pair.second->overridden ||
-                    pair.first->attributeIndex != pair.second->attributeIndex) {
+                    if (pair.first->overridden != pair.second->overridden ||
+                        pair.first->attributeIndex != pair.second->attributeIndex) {
     #endif
-                    *pair.first = *pair.second;
-                    ACAPI_ELEMENT_MASK_SET (mask, API_WallType, refMat);
-                    ACAPI_ELEMENT_MASK_SET (mask, API_WallType, oppMat);
-                    ACAPI_ELEMENT_MASK_SET (mask, API_WallType, sidMat);
-                    needupdate = true;
+                        *pair.first = *pair.second;
+                        ACAPI_ELEMENT_MASK_SET (mask, API_WallType, refMat);
+                        ACAPI_ELEMENT_MASK_SET (mask, API_WallType, oppMat);
+                        ACAPI_ELEMENT_MASK_SET (mask, API_WallType, sidMat);
+                        needupdate = true;
+                    }
                 }
             }
             if (current.wall.zoneRel != wallelement.wall.zoneRel) {
@@ -2157,6 +2161,10 @@ namespace Roombook {
             slabelement.header, mask, floorInd, settings.header.layer, settings.header.renovationStatus);
         double level = GetOffsetFromStory (zBottom, floorInd, storyLevels);
         if (surface_geometry) {
+            // Потолок уходит вниз от контакта, пол — вверх; level задаёт верх перекрытия.
+            if (draw.type == Floor && draw.base_type != API_ZoneID) {
+                level += settings.slab.thickness;
+            }
             if (slabelement.slab.referencePlaneLocation != APISlabRefPlane_Top) {
                 slabelement.slab.referencePlaneLocation = APISlabRefPlane_Top;
                 ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, referencePlaneLocation);
@@ -2173,69 +2181,87 @@ namespace Roombook {
                     slabelement.slab.modelElemStructureType = API_BasicStructure;
                     needupdate = true;
                 }
-                if (slabelement.slab.thickness != otd_thickness) {
+                if (slabelement.slab.thickness != otd_thickness &&
+                    slabelement.slab.modelElemStructureType == API_BasicStructure) {
                     ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, thickness);
                     slabelement.slab.thickness = otd_thickness;
                     needupdate = true;
                 }
+            } else {
+                if (slabelement.slab.modelElemStructureType != settings.slab.modelElemStructureType) {
+                    ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, modelElemStructureType);
+                    slabelement.slab.modelElemStructureType = settings.slab.modelElemStructureType;
+                    needupdate = true;
+                }
+                if (slabelement.slab.modelElemStructureType == API_BasicStructure &&
+                    slabelement.slab.buildingMaterial != settings.slab.buildingMaterial) {
+                    ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, buildingMaterial);
+                    slabelement.slab.buildingMaterial = settings.slab.buildingMaterial;
+                    needupdate = true;
+                }
+                if (slabelement.slab.modelElemStructureType == API_CompositeStructure &&
+                    slabelement.slab.composite != settings.slab.composite) {
+                    ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, composite);
+                    slabelement.slab.composite = settings.slab.composite;
+                    needupdate = true;
+                }
             }
-            // Потолок уходит вниз от контакта, пол — вверх; level задаёт верх перекрытия.
-            if (draw.type == Floor)
-                level += slabelement.slab.thickness;
         }
         if (slabelement.slab.level != level) {
             ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, level);
             slabelement.slab.level = level;
             needupdate = true;
         }
+        if (draw.material.material > 0) {
     #ifdef ServerMainVers_2700
-        API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (draw.material.material);
-        for (auto *material : {&slabelement.slab.topMat, &slabelement.slab.sideMat, &slabelement.slab.botMat}) {
-            if (material->value != ematerial) {
-                material->value = ematerial;
-                needupdate = true;
+            API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (draw.material.material);
+            for (auto *material : {&slabelement.slab.topMat, &slabelement.slab.sideMat, &slabelement.slab.botMat}) {
+                if (material->value != ematerial) {
+                    material->value = ematerial;
+                    needupdate = true;
+                }
             }
-        }
-        if (!slabelement.slab.sideMat.hasValue) {
-            slabelement.slab.sideMat.hasValue = true;
-            needupdate = true;
-        }
-    #else
-        for (auto *material : {&slabelement.slab.topMat, &slabelement.slab.sideMat, &slabelement.slab.botMat}) {
-            if (material->attributeIndex != draw.material.material) {
-                material->attributeIndex = draw.material.material;
-                needupdate = true;
-            }
-        }
-        if (!slabelement.slab.sideMat.overridden) {
-            slabelement.slab.sideMat.overridden = true;
-            needupdate = true;
-        }
-    #endif
-        if (draw.type == Ceil) {
-    #ifdef ServerMainVers_2700
-            if (!slabelement.slab.botMat.hasValue) {
-                slabelement.slab.botMat.hasValue = true;
+            if (!slabelement.slab.sideMat.hasValue) {
+                slabelement.slab.sideMat.hasValue = true;
                 needupdate = true;
             }
     #else
-            if (!slabelement.slab.botMat.overridden) {
-                slabelement.slab.botMat.overridden = true;
+            for (auto *material : {&slabelement.slab.topMat, &slabelement.slab.sideMat, &slabelement.slab.botMat}) {
+                if (material->attributeIndex != draw.material.material) {
+                    material->attributeIndex = draw.material.material;
+                    needupdate = true;
+                }
+            }
+            if (!slabelement.slab.sideMat.overridden) {
+                slabelement.slab.sideMat.overridden = true;
                 needupdate = true;
             }
     #endif
-        } else {
+            if (draw.type == Ceil) {
     #ifdef ServerMainVers_2700
-            if (!slabelement.slab.topMat.hasValue) {
-                slabelement.slab.topMat.hasValue = true;
-                needupdate = true;
-            }
+                if (!slabelement.slab.botMat.hasValue) {
+                    slabelement.slab.botMat.hasValue = true;
+                    needupdate = true;
+                }
     #else
-            if (!slabelement.slab.topMat.overridden) {
-                slabelement.slab.topMat.overridden = true;
-                needupdate = true;
-            }
+                if (!slabelement.slab.botMat.overridden) {
+                    slabelement.slab.botMat.overridden = true;
+                    needupdate = true;
+                }
     #endif
+            } else {
+    #ifdef ServerMainVers_2700
+                if (!slabelement.slab.topMat.hasValue) {
+                    slabelement.slab.topMat.hasValue = true;
+                    needupdate = true;
+                }
+    #else
+                if (!slabelement.slab.topMat.overridden) {
+                    slabelement.slab.topMat.overridden = true;
+                    needupdate = true;
+                }
+    #endif
+            }
         }
         const UInt32 previousMaxVertexID = memo.vertexIDs == nullptr ? 0 : (*memo.vertexIDs)[0];
         API_Polygon targetPolygon = {};
