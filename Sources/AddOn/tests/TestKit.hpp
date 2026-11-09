@@ -191,7 +191,7 @@ namespace TestKit {
 
     // ---- перегрузки Check: те же формы вызова, что у старых DBtest ----
     inline bool Check (const Loc &l, bool cond, const GS::UniString &msg) {
-        return detail::Report (l, cond, "true", "false", msg);
+        return detail::Report (l, cond, "true", detail::FmtBool (cond), msg);
     }
 
     inline bool Check (const Loc &l, bool a, bool e, const GS::UniString &msg) {
@@ -204,7 +204,7 @@ namespace TestKit {
 
     // Указатель/сырой указатель как условие: приводится к bool неявно.
     inline bool Check (const Loc &l, const void *cond, const GS::UniString &msg) {
-        return detail::Report (l, cond != nullptr, "non-null", "null", msg);
+        return detail::Report (l, cond != nullptr, "non-null", cond != nullptr ? "non-null" : "null", msg);
     }
 
     template <class T, class U>

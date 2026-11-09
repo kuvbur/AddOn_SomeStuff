@@ -4,6 +4,19 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Безопасный отказ Wall writer (#317, 2026-11-08)
+
+- Карточка Roombook описывает require_rollback, границу ordinary/fatal failure, cleanup только новой стены и передачу ошибки всеми тремя циклами в существующий undo callback. [по коду]
+- SDK25/C++14 MSVC, пять полных неизменённых извлечённых функций: RED205/117FAIL → GREEN205/0; characterization105/0 на baseline и live. Родитель повторил четыре suite-запуска, проверил 41 hash manifest и пять полных extraction hashes. API failures/undo snapshot контролируемые, не native-приёмка. Canonical BuildAddOn.py -c config.json -v25 -r -l INT exit0, Draw перекомпилирован/APX перелинкован. Оба PLN и загруженный Debug APX по SHA256 неизменны.
+- Fresh isolated clangd version1: baseline/live имеют одинаковые пять unused-variable и один include hint; новых диагностик нет. Shared MCP stale (namespace end2748 против реального2996), его нулевые диагностики не приняты. Независимое ревью production-дельты: No issues found in inspected scope.
+- symbols.json: 48 Draw name/range joins со свежим documentSymbol, 22 координаты адресно обновлены; внешние записи/порядок на момент записи сохранены. Callgraph не пересобран и не объявляется актуальным. Evidence: Hermes scratch/roombook-317-20261108/ (regression/, lsp/, parent-rerun.json, parent-validation.json, symbols-acceptance.json, build-ac25-int.log). #317 ждёт native-восстановления стены/проёмов и согласованного runner; commit/push/restart не выполнялись, другие SDK/macOS not verified.
+
+## Конвертация дуг Polygon2D (#298, 2026-11-08)
+
+- Адресно дополнены CommonFunction/TestFunc: dest-first копирование со смещением Geometry arcs +1, постоянная реальная SDK25-регрессия и регистрация core. RED110/22 → GREEN134/0; 24 обратные проверки на RED пропущены ради безопасности. Canonical AC25 Windows RelWithDebInfo INT build успешен; полные TU теста/registry с TESTING MSVC/C++14 /WX exit0. Native writers и полный host-прогон не исполнялись. [исходник, SDK25, выполненные build/stand]
+- Fresh isolated clangd version1: converter имеет те же 5 unused-диагностик/2 include hints на baseline/live; тест/registry без ошибок. Standalone TestFunc.hpp без PCH не самодостаточен, ошибки API-типов не выдаются за дефект новой декларации: реальные TU скомпилированы. Проверены точные function name/range joins; anonymous namespace placeholder и header-declaration end tokens исключены из проверки окончания тела.
+- symbols.json: адресно уточнены два converter-определения и добавлены 5 записей нового test TU по fresh documentSymbol; остальной generated-срез и исторический callgraph не пересобирались. Evidence: Hermes scratch/issue298/ (baseline/, candidate/, fresh-lsp/, baseline-lsp/, full-test-tus/, build-ac25.log). Без commit/push/restart; обе PLN-копии по SHA256 неизменны.
+
 ## Неблокирующий отказ Mesh-пола / Roof (#321, 2026-11-07)
 
 - Адресный контракт Roombook: поэлементные ошибки Roof, отсутствие ложного success, продолжение остальных writers/комнат и отложенный cleanup старого Mesh-остатка с сохранением при отказе того же zone/base/role. Диагностика указывает избранное и composite без изменения атрибута. [по коду]

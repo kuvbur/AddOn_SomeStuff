@@ -1205,6 +1205,9 @@ namespace Roombook {
         const API_Guid existingGuid = draw.otd_guid;
         draw.otd_guid = APINULLGuid;
         draw.draw_error = APIERR_BADPARS;
+        draw.require_rollback = false;
+        draw.write_succeeded = false;
+        draw.was_created = false;
         if (!OtdLinearElement_CanDraw (geom, true)) {
             return;
         }
@@ -1274,6 +1277,7 @@ namespace Roombook {
                 msg_rep ("Wall_Draw err", "ACAPI_Element_Get", err, APINULLGuid);
                 return;
             }
+            draw.draw_error = APIERR_BADPARS;
             if (GetElemTypeID (current) != API_WallID || current.wall.type == APIWtyp_Poly ||
                 wallelement.wall.type == APIWtyp_Poly || current.wall.modelElemStructureType == API_ProfileStructure ||
                 wallelement.wall.modelElemStructureType == API_ProfileStructure)
@@ -1297,6 +1301,8 @@ namespace Roombook {
             }
             // Один раз на стену, даже когда новый список проёмов пуст.
             if (!oldOpenings.IsEmpty ()) {
+                // После попытки разрушительной записи отказ должен прервать общую undo-команду.
+                draw.require_rollback = true;
                 err = ACAPI_Element_Delete (oldOpenings);
                 draw.draw_error = err;
                 if (err != NoError) {
@@ -1430,6 +1436,7 @@ namespace Roombook {
             }
             wallelement = current;
             if (needupdate) {
+                draw.require_rollback = true;
                 err = ACAPI_Element_Change (&wallelement, &mask, nullptr, 0, true);
                 draw.draw_error = err;
                 if (err != NoError) {
@@ -1441,6 +1448,8 @@ namespace Roombook {
 
         draw.otd_guid = wallelement.header.guid;
         for (OtdOpening &op : openings) {
+            if (existingGuid != APINULLGuid)
+                draw.require_rollback = true;
             op.otd_guid = APINULLGuid;
             OtdOpening_Draw (wallelement, op, OtdLinearSegment_GetZBottom (geom));
             const bool opening_failed = op.otd_guid == APINULLGuid;
@@ -1448,6 +1457,8 @@ namespace Roombook {
                 continue;
 
             draw.draw_error = APIERR_BADPARS;
+            if (existingGuid != APINULLGuid)
+                return; // Существующую стену не удаляем; ошибка передаётся общей undo-команде.
             // Непрорезанная оболочка даёт лишнюю отделку; удаляем только новый результат.
             const GS::Array<API_Guid> incomplete = {wallelement.header.guid};
             const GSErrCode deleteErr = ACAPI_Element_Delete (incomplete);
@@ -1456,6 +1467,9 @@ namespace Roombook {
                 draw.otd_guid = APINULLGuid;
                 for (auto &opening : openings)
                     opening.otd_guid = APINULLGuid;
+            } else {
+                draw.require_rollback = true;
+                draw.draw_error = deleteErr;
             }
             return;
         }
@@ -1475,6 +1489,8 @@ namespace Roombook {
 
         draw.write_succeeded = true;
         draw.was_created = (existingGuid == APINULLGuid);
+        draw.draw_error = NoError;
+        draw.require_rollback = false;
     }
 
     // Контур Roof привязан к верху: подрезку сначала переносим на верхнюю плоскость,
@@ -2658,6 +2674,7 @@ namespace Roombook {
         beam.draw.write_succeeded = false;
         beam.draw.was_created = false;
         beam.draw.draw_error = NoError;
+        beam.draw.require_rollback = false;
         GS::Array<OtdOpening> openings;
         switch (beam.draw.favorite.type) {
         case API_BeamID:
@@ -2685,6 +2702,9 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     void OtdWall_Draw (const Stories &storyLevels, OtdWall &edges, UnicElementByType &subelementByparent) {
         edges.draw.draw_error = NoError;
+        edges.draw.require_rollback = false;
+        edges.draw.write_succeeded = false;
+        edges.draw.was_created = false;
         if (!OtdLinearElement_CanDraw (edges.geom, edges.draw.favorite.type != API_BeamID)) {
             edges.draw.otd_guid = APINULLGuid;
             edges.draw.draw_error = APIERR_BADPARS;
@@ -2738,6 +2758,8 @@ namespace Roombook {
             OtdWall_Draw (storyLevels, otdwall, subelementByparent);
             if (otdwall.draw.draw_error != NoError) {
                 msg_rep ("OtdRoom_Draw", "OtdWall_Draw err", otdwall.draw.draw_error, otdwall.draw.otd_guid);
+                if (otdwall.draw.require_rollback)
+                    return otdwall.draw.draw_error;
                 continue;
             }
             Param_AddUnicElementByType (otd.zone_guid,
@@ -2782,6 +2804,8 @@ namespace Roombook {
             OtdBeam_Draw (storyLevels, beam, subelementByparent);
             if (beam.draw.draw_error != NoError) {
                 msg_rep ("OtdRoom_Draw", "OtdBeam_Draw err", beam.draw.draw_error, beam.draw.otd_guid);
+                if (beam.draw.require_rollback)
+                    return beam.draw.draw_error;
                 continue;
             }
             Param_AddUnicElementByType (otd.zone_guid, beam.draw.otd_guid, API_ZoneID, subelementByparent);
@@ -2793,6 +2817,8 @@ namespace Roombook {
             OtdBeam_Draw (storyLevels, beam, subelementByparent);
             if (beam.draw.draw_error != NoError) {
                 msg_rep ("OtdRoom_Draw", "OtdBeam_Draw err", beam.draw.draw_error, beam.draw.otd_guid);
+                if (beam.draw.require_rollback)
+                    return beam.draw.draw_error;
                 continue;
             }
             Param_AddUnicElementByType (otd.zone_guid, beam.draw.otd_guid, API_ZoneID, subelementByparent);

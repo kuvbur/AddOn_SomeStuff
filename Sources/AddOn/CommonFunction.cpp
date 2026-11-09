@@ -2405,7 +2405,7 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_
     }
     if (err == NoError && polygon2DData.arcs != nullptr && memo.parcs != nullptr) {
         static_assert (sizeof (API_PolyArc) == sizeof (PolyArcRec), "sizeof (API_PolyArc) != sizeof (PolyArcRec)");
-        BNCopyMemory (*polygon2DData.arcs + 1, *memo.parcs, poly.nArcs * sizeof (API_PolyArc));
+        BNCopyMemory (*memo.parcs, *polygon2DData.arcs + 1, poly.nArcs * sizeof (API_PolyArc));
     }
     Geometry::FreePolygon2DData (&polygon2DData);
     return err;

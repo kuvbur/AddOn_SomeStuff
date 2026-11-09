@@ -31,6 +31,13 @@
 
 ## Карточки
 
+### `ConvertPolygon2DToAPIPolygon(const Geometry::Polygon2D &, API_Polygon &, API_ElementMemo &) -> GSErrCode` (#298, 2026-11-08)
+- Определение: `Sources/AddOn/CommonFunction.cpp:2368`; обратный converter `ConstructPolygon2DFromElementMemo` — :2316. Адресное дополнение поверх `e0dfc7d`; исторические координаты остальной карточки не пересобраны. [по коду]
+- Освобождает прежние coords/pends/vertexIDs/parcs перед заполнением нового polygon/memo. Копирует все дуги из `Polygon2DData.arcs[1..nArcs]` в `memo.parcs[0..nArcs-1]`, сохраняя индексы вершин и знак угла. В #298 исправлены только два аргумента `BNCopyMemory`, размеры и смещение `+1` сохранены. [по коду; SDK25 GSRoot/BM.hpp:93 и Geometry/Polygon2DDataConv.h:429–437]
+- Побочные эффекты: заменяет перечисленные handles выходного memo; переданный Polygon2D сохраняется. Сам не пишет элементы проекта. Потребители: Roof_Prepare, Slab_Draw и OtdSlab_SetRoofEdgeTrims в `roombook/RoombookDraw.cpp`; также независимый reference в TestMeshFloor.cpp. [по live source; cached callgraph имеет исторические координаты]
+- `TestPolygonConversion` проверяет прямой контур, положительную/отрицательную дугу, замыкающее ребро, дуги отверстия, координаты/pends/IDs, повторное использование memo, исходный Polygon2D и обратную конвертацию с площадью. SDK25/C++14 standalone исполняет точные извлечения обоих converters и постоянный suite на реальной Geometry/BM; подменён только вывод DBtest. RED110/22 → GREEN134/0: дополнительные 24 проверки обратной конвертации безопасно пропускались на повреждённых дугах RED. [исполненный SDK-linked стенд]
+- Canonical AC25 Windows RelWithDebInfo INT BuildAddOn.py успешен; тестовая TU и registry отдельно скомпилированы MSVC/C++14 с TESTING. Native Create/Change writers, полный TestKit в Archicad, остальные SDK и macOS не проверены. Evidence: Hermes scratch/issue298/. [build и ограничение приёмки]
+
 ### `SafeWriteReport(GS::UniString text, bool withDial) -> void` (#264, рабочее дерево)
 - Определение: `Sources/AddOn/CommonFunction.cpp:410`; объявление: `CommonFunction.hpp:339`. [по коду после clang-format]
 - Принимает готовый текст по значению; удаляет все `%` через `ReplaceAll` из копии и передаёт её в `ACAPI_WriteReport`. Значение `withDial` сохраняется; исходные правила не меняются. Не является вариадической форматной функцией. [по коду]

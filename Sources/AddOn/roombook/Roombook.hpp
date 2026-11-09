@@ -364,6 +364,8 @@ namespace Roombook {
         bool is_upper_reveal = false; // Геометрический верх проёма, независимо от высотной полосы type.
         bool write_succeeded = false;
         bool was_created = false;
+        // Отказ после попытки разрушительной записи должен прервать общую undo-команду.
+        bool require_rollback = false;
     };
 
     struct RoomBookFinishResult {

@@ -79,6 +79,7 @@ namespace TestFunc {
         TestKit::Register ("TestSpecSizes", Groups::Spec, TestSpecSizes);
 
         TestKit::Register ("TestStringSplt", Groups::Core, TestStringSplt);
+        TestKit::Register ("TestPolygonConversion", Groups::Core, TestPolygonConversion);
     #if defined(ServerMainVers_2400)
         // Типы Roombook::OtdWall / OtdOpening / RoomSurface есть только в AC >= 24.
         TestKit::Register ("TestBuildOtdByParent", Groups::Core, TestBuildOtdByParent);
