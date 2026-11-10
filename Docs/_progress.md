@@ -4,6 +4,13 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Свойства плинтусов (#308, 2026-11-10)
+
+- Независимое read-only ревью deleg_1f408400: No issues found in inspected scope; SHA Draw совпадает с проверенной компиляцией/регрессией и текущим файлом. Wiki RU: две строки в существующей таблице свойств элементов, независимость/сброс и явные обязательные GUID-связи. Маркеры сверены с фактическим propdesc_prefix_element: some_stuff_element_tip_skirting и some_stuff_element_length_skirting; те же литералы в карточке и body #308, remote read-back OPEN. Wiki сохранила UTF-8/no BOM/CRLF и ссылки; кроме вставок изменена лишь уточняющая фраза о GUID-свойствах.
+- Roombook.md дополнена контрактом OtdSlab_WriteSkirt: независимые свойства типа/длины, guard успешности целевого пола/потолка с no-op, нулевая длина/очистка типа, прежняя общая запись. Исходник a6bb81c479f77b3791075e8549d73521923cfea35e2f075b111229c3c38d5ff3, рабочая дельта к 00c6dcc. Вне helper байты совпадают с пользовательским baseline; Constants/Data не изменены агентом.
+- Parent-run controlled MSVC/C++14 /WX: RED295/101FAIL → GREEN295/0, characterization40/0 в обоих вариантах и строки совпадают. Дословно извлечены helper и AddParamValue2ParamDictElement; GS/типы/конвертеры — stand-ins, не SDK/native-приёмка. Полная TU SDK25/MSVC/C++14 /WX успешно скомпилирована в scratch OBJ; APX не собирался. Fresh isolated publishDiagnostics version1 baseline/live имеют одинаковые пять unused-variable и один unused-include; в изменённой функции диагностик нет. Baseline-попытка с clang-only PCH wrapper дала C4068/C2220; MSVC затем использует его фактический include Tools/AddOn.hpp без подавления предупреждений. Хост и проектные настройки не менялись.
+- symbols.json: только Draw-срез 48→49 записей по fresh isolated clangd documentSymbol, все name/line joins сверены, 1031 внешняя запись и порядок сохранены. Сборщик учитывает Function и Variable; первая проверка числа без kLineEps остановилась до записи, затем типовая схема исправлена. Shared MCP известен устаревшим, его координаты не использованы. Callgraph и остальные исторические координаты не пересобраны. Evidence: Hermes scratch/skirting-properties-308/ (regression/, validation/, own.diff, symbols-acceptance.json). Native-персистентность, canonical build/load, другие SDK/macOS не проверены; VS Run/ArchiCAD25 не прерывался, commit/push не выполнялись.
+
 ## Безопасный отказ Wall writer (#317, 2026-11-08)
 
 - Карточка Roombook описывает require_rollback, границу ordinary/fatal failure, cleanup только новой стены и передачу ошибки всеми тремя циклами в существующий undo callback. [по коду]

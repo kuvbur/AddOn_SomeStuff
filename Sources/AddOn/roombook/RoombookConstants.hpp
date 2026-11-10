@@ -122,7 +122,8 @@ namespace Roombook {
     static const GS::UniString propdesc_hasfin = propdesc_prefix_layer + "has_finish";
     static const GS::UniString propdesc_hasfin_elem = propdesc_prefix_element + "has_finish";
     static const GS::UniString propdesc_onoff_elem = propdesc_prefix_element + "onoff";
-
+    static const GS::UniString propdesc_tip_skirt = propdesc_prefix_element + "tip_skirting";
+    static const GS::UniString propdesc_length_skirt = propdesc_prefix_element + "length_skirting";
 } // namespace Roombook
 
 #endif

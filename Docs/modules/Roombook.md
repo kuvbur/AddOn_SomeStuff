@@ -1,5 +1,14 @@
 # Roombook
 
+## Свойства плинтусов на отделочных полах и потолках (#308)
+
+Контракт AC25 Windows, рабочая дельта к `00c6dcc`. [по коду]
+
+- `OtdSlab_WriteSkirt` (`RoombookDraw.cpp:2931`) добавляет значения в общий `paramToWrite` только для валидного OtdSlab с ненулевым GUID и `draw.write_succeeded=true`; успешный no-op допускается. Успех native-writers самих плинтусов не участвует в подсчёте: `length_skirting` остаётся длиной подготовленных отрезков в метрах. [по коду]
+- Определения выбираются из PROPERTYCACHE по описаниям `some_stuff_element_tip_skirting` и `some_stuff_element_length_skirting`. Два локальных ParamValue кэшируют поиск в рамках OtdRooms_Draw; `rawName=" "` обозначает отсутствие определения. Найденные свойства обрабатываются независимо, фиктивный ключ в очередь не добавляется. [по коду]
+- Длина записывается и при нулевом значении; при `is_equal(length_skirting, 0)` тип очищается. Пустой тип сам по себе не запрещает запись ненулевой длины. Повторные значения заменяются штатным AddParamValue2ParamDictElement, определения в PROPERTYCACHE не изменяются. [по коду]
+- Преобразование — ConvertDoubleToParamValue / ConvertStringToParamValue; фактическая запись остаётся в OtdElements_SetSync → ElementsWrite → WriteProperty после успешной draw-транзакции. Прямой записи свойств или GDL в новом helper нет. Фактическое сохранение и повтор в Archicad — [не проверено].
+
 ## Безопасный отказ Wall writer (#317)
 
 Адресный контракт AC25 Windows, дельта к `e0dfc7d`, 2026-11-08. Остальные исторические координаты ниже не объявляются актуальными. [по коду]

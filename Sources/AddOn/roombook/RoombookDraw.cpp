@@ -2928,6 +2928,61 @@ namespace Roombook {
                 results, room.zone_guid, beam.draw, FinishLinearLength (beam.geom), true, 0, false, true, room.isValid);
     }
 
+    static void OtdSlab_WriteSkirt (ParamDictElement &paramToWrite,
+                                    ParamValue &param_tip_skirt,
+                                    ParamValue &param_length_skirt,
+                                    const OtdSlab &otdslab) {
+        if (!otdslab.isValid)
+            return;
+        if (!otdslab.draw.write_succeeded)
+            return;
+        if (otdslab.draw.otd_guid == APINULLGuid)
+            return;
+        if (param_tip_skirt.rawName.IsEmpty () || param_length_skirt.rawName.IsEmpty ()) {
+            ParamDictValue &propertyParams = PROPERTYCACHE ().property;
+            for (auto &cItt : propertyParams) {
+    #ifdef ServerMainVers_2800
+                ParamValue param = cItt.value;
+    #else
+                ParamValue param = *cItt.value;
+    #endif
+                if (param_tip_skirt.rawName.IsEmpty ()) {
+                    if (param.definition.description.Contains (propdesc_tip_skirt)) {
+                        param_tip_skirt = param;
+                        continue;
+                    }
+                }
+                if (param_length_skirt.rawName.IsEmpty ()) {
+                    if (param.definition.description.Contains (propdesc_length_skirt)) {
+                        param_length_skirt = param;
+                        continue;
+                    }
+                }
+                if (!param_tip_skirt.rawName.IsEmpty () && !param_length_skirt.rawName.IsEmpty ())
+                    break;
+            }
+            if (param_tip_skirt.rawName.IsEmpty ())
+                param_tip_skirt.rawName = " ";
+            if (param_length_skirt.rawName.IsEmpty ())
+                param_length_skirt.rawName = " ";
+        }
+        if (!param_length_skirt.rawName.IsEmpty () && param_length_skirt.rawName != " ") {
+            ParamHelpers::ConvertDoubleToParamValue (
+                param_length_skirt, param_length_skirt.rawName, otdslab.length_skirting);
+            param_length_skirt.fromGuid = otdslab.draw.otd_guid;
+            ParamHelpers::AddParamValue2ParamDictElement (otdslab.draw.otd_guid, param_length_skirt, paramToWrite);
+        }
+        if (!param_tip_skirt.rawName.IsEmpty () && param_tip_skirt.rawName != " ") {
+            ParamHelpers::ConvertStringToParamValue (param_tip_skirt,
+                                                     param_tip_skirt.rawName,
+                                                     is_equal (otdslab.length_skirting, 0) ? EMPTYSTRING
+                                                                                           : otdslab.tip_skirting);
+            param_tip_skirt.fromGuid = otdslab.draw.otd_guid;
+            ParamHelpers::AddParamValue2ParamDictElement (otdslab.draw.otd_guid, param_tip_skirt, paramToWrite);
+        }
+        return;
+    }
+
     void OtdRooms_Draw (GS::HashTable<API_Guid, UnicGuidByBase> &exsistot_byzone,
                         GS::Array<API_Guid> &deletelist,
                         OtdRooms &roomsinfo,
@@ -2948,6 +3003,7 @@ namespace Roombook {
             msg_rep ("RoomBook", "Cannot prepare existing finish updates", matchErr, APINULLGuid);
             return;
         }
+
         // Только список удаления; модель изменяется ниже, внутри команды создания и обновления.
         OtdRooms_CollectUnusedFinishingElements (exsistot_byzone, deletelist);
         const UnicGuid roofUnused = RoofBatch_CollectUnused (roomsinfo, exsistot_byzone, finclass, false);
@@ -2959,6 +3015,8 @@ namespace Roombook {
             else
                 earlyDelete.Push (guid);
         }
+        ParamValue param_tip_skirt;
+        ParamValue param_length_skirt;
         UnicElementByType subelementByparent; // Словарь с созданными родительскими
                                               // и дочерними элементами
         // Отрисовка элементов отделки
@@ -2987,6 +3045,10 @@ namespace Roombook {
                 if (AdvanceProcessPhase (funcname, nPhase))
                     return APIERR_CANCEL;
                 const GSErrCode err = OtdRoom_Draw (storyLevels, otd, subelementByparent, finclass);
+
+                for (OtdSlab &otdslab : otd.otdslab) {
+                    OtdSlab_WriteSkirt (paramToWrite, param_tip_skirt, param_length_skirt, otdslab);
+                }
                 if (err != NoError)
                     return err;
                 if (results != nullptr && otd.isValid) {
