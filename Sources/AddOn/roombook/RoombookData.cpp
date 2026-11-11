@@ -902,21 +902,26 @@ namespace Roombook {
                 Frame sourceFrame;
                 if (!sourceFrame.Frame_SetFromVertices (surface) || !RoomSurface_IsOnPlane (zoneFace, sourceFrame))
                     continue;
-                Polygons sourcePolygon;
-                if (!RoomSurface_Project (surface, frame, sourcePolygon)) {
-                    RoomSurfacePartition_AddError (result, "PartitionSourceFace");
-                    return false;
+                try {
+                    Polygons sourcePolygon;
+                    if (!RoomSurface_Project (surface, frame, sourcePolygon)) {
+                        RoomSurfacePartition_AddError (result, "PartitionSourceFace");
+                        continue;
+                    }
+                    std::vector<Cell> next;
+                    for (const auto &cell : cells) {
+                        Polygons current;
+                        current.Push (cell.polygon);
+                        Cells_Append (Polygons::Substract (current, sourcePolygon), cell.claims, next);
+                        auto owners = cell.claims;
+                        owners.push_back (index);
+                        Cells_Append (Polygons::Intersect (current, sourcePolygon), owners, next);
+                    }
+                    // Неудачный контакт не должен оставлять частично изменённое разбиение.
+                    cells = std::move (next);
+                } catch (const GS::Exception &) {
+                    RoomSurfacePartition_AddError (result, "PartitionSourceGeometryException");
                 }
-                std::vector<Cell> next;
-                for (const auto &cell : cells) {
-                    Polygons current;
-                    current.Push (cell.polygon);
-                    Cells_Append (Polygons::Substract (current, sourcePolygon), cell.claims, next);
-                    auto owners = cell.claims;
-                    owners.push_back (index);
-                    Cells_Append (Polygons::Intersect (current, sourcePolygon), owners, next);
-                }
-                cells = std::move (next);
             }
             Polygons coverage;
             for (const auto &cell : cells)
@@ -959,7 +964,7 @@ namespace Roombook {
             if (source.baseGuid == APINULLGuid || source.geometryGuid == APINULLGuid ||
                 source.snapshot.guid != source.geometryGuid || !source.snapshot.IsComplete ()) {
                 RoomSurfacePartition_AddError (result, "PartitionSourceSnapshot");
-                return result;
+                continue;
             }
             const std::string baseKey = APIGuidToString (source.baseGuid).ToCStr ().Get ();
             const std::string geometryKey = APIGuidToString (source.geometryGuid).ToCStr ().Get ();
@@ -968,7 +973,7 @@ namespace Roombook {
                     Frame sourceFrame;
                     if (!sourceFrame.Frame_SetFromVertices (surface) || !RoomSurface_IsOnPlane (surface, sourceFrame)) {
                         RoomSurfacePartition_AddError (result, "PartitionInvalidSourcePlane");
-                        return result;
+                        continue;
                     }
                     Claim claim;
                     claim.face = {source.baseGuid,
@@ -1004,26 +1009,36 @@ namespace Roombook {
                 return a.face.bodyIndex < b.face.bodyIndex;
             return a.face.polygonIndex < b.face.polygonIndex;
         });
-        // Одинаковый ключ с разной геометрией — ошибка снимков, не выбор первого кандидата.
-        for (UIndex i = 1; i < claims.size (); ++i) {
-            if (Claim_AreSame (claims[i - 1], claims[i]) &&
-                !RoomSurface_AreSame (*claims[i - 1].surface, *claims[i].surface)) {
+        // При конфликте исключаем весь ключ, а не выбираем произвольную геометрию из группы.
+        UIndex accepted = 0;
+        for (UIndex first = 0; first < claims.size ();) {
+            UIndex next = first + 1;
+            bool conflicting = false;
+            while (next < claims.size () && Claim_AreSame (claims[first], claims[next])) {
+                conflicting = conflicting || !RoomSurface_AreSame (*claims[first].surface, *claims[next].surface);
+                ++next;
+            }
+            if (conflicting)
                 RoomSurfacePartition_AddError (result, "PartitionConflictingSourceFace");
-                return result;
-            }
+            else
+                claims[accepted++] = claims[first];
+            first = next;
         }
-        claims.erase (std::unique (claims.begin (), claims.end (), Claim_AreSame), claims.end ());
-        try {
-            for (const auto &body : zone.bodies) {
-                for (const auto &surface : body.surfaces) {
-                    if (!RoomSurfaceFace_Partition (surface, claims, result))
-                        return result;
+        claims.resize (accepted);
+        for (const auto &body : zone.bodies) {
+            for (const auto &surface : body.surfaces) {
+                RoomSurfacePartition faceResult;
+                try {
+                    // Публикуем лишь целиком подготовленную грань; соседние от её отказа не зависят.
+                    if (RoomSurfaceFace_Partition (surface, claims, faceResult))
+                        result.pieces.Append (std::move (faceResult.pieces));
+                } catch (const GS::Exception &) {
+                    RoomSurfacePartition_AddError (faceResult, "PartitionGeometryException");
                 }
+                result.errors.Append (std::move (faceResult.errors));
             }
-            result.complete = !result.pieces.IsEmpty ();
-        } catch (const GS::Exception &) {
-            RoomSurfacePartition_AddError (result, "PartitionGeometryException");
         }
+        result.complete = result.errors.IsEmpty () && !result.pieces.IsEmpty ();
         return result;
     }
 
@@ -5029,12 +5044,13 @@ namespace Roombook {
                     room.surfaceCandidates.sources.Push (slabSource);
             }
             room.surfacePartition = RoomSurfaces_Partition (room.surfaceSnapshot, room.surfaceCandidates.sources);
-            if (!room.surfacePartition.complete) {
+            for (const auto &error : room.surfacePartition.errors)
+                msg_rep ("Surface finish", error.stage, error.code, room.zone_guid);
+            if (!room.surfacePartition.complete && room.surfacePartition.errors.IsEmpty ()) {
                 msg_rep ("Surface finish",
-                         "Incomplete prepared geometry; stopped before writing",
+                         "Incomplete prepared geometry; continuing with available finishes",
                          APIERR_BADPARS,
                          room.zone_guid);
-                return false;
             }
         }
         return true;

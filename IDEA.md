@@ -1,4 +1,15 @@
-﻿# Current Task — #317: безопасный откат Wall writer
+﻿# Current Task — #322: неблокирующие ошибки разбиения отделки
+
+## #322 — RoomSurfaces_Partition
+
+Scope: AC25 Windows/C++14. Локализовать ошибки источников/граней в RoomSurfaces_Partition и передать их в отчёт без общего отказа RoomProcessingContext_PreparePartitions; сохранить пригодные участки, пользовательские continue, допуски и штатные writers. Адресные регрессии и документация входят; изменение discovery/read-ошибок, политики удаления, геометрических допусков, PLN, перезапуск host, commit/push/ветки — вне scope.
+Status: WAITING_FOR_NATIVE — код, standalone-проверки, сборка, LSP и независимое ревью завершены.
+Plan: [x] 322.1 — прочитать пользовательскую дельту, контракт и потребителей; зарегистрировать issue; [x] 322.2 — RED, минимальная локализация отказов и GREEN; [x] 322.3 — форматирование/LSP, AC25 build, ревью и документация; [ ] 322.N — native-повтор исходной зоны после согласования.
+Last Completed: baseline с четырьмя continue владельца сохранён (Data8bc42870). Реализованы локальный source-Boolean, исключение конфликтной группы, изоляция zone-face и честный complete; caller выводит все errors без abort partition. Parent-run SDK25 Geometry/GSRoot/C++14 exact helpers/partition/caller RED71/24→GREEN71/0; preparation/report и throw zone-face controlled seams. Семь постоянных assertions исполнены exact extraction RED7/7→GREEN7/0; полный test TU TESTING /WX скомпилирован. Canonical BuildAddOn.py -c config.json -v25 -r -l INT exit0, Data compile/APX link подтверждены; Data SHA57ad0a0aa0d67435517a1f42a1cd1451fb511cae49a62bd0ba708c613557a320. Формат/diff-check успешны. Fresh isolated LSP version1 baseline/live имеют одинаковые восемь диагностик (три unused-variable, пять unused-includes), test без диагностик, header проверен в TU; parent сверил hashes и сравнение. Baseline --check timeout на token features не считается pass. Независимое ревью deleg_c2267fc8: No issues found in inspected scope. Карточка и три адресные записи symbols обновлены, две test-координаты сверены; остальной generated/callgraph исторический. Оба PLN и загруженный Debug APX неизменны по SHA256, host не прерывался. Штатный cleanup может удалить старую отделку отсутствующего участка: политика не менялась и сохранность не гарантируется.
+Next Step: после отдельного согласования загрузить новую сборку и повторить исходную зону со сложным профилем: ошибки в отчёте, независимые элементы созданы; затем проверить повтор и штатный cleanup. Native-выполнение и полный host suite не проверены; #322 оставить открытой.
+Last Checkpoint: a3dc151; commit/push не запрошены.
+Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/322.
+Evidence: C:/Users/da-rogojin/AppData/Local/hermes/cache/scratch/partition-nonblocking-20261111/.
 
 ## #308 — просмотр записи плинтусов в свойства
 

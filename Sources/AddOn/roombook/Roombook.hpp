@@ -225,7 +225,8 @@ namespace Roombook {
 
     // Не читает SDK-базу и не создаёт элементы; входы — собственные проверяемые снимки.
     // Несколько разных оснований дают Ambiguous без выбора первого; незаявленные площади — Unmatched.
-    // complete подтверждает разбиение снимков, но не разрешимость всех оснований или writer-геометрии.
+    // complete подтверждает разбиение без ошибок, но не разрешимость всех оснований или writer-геометрии.
+    // При локальных ошибках сохраняются пригодные pieces; errors выводятся в отчёт без запрета всей записи.
     RoomSurfacePartition RoomSurfaces_Partition (const RoomSurfaceSnapshot &zone,
                                                  const GS::Array<RoomSurfaceSource> &sources);
 

@@ -646,6 +646,51 @@ namespace TestFunc {
             std::numeric_limits<double>::quiet_NaN ();
         result = RoomSurfaces_Partition (zone, sources);
         check (!result.complete && !result.errors.IsEmpty (), "nonfinite source vertex rejected");
+        // Локальные ошибки сохраняют диагностику, но не отбрасывают независимый пригодный контакт.
+        const auto goodSource = source (baseB, rectangle (0, 4, 0, 3, -1));
+        auto badSource = source (baseA, warped);
+        result = RoomSurfaces_Partition (zone, {badSource, goodSource});
+        check (!result.complete && !result.errors.IsEmpty () &&
+                   closeArea (area (result, RoomSurfacePieceStatus::Matched), 12),
+               "invalid source plane retains independent finish contact");
+        badSource.snapshot.status = RoomSurfaceStatus::ReadError;
+        result = RoomSurfaces_Partition (zone, {badSource, goodSource});
+        check (!result.complete && !result.errors.IsEmpty () &&
+                   closeArea (area (result, RoomSurfacePieceStatus::Matched), 12),
+               "incomplete source retains independent finish contact");
+        auto degenerate = rectangle (0, 4, 0, 3, -1);
+        degenerate.contours[0].vertices.DeleteLast ();
+        degenerate.contours[0].vertices.DeleteLast ();
+        result = RoomSurfaces_Partition (zone, {source (baseA, degenerate), goodSource});
+        check (!result.complete && !result.errors.IsEmpty () &&
+                   closeArea (area (result, RoomSurfacePieceStatus::Matched), 12),
+               "failed source projection retains independent finish contact");
+        auto conflictA = source (baseA, rectangle (0, 4, 0, 3, -1));
+        auto conflictB = source (baseA, rectangle (0, 2, 0, 3, -1));
+        for (bool reverse : {false, true}) {
+            const GS::Array<RoomSurfaceSource> conflictingSources =
+                reverse ? GS::Array<RoomSurfaceSource>{conflictB, conflictA, conflictB, goodSource}
+                        : GS::Array<RoomSurfaceSource>{conflictA, conflictB, conflictA, goodSource};
+            result = RoomSurfaces_Partition (zone, conflictingSources);
+            bool onlyGoodOwner = !result.pieces.IsEmpty ();
+            for (const auto &piece : result.pieces)
+                onlyGoodOwner = onlyGoodOwner && piece.baseGuid == baseB;
+            check (!result.complete && !result.errors.IsEmpty () && onlyGoodOwner &&
+                       closeArea (area (result, RoomSurfacePieceStatus::Matched), 12),
+                   "entire conflicting face group skipped independent of order");
+            badZone = zone;
+            badZone.bodies[0].surfaces[0].normalWorld = {};
+            auto goodFace = zone.bodies[0].surfaces[0];
+            goodFace.polygonIndex = 2;
+            if (reverse)
+                badZone.bodies[0].surfaces.Insert (0, goodFace);
+            else
+                badZone.bodies[0].surfaces.Push (goodFace);
+            result = RoomSurfaces_Partition (badZone, {goodSource});
+            check (!result.complete && !result.errors.IsEmpty () &&
+                       closeArea (area (result, RoomSurfacePieceStatus::Matched), 12),
+                   "failed zone face retains good face before or after it");
+        }
         // Отделка балки: низ и бока на участке beamPart, обрезка по t и по вертикали комнаты.
         const auto beamFace = [] (double nx, double ny, double nz, const API_Coord3D *points, Int32 count) {
             RoomSurface surface;

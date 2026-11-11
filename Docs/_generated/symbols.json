@@ -3906,18 +3906,18 @@
     "line": 837
   },
   {
-    "name": "Roombook::Roombook::RoomSurfaceFace_Partition",
+    "name": "Roombook::(anonymous namespace)::RoomSurfaceFace_Partition",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookData.cpp",
     "module": "roombook",
-    "line": 881
+    "line": 884
   },
   {
-    "name": "Roombook::Roombook::RoomSurfaces_Partition",
+    "name": "Roombook::RoomSurfaces_Partition",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookData.cpp",
     "module": "roombook",
-    "line": 945
+    "line": 953
   },
   {
     "name": "Roombook::Roombook::BeamAxis.dir",
@@ -4494,11 +4494,11 @@
     "line": 4907
   },
   {
-    "name": "Roombook::Roombook::RoomProcessingContext_PreparePartitions",
+    "name": "Roombook::RoomProcessingContext_PreparePartitions",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookData.cpp",
     "module": "roombook",
-    "line": 4973
+    "line": 5005
   },
   {
     "name": "Roombook::Roombook::RoomProcessingContext_ReadElementParameters",

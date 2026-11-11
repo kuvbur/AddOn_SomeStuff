@@ -4,6 +4,13 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Неблокирующий partition (#322, 2026-11-11)
+
+- Roombook.md дополнена контрактом локальных ошибок source/zone-face, исключения всей конфликтной группы, честного complete и неблокирующего отчёта caller-а. Штатный cleanup не меняется; сохранность прежней отделки отсутствующего участка не гарантируется. [по коду]
+- Parent-run SDK25 Geometry/GSRoot/C++14: дословные helpers/partition/PreparePartitions, RED71/24 → GREEN71/0. Preparation/report и throw отдельной грани — controlled seams, не native. Семь новых постоянных assertions извлечены из TestRoombookGeometry и исполнены: RED7/7 → GREEN7/0. Test TU с TESTING и /WX скомпилирован в scratch OBJ. Canonical BuildAddOn.py -c config.json -v25 -r -l INT успешен, Data compile/APX link подтверждены логом. Data SHA57ad0a0aa0d67435517a1f42a1cd1451fb511cae49a62bd0ba708c613557a320, test SHA4cd20afa17aee7fb1b939b5fea07d235b75547a807b609e4ea3f8a16a1c50a6a; постороннее форматирование preprocessor возвращено к baseline, изменённый блок отдельно отформатирован, TU/постоянные assertions/LSP и canonical build повторены на финальном файле.
+- Fresh isolated LSP version1 baseline/live: одинаковые восемь диагностик (три unused-variable и пять unused-includes), test без диагностик; header проверен через обе реальные TU. Source hashes совпали до/после и с parent-check; namespace Data end9821/file9822 подтверждает свежесть AST. Baseline clangd --check ранее дошёл до AST, затем timeout на token feature pass; не объявлен pass. Независимое read-only ревью deleg_c2267fc8: No issues found in inspected scope. В symbols.json адресно обновлены три production-функции (имя/координата по fresh documentSymbol); обе test-функции сверены, остальные записи/порядок и исторический callgraph сохранены. Полного сбора не было.
+- Native-сложный профиль, загрузка нового APX, другие SDK/macOS не проверены; host не перезапускался, оба PLN и загруженный Debug APX по SHA256 неизменны. Evidence: Hermes scratch/partition-nonblocking-20261111/. Commit/push не запрошены, #322 OPEN.
+
 ## Свойства плинтусов (#308, 2026-11-10)
 
 - Независимое read-only ревью deleg_1f408400: No issues found in inspected scope; SHA Draw совпадает с проверенной компиляцией/регрессией и текущим файлом. Wiki RU: две строки в существующей таблице свойств элементов, независимость/сброс и явные обязательные GUID-связи. Маркеры сверены с фактическим propdesc_prefix_element: some_stuff_element_tip_skirting и some_stuff_element_length_skirting; те же литералы в карточке и body #308, remote read-back OPEN. Wiki сохранила UTF-8/no BOM/CRLF и ссылки; кроме вставок изменена лишь уточняющая фраза о GUID-свойствах.
