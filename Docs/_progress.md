@@ -4,6 +4,14 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Защита model-read BrowserPalette (#323, 2026-11-12)
+
+- PDB/dump/APX GUID/age и source MD5 подтвердили GetPropertiesList → ACAPI_Element_GetPropertyValues (прежняя строка460). Assertion stack и CLR exception различены; worker-thread race, обязательный TW→selection trigger и универсальная idle-безопасность не установлены.
+- Карточка BrowserPalette отражает четыре guarded readonly callback, modeless-depth/reentry, admitted selection/reset preparation и coalesced monitor-refresh в PanelIdle. Hidden DisableEnd восстанавливает enabled независимо от видимости; Reset получает выделение/типы только внутри admission. Нормальные тела четырёх getters и undo-сброса лексически сохранены; форматирование затронуло изменённые регистрации.
+- Parent-run controlled MSVC C++14: одинаковые 108 assertions на baseline79FAIL → pre-review5FAIL → final0FAIL; четыре model callback подменены, реальные Reset/selection/update/idle/control/Show извлечены; DG/GS/ACAPI/undo — controlled seams, не native. Пять новых проверок адресно воспроизводят оба замечания ревью. Parent сверил source/header и одинаковые runner/tests/seams hashes, порядок assertions и protected hashes.
+- Canonical BuildAddOn.py -c config.json -v25 -r -l INT выполнен повторно после замечаний: exit0, BrowserPalette compile/APX link. Fresh isolated LSP version1/documentSymbol baseline/live: те же три сообщения (Wswitch InvalidRoundingStep и unused-but-set-variable withSpecRule с severity1, unused Sync.hpp с severity2), новых нет; shared MCP0 не принят за свежую проверку. Финальный cpp3bb8dbca/header d42375c4. Только BrowserPalette-срез symbols36→41 принят по fresh AST,1045внешних записей/порядок сохранены; исторический callgraph не пересобран.
+- APX: Build/SomeStuff/25/INT/RelWithDebInfo/SomeStuff.apx SHA2565bc21ca3e14436f525539aa3a28881c105bbfc28022942cb428c66048e3d70a1. Загруженный Debug APX и оба PLN неизменны. Native-повтор исходного ODB assertion, порядок modeless-событий в 3D, другие SDK/macOS not verified. CallCommand admission не доказан как универсальный nested-3D barrier. Без restart/commit/push; evidence Hermes scratch/browser-odb-20261112/parent-final-acceptance.json. Итоговое follow-up ревью deleg_b5f33ae5: No issues found in inspected scope; оба P2 устранены, hashes cpp/header совпали с final GREEN/build/LSP и live. #323 остаётся WAITING_FOR_NATIVE/OPEN.
+
 ## Видимость BrowserPalette (2026-11-12)
 
 - Карточка дополнена разделением явной пользовательской видимости и временного скрытия Archicad. Только BrowserPalette-срез symbols.json обновлён по свежему isolated documentSymbol: 35→36 записей, включая SetUserVisible; остальные записи/порядок сохранены. Shared MCP вернул прежний AST без нового метода и не использовался; callgraph исторический.

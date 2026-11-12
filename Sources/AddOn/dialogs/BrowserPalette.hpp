@@ -54,6 +54,14 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
     DG::Browser browser;
     bool jsObjectRegistered = false;
     bool hiddenByArchicad = false;
+    static UInt32 modelAccessBlockDepth;
+    bool modelReadInProgress = false;
+    bool selectionRefreshPending = false;
+
+    bool CanAccessModel () const;
+    static GS::Ref<DG::JSBase> ModelReadUnavailable (bool busy);
+    DG::JSFunction *CreateModelReadFunction (const GS::UniString &name,
+                                             const std::function<GS::Ref<DG::JSBase> (GS::Ref<DG::JSBase>)> &callback);
 
     // -------------------------------------------------------------------------
     // Инициализация браузерного контролла и подключение HTML страницы.
@@ -71,6 +79,7 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
     void UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedElements);
 
     virtual void PanelResized (const DG::PanelResizeEvent &ev) override;
+    virtual void PanelIdle (const DG::PanelIdleEvent &ev) override;
     virtual void PanelCloseRequested (const DG::PanelCloseRequestEvent &ev, bool *accepted) override;
 
 #ifdef ServerMainVers_2800

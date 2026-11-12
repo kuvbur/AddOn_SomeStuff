@@ -1,6 +1,6 @@
 # dialogs/BrowserPalette — UI Entry Point
 
-> Хеш коммита: 493caf5 (2026-09-22). Номера строк .cpp — выборочно проверены.
+> База изменений: `7366144`; адресный контракт BrowserPalette актуализирован 2026-11-12 по рабочему исходнику. Исторические координаты вне обновлённых карточек не пересобраны.
 
 ## Назначение
 Браузерная палитра с HTML-интерфейсом: видимость, свойства, JS-мост, мониторинг выделения. [по коду]
@@ -28,29 +28,34 @@
 
 | Функция | Назначение |
 |---------|------------|
-| `ShowOrHideBrowserPalette` | Переключение видимости палитры [из комментария, hpp:23]; вызывается из `MenuCommandHandler` (Main:469), определение BrowserPalette.cpp:37 [из callgraph.json] |
-| `BrowserPalette::Show` | Показ; reloadContent=false — без перезагрузки HTML (APIPalMsg_HidePalette_End; перезагрузка сбрасывала вкладку/фильтр) [из комментария, hpp:106-109; .cpp:127] |
-| `BrowserPalette::Hide` | Скрытие [из комментария, .cpp:169] |
-| `BrowserPalette::ManualGetSelection` | Ручное получение выделения [из комментария, hpp:112] |
-| `BrowserPalette::SelectionChangeHandler` | Обработчик изменения выделения [из комментария, hpp:115] — карточка |
-| `UpdateSelectionInfoInUI` | Обновление представления выделения в HTML [из комментария, .cpp:175] |
-| `RegisterACAPIJavaScriptObject` | Регистрация JS объекта для вызовов из HTML [из комментария, hpp:49] |
+| `ShowOrHideBrowserPalette` | Переключение явной видимости через SetUserVisible; вызывается из MenuCommandHandler. Определение BrowserPalette.cpp:46. [по коду/fresh documentSymbol; старый callgraph исторический] |
+| `BrowserPalette::Show` | Показ; reloadContent=false — без reload, обновление выделения отложено до PanelIdle. [по коду] |
+| `BrowserPalette::Hide` | Скрытие без изменения пользовательской настройки. [по коду] |
+| `BrowserPalette::ManualGetSelection` | Снимок выделения внутри ACAPI_CallCommand; UI обновляется после завершения команды. [по коду] |
+| `BrowserPalette::SelectionChangeHandler` | При разрешённом мониторинге помечает выделение устаревшим, без синхронного чтения. [по коду] |
+| `UpdateSelectionInfoInUI` | Вывод переданного snapshot в HTML; пустой набор не перечитывается. [по коду] |
+| `RegisterACAPIJavaScriptObject` | Регистрация постоянного моста; четыре model-reading callback проходят CreateModelReadFunction. [по коду] |
+| `BrowserPalette::PanelIdle` | Повтор отложенного monitor-refresh с проверкой CanAccessModel; не гарантия idle-состояния модели. [по коду/SDK] |
 
 ## Карточки
 
 ### `BrowserPalette::SelectionChangeHandler(const API_Neig *) -> GSErrCode`
-- Расположение: `Sources/AddOn/dialogs/BrowserPalette.cpp` (строка не проверена)
-- Назначение: обработка смены выделения, обновление UI. [из комментария]
-- Контракт: защищён `suppressSelectionRefresh` — при программной подсветке (`APIIo_HighlightElementsID`/`APIDo_ZoomToElementsID`) обновление подавляется. [из комментария, hpp:91-95]
-- Побочные эффекты: обновление HTML (execute JS). [по коду]
+- Расположение: `Sources/AddOn/dialogs/BrowserPalette.cpp:2089` (AC25, fresh documentSymbol).
+- Назначение: пометка selectionRefreshPending без чтения модели или ExecuteJS в самом уведомлении. [по коду]
+- Контракт: нужны существующая видимая палитра, включённый GetCatchSelectionChanges и отсутствие suppressSelectionRefresh; программная подсветка/зум не запускают обновление. [по коду]
+- Побочные эффекты: запись pending-флага; фактическое чтение выполняет PanelIdle → ManualGetSelection. [по коду]
 
 ### `BrowserPalette::Show(bool reloadContent)`
-- Расположение: `Sources/AddOn/dialogs/BrowserPalette.cpp:127`
-- Назначение: показ палитры; при reloadContent перечитывает HTML и обновляет выделение (UpdateSelectionInfoInUI, .cpp:163). [по коду]
+- Расположение: `Sources/AddOn/dialogs/BrowserPalette.cpp:290` (AC25, fresh documentSymbol).
+- Назначение: показ палитры; при reloadContent перезагружает страницу, иначе ставит pending-refresh. Завершение загрузки также только ставит pending-refresh. [по коду]
 - Побочные эффекты: показ окна; при reloadContent — сброс активной вкладки/фильтра (FIX). [из комментария + по коду]
 
 ## Инварианты
-- Пользовательская видимость (2026-11-12, рабочая дельта к `7366144`): `SetUserVisible(bool)` обслуживает меню, крестик и явные `APIPalMsg_OpenPalette/ClosePalette`, отменяет временное восстановление и сохраняет `showpalette`. `HidePalette_Begin` отмечает только действительно видимую панель; `HidePalette_End` восстанавливает её только по этому маркеру, потребляет его и вызывает `Show(false)` без перезагрузки HTML. Обычные `Show/Hide` настройки не записывают. [по коду; controlled regression; проверено владельцем в Archicad]
+- Доступ к модели из `GetPropertiesList`, `GetPropertyValue`, `GetSpecRuleProperties`, `CheckSpecRuleByPropertyGuid` проходит общий wrapper: видимость, enabled браузера, нулевая глубина modeless-disable и отсутствие повторного чтения, затем `ACAPI_CallCommand`. Нормальный ответ callback сохраняется; отказ допуска возвращает ненулевой JSValue с `status:busy`, ошибка команды — `status:error`. Поля совместимости пусты, `ok/success:false`, `common:null`: отказ не является успешной проверкой. Валидатор требует ручного повтора; автоматический pending предназначен только для мониторных getter. [по коду]
+- `APIPalMsg_DisableItems_Begin/End` учитываются статической глубиной независимо от существования/видимости палитры; DisableItems/EnableItems применяются к существующему экземпляру и при скрытом окне, чтобы завершение блокировки до восстановления видимости не оставляло браузер disabled. Guard чтения сбрасывается GS::OnExit; `ResetPropertyToDefault` читает выделение, типы и значения внутри одной preparatory read-команды до существующей undo-записи; при отказе не делает этих чтений и не запускает undo. Пустое выделение обрабатывается после admission; undo в nonundo не вложен и запись автоматически не повторяется. [по коду/controlled regression]
+- PanelIdle объединяет pending-refresh: сброс флага перед попыткой сохраняет запрос, возникший при обновлении; APIERR_REFUSEDCMD оставляет повтор, прочая ошибка команды его не зацикливает. Команда чтения выделения завершается до ExecuteJS, чтобы не отвергать вложенные getter собственным scope. Begin/End не читают модель синхронно. [по коду]
+- Граница проверки #323: AC25 Windows RelWithDebInfo INT собран каноническим BuildAddOn.py. SDK описывает отказ CallCommand при открытой/undoable операции, но НЕ обещает безопасность любого expression-read при успешном входе; PanelIdle и modeless-notifications не доказаны как барьер всех nested-3D контекстов. Устранение исходного ODB assertion и порядок событий в native Teamwork-сценарии **not verified**. Другие SDK/macOS не собраны. [SDK25/сборка; native не проверено]
+- Пользовательская видимость (2026-11-12, рабочая дельта к `7366144`): `SetUserVisible(bool)` обслуживает меню, крестик и явные `APIPalMsg_OpenPalette/ClosePalette`, отменяет временное восстановление и сохраняет `showpalette`. `HidePalette_Begin` отмечает только действительно видимую панель; `HidePalette_End` восстанавливает её только по этому маркеру, потребляет его и вызывает `Show(false)` без перезагрузки HTML. Обычные `Show/Hide` настройки не записывают. [по коду; controlled regression; native-смена видов not verified]
 - DestroyInstance сбрасывает статический GS::Ref на APINotify_Quit; деструктор вызывает EndEventProcessing/Detach, но не меняет instance. Разрушение браузера вынесено из статического DLL detach в событие завершения приложения. Закрытие крестиком по-прежнему только скрывает палитру. [по текущему коду; завершение без LoaderLock после правки not verified]
 - JS-мост `ACAPI` регистрируется при InitBrowserControl до LoadHTML; подписка onLoadingStateChange также подключается до загрузки. На reload регистрация не заменяется, выполняется только refresh при успешной регистрации. Флаг jsObjectRegistered хранит результат RegisterAsynchJSObject. [по текущему коду; владелец подтвердил отсутствие падения в цикле выделение → крестик → повторный показ → Монитор; агент сборку/runtime не выполнял]
 - Palette resize: `UnDock()` → `SetClientWidth()` → `Dock()`; min width ослаблять перед сжатием (AGENTS.md §6) [из AGENTS.md]

@@ -19,6 +19,7 @@
 #include "CommonFunction.hpp"
 #include "dialogs/BrowserPalette.hpp"
 #include "dialogs/SyncSettings.hpp"
+#include "OnExit.hpp"
 #include "Propertycache.hpp"
 #include "spec/Spec.hpp"
 #include "Sync.hpp"
@@ -37,6 +38,7 @@ static DG::Dialog::FixPoint GetHorizontalResizeFixPoint (const DG::NativeRect &p
 
 GS::Ref<BrowserPalette> BrowserPalette::instance;
 bool BrowserPalette::suppressSelectionRefresh = false;
+UInt32 BrowserPalette::modelAccessBlockDepth = 0;
 
 // -----------------------------------------------------------------------------
 // Show or Hide Browser Palette
@@ -256,6 +258,7 @@ BrowserPalette::BrowserPalette ()
       browser (GetReference (), BrowserId) {
     Attach (*this);
     BeginEventProcessing ();
+    EnableIdleEvent ();
     DBprnt ("BrowserPalette::BrowserPalette () — calling InitBrowserControl");
     InitBrowserControl ();
     DBprnt ("BrowserPalette::BrowserPalette () — InitBrowserControl done");
@@ -315,8 +318,7 @@ void BrowserPalette::Show (bool reloadContent) {
     } else {
         // Перезагрузки нет, поэтому данные в панели обновляем вручную — раньше
         // это делал onLoadingStateChange после ReloadIgnoreCache.
-        GS::Array<API_Guid> selectedElements;
-        UpdateSelectionInfoInUI (selectedElements);
+        selectionRefreshPending = true;
     }
     // Обновляем информацию о выделении после загрузки страницы.
     // onLoadingStateChange обновит UI через уже зарегистрированный мост.
@@ -342,10 +344,11 @@ void BrowserPalette::SetUserVisible (bool visible) {
 }
 
 void BrowserPalette::UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedElements) {
-    // Если массив пуст — получаем текущее выделение
-    if (selectedElements.IsEmpty ()) {
-        selectedElements = GetSelectedElements2 (false, true);
+    if (!CanAccessModel ()) {
+        selectionRefreshPending = true;
+        return;
     }
+    // Массив — уже прочитанный snapshot, пустой набор не запрашиваем повторно вне admission.
     // Защита: при переключении в окно секции/3D ArchiCAD может прислать
     // виртуальные элементы с APINULLGuid. Не пускаем такие GUID'ы в JS-мост —
     // иначе ACAPI_Element_GetPropertyDefinitions/Values упадёт на них.
@@ -396,14 +399,56 @@ void BrowserPalette::InitBrowserControl () {
 
             if (!eventArg.isLoading && jsObjectRegistered) {
                 DBprnt ("BrowserPalette::onLoadingStateChange () — page loaded, refreshing selection");
-                GS::Array<API_Guid> selectedElements;
-                UpdateSelectionInfoInUI (selectedElements);
+                selectionRefreshPending = true;
             }
         };
 
     // Подписка и мост готовы до начала загрузки HTML.
     browser.LoadHTML (LoadHtmlFromResource ());
     DBprnt ("BrowserPalette::InitBrowserControl () — HTML load started");
+}
+
+bool BrowserPalette::CanAccessModel () const {
+    return IsVisible () && browser.IsEnabled () && modelAccessBlockDepth == 0 && !modelReadInProgress;
+}
+
+GS::Ref<DG::JSBase> BrowserPalette::ModelReadUnavailable (bool busy) {
+    // common:null отличает отказ валидатора от успешной проверки без элементов.
+    return new DG::JSValue (
+        GS::UniString ("{\"status\":\"") + (busy ? "busy" : "error") + "\",\"message\":\"" +
+        (busy ? "Archicad is busy; retry the request" : "Model read failed") +
+        "\",\"ok\":false,\"success\":false,\"checked\":0,\"totalSelected\":0,\"truncated\":false,"
+        "\"common\":null,\"elements\":[],\"count\":0,\"values\":[],\"source\":\"none\",\"selectionCount\":0,\"properties\":[]}");
+}
+
+DG::JSFunction *BrowserPalette::CreateModelReadFunction (
+    const GS::UniString &name, const std::function<GS::Ref<DG::JSBase> (GS::Ref<DG::JSBase>)> &callback) {
+    return new DG::JSFunction (name, [this, name, callback] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+        const bool refreshMonitor = name == "GetPropertiesList" || name == "GetPropertyValue";
+        if (!CanAccessModel ()) {
+            if (refreshMonitor)
+                selectionRefreshPending = true;
+            return ModelReadUnavailable (true);
+        }
+
+        // Главный поток не исключает повторный вход из message pump конвертации.
+        // Проверяем допуск команды ДО callback, включая уже доставленный JS-запрос.
+        modelReadInProgress = true;
+        GS::OnExit resetReadState ([this] { modelReadInProgress = false; });
+        GS::Ref<DG::JSBase> result;
+        const GSErrCode err = ACAPI_CallCommand (name, [&] () -> GSErrCode {
+            result = callback (args);
+            return NoError;
+        });
+        if (err == APIERR_REFUSEDCMD) {
+            if (refreshMonitor)
+                selectionRefreshPending = true;
+            return ModelReadUnavailable (true);
+        }
+        if (err != NoError || result == nullptr)
+            return ModelReadUnavailable (false);
+        return result;
+    });
 }
 
 void BrowserPalette::RegisterACAPIJavaScriptObject () {
@@ -437,299 +482,307 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
     // Регистрируем функцию для получения свойств выделенных элементов (возвращает JSON-строку для обхода ограничений
     // pull-паттерна)
-    jsACAPI->AddItem (new DG::JSFunction ("GetPropertiesList", [this] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
-        try {
+    jsACAPI->AddItem (
+        CreateModelReadFunction ("GetPropertiesList", [this] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
+            try {
 #if defined(TESTING)
-            const std::clock_t propertiesListStart = std::clock ();
+                const std::clock_t propertiesListStart = std::clock ();
 #endif
-            // Собираем данные свойств
-            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
-            // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
-            selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
+                // Собираем данные свойств
+                GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
+                // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
+                selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
 
-            // Формируем JSON строку вручную
-            GS::UniString jsonStr = "{ \"elements\": [";
+                // Формируем JSON строку вручную
+                GS::UniString jsonStr = "{ \"elements\": [";
 
-            bool firstElement = true;
-            Int32 addedElementCount = 0;
-            if (!selectedElements.IsEmpty ()) {
-                for (const API_Guid &elemGuid : selectedElements) {
-                    GS::Array<API_PropertyDefinition> definitions;
-                    GSErrCode err = ACAPI_Element_GetPropertyDefinitions (
-                        elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
-                    if (err != NoError || definitions.IsEmpty ()) {
-                        continue;
-                    }
+                bool firstElement = true;
+                Int32 addedElementCount = 0;
+                if (!selectedElements.IsEmpty ()) {
+                    for (const API_Guid &elemGuid : selectedElements) {
+                        GS::Array<API_PropertyDefinition> definitions;
+                        GSErrCode err = ACAPI_Element_GetPropertyDefinitions (
+                            elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+                        if (err != NoError || definitions.IsEmpty ()) {
+                            continue;
+                        }
 
-                    GS::Array<API_Property> properties;
-                    err = ACAPI_Element_GetPropertyValues (elemGuid, definitions, properties);
-                    if (err != NoError) {
-                        continue;
-                    }
+                        GS::Array<API_Property> properties;
+                        err = ACAPI_Element_GetPropertyValues (elemGuid, definitions, properties);
+                        if (err != NoError) {
+                            continue;
+                        }
 
-                    if (!firstElement) {
-                        jsonStr += GS::UniString (",");
-                    }
-                    firstElement = false;
-
-                    jsonStr += GS::UniString ("{ \"guid\": \"") + APIGuidToString (elemGuid).ToCStr ().Get () +
-                               GS::UniString ("\", \"properties\": [");
-
-                    bool firstProp = true;
-                    for (const API_Property &prop : properties) {
-                        if (!firstProp) {
+                        if (!firstElement) {
                             jsonStr += GS::UniString (",");
                         }
-                        firstProp = false;
+                        firstElement = false;
 
-                        jsonStr += GS::UniString ("{");
+                        jsonStr += GS::UniString ("{ \"guid\": \"") + APIGuidToString (elemGuid).ToCStr ().Get () +
+                                   GS::UniString ("\", \"properties\": [");
 
-                        if (!prop.definition.name.IsEmpty ()) {
-                            jsonStr += GS::UniString ("\"name\": \"") +
-                                       EscapeJsonString (prop.definition.name).ToCStr ().Get () + GS::UniString ("\",");
-                        } else {
-                            jsonStr += GS::UniString ("\"name\": \"\",");
-                        }
-
-                        // Получаем имя группы свойства
-                        GS::UniString groupName = "Без группы";
-                        if (prop.definition.groupGuid != APINULLGuid) {
-                            API_PropertyGroup group = {};
-                            const bool groupOk = ParamHelpers::GetGroupFromCache (prop.definition.groupGuid, group);
-                            DBprnt (GS::UniString ("GetPropertiesList: prop=") + prop.definition.name.ToCStr ().Get () +
-                                    GS::UniString (", groupGuid=") +
-                                    APIGuidToString (prop.definition.groupGuid).ToCStr ().Get () +
-                                    GS::UniString (", groupOk=") + GS::ValueToUniString (groupOk) +
-                                    (groupOk ? (GS::UniString (", groupName=") + group.name.ToCStr ().Get ())
-                                             : GS::UniString (", groupName=<unavailable>")));
-                            if (groupOk && !group.name.IsEmpty ()) {
-                                groupName = group.name;
+                        bool firstProp = true;
+                        for (const API_Property &prop : properties) {
+                            if (!firstProp) {
+                                jsonStr += GS::UniString (",");
                             }
-                        }
-                        jsonStr += GS::UniString ("\"group\": \"") + EscapeJsonString (groupName).ToCStr ().Get () +
-                                   GS::UniString ("\",");
+                            firstProp = false;
 
-                        ParamValue pvalue;
-                        if (ParamHelpers::ConvertToParamValue (pvalue, prop)) {
-                            GS::UniString valueStr;
-                            switch (pvalue.val.type) {
+                            jsonStr += GS::UniString ("{");
+
+                            if (!prop.definition.name.IsEmpty ()) {
+                                jsonStr += GS::UniString ("\"name\": \"") +
+                                           EscapeJsonString (prop.definition.name).ToCStr ().Get () +
+                                           GS::UniString ("\",");
+                            } else {
+                                jsonStr += GS::UniString ("\"name\": \"\",");
+                            }
+
+                            // Получаем имя группы свойства
+                            GS::UniString groupName = "Без группы";
+                            if (prop.definition.groupGuid != APINULLGuid) {
+                                API_PropertyGroup group = {};
+                                const bool groupOk = ParamHelpers::GetGroupFromCache (prop.definition.groupGuid, group);
+                                DBprnt (GS::UniString ("GetPropertiesList: prop=") +
+                                        prop.definition.name.ToCStr ().Get () + GS::UniString (", groupGuid=") +
+                                        APIGuidToString (prop.definition.groupGuid).ToCStr ().Get () +
+                                        GS::UniString (", groupOk=") + GS::ValueToUniString (groupOk) +
+                                        (groupOk ? (GS::UniString (", groupName=") + group.name.ToCStr ().Get ())
+                                                 : GS::UniString (", groupName=<unavailable>")));
+                                if (groupOk && !group.name.IsEmpty ()) {
+                                    groupName = group.name;
+                                }
+                            }
+                            jsonStr += GS::UniString ("\"group\": \"") + EscapeJsonString (groupName).ToCStr ().Get () +
+                                       GS::UniString ("\",");
+
+                            ParamValue pvalue;
+                            if (ParamHelpers::ConvertToParamValue (pvalue, prop)) {
+                                GS::UniString valueStr;
+                                switch (pvalue.val.type) {
+                                case API_PropertyIntegerValueType:
+                                    valueStr = GS::UniString::Printf ("%d", pvalue.val.intValue);
+                                    break;
+                                case API_PropertyRealValueType:
+                                    valueStr = GS::UniString::Printf ("%.3f", pvalue.val.doubleValue);
+                                    break;
+                                case API_PropertyStringValueType:
+                                    valueStr = pvalue.val.uniStringValue;
+                                    break;
+                                case API_PropertyBooleanValueType:
+                                    valueStr = pvalue.val.boolValue ? "true" : "false";
+                                    break;
+                                case API_PropertyGuidValueType:
+                                    valueStr = APIGuidToString (pvalue.val.guidval).ToCStr ().Get ();
+                                    break;
+                                default:
+                                    valueStr = "unknown";
+                                    break;
+                                }
+                                jsonStr += GS::UniString ("\"value\": \"") +
+                                           EscapeJsonString (valueStr).ToCStr ().Get () + GS::UniString ("\",");
+                            } else {
+                                jsonStr += "\"value\": \"\",";
+                            }
+
+                            const char *typeStr = "unknown";
+                            switch (prop.definition.valueType) {
                             case API_PropertyIntegerValueType:
-                                valueStr = GS::UniString::Printf ("%d", pvalue.val.intValue);
+                                typeStr = "integer";
                                 break;
                             case API_PropertyRealValueType:
-                                valueStr = GS::UniString::Printf ("%.3f", pvalue.val.doubleValue);
+                                typeStr = "real";
                                 break;
                             case API_PropertyStringValueType:
-                                valueStr = pvalue.val.uniStringValue;
+                                typeStr = "string";
                                 break;
                             case API_PropertyBooleanValueType:
-                                valueStr = pvalue.val.boolValue ? "true" : "false";
+                                typeStr = "boolean";
                                 break;
                             case API_PropertyGuidValueType:
-                                valueStr = APIGuidToString (pvalue.val.guidval).ToCStr ().Get ();
+                                typeStr = "guid";
                                 break;
-                            default:
-                                valueStr = "unknown";
+                            case API_PropertyUndefinedValueType:
+                                typeStr = "undefined";
                                 break;
                             }
-                            jsonStr += GS::UniString ("\"value\": \"") + EscapeJsonString (valueStr).ToCStr ().Get () +
-                                       GS::UniString ("\",");
-                        } else {
-                            jsonStr += "\"value\": \"\",";
+                            jsonStr +=
+                                GS::UniString ("\"valueType\": \"") + GS::UniString (typeStr) + GS::UniString ("\",");
+
+                            jsonStr += GS::UniString ("\"propertyGuid\": \"") +
+                                       APIGuidToString (prop.definition.guid).ToCStr ().Get () + GS::UniString ("\"");
+
+                            // Признак наличия правила SomeStuff в описании — из кэша PROPERTYCACHE (#158)
+                            const bool propertyHasRule = GetPropertyRuleFlag (prop.definition);
+                            jsonStr += GS::UniString (", \"hasRule\": ") +
+                                       (propertyHasRule ? GS::UniString ("true") : GS::UniString ("false"));
+
+                            jsonStr += "}";
                         }
 
-                        const char *typeStr = "unknown";
-                        switch (prop.definition.valueType) {
-                        case API_PropertyIntegerValueType:
-                            typeStr = "integer";
-                            break;
-                        case API_PropertyRealValueType:
-                            typeStr = "real";
-                            break;
-                        case API_PropertyStringValueType:
-                            typeStr = "string";
-                            break;
-                        case API_PropertyBooleanValueType:
-                            typeStr = "boolean";
-                            break;
-                        case API_PropertyGuidValueType:
-                            typeStr = "guid";
-                            break;
-                        case API_PropertyUndefinedValueType:
-                            typeStr = "undefined";
-                            break;
-                        }
-                        jsonStr +=
-                            GS::UniString ("\"valueType\": \"") + GS::UniString (typeStr) + GS::UniString ("\",");
+                        jsonStr += "]}";
 
-                        jsonStr += GS::UniString ("\"propertyGuid\": \"") +
-                                   APIGuidToString (prop.definition.guid).ToCStr ().Get () + GS::UniString ("\"");
-
-                        // Признак наличия правила SomeStuff в описании — из кэша PROPERTYCACHE (#158)
-                        const bool propertyHasRule = GetPropertyRuleFlag (prop.definition);
-                        jsonStr += GS::UniString (", \"hasRule\": ") +
-                                   (propertyHasRule ? GS::UniString ("true") : GS::UniString ("false"));
-
-                        jsonStr += "}";
+                        ++addedElementCount;
                     }
-
-                    jsonStr += "]}";
-
-                    ++addedElementCount;
                 }
-            }
 
-            jsonStr +=
-                GS::UniString ("], \"count\": ") + GS::ValueToUniString (addedElementCount) + GS::UniString (" }");
+                jsonStr +=
+                    GS::UniString ("], \"count\": ") + GS::ValueToUniString (addedElementCount) + GS::UniString (" }");
 
-            DBprnt (GS::UniString ("GetPropertiesList: returning JSON: ") + jsonStr);
+                DBprnt (GS::UniString ("GetPropertiesList: returning JSON: ") + jsonStr);
 #if defined(TESTING)
-            const double propertiesListSeconds =
-                static_cast<double> (std::clock () - propertiesListStart) / CLOCKS_PER_SEC;
-            DBprnt (propertiesListSeconds,
-                    GS::UniString ("GetPropertiesList baseline seconds; selected=") +
-                        GS::ValueToUniString (selectedElements.GetSize ()) + GS::UniString ("; returned=") +
-                        GS::ValueToUniString (addedElementCount));
+                const double propertiesListSeconds =
+                    static_cast<double> (std::clock () - propertiesListStart) / CLOCKS_PER_SEC;
+                DBprnt (propertiesListSeconds,
+                        GS::UniString ("GetPropertiesList baseline seconds; selected=") +
+                            GS::ValueToUniString (selectedElements.GetSize ()) + GS::UniString ("; returned=") +
+                            GS::ValueToUniString (addedElementCount));
 #endif
 
-            return new DG::JSValue (jsonStr);
-        } catch (const std::exception &e) {
-            DBprnt (GS::UniString ("GetPropertiesList: std::exception: ") + e.what ());
-            return new DG::JSValue (GS::UniString ("{\"status\":\"error\",\"message\":\"std::exception\"}"));
-        } catch (...) {
-            DBprnt ("GetPropertiesList: unknown exception");
-            return new DG::JSValue (GS::UniString ("{\"status\":\"error\",\"message\":\"unknown exception\"}"));
-        }
-    }));
+                return new DG::JSValue (jsonStr);
+            } catch (const std::exception &e) {
+                DBprnt (GS::UniString ("GetPropertiesList: std::exception: ") + e.what ());
+                return new DG::JSValue (GS::UniString ("{\"status\":\"error\",\"message\":\"std::exception\"}"));
+            } catch (...) {
+                DBprnt ("GetPropertiesList: unknown exception");
+                return new DG::JSValue (GS::UniString ("{\"status\":\"error\",\"message\":\"unknown exception\"}"));
+            }
+        }));
 
     // Регистрируем функцию для получения значения свойства для выделенных элементов
-    jsACAPI->AddItem (new DG::JSFunction ("GetPropertyValue", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
-        try {
-            // Аргумент приходит как одиночная строка — GUID определения свойства.
-            // ВАЖНО: DynamicCast<JSArray> на аргументе крашит мост (зонды 2026-08-24),
-            // безопасен только каст к JSValue.
-            GS::Ref<DG::JSValue> propertyIdVal = GS::DynamicCast<DG::JSValue> (args);
-            if (propertyIdVal == nullptr) {
-                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                errorObj->AddItem ("status", new DG::JSValue ("error"));
-                errorObj->AddItem ("message", new DG::JSValue ("Expected propertyId as string argument"));
-                return errorObj;
-            }
+    jsACAPI->AddItem (
+        CreateModelReadFunction ("GetPropertyValue", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+            try {
+                // Аргумент приходит как одиночная строка — GUID определения свойства.
+                // ВАЖНО: DynamicCast<JSArray> на аргументе крашит мост (зонды 2026-08-24),
+                // безопасен только каст к JSValue.
+                GS::Ref<DG::JSValue> propertyIdVal = GS::DynamicCast<DG::JSValue> (args);
+                if (propertyIdVal == nullptr) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("status", new DG::JSValue ("error"));
+                    errorObj->AddItem ("message", new DG::JSValue ("Expected propertyId as string argument"));
+                    return errorObj;
+                }
 
-            GS::UniString propertyId = propertyIdVal->GetString ();
-            // propertyId из HTML — GUID определения свойства (prop.propertyGuid)
+                GS::UniString propertyId = propertyIdVal->GetString ();
+                // propertyId из HTML — GUID определения свойства (prop.propertyGuid)
 
-            // Читаем значения свойства по каждому выделенному элементу.
-            // ВАЖНО: cache.property хранит только ОПРЕДЕЛЕНИЯ свойств (без значений по элементам),
-            // поэтому читаем значения напрямую через ACAPI_Element_GetPropertyValue.
-            API_Guid propertyGuid = APIGuidFromString (propertyId.ToCStr ().Get ());
+                // Читаем значения свойства по каждому выделенному элементу.
+                // ВАЖНО: cache.property хранит только ОПРЕДЕЛЕНИЯ свойств (без значений по элементам),
+                // поэтому читаем значения напрямую через ACAPI_Element_GetPropertyValue.
+                API_Guid propertyGuid = APIGuidFromString (propertyId.ToCStr ().Get ());
 
-            // Inline implementation (like GetPropertiesList)
-            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
-            // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
-            selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
+                // Inline implementation (like GetPropertiesList)
+                GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
+                // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
+                selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
 
-            GS::UniString jsonStr = "{ \"values\": [";
+                GS::UniString jsonStr = "{ \"values\": [";
 
-            bool firstValue = true;
-            GS::HashTable<GS::UniString, Int32> valueCounts;
+                bool firstValue = true;
+                GS::HashTable<GS::UniString, Int32> valueCounts;
 
-            for (const API_Guid &elemGuid : selectedElements) {
-                API_Property property;
-                GSErrCode err = ACAPI_Element_GetPropertyValue (elemGuid, propertyGuid, property);
+                for (const API_Guid &elemGuid : selectedElements) {
+                    API_Property property;
+                    GSErrCode err = ACAPI_Element_GetPropertyValue (elemGuid, propertyGuid, property);
 #if !defined(ServerMainVers_2400)
-                // Только AC23: API_Property не имеет члена status — проверяем наличие значения через статус варианта.
-                if (err != NoError || (property.value.variantStatus != API_VariantStatusNormal &&
-                                       property.value.listVariant.variants.IsEmpty ())) {
+                    // Только AC23: API_Property не имеет члена status — проверяем наличие значения через статус
+                    // варианта.
+                    if (err != NoError || (property.value.variantStatus != API_VariantStatusNormal &&
+                                           property.value.listVariant.variants.IsEmpty ())) {
 #else
                 if (err != NoError || property.status != API_Property_HasValue) {
 #endif
-                    continue;
-                }
-                // Значение может быть одиночным или списочным — берём первый вариант
-                const API_Variant *variant = nullptr;
-                if (property.value.variantStatus == API_VariantStatusNormal &&
-                    property.value.singleVariant.variant.type != API_PropertyUndefinedValueType) {
-                    variant = &property.value.singleVariant.variant;
-                } else if (!property.value.listVariant.variants.IsEmpty ()) {
-                    variant = &property.value.listVariant.variants[0];
-                }
-                if (variant == nullptr) {
-                    continue;
-                }
-                GS::UniString valueStr;
-                switch (variant->type) {
-                case API_PropertyIntegerValueType:
-                    valueStr = GS::UniString::Printf ("%d", variant->intValue);
-                    break;
-                case API_PropertyRealValueType:
-                    valueStr = GS::UniString::Printf ("%.3f", variant->doubleValue);
-                    break;
-                case API_PropertyStringValueType:
-                    valueStr = variant->uniStringValue;
-                    break;
-                case API_PropertyBooleanValueType:
-                    valueStr = variant->boolValue ? "true" : "false";
-                    break;
-                case API_PropertyGuidValueType:
-                    valueStr = APIGuidToString (variant->guidValue);
-                    break;
-                default:
-                    continue; // значение отсутствует/не поддерживается
+                        continue;
+                    }
+                    // Значение может быть одиночным или списочным — берём первый вариант
+                    const API_Variant *variant = nullptr;
+                    if (property.value.variantStatus == API_VariantStatusNormal &&
+                        property.value.singleVariant.variant.type != API_PropertyUndefinedValueType) {
+                        variant = &property.value.singleVariant.variant;
+                    } else if (!property.value.listVariant.variants.IsEmpty ()) {
+                        variant = &property.value.listVariant.variants[0];
+                    }
+                    if (variant == nullptr) {
+                        continue;
+                    }
+                    GS::UniString valueStr;
+                    switch (variant->type) {
+                    case API_PropertyIntegerValueType:
+                        valueStr = GS::UniString::Printf ("%d", variant->intValue);
+                        break;
+                    case API_PropertyRealValueType:
+                        valueStr = GS::UniString::Printf ("%.3f", variant->doubleValue);
+                        break;
+                    case API_PropertyStringValueType:
+                        valueStr = variant->uniStringValue;
+                        break;
+                    case API_PropertyBooleanValueType:
+                        valueStr = variant->boolValue ? "true" : "false";
+                        break;
+                    case API_PropertyGuidValueType:
+                        valueStr = APIGuidToString (variant->guidValue);
+                        break;
+                    default:
+                        continue; // значение отсутствует/не поддерживается
+                    }
+
+                    const Int32 *currentCountPtr = valueCounts.GetPtr (valueStr);
+                    Int32 currentCount = currentCountPtr ? *currentCountPtr : 0;
+                    valueCounts.Put (valueStr, currentCount + 1);
                 }
 
-                const Int32 *currentCountPtr = valueCounts.GetPtr (valueStr);
-                Int32 currentCount = currentCountPtr ? *currentCountPtr : 0;
-                valueCounts.Put (valueStr, currentCount + 1);
-            }
-
-            // Формируем JSON
-            Int32 totalCount = 0;
-            Int32 uniqueValuesCount = 0;
-            for (auto it = valueCounts.EnumeratePairs (); it != nullptr; ++it) {
+                // Формируем JSON
+                Int32 totalCount = 0;
+                Int32 uniqueValuesCount = 0;
+                for (auto it = valueCounts.EnumeratePairs (); it != nullptr; ++it) {
 #if defined(ServerMainVers_2800) || defined(ServerMainVers_2900)
-                const GS::UniString &key = it->key;
-                Int32 value = it->value;
+                    const GS::UniString &key = it->key;
+                    Int32 value = it->value;
 #else
                                     const GS::UniString &key = *it->key;
                                     Int32 value = *it->value;
 #endif
-                if (!firstValue) {
-                    jsonStr += ",";
+                    if (!firstValue) {
+                        jsonStr += ",";
+                    }
+                    firstValue = false;
+                    jsonStr += GS::UniString ("{\"value\":\"") + EscapeJsonString (key).ToCStr ().Get () +
+                               GS::UniString ("\",\"count\":") + GS::ValueToUniString (value) + GS::UniString ("}");
+                    totalCount += value;
+                    uniqueValuesCount++;
                 }
-                firstValue = false;
-                jsonStr += GS::UniString ("{\"value\":\"") + EscapeJsonString (key).ToCStr ().Get () +
-                           GS::UniString ("\",\"count\":") + GS::ValueToUniString (value) + GS::UniString ("}");
-                totalCount += value;
-                uniqueValuesCount++;
+
+                jsonStr += "], ";
+
+                bool isCommon = (selectedElements.IsEmpty ()) ||
+                                (uniqueValuesCount == 1 && totalCount == selectedElements.GetSize ());
+
+                jsonStr +=
+                    GS::UniString ("\"common\": ") + GS::UniString (isCommon ? "true" : "false") + GS::UniString (", ");
+                jsonStr += GS::UniString ("\"propertyId\": \"") + EscapeJsonString (propertyId).ToCStr ().Get () +
+                           GS::UniString ("\", ");
+                jsonStr += GS::UniString ("\"status\": \"ok\" }");
+
+                DBprnt (GS::UniString ("GetPropertyValue: returning JSON: ") + jsonStr);
+
+                return new DG::JSValue (jsonStr);
+            } catch (const std::exception &e) {
+                DBprnt (GS::UniString ("GetPropertyValue: std::exception: ") + e.what ());
+                return new DG::JSValue (GS::UniString ("{\"status\":\"error\",\"message\":\"std::exception\"}"));
+            } catch (...) {
+                DBprnt ("GetPropertyValue: unknown exception");
+                return new DG::JSValue (GS::UniString ("{\"status\":\"error\",\"message\":\"unknown exception\"}"));
             }
-
-            jsonStr += "], ";
-
-            bool isCommon =
-                (selectedElements.IsEmpty ()) || (uniqueValuesCount == 1 && totalCount == selectedElements.GetSize ());
-
-            jsonStr +=
-                GS::UniString ("\"common\": ") + GS::UniString (isCommon ? "true" : "false") + GS::UniString (", ");
-            jsonStr += GS::UniString ("\"propertyId\": \"") + EscapeJsonString (propertyId).ToCStr ().Get () +
-                       GS::UniString ("\", ");
-            jsonStr += GS::UniString ("\"status\": \"ok\" }");
-
-            DBprnt (GS::UniString ("GetPropertyValue: returning JSON: ") + jsonStr);
-
-            return new DG::JSValue (jsonStr);
-        } catch (const std::exception &e) {
-            DBprnt (GS::UniString ("GetPropertyValue: std::exception: ") + e.what ());
-            return new DG::JSValue (GS::UniString ("{\"status\":\"error\",\"message\":\"std::exception\"}"));
-        } catch (...) {
-            DBprnt ("GetPropertyValue: unknown exception");
-            return new DG::JSValue (GS::UniString ("{\"status\":\"error\",\"message\":\"unknown exception\"}"));
-        }
-    }));
+        }));
 
     jsACAPI->AddItem (
         new DG::JSFunction ("ResetPropertyToDefault", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
             try {
+                if (!CanAccessModel ())
+                    return ModelReadUnavailable (true);
+                modelReadInProgress = true;
+                GS::OnExit resetReadState ([this] { modelReadInProgress = false; });
                 GS::Ref<DG::JSValue> propertyIdVal = GS::DynamicCast<DG::JSValue> (args);
                 if (propertyIdVal == nullptr) {
                     GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
@@ -747,46 +800,52 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                     return errorObj;
                 }
 
-                GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
-                selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
-                if (selectedElements.IsEmpty ()) {
-                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                    errorObj->AddItem ("success", new DG::JSValue (false));
-                    errorObj->AddItem ("message", new DG::JSValue ("No elements selected"));
-                    return errorObj;
-                }
-
+                GS::Array<API_Guid> selectedElements;
                 Int32 successCount = 0;
                 Int32 alreadyDefaultCount = 0;
                 Int32 errorCount = 0;
                 GS::Array<API_Guid> resetElementGuids;
                 GS::Array<API_Property> resetProperties;
 
-                for (const API_Guid &elemGuid : selectedElements) {
-                    API_Property property = {};
-                    GSErrCode err = ACAPI_Element_GetPropertyValue (elemGuid, propertyGuid, property);
-                    if (err != NoError) {
-                        ++errorCount;
-                        msg_rep ("ResetPropertyToDefault", "ACAPI_Element_GetPropertyValue", err, elemGuid);
-                        continue;
-                    }
+                // Сначала целиком готовим чтение; undo-запись остаётся ВНЕ nonundo-команды.
+                const GSErrCode readErr = ACAPI_CallCommand ("Read properties before reset", [&] () -> GSErrCode {
+                    selectedElements = GetSelectedElements2 (false, true);
+                    selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
+                    for (const API_Guid &elemGuid : selectedElements) {
+                        API_Property property = {};
+                        GSErrCode err = ACAPI_Element_GetPropertyValue (elemGuid, propertyGuid, property);
+                        if (err != NoError) {
+                            ++errorCount;
+                            msg_rep ("ResetPropertyToDefault", "ACAPI_Element_GetPropertyValue", err, elemGuid);
+                            continue;
+                        }
 
-                    if (property.isDefault) {
-                        ++alreadyDefaultCount;
-                        continue;
-                    }
+                        if (property.isDefault) {
+                            ++alreadyDefaultCount;
+                            continue;
+                        }
 
-                    property.isDefault = true;
-                    property.value.variantStatus = API_VariantStatusNormal;
+                        property.isDefault = true;
+                        property.value.variantStatus = API_VariantStatusNormal;
 #if !defined(ServerMainVers_2400)
-                    // Только AC23: API_Property не имеет члена status — помечаем свойство вычисленным.
-                    property.isEvaluated = true;
+                        // Только AC23: API_Property не имеет члена status — помечаем свойство вычисленным.
+                        property.isEvaluated = true;
 #else
                     property.status = API_Property_HasValue;
 #endif
 
-                    resetElementGuids.Push (elemGuid);
-                    resetProperties.Push (property);
+                        resetElementGuids.Push (elemGuid);
+                        resetProperties.Push (property);
+                    }
+                    return NoError;
+                });
+                if (readErr != NoError)
+                    return ModelReadUnavailable (readErr == APIERR_REFUSEDCMD);
+                if (selectedElements.IsEmpty ()) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message", new DG::JSValue ("No elements selected"));
+                    return errorObj;
                 }
 
                 if (!resetProperties.IsEmpty ()) {
@@ -986,8 +1045,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     jsACAPI->AddItem (new DG::JSFunction ("RefreshSelectionInfoUI", [this] (GS::Ref<DG::JSBase>) {
         try {
             DBprnt ("RefreshSelectionInfoUI: called from JS");
-            GS::Array<API_Guid> selectedElements;
-            UpdateSelectionInfoInUI (selectedElements);
+            selectionRefreshPending = true;
             return GS::Ref<DG::JSBase> (new DG::JSValue (true));
         } catch (const std::exception &e) {
             DBprnt (GS::UniString ("RefreshSelectionInfoUI: std::exception: ") + e.what ());
@@ -1820,7 +1878,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         }
     };
 
-    jsACAPI->AddItem (new DG::JSFunction (
+    jsACAPI->AddItem (CreateModelReadFunction (
         "GetSpecRuleProperties", [collectSpecRuleProperties] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
             try {
                 GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
@@ -1892,8 +1950,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     // Проверка правила спецификации по GUID свойства-правила. Аргументы приходят
     // одним значением — JSON-массивом [propertyGuid, limit] (паттерн
     // ParsePropertyForElement): DynamicCast<JSArray> на аргументах роняет мост.
-    jsACAPI->AddItem (
-        new DG::JSFunction ("CheckSpecRuleByPropertyGuid", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+    jsACAPI->AddItem (CreateModelReadFunction (
+        "CheckSpecRuleByPropertyGuid", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
             // Закрывающая скобка — ТОЛЬКО в конце: ранние выходы дописывают
             // common и elements, и скобка посреди строки ломала бы JSON
             // (парсер JS отверг бы весь ответ, а не только ранний выход).
@@ -1991,9 +2049,34 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 // -----------------------------------------------------------------------------
 GSErrCode BrowserPalette::ManualGetSelection () {
     DBprnt ("BrowserPalette::ManualGetSelection ()");
-    GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
+    if (!CanAccessModel ()) {
+        selectionRefreshPending = true;
+        return APIERR_REFUSEDCMD;
+    }
+    GS::Array<API_Guid> selectedElements;
+    GSErrCode err = NoError;
+    {
+        modelReadInProgress = true;
+        GS::OnExit resetReadState ([this] { modelReadInProgress = false; });
+        err = ACAPI_CallCommand ("Read palette selection", [&] () -> GSErrCode {
+            selectedElements = GetSelectedElements2 (false, false);
+            return NoError;
+        });
+    }
+    if (err != NoError) {
+        selectionRefreshPending = err == APIERR_REFUSEDCMD;
+        return err;
+    }
     UpdateSelectionInfoInUI (selectedElements);
     return NoError;
+}
+
+void BrowserPalette::PanelIdle (const DG::PanelIdleEvent &) {
+    if (!selectionRefreshPending || !CanAccessModel ())
+        return;
+    // Сбрасываем ДО попытки: новый запрос, возникший при обновлении, не теряется.
+    selectionRefreshPending = false;
+    ManualGetSelection ();
 }
 
 // -----------------------------------------------------------------------------
@@ -2018,9 +2101,8 @@ GSErrCode __ACENV_CALL BrowserPalette::SelectionChangeHandler (const API_Neig * 
     if (!syncSettings.GetCatchSelectionChanges ())
         return NoError;
 
-    // Получаем текущее выделение и обновляем UI.
-    // ManualGetSelection сам фильтрует APINULLGuid через UpdateSelectionInfoInUI.
-    GetInstance ().ManualGetSelection ();
+    // Уведомление только помечает данные устаревшими; чтение — на следующем idle с проверкой допуска.
+    GetInstance ().selectionRefreshPending = true;
     return NoError;
 }
 
@@ -2112,12 +2194,15 @@ GSErrCode __ACENV_CALL BrowserPalette::PaletteControlCallBack (Int32,
         break;
 
     case APIPalMsg_DisableItems_Begin:
-        if (HasInstance () && GetInstance ().IsVisible ())
+        ++modelAccessBlockDepth;
+        if (HasInstance ())
             GetInstance ().DisableItems ();
         break;
 
     case APIPalMsg_DisableItems_End:
-        if (HasInstance () && GetInstance ().IsVisible ())
+        if (modelAccessBlockDepth > 0)
+            --modelAccessBlockDepth;
+        if (modelAccessBlockDepth == 0 && HasInstance ())
             GetInstance ().EnableItems ();
         break;
 
