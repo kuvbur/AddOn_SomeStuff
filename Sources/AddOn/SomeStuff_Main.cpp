@@ -463,6 +463,8 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
 #endif
         case Pallete_CommandID:
             ShowOrHideBrowserPalette ();
+            // Переключение уже сохранило видимость; не перезаписываем её старой копией.
+            LoadSyncSettingsFromPreferences (syncSettings, true);
             break;
         }
         break;

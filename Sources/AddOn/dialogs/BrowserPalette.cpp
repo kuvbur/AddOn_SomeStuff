@@ -43,17 +43,9 @@ bool BrowserPalette::suppressSelectionRefresh = false;
 // -----------------------------------------------------------------------------
 void ShowOrHideBrowserPalette () {
     const bool wasVisible = BrowserPalette::HasInstance () && BrowserPalette::GetInstance ().IsVisible ();
-    if (wasVisible) {
-        BrowserPalette::GetInstance ().Hide ();
-    } else {
-        if (!BrowserPalette::HasInstance ())
-            BrowserPalette::CreateInstance ();
-        BrowserPalette::GetInstance ().Show ();
-    }
-    SyncSettings syncSettings;
-    LoadSyncSettingsFromPreferences (syncSettings, true);
-    syncSettings.SetShowPalette (!wasVisible);
-    WriteSyncSettingsToPreferences (syncSettings);
+    if (!BrowserPalette::HasInstance ())
+        BrowserPalette::CreateInstance ();
+    BrowserPalette::GetInstance ().SetUserVisible (!wasVisible);
 }
 
 static GS::UniString LoadHtmlFromResource () {
@@ -332,8 +324,21 @@ void BrowserPalette::Show (bool reloadContent) {
 
 void BrowserPalette::Hide () {
     DG::Palette::Hide ();
-    // Записи настроек здесь нет — см. комментарий в Show ().
+    // Временное скрытие Archicad не меняет пользовательскую настройку.
     MenuItemCheckAC (Menu_Pallete, false);
+}
+
+void BrowserPalette::SetUserVisible (bool visible) {
+    // Явное действие отменяет отложенное восстановление после скрытия Archicad.
+    hiddenByArchicad = false;
+    if (visible)
+        Show ();
+    else
+        Hide ();
+    SyncSettings syncSettings;
+    LoadSyncSettingsFromPreferences (syncSettings, true);
+    syncSettings.SetShowPalette (visible);
+    WriteSyncSettingsToPreferences (syncSettings);
 }
 
 void BrowserPalette::UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedElements) {
@@ -2067,7 +2072,7 @@ void BrowserPalette::PanelResized (const DG::PanelResizeEvent &ev) {
 }
 
 void BrowserPalette::PanelCloseRequested (const DG::PanelCloseRequestEvent &, bool *accepted) {
-    Hide ();
+    SetUserVisible (false);
     *accepted = true;
 }
 
@@ -2082,23 +2087,27 @@ GSErrCode __ACENV_CALL BrowserPalette::PaletteControlCallBack (Int32,
     case APIPalMsg_OpenPalette:
         if (!HasInstance ())
             CreateInstance ();
-        GetInstance ().Show ();
+        GetInstance ().SetUserVisible (true);
         break;
 
     case APIPalMsg_ClosePalette:
         if (!HasInstance ())
             break;
-        GetInstance ().Hide ();
+        GetInstance ().SetUserVisible (false);
         break;
 
     case APIPalMsg_HidePalette_Begin:
-        if (HasInstance () && GetInstance ().IsVisible ())
+        if (HasInstance () && GetInstance ().IsVisible ()) {
+            GetInstance ().hiddenByArchicad = true;
             GetInstance ().Hide ();
+        }
         break;
 
     case APIPalMsg_HidePalette_End:
-        if (HasInstance () && !GetInstance ().IsVisible ()) {
-            GetInstance ().Show (false);
+        if (HasInstance () && GetInstance ().hiddenByArchicad) {
+            GetInstance ().hiddenByArchicad = false;
+            if (!GetInstance ().IsVisible ())
+                GetInstance ().Show (false);
         }
         break;
 

@@ -5808,3 +5808,12 @@ Evidence: Hermes scratch/cache-fix/{before.json,red/,green/,build25.log,validati
 - #267 — поиск черновых полов и потолков по низу и верху стен
 - #192 — регрессия Object-избранного пола/потолка
 - Локальная приёмка углов стен (API_WallPart), срез документации Roombook 2026-10-15, расследования падений Undo.dll, этапы Z7–Z9.
+
+
+## Палитра: сохранение пользовательского скрытия (#324, 2026-11-12)
+
+Scope: AC25 Windows, BrowserPalette.cpp/.hpp и ветка Pallete_CommandID в SomeStuff_Main.cpp; только видимость, без защитной правки чтения модели #323.
+Result: SetUserVisible сохраняет явные меню/крестик/Open/Close, отменяет временное восстановление; Begin/End восстанавливают только временно скрытую палитру без reload. MenuCommandHandler перечитывает настройки перед общей записью и обновлением галочки.
+Validation: controlled exact palette RED22/9 → GREEN22/0; exact внешний handler RED7/2 → GREEN7/0. Полные TU SDK25/MSVC/C++14 /WX скомпилированы в scratch, fresh LSP без новых сообщений относительно baseline; независимое повторное ревью без замечаний в scope. Native-проверку подтвердил владелец: «коммить и закрывай issue - я проверил». Отдельный final runner агента не выполнялся; другие SDK/macOS не проверены. Commit разрешён, push не запрошен.
+Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/324.
+Evidence: Hermes scratch/palette-visibility/, commit/ — адресный snapshot без #323.

@@ -4,6 +4,15 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Видимость BrowserPalette (2026-11-12)
+
+- Карточка дополнена разделением явной пользовательской видимости и временного скрытия Archicad. Только BrowserPalette-срез symbols.json обновлён по свежему isolated documentSymbol: 35→36 записей, включая SetUserVisible; остальные записи/порядок сохранены. Shared MCP вернул прежний AST без нового метода и не использовался; callgraph исторический.
+- Controlled exact menu/close/callback/SetUserVisible, clang++ C++14: RED22/9 → GREEN22/0. DG/UI/settings — подменённые границы, не native-приёмка. Полная TU baseline/current SDK25 MSVC C++14 /W3 /WX /c успешно скомпилирована в scratch OBJ, source/header hashes сверены. Fresh isolated LSP имеет одинаковые три сообщения: старые Wswitch/unused-but-set-variable и unused Sync.hpp, новых нет. APX/link/restart/commit/push и GitHub-операции исключены по scope/«без issue».
+- Evidence: Hermes scratch/palette-visibility/ (red/green, offline-baseline/current, offline-comparison.json). Native-переключение видов и другие SDK/macOS not verified.
+- Финальное ревью нашло stale-перезапись в MenuCommandHandler; локальная копия перечитывается только в ветке палитры, exact outer handler RED7/2 → GREEN7/0. Повторное независимое ревью: No issues found in inspected scope. Main baseline/current TU SDK25 C++14 /WX exit0; fresh LSP — одинаковые два unused-includes. Parent повторил полную BrowserPalette TU после параллельной #323: fe442fdd/header d42375c4, MSVC exit0/OBJ создан, LSP три сообщения; controlled palette22/0 и outer menu7/0 повторены на live. Адресно обновлены 12 Main и прежние 36 palette-записей по isolated documentSymbol; новые символы #323 остаются её задачей. APX/native не выполнялись.
+
+- Приёмка владельца: «коммить и закрывай issue - я проверил». Закрытие по этой проверке; отдельный final runner агента не выполнялся. Коммит включает только видимость, без параллельной #323.
+
 ## Неблокирующий partition (#322, 2026-11-11)
 
 - Roombook.md дополнена контрактом локальных ошибок source/zone-face, исключения всей конфликтной группы, честного complete и неблокирующего отчёта caller-а. Штатный cleanup не меняется; сохранность прежней отделки отсутствующего участка не гарантируется. [по коду]

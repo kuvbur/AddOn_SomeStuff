@@ -33,6 +33,7 @@
 - Вызывается из: ArchiCAD (лifecycle). [по коду]
 
 ### `MenuCommandHandler(const API_MenuParams *menuParams) -> GSErrCode`
+- Видимость палитры (2026-11-12, дельта к `7366144`): ветка `Pallete_CommandID` после `ShowOrHideBrowserPalette()` перечитывает локальную копию SyncSettings, чтобы общие `WriteSyncSettingsToPreferences`/`MenuSetState` не вернули старые showpalette/галочку. [по коду; exact controlled handler RED7/2 → GREEN7/0; native not verified]
 - Расположение: `Sources/AddOn/SomeStuff_Main.cpp:371` (рабочее дерево `llm_test`; ревизия базы — :366)
 - Назначение: маршрутизирует команды меню add-on по ID пункта. [из комментария]
 - Контракт: не проверено полностью; подтверждённые ветки: `Auto3D_CommandID` → `AutoFunc::ProfileByLine()` (:467), `AutoLay_CommandID` → `AutoFunc::AlignDrawingsByPoints()` (:470). [по коду, рабочее дерево `llm_test`]

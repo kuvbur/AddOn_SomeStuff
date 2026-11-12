@@ -1677,70 +1677,70 @@
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 163
+    "line": 158
   },
   {
     "name": "Do_ElementMonitor",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 289
+    "line": 284
   },
   {
     "name": "SelectionChangeHandlerProc",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 338
+    "line": 333
   },
   {
     "name": "MenuSetState",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 346
+    "line": 341
   },
   {
     "name": "SetPaletteMenuText",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 360
+    "line": 355
   },
   {
     "name": "MenuCommandHandler",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 375
+    "line": 370
   },
   {
     "name": "CheckEnvironment",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 507
+    "line": 504
   },
   {
     "name": "RegisterInterface",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 521
+    "line": 518
   },
   {
     "name": "Initialize",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 540
+    "line": 536
   },
   {
     "name": "FreeData",
     "kind": "Function",
     "file": "Sources/AddOn/SomeStuff_Main.cpp",
     "module": "SomeStuff_Main",
-    "line": 587
+    "line": 581
   },
   {
     "name": "SumSelected",
@@ -2181,203 +2181,210 @@
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 59
+    "line": 51
   },
   {
     "name": "EscapeJsonString",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 78
+    "line": 70
   },
   {
     "name": "OpenWebsiteInDefaultBrowser",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 107
+    "line": 99
   },
   {
     "name": "RuleFlagStatusName",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 147
+    "line": 139
   },
   {
     "name": "RuleFlagOriginName",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 163
+    "line": 155
   },
   {
     "name": "ParseErrorName",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 179
+    "line": 171
   },
   {
     "name": "RuleFlagCheckToJson",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 201
+    "line": 193
   },
   {
     "name": "StringArrayToJson",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 209
+    "line": 201
   },
   {
     "name": "SpecRuleCommonToJson",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 222
+    "line": 214
   },
   {
     "name": "SpecRuleElementToJson",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 253
+    "line": 245
   },
   {
     "name": "BrowserPalette::BrowserPalette",
     "kind": "Constructor",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 262
+    "line": 254
   },
   {
     "name": "BrowserPalette::~BrowserPalette",
     "kind": "Constructor",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 272
+    "line": 264
   },
   {
     "name": "BrowserPalette::DestroyInstance",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 277
+    "line": 269
   },
   {
     "name": "BrowserPalette::HasInstance",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 282
+    "line": 274
   },
   {
     "name": "BrowserPalette::CreateInstance",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 284
+    "line": 276
   },
   {
     "name": "BrowserPalette::GetInstance",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 290
+    "line": 282
   },
   {
     "name": "BrowserPalette::Show",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 295
+    "line": 287
   },
   {
     "name": "BrowserPalette::Hide",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 333
+    "line": 325
+  },
+  {
+    "name": "BrowserPalette::SetUserVisible",
+    "kind": "Method",
+    "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
+    "module": "dialogs",
+    "line": 331
   },
   {
     "name": "BrowserPalette::UpdateSelectionInfoInUI",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 339
+    "line": 344
   },
   {
     "name": "BrowserPalette::InitBrowserControl",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 381
+    "line": 386
   },
   {
     "name": "BrowserPalette::RegisterACAPIJavaScriptObject",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 404
+    "line": 409
   },
   {
     "name": "BrowserPalette::ManualGetSelection",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 1987
+    "line": 1992
   },
   {
     "name": "BrowserPalette::SelectionChangeHandler",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 2001
+    "line": 2006
   },
   {
     "name": "ElementCanHaveProperty",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 2025
+    "line": 2030
   },
   {
     "name": "FilterElementsByType",
     "kind": "Function",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 2030
+    "line": 2035
   },
   {
     "name": "BrowserPalette::PanelResized",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 2049
+    "line": 2054
   },
   {
     "name": "BrowserPalette::PanelCloseRequested",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 2069
+    "line": 2074
   },
   {
     "name": "BrowserPalette::PaletteControlCallBack",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 2077
+    "line": 2082
   },
   {
     "name": "BrowserPalette::RegisterPaletteControlCallBack",
     "kind": "Method",
     "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
     "module": "dialogs",
-    "line": 2126
+    "line": 2135
   },
   {
     "name": "RuleSelectDialog::~RuleSelectDialog",

@@ -53,6 +53,7 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
 
     DG::Browser browser;
     bool jsObjectRegistered = false;
+    bool hiddenByArchicad = false;
 
     // -------------------------------------------------------------------------
     // Инициализация браузерного контролла и подключение HTML страницы.
@@ -129,6 +130,7 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
     // активную вкладку/фильтр).
     void Show (bool reloadContent = true);
     void Hide ();
+    void SetUserVisible (bool visible);
 
     GSErrCode ManualGetSelection ();
 
