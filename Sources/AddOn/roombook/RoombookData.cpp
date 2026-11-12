@@ -9296,7 +9296,6 @@ namespace Roombook {
         }
         if (!SkirtingSegments_Build (room, faces))
             return false;
-        GS::UniString tip;
         for (auto *beams : {&room.otdbeam_floor, &room.otdbeam_ceil}) {
             for (auto &beam : *beams) {
                 // Суммируем готовые стыки в метрах, независимо от последующей записи native-элементов.
@@ -9315,7 +9314,7 @@ namespace Roombook {
                                    API_BeamID,
                                    favoriteParams,
                                    compositeParam,
-                                   tip,
+                                   beam.tip,
                                    favdict);
             }
         }
@@ -9454,6 +9453,31 @@ namespace Roombook {
         API_ElemTypeID possibly_type = draw_type;
         GS::UniString fav_name = favorite.name;
 
+        // Обработка полов/потолков/плинтусов/карнизов.
+        if ((type == Ceil || type == Floor || type == Floor_Skirting || type == Ceil_Cornice) && !tip.IsEmpty ()) {
+            GS::UniString tipLower = "_";
+            tipLower += UniStringToLower (tip);
+            tipLower += "_";
+            for (MatarialToFavoriteDict::PairIterator cIt = favdict.EnumeratePairs (); cIt != NULL; ++cIt) {
+    #ifdef ServerMainVers_2800
+                const GS::UniString &fav = cIt->key;
+    #else
+                const GS::UniString &fav = *cIt->key;
+    #endif
+                if (fav.Contains (tipLower) && fav.Contains (favorite_suffix)) {
+                    if (auto *favPtr = favdict.GetPtr (fav)) {
+                        if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
+                            Favorite_ReadComposite (param_composite, paramToRead_favorite, fav, favdict);
+                            if (auto *updatedFavPtr = favdict.GetPtr (fav)) {
+                                favorite = *updatedFavPtr;
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
         // Обработка плинтусов/карнизов: если имя не задано, ищем в словаре по рекомендуемому имени
         if (type == Floor_Skirting || type == Ceil_Cornice) {
             if (fav_name.IsEmpty ())
@@ -9506,31 +9530,6 @@ namespace Roombook {
                         favorite = *updatedFavPtr;
                     }
                     return;
-                }
-            }
-        }
-
-        // Обработка полов/потолков.
-        if (favorite.type == API_ZombieElemID && (type == Ceil || type == Floor) && !tip.IsEmpty ()) {
-            GS::UniString tipLower = "_";
-            tipLower += UniStringToLower (tip);
-            tipLower += "_";
-            for (MatarialToFavoriteDict::PairIterator cIt = favdict.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #ifdef ServerMainVers_2800
-                const GS::UniString &fav = cIt->key;
-    #else
-                const GS::UniString &fav = *cIt->key;
-    #endif
-                if (fav.Contains (tipLower) && fav.Contains (favorite_suffix)) {
-                    if (auto *favPtr = favdict.GetPtr (fav)) {
-                        if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
-                            Favorite_ReadComposite (param_composite, paramToRead_favorite, fav, favdict);
-                            if (auto *updatedFavPtr = favdict.GetPtr (fav)) {
-                                favorite = *updatedFavPtr;
-                            }
-                            return;
-                        }
-                    }
                 }
             }
         }
