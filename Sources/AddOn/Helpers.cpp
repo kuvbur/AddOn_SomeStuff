@@ -1827,6 +1827,7 @@ bool ParamHelpers::AddProperty (ParamDictValue &params, GS::Array<API_Property> 
                 }
             }
             pvalue.toQRCode = existingValue->toQRCode;
+            pvalue.optval = existingValue->optval;
             params.Put (rawName, std::move (pvalue));
             flag_find = true;
         } else {
@@ -1869,6 +1870,7 @@ void AddValueToParamDictValueImpl (ParamDictValue &params,
         convertValue (pvalue); // Вызываем кастомную конвертацию через лямбду
         pvalue.fromGuid = existingParam->fromGuid;
         pvalue.toQRCode = existingParam->toQRCode;
+        pvalue.optval = existingParam->optval;
         *existingParam = std::move (pvalue);
     } else {
         if (!addInNotEx) {
@@ -5918,8 +5920,11 @@ void ParamHelpers::Read (const API_Guid &elemGuid,
             }
         }
         if (param.toQRCode) {
-            GS::UniString qr = TextToQRCode (param.val.uniStringValue);
-            param.val.uniStringValue = qr;
+            if (param.optval.intval > 0) { // Если задан уровень коррекции
+                param.val.uniStringValue = TextToQRCode (param.val.uniStringValue, param.optval.intval);
+            } else {
+                param.val.uniStringValue = TextToQRCode (param.val.uniStringValue);
+            }
         }
     }
     if (needListData) {
@@ -6022,11 +6027,13 @@ void ParamHelpers::CompareParamDictValue (ParamDictValue &paramsFrom, ParamDictV
         if (ParamValue *paramToPtr = paramsTo.GetPtr (k)) {
             API_Guid savedGuid = paramToPtr->fromGuid;
             auto savedQRCode = paramToPtr->toQRCode;
+            auto savedOptval = paramToPtr->optval;
 
             *paramToPtr = paramFrom;
 
             paramToPtr->fromGuid = savedGuid;
             paramToPtr->toQRCode = savedQRCode;
+            paramToPtr->optval = savedOptval;
         }
     }
 }
@@ -6554,6 +6561,7 @@ bool ParamHelpers::ReadGDL (const API_Element &element,
         if (ParamValue *paramFromPtr = allparams.GetPtr (k)) {
             p.fromGuid = paramFromPtr->fromGuid;
             p.toQRCode = paramFromPtr->toQRCode;
+            p.optval = paramFromPtr->optval;
             *paramFromPtr = p;
         }
     }

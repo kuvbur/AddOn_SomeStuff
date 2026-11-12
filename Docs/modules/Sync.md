@@ -52,6 +52,7 @@
 
 
 ### `SyncString*` — локальное распознавание источников
+- `SyncStringQRCode` до распознавания источника удаляет префикс `QRCode:`, записывает первый параметр `1`–`4` в `optval.intval` и удаляет этот параметр из строки; нераспознанный параметр оставляет для обычного разбора. Перенос уровня через кэш и результат синхронизации пока не подтверждены. [по коду; #325]
 - Расположение: `Sources/AddOn/Sync.cpp:1558–1992`; координаты сверены с рабочим деревом 2026-11-06, AC25. [по коду]
 - Порядок в `SyncString`: ID → GDL → Property → Coord → Material → Formula → Glob → Attribute → Class → Morph → Info → IFC → Element → MEP → ListData → File → Story. Следующий распознаватель вызывается только при `synctypefind == false`. [по коду]
 - `SyncStringMaterial` (:1698) и `SyncStringFormula` (:1798) получают `hasformula` и ссылки на `stringformat`/`stringformat_raw`; заполняют шаблон, формат и направление. Материал дополнительно разбирает pen/all/unic и выставляет `fromQuantity`. [по коду]

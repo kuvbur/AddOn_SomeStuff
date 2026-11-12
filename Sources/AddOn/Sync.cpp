@@ -1562,6 +1562,31 @@ bool ParseSyncString (const API_Guid &elemGuid,
     return hasRule;
 }
 
+static bool SyncStringQRCode (ParamValue &param, GS::UniString &rulestring_one) {
+    if (!rulestring_one.Contains (QRPREF))
+        return false;
+    rulestring_one.ReplaceAll (QRPREF, EMPTYSTRING);
+    param.toQRCode = true;
+    UIndex braceStart = rulestring_one.FindFirst (CHARBRACESTART);
+    if (braceStart == MaxUIndex)
+        return true;
+    UIndex braceEnd = rulestring_one.FindFirst (CHARBRACEEND, braceStart + 1);
+    if (braceEnd == MaxUIndex)
+        return true;
+    UIndex separator = rulestring_one.FindFirst (SEMICOLON, braceStart + 1);
+    if (separator == MaxUIndex || separator >= braceEnd)
+        return true;
+    UIndex nextSeparator = rulestring_one.FindFirst (SEMICOLON, separator + 1);
+    UIndex tokenEnd = (nextSeparator != MaxUIndex && nextSeparator < braceEnd) ? nextSeparator : braceEnd;
+    GS::UniString level = rulestring_one.GetSubstring (separator + 1, tokenEnd - separator - 1);
+    level.Trim ();
+    if (level == "1" || level == "2" || level == "3" || level == "4") {
+        param.optval.intval = level == "1" ? 1 : level == "2" ? 2 : level == "3" ? 3 : 4;
+        rulestring_one.Delete (separator, tokenEnd - separator);
+    }
+    return true;
+}
+
 static bool SyncStringFile (ParamValue &param,
                             GS::UniString &rulestring_one,
                             SyncMode &syncdirection,
@@ -2112,7 +2137,7 @@ bool SyncString (const API_ElemTypeID &elementType,
         rulestring_one.ReplaceAll ("{symb_pos_", "{Coord:symb_pos_");
     }
     bool hasformula = rulestring_one.Contains (CHARFORMULASTART) && rulestring_one.Contains (CHARFORMULAEND);
-
+    SyncStringQRCode (param, rulestring_one);
     GS::UniString stringformat_raw;
     // Сначала пытаемся распознать источник данных по специальным префиксам и шаблонам.
     // Для каждого типа источника выставляются соответствующие флаги и префикс имени параметра.
@@ -2152,10 +2177,7 @@ bool SyncString (const API_ElemTypeID &elementType,
         synctypefind = SyncStringFile (param, rulestring_one, syncdirection, paramNamePrefix);
     if (synctypefind == false)
         synctypefind = SyncStringStory (param, rulestring_one, syncdirection, paramNamePrefix);
-    if (rulestring_one.Contains (QRPREF)) {
-        rulestring_one.ReplaceAll (QRPREF, EMPTYSTRING);
-        param.toQRCode = true;
-    }
+
     if (synctypefind == false)
         return false;
     param.eltype = elementType;

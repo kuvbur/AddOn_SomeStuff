@@ -1,5 +1,16 @@
 ﻿# Current Task — #323: безопасное чтение свойств палитрой
 
+## #325 — разбор уровня коррекции QR
+
+Scope: только разбор и запись уровня в пользовательской заготовке SyncStringQRCode; AC25 Windows для проверки. Существующие пользовательские правки Helpers.cpp и CommonFunction.hpp сохранять; интеграция передачи через кэш и native-приёмка — отдельный следующий этап.
+Status: PARTIAL — запрошенный разбор реализован и проверен; сквозная функциональность issue не завершена.
+Plan: [x] 325.1 — изучить заготовку и парсер; [x] 325.2 — разбор и запись уровня; [x] 325.3 — адресная регрессия и сборка; [x] 325.4 — перенос optval в путях копирования (Propertycache.cpp:126, Helpers.cpp:1829/1871/6025/6558), clang-format/diff-check и AC25 RelWithDebInfo INT build успешны; [ ] 325.N — native-приёмка в Archicad.
+Last Completed: SyncStringQRCode извлекает 1–4 и удаляет параметр из правила. Стенд с дословной функцией и заглушками MSVC C++14: 10 проверок, 0 ошибок. Передача уровня исправлена в пяти точках копирования ParamValue: SetParamValueFromCache, AddParamDictValue-пути и GDL-перенос; BuildAddOn.py -v25 -r -l INT exit 0 (Helpers/Propertycache перекомпилированы, APX перелинкован). Clangd-диагностики вне функции не сравнивались с baseline. Issue #325 OPEN. Evidence: Hermes scratch/qr325-child/.
+Next Step: native-приёмка уровней 1–4 и автоподбора в Archicad; поведение некорректных уровней и переполнения QR не согласовано (открытые вопросы issue). Generated-координаты Sync не обновлялись.
+Wiki #325: в wiki/ru/Property-Commands-List-ru.md и wiki/ru/QR-Code-Output-ru.md добавлены синтаксис QR и уровни с оговоркой о незавершённой интеграции; runtime не проверялся.
+Last Checkpoint: fcee5ea; коммит не запрошен.
+
+
 ## #323 — BrowserPalette / ODB assertion
 
 Scope: AC25 Windows/C++14; BrowserPalette.cpp/.hpp и регистрация callback в SomeStuff_Main.cpp при необходимости, адресные регрессии и документация. Сохранить формат JS-ответов и жизненный цикл палитры. Не менять Helpers/RoomBook, PLN, настройки хоста; restart/commit/push/ветки вне scope. Другие SDK/macOS — только проверка контрактов, без заявления о сборке.
@@ -124,6 +135,7 @@ e0dfc7d — последний существующий checkpoint. Новый �
 - Остальной функциональный backlog: #149 разделение откосов; #142 состав по имени; #141 толщина из откоса; #136 проверка slab; #130 фильтр; #129 GUID GeneralElemProperties; #128 поиск класса; #115 координаты проёмов; #103 общий helper флагов; #93 Sync_group; #72 размеры колонн; #69 выбор правил по acttype; #62 исходный участок декомпозиции не установлен; #48 hex alphanum; #2 PDF → макеты.
 
 ## Decisions
+- #325 — опциональный уровень коррекции QR в Sync_from; постановка: https://github.com/kuvbur/AddOn_SomeStuff/issues/325. Реализация не начата.
 
 - Не создавать ветки; не коммитить и не пушить без явной команды.
 - Завершённые на GitHub #252/#270 и другие закрытые потоки не возвращать в активный план по историческим записям.

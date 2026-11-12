@@ -129,6 +129,8 @@ namespace ParamHelpers {
             return;
         paramFrom.fromGuid = pvalue.fromGuid;
         paramFrom.toQRCode = pvalue.toQRCode;
+        // Сохраняем опциональное значение правила (уровень коррекции QR и т.д.) при подмене из кэша
+        paramFrom.optval = pvalue.optval;
         pvalue = paramFrom;
     }
 

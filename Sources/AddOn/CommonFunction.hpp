@@ -154,6 +154,10 @@ struct ParamComposite {
     void Clear () { *this = ParamComposite{}; }
 };
 
+struct ParamOptionalVal { // Опциональное значение параметра, которое может быть пустым
+    int intval = 0;
+};
+
 // Словарь с заранее вычисленными данными в пределах обного элемента
 typedef GS::HashTable<GS::UniString, ParamComposite> ParamDictComposite;
 
@@ -171,6 +175,7 @@ struct ParamValue {
     API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
     API_Property property = {};             // Само свойство, для упрощения чтения/записи
     API_ElemTypeID eltype = API_ZombieElemID;
+    ParamOptionalVal optval = {}; // Опциональное значение параметров (уровень ошибок Qr, индекс этажа и т.д.)
     short composite_pen = 0;
     short typeinx = 0;                   // Тип параметра на основе его префикса ({@ifc: и т.д.)
     bool hasParamComposite = false;      // Есть ли соответсвующий параметр состава конструкции (ParamComposite)
