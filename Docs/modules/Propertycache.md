@@ -2,6 +2,8 @@
 
 > Хеш коммита: 493caf5 (2026-09-22). Номера строк — определения в `.cpp` (1-based, проверены grep).
 
+> Адресная сверка #315: рабочее дерево к `c51ff77`, 2026-11-13, AC25 Windows/C++14; текущий контракт Story ниже проверен по исходникам. Остальные исторические координаты и callgraph не пересобраны.
+
 ## Назначение
 Кэш свойств, атрибутов, классификаций, геолокации, форматирования и данных MEP для чтения без повторных запросов. [из комментария, Propertycache.hpp:18-19]
 
@@ -20,6 +22,7 @@
 ## Методы PropertyCache
 - `storyCache` — `GS::HashTable<short, Story>`, ключ — отображаемый номер этажа `Story.ui_index` с учётом `skipNullFloor`, а не API-индекс `Story.index`; значения `level`/`height` в метрах. `ReadStories()` полностью заменяет словарь результатом `GetStories()`, в том числе очищает прежние записи при пустом результате. `isStoriesRead` фиксирует попытку чтения, `isStories_OK` — непустой результат. [по коду, Propertycache.hpp, #315]
 - `GetStory(short index)` — лениво читает этажи при первом обращении и возвращает `const Story*` либо `nullptr`; повторные попадания и промахи не перечитывают проект. Указатель действителен до следующего `ReadStories()`/`Update()`. `Update()` перечитывает этажи вместе с остальными справочниками; отдельный обработчик изменения настроек этажей не добавлен. [по коду, Propertycache.hpp, #315]
+- `GetStoryByIndex(short index)` (`Propertycache.hpp:418–431`) ищет API `Story.index` линейным проходом по тому же `storyCache`. Использует тот же lazy `ReadStories()` и срок жизни указателя, не добавляет второго хранилища или нового API-чтения; при промахе возвращает `nullptr`. Предназначен для собственного `API_Elem_Head.floorInd`, отличного от UI-номера при `skipNullFloor`. [по коду]
 - `Update()` — полное обновление всех кэшей (glob, geo, survey, placeSets, locOrigin, classification, groups, definitions, attribute, info, files, MEP) [по коду, Propertycache.hpp:326-355]
 - `Read*()` — перечитывание отдельных кэшей [по коду]
 - `AddFile(fileName)` — чтение внешнего файла (FIX 2026-09-12: GetPtr вместо ContainsKey+Get) [из комментария, Propertycache.hpp:426-448]

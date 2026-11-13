@@ -1474,9 +1474,9 @@ bool ParseSyncString (const API_Guid &elemGuid,
             }
         }
         if (param.fromStory) {
-            if (!param.val.uniStringValue.IsEmpty () && param.composite_pen == 0) {
+            if (!param.val.uniStringValue.IsEmpty () && !param.optval.hasintval) {
                 ParamDictValue paramDict = {};
-                ParamHelpers::AddValueToParamDictValue (paramDict, "@glob:glob_north_dir");
+                ParamHelpers::AddValueToParamDictValue (paramDict, param.val.uniStringValue);
                 ParamHelpers::AddParamDictValue2ParamDictElement (elemGuidfrom, paramDict, paramToRead);
             }
         }
@@ -1988,32 +1988,34 @@ static bool SyncStringStory (ParamValue &param,
                              GS::UniString &rulestring_one,
                              SyncMode &syncdirection,
                              GS::UniString &paramNamePrefix) {
-    if (!rulestring_one.Contains (STORYPREF))
+    GS::UniString rule = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+    rule.Trim ();
+    if (rule.FindFirst (STORYPREF) != 0)
         return false;
-    rulestring_one.ReplaceAll (STORYPREF, EMPTYSTRING);
+    rulestring_one.Delete (rulestring_one.FindFirst (STORYPREF), STORYPREF.GetLength ());
     paramNamePrefix = STORYNAMEPREFIX;
     param.typeinx = STORYTYPEINX;
     param.fromStory = true;
     syncdirection = SYNC_FROM;
+    param.optval.intval = 0;
+    param.optval.hasintval = false;
+    param.val.uniStringValue.Clear ();
 
     GS::Array<GS::UniString> params;
     GS::Array<GS::UniString> local_scratch;
-    GS::UniString rule = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
-    if (StringSplt (rule, SEMICOLON, params, true, &local_scratch) > 1) {
-        param.val.uniStringValue = params[1];
-        try {
-            param.composite_pen =
-                std::stoi (params[1].ToCStr ().Get ()); // Используем composite_pen для хранения индекса этажа
-        } catch (const std::exception &) {
-            param.composite_pen = 0;
-            Name2Rawname (params[1], param.val.uniStringValue);
-            param.val.uniStringValue = param.val.uniStringValue.GetSubstring (CHARATSIGN, CHARBRACEEND, 0);
+    rule = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+    const UInt32 count = StringSplt (rule, SEMICOLON, params, false, &local_scratch);
+    if (count > 1 && !params[1].IsEmpty () && !UniStringToLower (params[1]).IsEqual ("self")) {
+        if (params[1].FindFirst (PROPERTYPREF) == 0) {
+            FormatString referenceFormat = {};
+            param.val.uniStringValue = ParamHelpers::NameToRawName (params[1], referenceFormat);
+        } else if (ParamHelpers::ParseStoryIndex (params[1], param.optval.intval)) {
+            param.optval.hasintval = true;
+        } else {
+            syncdirection = SYNC_NO;
         }
-        return true;
-    } else {
-        return false;
     }
-    return false;
+    return true;
 }
 
 static bool SyncStringCheckElementType (ParamValue &param, const GS::UniString &rulestring_one) {
@@ -2139,6 +2141,13 @@ bool SyncString (const API_ElemTypeID &elementType,
     bool hasformula = rulestring_one.Contains (CHARFORMULASTART) && rulestring_one.Contains (CHARFORMULAEND);
     SyncStringQRCode (param, rulestring_one);
     GS::UniString stringformat_raw;
+    GS::UniString outerSource = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+    outerSource.Trim ();
+    if (outerSource.FindFirst (STORYPREF) == 0) {
+        synctypefind = SyncStringStory (param, rulestring_one, syncdirection, paramNamePrefix);
+        if (syncdirection == SYNC_NO)
+            return false;
+    }
     // Сначала пытаемся распознать источник данных по специальным префиксам и шаблонам.
     // Для каждого типа источника выставляются соответствующие флаги и префикс имени параметра.
     if (synctypefind == false)
@@ -2176,9 +2185,6 @@ bool SyncString (const API_ElemTypeID &elementType,
     if (synctypefind == false)
         synctypefind = SyncStringFile (param, rulestring_one, syncdirection, paramNamePrefix);
     if (synctypefind == false)
-        synctypefind = SyncStringStory (param, rulestring_one, syncdirection, paramNamePrefix);
-
-    if (synctypefind == false)
         return false;
     param.eltype = elementType;
 
@@ -2210,7 +2216,7 @@ bool SyncString (const API_ElemTypeID &elementType,
     GS::UniString tparamName = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
     GS::Array<GS::UniString> params = {};
     GS::Array<GS::UniString> local_scratch;
-    UInt32 nparam = StringSplt (tparamName, SEMICOLON, params, true, &local_scratch);
+    UInt32 nparam = StringSplt (tparamName, SEMICOLON, params, !param.fromStory, &local_scratch);
 
     // Параметры не найдены - выходим
     if (nparam == 0)
@@ -2218,11 +2224,26 @@ bool SyncString (const API_ElemTypeID &elementType,
     GS::UniString paramName = params.Get (0);
     paramName.ReplaceAll (SLASHEKR, SLASH);
 
+    if (param.fromStory) {
+        stringformat_raw = FormatStringFunc::GetFormatString (paramName);
+        if (!stringformat_raw.IsEmpty ())
+            stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
+        paramName = UniStringToLower (paramName);
+        if (!paramName.IsEqual ("level") && !paramName.IsEqual ("height"))
+            return false;
+    }
+
     if (param.fromMaterial || param.val.hasFormula || param.fromStory) {
         param.rawName = paramNamePrefix;
         param.rawName.Append (UniStringToLower (paramName));
         param.rawName.Append (SEMICOLON);
-        param.rawName.Append (param.val.uniStringValue);
+        if (param.fromStory && param.optval.hasintval) {
+            param.rawName.Append (GS::UniString::Printf ("%d", param.optval.intval));
+        } else if (param.fromStory && param.val.uniStringValue.IsEmpty ()) {
+            param.rawName.Append ("self");
+        } else {
+            param.rawName.Append (param.val.uniStringValue);
+        }
         param.rawName.Append (DOT);
         param.rawName.Append (stringformat.stringformat);
         param.rawName.Append (BRACEEND);
@@ -2230,7 +2251,7 @@ bool SyncString (const API_ElemTypeID &elementType,
         stringformat_raw = FormatStringFunc::GetFormatString (paramName);
         stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
     }
-    UInt32 start_ignore = 0;
+    UInt32 start_ignore = param.fromStory ? 2 : 0;
     if (param.fromClassification) {
         param.name = UniStringToLower (params.Get (0));
         param.rawName = paramNamePrefix;
@@ -2254,7 +2275,7 @@ bool SyncString (const API_ElemTypeID &elementType,
         // Обработка данных о размерах массива и типе чтения
         if (start_ignore == 0)
             start_ignore = 1;
-        GS::UniString arrtype = UniStringToLower (params[1]);
+        GS::UniString arrtype = param.fromStory ? EMPTYSTRING : UniStringToLower (params[1]);
         bool hasArray = false;
         if (!hasArray && (arrtype.Contains ("uniq") || arrtype.Contains ("unic"))) {
             arrtype.ReplaceAll ("uniq", EMPTYSTRING);

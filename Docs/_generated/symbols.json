@@ -550,728 +550,742 @@
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 25
+    "line": 26
   },
   {
     "name": "FormatStringFunc::GetFormatStringFromFormula",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 28
+    "line": 29
   },
   {
     "name": "FormatStringFunc::GetFormatString",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 89
+    "line": 90
   },
   {
     "name": "FormatStringFunc::IsValid",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 120
+    "line": 121
   },
   {
     "name": "FormatStringFunc::ReplaceMeters",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 168
+    "line": 169
   },
   {
     "name": "FormatStringFunc::ParseFormatString",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 185
+    "line": 186
   },
   {
     "name": "FormatStringFunc::NumToString",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 297
+    "line": 298
   },
   {
     "name": "GetRuleFromSelected",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 357
+    "line": 358
   },
   {
     "name": "GetElementForPropertyDefinition",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 387
+    "line": 388
   },
   {
     "name": "AttachObserver",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 517
+    "line": 518
   },
   {
     "name": "DetachObserver",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 532
+    "line": 533
   },
   {
     "name": "CheckElementType",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 547
+    "line": 548
   },
   {
     "name": "IsElementEditable",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 617
+    "line": 618
   },
   {
     "name": "GetSelectedElements",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 671
+    "line": 672
   },
   {
     "name": "GetParentGUIDSectElem",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 804
+    "line": 805
   },
   {
     "name": "CallOnSelectedElemSettings",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 826
+    "line": 827
   },
   {
     "name": "CallOnSelectedElem",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 858
+    "line": 859
   },
   {
     "name": "GetRelationsElement",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 887
+    "line": 888
   },
   {
     "name": "ParamHelpers::ReadMorphParam",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1179
+    "line": 1180
   },
   {
     "name": "ParamHelpers::GetRawnamePrefixByTypeInx",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1266
+    "line": 1267
   },
   {
     "name": "ParamHelpers::GetTypeInxByRawnamePrefix",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1332
+    "line": 1339
   },
   {
     "name": "ParamHelpers::SetParamValueSourseByName",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1376
+    "line": 1387
   },
   {
     "name": "ParamHelpers::SetArrayByRawname",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1450
+    "line": 1464
   },
   {
     "name": "ParamHelpers::NameToRawName",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1492
+    "line": 1506
   },
   {
     "name": "ParamHelpers::AddValueToParamDictValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1528
+    "line": 1542
   },
   {
     "name": "ParamHelpers::needAdd",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1548
+    "line": 1562
   },
   {
     "name": "ParamHelpers::AddParamValue2ParamDict",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1561
+    "line": 1575
   },
   {
     "name": "ParamHelpers::AddParamValue2ParamDictElement",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1573
+    "line": 1587
   },
   {
     "name": "ParamHelpers::CheckIgnoreVal",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1580
+    "line": 1594
   },
   {
     "name": "ParamHelpers::CompareParamValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1624
+    "line": 1638
   },
   {
     "name": "ParamHelpers::AddParamDictValue2ParamDictElement",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1727
+    "line": 1741
   },
   {
     "name": "ParamHelpers::AddProperty",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1765
+    "line": 1779
   },
   {
     "name": "AddValueToParamDictValueImpl",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1832
+    "line": 1847
   },
   {
     "name": "ParamHelpers::AddBoolValueToParamDictValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1877
+    "line": 1893
   },
   {
     "name": "ParamHelpers::AddLengthValueToParamDictValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1891
+    "line": 1907
   },
   {
     "name": "ParamHelpers::AddDoubleValueToParamDictValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1906
+    "line": 1922
   },
   {
     "name": "ParamHelpers::AddStringValueToParamDictValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1920
+    "line": 1936
   },
   {
     "name": "ParamHelpers::ReadCoords",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 1938
+    "line": 1954
   },
   {
     "name": "CoordCorrectAngle",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 3568
+    "line": 3584
   },
   {
     "name": "CoordNorthAngle",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 3583
+    "line": 3599
   },
   {
     "name": "CoordRotAngle",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 3617
+    "line": 3633
   },
   {
     "name": "GetPropertyENGName",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 3643
+    "line": 3659
   },
   {
     "name": "ParamHelpers::ReplaceProcToBrace",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 3704
+    "line": 3722
   },
   {
     "name": "ParamHelpers::ParseParamNameMaterial",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 3756
+    "line": 3774
   },
   {
     "name": "ParamHelpers::ParseParamName",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 3764
+    "line": 3782
   },
   {
     "name": "ParamHelpers::ReplaceParamInExpression",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 3876
+    "line": 3894
   },
   {
     "name": "ParamHelpers::GetParamValueForElements",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 3982
+    "line": 4000
   },
   {
     "name": "PropertyHelpers::ToString",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 3997
+    "line": 4015
   },
   {
     "name": "Equals",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4215
+    "line": 4233
   },
   {
     "name": "ParamHelpers::ConvertToProperty",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4287
+    "line": 4305
   },
   {
     "name": "GetElemState",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4483
+    "line": 4501
   },
   {
     "name": "GetElemStateReverse",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4548
+    "line": 4566
   },
   {
     "name": "ParamHelpers::ElementsWrite",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4594
+    "line": 4612
   },
   {
     "name": "ParamHelpers::Write",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4627
+    "line": 4645
   },
   {
     "name": "ParamHelpers::WriteInfo",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4697
+    "line": 4715
   },
   {
     "name": "ParamHelpers::WriteClassification",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4754
+    "line": 4772
   },
   {
     "name": "ParamHelpers::WriteID",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4783
+    "line": 4801
   },
   {
     "name": "ResolveConstructionAttribute",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4814
+    "line": 4832
   },
   {
     "name": "ParamHelpers::WriteAttribute",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 4842
+    "line": 4860
   },
   {
     "name": "ParamHelpers::WriteCoord",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 5024
+    "line": 5042
   },
   {
     "name": "ParamHelpers::WriteGDL",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 5250
+    "line": 5268
   },
   {
     "name": "ParamHelpers::WriteProperty",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 5484
+    "line": 5502
   },
   {
     "name": "ParamHelpers::ElementsRead",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 5583
+    "line": 5601
   },
   {
     "name": "ParamHelpers::Read",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 5589
+    "line": 5607
   },
   {
     "name": "ParamHelpers::SubGuid_GetDefinition",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 5915
+    "line": 5939
   },
   {
     "name": "ParamHelpers::SubGuid_GetParamValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 5934
+    "line": 5958
   },
   {
     "name": "ParamHelpers::CompareParamDictElement",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 5973
+    "line": 5997
   },
   {
     "name": "ParamHelpers::CompareParamDictValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 5992
+    "line": 6016
   },
   {
     "name": "ParamHelpers::ReadProperty",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6019
+    "line": 6045
   },
   {
     "name": "ParamHelpers::ReadIFC",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6044
+    "line": 6070
   },
   {
     "name": "ParamHelpers::ReadClassification",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6104
+    "line": 6130
   },
   {
     "name": "ParamHelpers::ReadAttributeValues",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6180
+    "line": 6206
   },
   {
     "name": "ParamHelpers::ReadID",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6278
+    "line": 6304
   },
   {
     "name": "ParamHelpers::ReadGDL",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6323
+    "line": 6349
   },
   {
     "name": "ParamHelpers::GDLParamByDescription",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6549
+    "line": 6576
   },
   {
     "name": "ParamHelpers::GDLParamByName",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6622
+    "line": 6649
   },
   {
     "name": "hasLibData",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6687
+    "line": 6714
   },
   {
     "name": "ParamHelpers::ReadFormula",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6719
+    "line": 6746
   },
   {
     "name": "ParamHelpers::ReadListData",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6771
+    "line": 6798
   },
   {
     "name": "LayerStructype",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6924
+    "line": 6951
   },
   {
     "name": "ParamHelpers::ReadQuantities",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 6932
+    "line": 6959
   },
   {
     "name": "ParamHelpers::ReadElementValues",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 7366
+    "line": 7489
   },
   {
     "name": "ParamHelpers::ReadFile",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 7420
+    "line": 7543
   },
   {
     "name": "ParamHelpers::GetUnitsPrefix",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 7555
+    "line": 7678
   },
   {
     "name": "ParamHelpers::SetUnitsAndQty2ParamValueComposite",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 7588
+    "line": 7711
   },
   {
     "name": "ParamHelpers::ReadMaterial_ReadAddParam",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 7646
+    "line": 7769
   },
   {
     "name": "ParamHelpers::ReadMaterial",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 7713
+    "line": 7836
   },
   {
     "name": "ParamHelpers::Array2ParamValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8018
+    "line": 8168
   },
   {
     "name": "ParamHelpers::ConvertToParamValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8112
+    "line": 8262
   },
   {
     "name": "ParamHelpers::SetrawNameFromProperty",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8373
+    "line": 8523
   },
   {
     "name": "ParamHelpers::ConvertToParamValue_CheckAttrib",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8566
+    "line": 8716
   },
   {
     "name": "ParamHelpers::ConvertStringToParamValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8670
+    "line": 8820
   },
   {
     "name": "ParamHelpers::ConvertBoolToParamValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8704
+    "line": 8854
   },
   {
     "name": "ParamHelpers::ConvertAttributeToParamValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8738
+    "line": 8888
   },
   {
     "name": "ParamHelpers::ConvertIntToParamValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8766
+    "line": 8916
   },
   {
     "name": "ParamHelpers::ConvertDoubleToParamValue",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8794
+    "line": 8944
   },
   {
     "name": "ParamHelpers::ConvertByFormatString",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8929
+    "line": 9079
   },
   {
     "name": "ParamHelpers::ToString",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8950
+    "line": 9100
   },
   {
     "name": "ParamHelpers::ComponentsBasicStructure",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 8977
+    "line": 9127
   },
   {
     "name": "ParamHelpers::ComponentsGetUnic",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9024
+    "line": 9174
   },
   {
     "name": "ParamHelpers::ComponentsCompositeStructure",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9060
+    "line": 9210
   },
   {
     "name": "ParamHelpers::ComponentsProfileStructure",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9133
+    "line": 9283
   },
   {
     "name": "ParamHelpers::Components",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9465
+    "line": 9615
   },
   {
     "name": "ParamHelpers::GetAttributeValues",
     "kind": "Function",
     "file": "Sources/AddOn/Helpers.cpp",
     "module": "Helpers",
-    "line": 9753
+    "line": 9903
+  },
+  {
+    "name": "ParamHelpers::ParseStoryIndex",
+    "kind": "Function",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 7393
+  },
+  {
+    "name": "ParamHelpers::ReadStory",
+    "kind": "Function",
+    "file": "Sources/AddOn/Helpers.cpp",
+    "module": "Helpers",
+    "line": 7412
   },
   {
     "name": "GetRigidSegmentClassIDFromRoutingElemClassID",
@@ -1971,168 +1985,168 @@
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1565
+    "line": 1590
   },
   {
     "name": "SyncStringAttribute",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1684
+    "line": 1709
   },
   {
     "name": "SyncStringMaterial",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1698
+    "line": 1723
   },
   {
     "name": "SyncStringID",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1768
+    "line": 1793
   },
   {
     "name": "SyncStringGDL",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1777
+    "line": 1802
   },
   {
     "name": "SyncStringFormula",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1798
+    "line": 1823
   },
   {
     "name": "SyncStringMorph",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1831
+    "line": 1856
   },
   {
     "name": "SyncStringCoord",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1845
+    "line": 1870
   },
   {
     "name": "SyncStringProperty",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1862
+    "line": 1887
   },
   {
     "name": "SyncStringInfo",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1872
+    "line": 1897
   },
   {
     "name": "SyncStringIFC",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1882
+    "line": 1907
   },
   {
     "name": "SyncStringGlob",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1896
+    "line": 1921
   },
   {
     "name": "SyncStringClass",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1910
+    "line": 1935
   },
   {
     "name": "SyncStringElement",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1920
+    "line": 1945
   },
   {
     "name": "SyncStringMEP",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1934
+    "line": 1959
   },
   {
     "name": "SyncStringListData",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1948
+    "line": 1973
   },
   {
     "name": "SyncStringStory",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 1962
+    "line": 1987
   },
   {
     "name": "SyncString",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2058
+    "line": 2085
   },
   {
     "name": "SyncSetSubelement",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2428
+    "line": 2471
   },
   {
     "name": "SyncSetSubelementScope",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2524
+    "line": 2567
   },
   {
     "name": "SyncShowSubelement",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2593
+    "line": 2636
   },
   {
     "name": "SyncGetParentelement",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 2865
+    "line": 2908
   },
   {
     "name": "SyncGetSubelement",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 3029
+    "line": 3072
   },
   {
     "name": "SyncGetSyncGUIDProperty",
     "kind": "Function",
     "file": "Sources/AddOn/Sync.cpp",
     "module": "Sync",
-    "line": 3090
+    "line": 3133
   },
   {
     "name": "paletteGuid",
@@ -5107,7 +5121,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 106
+    "line": 125
   },
   {
     "name": "Roombook::GetDefault",
@@ -5198,7 +5212,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 443
+    "line": 730
   },
   {
     "name": "Roombook::OtdRooms_AssignExistingWallFinishes",
@@ -7431,112 +7445,112 @@
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 338
+    "line": 379
   },
   {
     "name": "TestFunc::UniConstCase.actual",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 524
+    "line": 565
   },
   {
     "name": "TestFunc::UniConstCase.expected",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 525
+    "line": 566
   },
   {
     "name": "TestFunc::UniConstCase.label",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 526
+    "line": 567
   },
   {
     "name": "TestFunc::IntConstCase.actual",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 530
+    "line": 571
   },
   {
     "name": "TestFunc::IntConstCase.expected",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 531
+    "line": 572
   },
   {
     "name": "TestFunc::IntConstCase.label",
     "kind": "Field",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 532
+    "line": 573
   },
   {
     "name": "TestFunc::uniConstCases",
     "kind": "Variable",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 535
+    "line": 576
   },
   {
     "name": "TestFunc::intConstCases",
     "kind": "Variable",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 581
+    "line": 622
   },
   {
     "name": "TestFunc::TestParsePrefixes",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 611
+    "line": 652
   },
   {
     "name": "TestFunc::TestParsePropertyDescription",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 624
+    "line": 665
   },
   {
     "name": "TestFunc::TestParseSyncStringIndependent",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 747
+    "line": 788
   },
   {
     "name": "TestFunc::TestDescriptionFlagCommands",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 872
+    "line": 913
   },
   {
     "name": "TestFunc::TestParsePropertyDescriptionToRules",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 907
+    "line": 948
   },
   {
     "name": "TestFunc::TestSyncAddSubelement",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 1024
+    "line": 1065
   },
   {
     "name": "TestFunc::TestDescToRulesSubGuid",
     "kind": "Function",
     "file": "Sources/AddOn/tests/TestSync.cpp",
     "module": "tests",
-    "line": 1187
+    "line": 1228
   },
   {
     "name": "TestFunc::TestGetTextLineLength",

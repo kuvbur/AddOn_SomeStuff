@@ -156,6 +156,7 @@ struct ParamComposite {
 
 struct ParamOptionalVal { // Опциональное значение параметра, которое может быть пустым
     int intval = 0;
+    bool hasintval = false;
 };
 
 // Словарь с заранее вычисленными данными в пределах обного элемента

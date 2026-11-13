@@ -685,7 +685,8 @@ namespace ParamHelpers {
     // -----------------------------------------------------------------------------
     // Получение информации о этажах в проекте
     // -----------------------------------------------------------------------------
-    bool ReadStory (ParamDictValue &params);
+    bool ParseStoryIndex (const GS::UniString &value, int &index);
+    bool ReadStory (const API_Elem_Head &elem_head, ParamDictValue &params);
 
     bool ReadElementValues (const API_Element &element, ParamDictValue &params);
 

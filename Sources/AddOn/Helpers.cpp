@@ -1,6 +1,7 @@
 //------------ kuvbur 2022 ------------
 #include <cmath>
 #include <limits>
+#include <string>
 
 #include "ACAPinc.h"
 
@@ -5880,7 +5881,7 @@ void ParamHelpers::Read (const API_Guid &elemGuid,
             ReadFile (params);
             break;
         case STORYTYPEINX:
-            ParamHelpers::ReadStory (params);
+            ParamHelpers::ReadStory (elem_head, params);
             break;
         default:
             break;
@@ -7389,7 +7390,26 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
 // -----------------------------------------------------------------------------
 // Получение информации о этажах в проекте
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadStory (ParamDictValue &params) {
+bool ParamHelpers::ParseStoryIndex (const GS::UniString &value, int &index) {
+    GS::UniString token = value;
+    token.Trim ();
+    if (token.IsEmpty ())
+        return false;
+    const std::string text = token.ToCStr ().Get ();
+    try {
+        std::size_t consumed = 0;
+        const int parsed = std::stoi (text, &consumed);
+        if (consumed != text.size () || parsed < std::numeric_limits<short>::min () ||
+            parsed > std::numeric_limits<short>::max ())
+            return false;
+        index = parsed;
+        return true;
+    } catch (const std::exception &) {
+        return false;
+    }
+}
+
+bool ParamHelpers::ReadStory (const API_Elem_Head &elem_head, ParamDictValue &params) {
 #if defined(TESTING)
     DBprnt ("      ReadElement");
 #endif
@@ -7403,8 +7423,47 @@ bool ParamHelpers::ReadStory (ParamDictValue &params) {
 #endif
         if (!param.fromStory)
             continue;
-        short inx = param.composite_pen; // индекс этажа
-        if (const auto *story = cache.GetStory (inx)) {
+        param.isValid = false;
+        const Story *story = nullptr;
+        if (!param.val.uniStringValue.IsEmpty ()) {
+            const ParamValue *source = params.GetPtr (param.val.uniStringValue);
+            if (source == nullptr || !source->isValid)
+                continue;
+            if (source->fromPropertyDefinition && source->definition.collectionType != API_PropertySingleCollectionType)
+                continue;
+            int index = 0;
+            switch (source->val.type) {
+            case API_PropertyIntegerValueType:
+                index = source->val.intValue;
+                break;
+            case API_PropertyRealValueType: {
+                // Отображаемое значение могло округлиться до целого: проверяем исходное.
+                const double value = source->val.hasrawDouble ? source->val.rawDoubleValue : source->val.doubleValue;
+                if (!std::isfinite (value) || std::floor (value) != value ||
+                    value < std::numeric_limits<short>::min () || value > std::numeric_limits<short>::max ())
+                    continue;
+                index = static_cast<int> (value);
+                break;
+            }
+            case API_PropertyStringValueType:
+                if (!ParseStoryIndex (source->val.uniStringValue, index))
+                    continue;
+                break;
+            default:
+                continue;
+            }
+            if (index < std::numeric_limits<short>::min () || index > std::numeric_limits<short>::max ())
+                continue;
+            story = cache.GetStory (static_cast<short> (index));
+        } else if (param.optval.hasintval) {
+            const int index = param.optval.intval;
+            if (index < std::numeric_limits<short>::min () || index > std::numeric_limits<short>::max ())
+                continue;
+            story = cache.GetStory (static_cast<short> (index));
+        } else {
+            story = cache.GetStoryByIndex (elem_head.floorInd);
+        }
+        if (story != nullptr) {
             if (param.name.Contains ("level")) {
                 ConvertDoubleToParamValue (param, param.name, story->level);
                 find = true;

@@ -2,6 +2,8 @@
 
 > Хеш коммита: 493caf5 (2026-09-22). Номера строк — определения в `.cpp` (1-based, проверены grep; выборочные).
 
+> Адресная сверка #315: рабочее дерево к `c51ff77`, 2026-11-13, AC25 Windows/C++14; текущий контракт Story ниже проверен по исходникам. Остальные исторические координаты и callgraph не пересобраны.
+
 ## Назначение
 Общие вспомогательные структуры и функции: чтение/запись свойств, этажи, форматирование, отладочный вывод, QR, строки. [из комментария, CommonFunction.hpp:47-48]
 
@@ -10,6 +12,8 @@
 
 ## Ключевые типы [из комментария]
 `Story`/`Stories` — этажи; `FormatString` — параметры округления/формата; `ParamValueData` — унифицированное значение; `ParamValueComposite`/`ParamComposite` — слои конструкции; `ParamValue` — полное описание параметра с ~20 флагами источника (fromProperty, fromGDLparam, fromMaterial и др.); `ProcessWindowGuard` — RAII окна прогресса (InitProcessWindow/CloseProcessWindow, AC27+ ACAPI_ProcessWindow_*); `SuspendGroupsGuard` — RAII режима «приостановить группировку» (AC27+ ACAPI_View_IsSuspendGroupOn/ACAPI_Grouping_Tool, ниже ACAPI_Environment+ACAPI_Element_Tool). [из комментария, CommonFunction.hpp:53-260]
+
+`ParamOptionalVal` содержит `intval = 0` и независимый `hasintval = false`. Флаг позволяет отдельно обозначить заданное числовое значение, включая 0; присваивание одному `intval` автоматически флаг не меняет. В #315 `SyncStringStory` устанавливает флаг только для явного целого литерала, включая 0; для ссылки/собственного этажа оставляет false. `ReadStory` различает ссылку, литерал и собственный API-этаж; блок подготовки зависимости `ParseSyncString` проверяет `!hasintval`. [по коду, CommonFunction.hpp:157–160; отдельный C++14-стенд поля: 10 проверок без отказов, не native; интеграция по коду Sync.cpp:2000–2015,1476–1481 / Helpers.cpp:7428–7464]
 
 ## Публичный API (выборка)
 

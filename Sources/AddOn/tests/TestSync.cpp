@@ -329,6 +329,47 @@ namespace TestFunc {
                 GS::UniString::Printf ("SyncString File junk in number #%d -> false", junk + 1));
         }
 
+        // Этаж: явный ноль, собственный этаж и ссылка на свойство не должны смешиваться.
+        const auto parseStory = [&] (const GS::UniString &rule) {
+            param = ParamValue ();
+            ignorevals = SkipValues ();
+            stringformat = FormatString ();
+            return SyncString (elementType, rule, syncdirection, param, ignorevals, stringformat, true, false, false);
+        };
+        GS::Array<GS::UniString> storyKeys;
+        for (const int index : {-32768, -1, 0, 1, 32767}) {
+            DBtest (parseStory (GS::UniString::Printf ("Sync_from{Story:level;%d}", index)),
+                    "Story literal -> accepted");
+            DBtest (param.fromStory && param.typeinx == STORYTYPEINX, "Story literal -> source");
+            DBtest (param.optval.hasintval && param.optval.intval == index, "Story literal -> optional index");
+            DBtest (param.val.uniStringValue.IsEmpty (), "Story literal -> no dependency");
+            DBtest (ignorevals.ignorevals.IsEmpty (), "Story literal -> index not ignored");
+            for (const auto &key : storyKeys)
+                DBtest (key != param.rawName, "Story literals -> distinct keys");
+            storyKeys.Push (param.rawName);
+        }
+        for (const char *suffix : {"", ";", ";self"}) {
+            DBtest (parseStory (GS::UniString ("Sync_from{Story:height") + suffix + "}"), "Story self -> accepted");
+            DBtest (!param.optval.hasintval && param.val.uniStringValue.IsEmpty (), "Story self -> no index");
+        }
+        for (const char *name : {"min", "max", "sum"}) {
+            DBtest (parseStory (GS::UniString ("Sync_from{Story:level;Property:StoryTest/") + name + "}"),
+                    "Story property -> accepted");
+            DBtest (param.fromStory && !param.fromProperty && !param.fromGDLArray,
+                    "Story property -> outer source preserved");
+            DBtest (param.val.uniStringValue == GS::UniString ("{@property:storytest/") + name + "}",
+                    "Story property -> canonical dependency");
+            DBtest (!param.optval.hasintval && ignorevals.ignorevals.IsEmpty (), "Story property -> reserved index");
+        }
+        DBtest (parseStory ("Sync_from{Story:level;;\"x\"}"), "Story empty index and ignore -> accepted");
+        DBtest (!param.optval.hasintval && param.val.uniStringValue.IsEmpty (), "Story empty index -> self");
+        DBtest (ignorevals.ignorevals.GetSize () == 1 && ignorevals.ignorevals[0].IsEqual ("x"),
+                "Story empty index -> next ignore preserved");
+        for (const char *index : {"1junk", "1.5", "32768", "-32769", "2147483648", "NaN", "Inf"}) {
+            DBtest (!parseStory (GS::UniString ("Sync_from{Story:level;") + index + "}"),
+                    "Story invalid index -> rejected");
+        }
+
         return;
     }
 
