@@ -789,6 +789,9 @@ namespace Roombook {
         const GS::OnExit settingsGuard ([&settingsMemo] () { ACAPI_DisposeElemMemoHdls (&settingsMemo); });
         if (!Beam_GetDefault (draw.favorite.name, draw.type, settings, settingsMemo))
             return;
+        if (settings.beam.nSegments != 1 || settings.beam.nSchemes != 1 || settings.beam.nCuts != 2 ||
+            settingsMemo.beamSegments == nullptr)
+            return;
         const bool is_new = (otd_guid == APINULLGuid);
         if (is_new) {
             beamelement = settings;
@@ -860,15 +863,44 @@ namespace Roombook {
             beammemo.assemblySegmentSchemes[0].fixedLength = 0;
             needupdate = true;
         }
-        // Нулевые размеры и материал означают сохранение соответствующих настроек шаблона.
-        if (!is_equal (geom.width, 0) && geom.width > min_dim &&
-            beammemo.beamSegments[0].assemblySegmentData.nominalWidth != geom.width) {
-            beammemo.beamSegments[0].assemblySegmentData.nominalWidth = geom.width;
-            needupdate = true;
+        auto &segment = beammemo.beamSegments[0].assemblySegmentData;
+        API_AssemblySegmentData targetSegment = segment;
+        if (!is_new) {
+            // Меняем только настройки сечения; данные экземпляра и остальное memo сохраняем.
+            const auto &settingsSegment = settingsMemo.beamSegments[0].assemblySegmentData;
+            targetSegment.modelElemStructureType = settingsSegment.modelElemStructureType;
+            targetSegment.circleBased = settingsSegment.circleBased;
+            targetSegment.profileType = settingsSegment.profileType;
+            targetSegment.isHomogeneous = settingsSegment.isHomogeneous;
+            targetSegment.nominalWidth = settingsSegment.nominalWidth;
+            targetSegment.nominalHeight = settingsSegment.nominalHeight;
+            targetSegment.isWidthAndHeightLinked = settingsSegment.isWidthAndHeightLinked;
+            if (targetSegment.modelElemStructureType == API_ProfileStructure)
+                targetSegment.profileAttr = settingsSegment.profileAttr;
+            if (targetSegment.modelElemStructureType == API_BasicStructure)
+                targetSegment.buildingMaterial = settingsSegment.buildingMaterial;
+            if (!targetSegment.isHomogeneous) {
+                targetSegment.endWidth = settingsSegment.endWidth;
+                targetSegment.endHeight = settingsSegment.endHeight;
+                targetSegment.isEndWidthAndHeightLinked = settingsSegment.isEndWidthAndHeightLinked;
+            }
         }
-        if (!is_equal (geom.height, 0) && geom.height > min_dim &&
-            beammemo.beamSegments[0].assemblySegmentData.nominalHeight != geom.height) {
-            beammemo.beamSegments[0].assemblySegmentData.nominalHeight = geom.height;
+        // Сравниваем итоговые размеры: расчёт отделки имеет приоритет над избранным.
+        if (!is_equal (geom.width, 0) && geom.width > min_dim)
+            targetSegment.nominalWidth = geom.width;
+        if (!is_equal (geom.height, 0) && geom.height > min_dim)
+            targetSegment.nominalHeight = geom.height;
+        if (segment.modelElemStructureType != targetSegment.modelElemStructureType ||
+            segment.profileAttr != targetSegment.profileAttr ||
+            segment.buildingMaterial != targetSegment.buildingMaterial ||
+            segment.circleBased != targetSegment.circleBased || segment.profileType != targetSegment.profileType ||
+            segment.isHomogeneous != targetSegment.isHomogeneous ||
+            segment.nominalWidth != targetSegment.nominalWidth ||
+            segment.nominalHeight != targetSegment.nominalHeight ||
+            segment.isWidthAndHeightLinked != targetSegment.isWidthAndHeightLinked ||
+            segment.endWidth != targetSegment.endWidth || segment.endHeight != targetSegment.endHeight ||
+            segment.isEndWidthAndHeightLinked != targetSegment.isEndWidthAndHeightLinked) {
+            segment = targetSegment;
             needupdate = true;
         }
         if (draw.is_upper_reveal) {

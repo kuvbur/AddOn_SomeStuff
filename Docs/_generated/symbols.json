@@ -5107,7 +5107,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 106
+    "line": 125
   },
   {
     "name": "Roombook::GetDefault",
@@ -5198,7 +5198,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 443
+    "line": 730
   },
   {
     "name": "Roombook::OtdRooms_AssignExistingWallFinishes",
@@ -5247,182 +5247,182 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 947
+    "line": 979
   },
   {
     "name": "Roombook::Object_Draw_Linear",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 1012
+    "line": 1044
   },
   {
     "name": "Roombook::Wall_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 1200
+    "line": 1232
   },
   {
     "name": "Roombook::OtdSlab_SetRoofEdgeTrims",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 1502
+    "line": 1534
   },
   {
     "name": "Roombook::Roof_Prepare",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 1664
+    "line": 1696
   },
   {
     "name": "Roombook::Polygon_IsEqual",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 1749
+    "line": 1781
   },
   {
     "name": "Roombook::Roof_WritePrepared",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 1776
+    "line": 1808
   },
   {
     "name": "Roombook::Roof_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 1995
+    "line": 2027
   },
   {
     "name": "Roombook::Roof_ReadSlabSettings",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2033
+    "line": 2065
   },
   {
     "name": "Roombook::RoofBatch_Validate",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2052
+    "line": 2084
   },
   {
     "name": "Roombook::RoofBatch_CollectUnused",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2090
+    "line": 2122
   },
   {
     "name": "Roombook::Slab_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2132
+    "line": 2164
   },
   {
     "name": "Roombook::Line_Cross",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2374
+    "line": 2406
   },
   {
     "name": "Roombook::kLineEps",
     "kind": "Variable",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2379
+    "line": 2411
   },
   {
     "name": "Roombook::Segments_ProperCross",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2384
+    "line": 2416
   },
   {
     "name": "Roombook::Poly_PickLineEnds",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2408
+    "line": 2440
   },
   {
     "name": "Roombook::Object_Draw_Poly",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2467
+    "line": 2499
   },
   {
     "name": "Roombook::OtdSlab_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2652
+    "line": 2684
   },
   {
     "name": "Roombook::OtdBeam_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2699
+    "line": 2731
   },
   {
     "name": "Roombook::OtdWall_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2729
+    "line": 2761
   },
   {
     "name": "Roombook::OtdRoom_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2771
+    "line": 2803
   },
   {
     "name": "Roombook::AppendRoomFinish",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2872
+    "line": 2904
   },
   {
     "name": "Roombook::FinishLinearLength",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2896
+    "line": 2928
   },
   {
     "name": "Roombook::CollectRoomFinishes",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2898
+    "line": 2930
   },
   {
     "name": "Roombook::OtdSlab_WriteSkirt",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2931
+    "line": 2963
   },
   {
     "name": "Roombook::OtdRooms_Draw",
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 2986
+    "line": 3018
   },
   {
     "name": "Roombook::OtdData_AddRoomToMaterialSummary",

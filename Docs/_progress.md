@@ -4,6 +4,14 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Сечение существующих плинтусов (#326, 2026-11-13)
+
+- Карточка Roombook дополнена selective section-sync в Beam_Draw: активные атрибуты, связанные размеры/флаги, приоритет подготовленной геометрии, сохранение GUID/неуправляемого memo/output-only данных. Изменён только этот writer; source SHA256 56140f81241fd2931b2ea9531cd91526b34c20f1898ed1dedabcd9e9e6ace390.
+- Parent-run exact writer/clang++ C++14: одинаковые 19 случаев RED11FAIL → GREEN0FAIL, GREEN745assertions. Внешние типы/API/helpers и persistence controlled, не SDK/host. Повтор каждого случая no-op, проверены Basic↔Profile/A→B, размеры/флаги, GUID/поверхности/output-only; guards и upper-reveal просмотрены статически, не исполнены стендом.
+- Полная TU baseline/current SDK25/MSVC14.44 C++14 /WX /c успешно скомпилирована в scratch OBJ, без APX. Parent-run current и сверка 2146 headers/хешей исходника/OBJ выполнены. Fresh isolated LSP version1 baseline/current: одинаковые 5 unused-variable + 1 unused-include, diff-mapped ranges совпали, новых нет. MCP diagnostics=[] отдельно не принят за свежий результат.
+- Только Draw-срез symbols.json: все 49 записей сверены с fresh documentSymbol/name joins, 26 координат обновлены, 1037 внешних записей и порядок сохранены. Остальные координаты и callgraph исторические, не из этой коллекции. Независимое read-only ревью deleg_af16a33b: No issues found in inspected scope; source hash совпал с GREEN/TU/LSP/live.
+- Evidence: Hermes scratch/skirting-profile-fix/, skirting-profile-offline/, skirting-profile-parent/. #326 OPEN/WAITING_FOR_NATIVE: canonical APX build/load, native-переходы/повтор и custom/stretched profile payload не проверены. Модель/PLN/избранное/host не менялись; без commit/push.
+
 ## Защита model-read BrowserPalette (#323, 2026-11-12)
 
 - PDB/dump/APX GUID/age и source MD5 подтвердили GetPropertiesList → ACAPI_Element_GetPropertyValues (прежняя строка460). Assertion stack и CLR exception различены; worker-thread race, обязательный TW→selection trigger и универсальная idle-безопасность не установлены.

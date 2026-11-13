@@ -1,5 +1,19 @@
 ﻿# Current Task — #323: безопасное чтение свойств палитрой
 
+## #326 — сложный профиль существующих плинтусов
+
+Scope: по «Исправляй» — только Beam_Draw, адресная регрессия/документация, AC25 Windows/C++14. GUID, расчётную геометрию, несвязанные настройки и чужие изменения сохранить. Модель/избранное/PLN/host, APX/build/load, commit/push/ветки вне scope.
+Status: WAITING_FOR_NATIVE — реализация и офлайн-проверки завершены, issue OPEN.
+Plan: [x] 326.D — диагноз; [x] 326.F1 — SDK25/baseline/RED; [x] 326.F2 — минимальная правка/GREEN; [x] 326.F3 — форматирование/TU/LSP/ревью; [x] 326.F4 — Docs/generated/issue/память; [ ] 326.N — согласованные APX build/load и native-приёмка.
+Root Cause: implementation error — старый Beam_Draw применял Favorite memo только при создании; существующий GUID оставался со старым modelElemStructureType/profileAttr даже при Change из-за геометрии.
+Last Completed: в Beam_Draw:772–973 синхронизированы только управляемые поля section, активные profileAttr/материал/end-размеры; итог сравнивается после geom override. Существующий memo/GUID, inactive и output-only relativeHomeStoryLevel сохранены; вне Beam_Draw байты и инвентарь ACAPI-вызовов идентичны baseline.
+Validation: parent-run exact writer/C++14, 19 случаев RED11FAIL → GREEN0FAIL (GREEN745assertions); второй проход no-op. Типы/API/helpers/persistence controlled, не SDK/native. Guards/upper-reveal — static review only. Полная TU SDK25/MSVC14.44 C++14 /WX /c exit0 в scratch OBJ; свежий isolated LSP version1 — те же 5 unused-variable + 1 unused-include, новых нет. Все2146headers baseline/current совпали. clang-format/diff-check пройдены. Ревью deleg_af16a33b: No issues found in inspected scope. Source56140f81241fd2931b2ea9531cd91526b34c20f1898ed1dedabcd9e9e6ace390 совпал с GREEN/TU/LSP/ревью/live.
+Docs/Memory: карточка Roombook и _progress обновлены; все49Draw-symbols сверены,26координат обновлены,1037внешних записей/порядок сохранены; callgraph исторический. Body issue прочитан обратно и совпал с отправленным, OPEN. Итог передан OpenViking; методика дополнена в lightrag/SKILL.md.
+Next Step: после отдельного разрешения собрать/загрузить новый APX и проверить исходный Basic→Profile, A→B, Profile→Basic, оба вида плинтуса, GUID/повтор/no-op; отдельно custom/stretched profile payload/модификаторы. Нативная регенерация assemblySegmentProfiles по смене profileAttr — not verified; массив/nProfiles не подменяются.
+Last Checkpoint: c51ff77; commit/push не выполнялись и не запрошены.
+Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/326.
+Evidence: Hermes scratch/skirting-profile-diagnosis/, skirting-profile-fix/, skirting-profile-offline/, skirting-profile-parent/ (review-acceptance.json, symbols-acceptance.json, issue326-after-final.json).
+
 ## #325 — разбор уровня коррекции QR
 
 Scope: только разбор и запись уровня в пользовательской заготовке SyncStringQRCode; AC25 Windows для проверки. Существующие пользовательские правки Helpers.cpp и CommonFunction.hpp сохранять; интеграция передачи через кэш и native-приёмка — отдельный следующий этап.
