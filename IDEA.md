@@ -21,10 +21,9 @@ Status: WAITING_FOR_TEST — реализация, локальные прове
 Plan: [x] 315.1 — проверить issue и текущий маршрут; [x] 315.2 — согласовать синтаксис и поля; [x] 315.3 — план утверждён; [x] 315.4 — baseline RED, минимальная реализация и GREEN; [x] 315.5 — форматирование, свежий LSP/AC25 build, независимое ревью; [x] 315.6 — документация/generated/wiki и состояние; [ ] 315.N — native-приёмка по отдельному разрешению.
 Last Completed: внешний Story имеет адресный приоритет; литерал/ссылка/self различимы, пустая позиция индекса сохранена. Пользовательский dependency route сохранён с !hasintval; ReadStory использует готовую зависимость и уже прочитанный elem_head, self — Story.index того же кэша. Невалидность без fallback; новых ACAPI-вызовов нет. RED178/74 → GREEN181/0; permanent parser63/0; extra reader/cache98/0; независимый probe56/0 повторён parent. GS SDK25 реальные, Property/GetStories/converter/часть форматирования controlled; полного ParseSyncString и native нет. TestSync TU /DTESTING и Sync/Helpers TU SDK25/MSVC C++14 /WX compile0; fresh LSP без новых диагностик. Canonical AC25 Windows INT RelWithDebInfo build0, APX скомпонован (SDK PDB LNK4099 warning). Ревью без замечаний. Карточки CommonFunction/Helpers/Propertycache/Sync, русская страница команд и progress обновлены; parent проверил symbols180/0, 908 внешних записей/порядок сохранены, исходные хеши совпадают с build/review. Английская wiki, AI-context и общий callgraph не обновлялись.
 Next Step: по отдельному разрешению native-проверка обоих режимов нулевого этажа, значения свойства на другом home-floor, изменения свойства между запусками и отказа без старого результата. Не перезапускать Archicad и не менять PLN самостоятельно; commit/push/закрытие issue не разрешены. Промежуточные отказы scratch-обвязки и ложная insertion-only предпосылка progress-аудита исправлены только в проверяющем коде; исходники продукта ими не затронуты.
-Last Checkpoint: c51ff77 — наблюдаемый HEAD; checkpoint #315 не создавался, новый коммит не запрошен.
+Last Checkpoint: cc6f000 — [315] Индекс этажа из свойства и собственный этаж в Sync_from{Story:level/height}; checkpoint #326-восстановления: c47a137.
 Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/315 (OPEN).
 Evidence: .hermes/plans/2026-11-12_181956-story315.md; Hermes scratch/story315-implementation/: baseline/manifest.json, regression/parent-green1/summary.json, persistent-tests/result.json, extra-reader/result.json, review/{review.md,report.json}, offline/comparison.json, docs/{docs-acceptance,symbols-acceptance}.json, build-ac25.log, scope-proof.json, parent-final-acceptance.json. Исходные пользовательские правки сохранены в baseline; прежние story315-api.json/story315-plan.md — исследование, не доказательство реализации.
-
 
 ## #325 — разбор уровня коррекции QR
 
@@ -36,15 +35,14 @@ Next Step: native-приёмка уровней 1–4 и автоподбора 
 Wiki #325: в wiki/ru/Property-Commands-List-ru.md и wiki/ru/QR-Code-Output-ru.md добавлены синтаксис QR и уровни с оговоркой о незавершённой интеграции; runtime не проверялся.
 Last Checkpoint: fcee5ea; коммит не запрошен.
 
-
 ## #323 — BrowserPalette / ODB assertion
 
 Scope: AC25 Windows/C++14; BrowserPalette.cpp/.hpp и регистрация callback в SomeStuff_Main.cpp при необходимости, адресные регрессии и документация. Сохранить формат JS-ответов и жизненный цикл палитры. Не менять Helpers/RoomBook, PLN, настройки хоста; restart/commit/push/ветки вне scope. Другие SDK/macOS — только проверка контрактов, без заявления о сборке.
 Status: WAITING_FOR_NATIVE — защитная правка, регрессия, финальные сборка/LSP и независимое ревью завершены; исходный crash не принят в host.
 Plan: [x] 323.1 — перепроверить assertion/exception, точный PDB callback и SDK-контракт; [x] 323.2 — RED, минимальная правка и GREEN; [x] 323.3 — форматирование, свежий LSP, AC25 build и независимое ревью; [x] 323.4 — документация и границы native-приёмки; [ ] 323.N — отдельный native-повтор после разрешения загрузки новой сборки.
 Last Completed: matching dump/APX/PDB и source MD5 установили GetPropertiesList (:460 до правки); assertion и CLR exception различены. Wrapper четырёх readonly callbacks, modeless-depth/reentry, Reset read-stage до отдельного undo, pending/PanelIdle без синхронного чтения Begin/End. Ревью нашло hidden DisableEnd и Reset selection/filter до admission: добавлены пять regression-checks, оба дефекта исправлены. Parent-run одинаковый MSVC C++14 checker108: original79FAIL → pre-review5FAIL → final0FAIL, все compile_exit0; model callbacks/DG/GS/ACAPI/undo controlled, не native. После финальной правки повторены canonical AC25 Windows RelWithDebInfo INT BuildAddOn.py exit0 (BrowserPalette compile/APX link), формат/diff-check и fresh isolated publishDiagnostics version1/documentSymbol. LSP те же три прежних сообщения, два severity1 и одно severity2, новых нет. Финальный cpp3bb8dbca238f1a9dcf9b11ea2d85c2f8f8bfdce6955a8a43c0811ea5c2d59c50/header d42375c4; нормальные тела четырёх readers и undo токены сохранены. Карточка/срез symbols36→41 обновлены по fresh AST,1045внешних записей/порядок сохранены, callgraph исторический. Debug APX и оба PLN неизменны, #324 сохранена.
-Next Step: только по отдельному разрешению загрузить финальный APX и повторить исходный сценарий с property expressions/3D: успешный CallCommand admission не доказан как универсальный nested-3D barrier, modeless/PanelIdle не гарантируют безопасность. Исходный crash/native и другие SDK/macOS not verified; #323 OPEN, push/перезапуск не запрошены; коммит этапа выполняется по команде владельца. Follow-up ревью deleg_b5f33ae5: No issues found in inspected scope, оба P2 устранены, cpp/header hashes совпали с финальным source/build/GREEN. Итоговые артефакты: parent-final-acceptance.json, build-ac25-final.log; APX Build/SomeStuff/25/INT/RelWithDebInfo/SomeStuff.apx SHA2565bc21ca3e14436f525539aa3a28881c105bbfc28022942cb428c66048e3d70a1. Процедура и границы сохранены в archicad-fastlog/references/odb-thread-modification-assert.md.
-Last Checkpoint: настоящий коммит [323.4]; предыдущий 7366144.
+Next Step: только по отдельному разрешению загрузить финальный APX и повторить исходный сценарий с property expressions/3D: успешный CallCommand admission не доказан как универсальный nested-3D barrier, modeless/PanelIdle не гарантируют безопасность. Исходный crash/native и другие SDK/macOS not verified; #323 OPEN, restart/commit/push не запрошены. Follow-up ревью deleg_b5f33ae5: No issues found in inspected scope, оба P2 устранены, cpp/header hashes совпали с финальным source/build/GREEN. Итоговые артефакты: parent-final-acceptance.json, build-ac25-final.log; APX Build/SomeStuff/25/INT/RelWithDebInfo/SomeStuff.apx SHA2565bc21ca3e14436f525539aa3a28881c105bbfc28022942cb428c66048e3d70a1. Процедура и границы сохранены в archicad-fastlog/references/odb-thread-modification-assert.md.
+Last Checkpoint: 7366144; новый коммит не запрошен.
 Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/323.
 Evidence: C:/Users/da-rogojin/AppData/Local/hermes/cache/scratch/browser-odb-20261112/.
 
@@ -161,8 +159,8 @@ e0dfc7d — последний существующий checkpoint. Новый �
 - Остальной функциональный backlog: #149 разделение откосов; #142 состав по имени; #141 толщина из откоса; #136 проверка slab; #130 фильтр; #129 GUID GeneralElemProperties; #128 поиск класса; #115 координаты проёмов; #103 общий helper флагов; #93 Sync_group; #72 размеры колонн; #69 выбор правил по acttype; #62 исходный участок декомпозиции не установлен; #48 hex alphanum; #2 PDF → макеты.
 
 ## Decisions
-- #325 — опциональный уровень коррекции QR в Sync_from; постановка: https://github.com/kuvbur/AddOn_SomeStuff/issues/325. Реализация не начата.
 
+- #325 — опциональный уровень коррекции QR в Sync_from; постановка: https://github.com/kuvbur/AddOn_SomeStuff/issues/325. Реализация не начата.
 - Не создавать ветки; не коммитить и не пушить без явной команды.
 - Завершённые на GitHub #252/#270 и другие закрытые потоки не возвращать в активный план по историческим записям.
 - История до аудита сохранена целиком, кроме «Грабли», которые остаются ниже в IDEA; старые утверждения о OPEN/коммитах/блокировках в архивном снимке относятся к моменту записи.
@@ -170,7 +168,7 @@ e0dfc7d — последний существующий checkpoint. Новый �
 
 ## Archive
 
-Палитра #324 завершена и проверена владельцем; см. IDEA_ARCHIVE.md → «Палитра: сохранение пользовательского скрытия». Commit разрешён; push не запрошен.
+Палитра #324 завершена и проверена владельцем; коммит fcee5ea, issue CLOSED. См. IDEA_ARCHIVE.md → «Палитра: сохранение пользовательского скрытия». Push не выполнялся.
 
 Завершённый аудит: IDEA_ARCHIVE.md → «Аудит открытых issues SomeStuff — 2026-11-08» (все 47 индивидуальных вердиктов, два закрытия, проверки и ограничения). Прежние подробные записи: «Снимок IDEA до аудита 2026-11-08». Активный статус берётся из текущей IDEA и GitHub, не из архивных Next Step.
 
