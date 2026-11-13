@@ -370,8 +370,6 @@ namespace Spec {
                 return;
             } else {
                 elemguid = APINULLGuid;
-                GS::UniString name = elementdatabaseInfo.name;
-                msg_rep ("SpecFilter", "Filter element in diff DB:", err, elemguid);
             }
         } else {
             msg_rep ("SpecFilter", "APIDb_GetCurrentDatabaseID", err, elemguid);
@@ -586,11 +584,6 @@ namespace Spec {
                         continue;
                     if (!footer.IsEmpty ())
                         footer.Append (LINEBRAKE);
-                    // Строки склеиваются конкатенацией, а не Printf с
-                    // ToCStr: CStr — некопируемый класс, и передача его в
-                    // функцию с переменным числом аргументов не компилируется
-                    // (C2280/C4839 в UniString.hpp). Шаблон же принимает
-                    // GS::UniString по значению.
                     footer.Append ("[" + name + "] " + DASHES + " " + message.text);
                 }
             }
