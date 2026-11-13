@@ -5107,7 +5107,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 125
+    "line": 106
   },
   {
     "name": "Roombook::GetDefault",
@@ -5198,7 +5198,7 @@
     "kind": "Function",
     "file": "Sources/AddOn/roombook/RoombookDraw.cpp",
     "module": "roombook",
-    "line": 730
+    "line": 443
   },
   {
     "name": "Roombook::OtdRooms_AssignExistingWallFinishes",
