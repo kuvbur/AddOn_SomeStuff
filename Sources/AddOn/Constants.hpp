@@ -148,9 +148,9 @@ static const Int32 SpecFlagOff = 66;              // Флаг специфика
 // 87: 87 зарезервирован под кнопку «Показать в 3Д» окна SyncShowSubelement,
 // поэтому spec занял 90-92. Пропуск идентификаторов обязателен — иначе
 // перевод строки едет на чужую кнопку.
-static const Int32 SpecCreatedId = 90;  // Создано элементов
-static const Int32 SpecModifiedId = 91; // Изменено элементов
-static const Int32 SpecDeletedId = 92;  // Удалено элементов
+static const Int32 SpecCreatedId = 88;  // Создано элементов
+static const Int32 SpecModifiedId = 89; // Изменено элементов
+static const Int32 SpecDeletedId = 90;  // Удалено элементов
 // Строки окна результата запуска перенумерации. Продолжают нумерацию spec
 // (90-92), потому что окно у обоих запусков одно и то же (RuleSelectDialog),
 // и подписи колонок обязаны читаться одинаково.
