@@ -270,10 +270,7 @@ struct PropertyCache {
     // Кэш правил SomeStuff в описаниях свойств, ключ — GUID определения
     mutable GS::HashTable<API_Guid, PropertyRuleFlag> propertyRuleFlags;
 
-    PropertyCache () {
-    #if defined(TESTING)
-        DBprnt ("=PropertyCache= clear");
-    #endif
+    void Clear () {
         property.Clear ();
         info.Clear ();
         attrib.Clear ();
@@ -295,8 +292,7 @@ struct PropertyCache {
         isStories_OK = false;
         addonrulesbytype.Clear ();
         surv_point_tm = {};
-        isEng = 0;
-        isEng_OK = false;
+
         isGetGeoLocation_OK = false;
         isGetGeoLocationRead = false;
         hasDimAutotext = false;
@@ -341,6 +337,15 @@ struct PropertyCache {
         selectionPropertiesCache.Clear ();
         selectionPropertiesCacheValid = false;
         propertyRuleFlags.Clear ();
+    }
+
+    PropertyCache () {
+    #if defined(TESTING)
+        DBprnt ("=PropertyCache= clear");
+    #endif
+        isEng = 0;
+        isEng_OK = false;
+        Clear ();
     }
     #ifdef ServerMainVers_2900
     void ReadMEP () {
@@ -414,6 +419,22 @@ struct PropertyCache {
         return storyCache.GetPtr (index);
     }
 
+    // Привязка элемента хранит API-индекс, который при skipNullFloor отличается от номера в интерфейсе.
+    const Story *GetStoryByIndex (short index) {
+        if (!isStoriesRead)
+            ReadStories ();
+        for (auto cIt = storyCache.EnumeratePairs (); cIt != nullptr; ++cIt) {
+    #ifdef ServerMainVers_2800
+            const Story &story = cIt->value;
+    #else
+            const Story &story = *cIt->value;
+    #endif
+            if (story.index == index)
+                return &story;
+        }
+        return nullptr;
+    }
+
     void Update () {
         clock_t start, finish;
         double duration;
@@ -421,11 +442,7 @@ struct PropertyCache {
     #if defined(TESTING)
         DBprnt ("=PropertyCache= Update start");
     #endif
-        glob.Clear ();
-        unreadedgdlparams.Clear ();
-        addonrulesbytype.Clear ();
-        findict.Clear ();
-        finclassguids.Clear ();
+        Clear ();
         ReadStories ();
         ReadGetGeoLocation ();
         ReadSurveyPointTransformation ();
