@@ -127,54 +127,35 @@ static const Int32 Annul_StringID = 31; // ID строки "Аннул."
 static const Int32 RVI_StringID = 33;   // ID строки "РВИ"
 
 // --- ID сообщений/статусов обработки подэлементов и спецификаций ---
-static const Int32 SubElementHotFoundId = 34;     // Подэлемент найден (горячая точка)
-static const Int32 SubElementHotFoundId1 = 35;    // Вариант 1 найденного подэлемента
-static const Int32 SubElementHotFoundId2 = 36;    // Вариант 2 найденного подэлемента
-static const Int32 SubElementOtherPlanId = 37;    // Подэлемент расположен на другом плане
-static const Int32 SubElementHiddenId = 38;       // Подэлемент скрыт
-static const Int32 SubElementTotalId = 39;        // Итоговое количество подэлементов
-static const Int32 SubElementNoSelectId = 40;     // Подэлемент не выбран
-static const Int32 SubElementHalfId = 41;         // Подэлемент учтен частично
-static const Int32 SpecRuleNotFoundId = 42;       // Правило спецификации не найдено
-static const Int32 SpecRuleReadFoundId = 43;      // Правило чтение спецификации найдено
-static const Int32 SpecWriteNotFoundId = 44;      // Ошибка записи спецификации: не найдено
-static const Int32 SpecEmptyListdId = 45;         // Список спецификации пуст
-static const Int32 SpecNotFoundParametersId = 46; // Не найдены параметры спецификации
-static const Int32 RoombookId = 47;               // ID модуля экспликации помещений (Roombook)
-static const Int32 SubElementNotExsistId = 48;    // Подэлемент не существует
-static const Int32 SpecParamPlaceNotFoundId = 65; // Не найдено место размещения параметра спецификации
-static const Int32 SpecFlagOff = 66;              // Флаг спецификации выключен
-// Заголовки колонок окна результата запуска спецификации. И начинаются не с
-// 87: 87 зарезервирован под кнопку «Показать в 3Д» окна SyncShowSubelement,
-// поэтому spec занял 90-92. Пропуск идентификаторов обязателен — иначе
-// перевод строки едет на чужую кнопку.
-static const Int32 SpecCreatedId = 88;  // Создано элементов
-static const Int32 SpecModifiedId = 89; // Изменено элементов
-static const Int32 SpecDeletedId = 90;  // Удалено элементов
-// Строки окна результата запуска перенумерации. Продолжают нумерацию spec
-// (90-92), потому что окно у обоих запусков одно и то же (RuleSelectDialog),
-// и подписи колонок обязаны читаться одинаково.
-// Номера строк ресурса — это ПОРЯДКОВЫЕ ПОЗИЦИИ строк в блоке 'STR#', а не
-// числа в комментариях /* [ N ] */: комментарий вырезается препроцессором и на
-// ID не влияет. Строки 88 и 89 в блоке отсутствуют, поэтому все, что объявлено
-// в .grc дальше, сдвинуто на два: комментарий [ 93] - это ID 91.
-// Проверять: Build/SomeStuff/<ver>/ResourceObjects/AddOn.grc.i, нумерация строк
-// в блоке 32501 (для ENG — 33501).
-static const Int32 RenumElementsId = 91; // Заголовок колонки «Элементов»
-static const Int32 RenumWrittenId = 92;  // Заголовок колонки «Изм.»
-// Заголовки колонок отбора и отказов. Числа показывают, куда делись элементы
-// правила: из них «Элементов» изменили позицию, остальные ушли в игнор, пропуск
-// по решению правила или в ошибку.
-static const Int32 RenumIgnoredId = 93;      // Заголовок колонки «Игн.»
-static const Int32 RenumSkippedId = 94;      // Заголовок колонки «Проп.»
-static const Int32 RenumErrorsId = 95;       // Заголовок колонки «Ошиб.»
-static const Int32 RenumWrittenTotalId = 96; // Итог «Элементов с изменённой нумерацией: »
-static const Int32 RenumNoRuleId = 97;       // Правила нумерации не найдены
-static const Int32 RenumUndoFailedId = 98;   // Не удалось записать нумерацию
-static const Int32 RenumPartialErrorId = 99; // Пропущено из-за ошибок в свойствах:
-// Строки 71, 73 и 75 уже описывают ровно эти отказы («свойства не найдены»,
-// «изменение не требуется», «ошибка в правиле нумерации»), поэтому окно
-// результата переиспользует их, а не заводит дубли.
+static const Int32 SubElementHotFoundId = 34;           // Подэлемент найден (горячая точка)
+static const Int32 SubElementHotFoundId1 = 35;          // Вариант 1 найденного подэлемента
+static const Int32 SubElementHotFoundId2 = 36;          // Вариант 2 найденного подэлемента
+static const Int32 SubElementOtherPlanId = 37;          // Подэлемент расположен на другом плане
+static const Int32 SubElementHiddenId = 38;             // Подэлемент скрыт
+static const Int32 SubElementTotalId = 39;              // Итоговое количество подэлементов
+static const Int32 SubElementNoSelectId = 40;           // Подэлемент не выбран
+static const Int32 SubElementHalfId = 41;               // Подэлемент учтен частично
+static const Int32 SpecRuleNotFoundId = 42;             // Правило спецификации не найдено
+static const Int32 SpecRuleReadFoundId = 43;            // Правило чтение спецификации найдено
+static const Int32 SpecWriteNotFoundId = 44;            // Ошибка записи спецификации: не найдено
+static const Int32 SpecEmptyListdId = 45;               // Список спецификации пуст
+static const Int32 SpecNotFoundParametersId = 46;       // Не найдены параметры спецификации
+static const Int32 RoombookId = 47;                     // ID модуля экспликации помещений (Roombook)
+static const Int32 SubElementNotExsistId = 48;          // Подэлемент не существует
+static const Int32 SpecParamPlaceNotFoundId = 65;       // Не найдено место размещения параметра спецификации
+static const Int32 SpecFlagOff = 66;                    // Флаг спецификации выключен
+static const Int32 SpecCreatedId = 88;                  // Создано элементов
+static const Int32 SpecModifiedId = 89;                 // Изменено элементов
+static const Int32 SpecDeletedId = 90;                  // Удалено элементов
+static const Int32 RenumElementsId = 91;                // Заголовок колонки «Элементов»
+static const Int32 RenumWrittenId = 92;                 // Заголовок колонки «Изм.»
+static const Int32 RenumIgnoredId = 93;                 // Заголовок колонки «Игн.»
+static const Int32 RenumSkippedId = 94;                 // Заголовок колонки «Проп.»
+static const Int32 RenumErrorsId = 95;                  // Заголовок колонки «Ошиб.»
+static const Int32 RenumWrittenTotalId = 96;            // Итог «Элементов с изменённой нумерацией: »
+static const Int32 RenumNoRuleId = 97;                  // Правила нумерации не найдены
+static const Int32 RenumUndoFailedId = 98;              // Не удалось записать нумерацию
+static const Int32 RenumPartialErrorId = 99;            // Пропущено из-за ошибок в свойствах:
 static const Int32 RenumMissingPropId = 71;             // Не найдены свойства, заданные в правилах
 static const Int32 RenumNoChangeId = 73;                // Изменение нумерации не требуется
 static const Int32 RenumRuleErrorId = 75;               // Ошибка в правиле нумерации
@@ -185,15 +166,11 @@ static const Int32 OtherDbShowId = 84;                  // Показать эл
 static const Int32 OtherDbDatabaseId = 85;              // Заголовок столбца базы данных
 static const Int32 OtherDbElementsId = 86;              // Заголовок столбца количества элементов
 static const Int32 OtherDbShow3DId = 87;                // Показать элементы другой базы в 3D-окне
-// Тип слоя состава для шаблона Sync_from{Material:Layers} (плейсхолдер
-// {@material:structype}). Номер строки ресурса — позиция в блоке 'STR#';
-// новые строки идут в конце блока, поэтому их комментарии [100]-[102]
-// совпадают с реальными ID.
-static const Int32 LayerCoreStringID = 100;      // Тип слоя: «ядро»
-static const Int32 LayerFinishStringID = 101;    // Тип слоя: «отделка»
-static const Int32 LayerOtherStringID = 102;     // Тип слоя: «другое»
-static const Int32 SkirtingNotSetStringID = 103; // Плинтус: «не задан»
-static const Int32 SkirtingByTypeStringID = 104; // Плинтус: «по типу»
+static const Int32 LayerCoreStringID = 100;             // Тип слоя: «ядро»
+static const Int32 LayerFinishStringID = 101;           // Тип слоя: «отделка»
+static const Int32 LayerOtherStringID = 102;            // Тип слоя: «другое»
+static const Int32 SkirtingNotSetStringID = 103;        // Плинтус: «не задан»
+static const Int32 SkirtingByTypeStringID = 104;        // Плинтус: «по типу»
 
 // --- Внутренние пути свойств материалов ---
 static const GS::UniString MAT_SOME_STUFF_TH =               // Путь к свойству толщины стройматериала
