@@ -5742,6 +5742,9 @@ void ParamHelpers::Read (const API_Guid &elemGuid,
         if (param.val.hasFormula)
             hasparambytypes.Put (FORMULATYPEINX, true);
     }
+    if (eltype == API_CurtainWallSegmentID) {
+        can_read_fromGDL = false;
+    }
     if (hasQuantity && can_read_fromGDL) {
         can_read_fromMaterial = true;
         // Даже если читать компоненты и дескрипторы не нужно - там может находится указание на толщину материала
@@ -7922,6 +7925,23 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
                         inverse = true;
                 }
             }
+
+            // Проверяем - есть ли указание на фильтрацию по типу слоя
+            bool isFilter = false;
+            short filtlayerType = 0;
+            if (rawName.Contains ("_core")) {
+                filtlayerType = APICWallComp_Core;
+                isFilter = true;
+            }
+            if (rawName.Contains ("_finish")) {
+                filtlayerType = APICWallComp_Finish;
+                isFilter = true;
+            }
+            if (rawName.Contains ("_other")) {
+                filtlayerType = 0;
+                isFilter = true;
+            }
+
             // Если строка-шаблон содержит указание nosyncname - то применять спецтекст не нужно
             bool ignore_sync = false;
             if (param_composite.templatestring.Contains (nosyncname)) {
@@ -7966,6 +7986,13 @@ bool ParamHelpers::ReadMaterial (const API_Element &element,
                 Int32 indx = i;
                 if (inverse)
                     indx = nlayers - i - 1;
+                const short layerType = param_composite.composite[indx].structype;
+                if (isFilter && layerType != filtlayerType) {
+                    // При hasFormula маркер &i& уже развёрнут в outstring - затрём его, иначе он останется литералом
+                    if (param_composite.hasFormula)
+                        outstring.ReplaceAll (GS::UniString::Printf ("&%d&", i), EMPTYSTRING);
+                    continue;
+                }
                 API_AttributeIndex constrinx = param_composite.composite[indx].inx;
                 // Если для материала было указано уникальное наименование - заменим его
                 GS::UniString attribsuffix = CharENTER + GS::UniString::Printf ("%d", constrinx) + BRACEEND;
