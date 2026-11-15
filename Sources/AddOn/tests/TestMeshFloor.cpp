@@ -428,6 +428,41 @@ namespace TestFunc {
                        domain.IsEmpty (),
                    "no Mesh leaves the legacy domain untouched");
 
+            // Регрессия #331: одна и та же сетка допустима в подвале, но не этажом выше.
+            for (const bool hasBottom : {false, true}) {
+                for (const double elevation : {-4.3, -0.500001, -0.5, -0.1, 0.0}) {
+                    auto candidate = mesh (ownerA, 0, 4, elevation, 0, hasBottom);
+                    if (hasBottom) {
+                        auto &bottom = candidate.surface.snapshot.bodies[0].surfaces[1];
+                        bottom.planeOffset = -5;
+                        for (auto &vertex : bottom.contours[0].vertices)
+                            vertex.world.z = -5;
+                    }
+                    floors.Clear ();
+                    MeshFloorProvenance provenance;
+                    const bool admitted = elevation >= -0.5;
+                    check (MeshFloorFinishes_BuildProjectedWithProvenance (
+                               room, 0, 0, {candidate}, {}, floors, domain, provenance),
+                           "Mesh height admission succeeds without a write");
+                    check (admitted ? floors.GetSize () == 1 && sameCoverage (domain, room)
+                                    : floors.IsEmpty () && domain.IsEmpty (),
+                           "Mesh at 500mm is admitted and more distant Mesh is excluded");
+                    check (admitted ? provenance.supports.GetSize () == 1 && provenance.contributions.GetSize () == 1
+                                    : provenance.contributions.IsEmpty (),
+                           "rejected Mesh cannot publish a winner contribution");
+                    if (elevation == -4.3) {
+                        floors.Clear ();
+                        check (MeshFloorFinishes_BuildProjected (room, -4.2, -1, {candidate}, {}, floors, domain) &&
+                                   floors.GetSize () == 1 && sameCoverage (domain, room) &&
+                                   floors[0].draw.base_guid == ownerA && floors[0].floorInd == -1 &&
+                                   std::fabs (floors[0].zBottom - elevation) < 1e-6,
+                               "same basement Mesh retains its real level and owner in its own room");
+                    }
+                }
+            }
+            floors.Clear ();
+            // Конец регрессии высотного допуска Mesh #331.
+
             auto source = mesh (ownerA, 0, 4, -2, 1, true);
             check (MeshFloorFinishes_BuildProjected (room, 0, 0, {source}, {}, floors, domain),
                    "solid sloped Mesh is admitted by its bottom");
@@ -511,29 +546,30 @@ namespace TestFunc {
                    "higher third source hides a lower ownership tie");
 
             floors.Clear ();
-            auto left = mesh (ownerA, 0, 2, -1, 0.2, true);
-            auto right = mesh (ownerA, 2, 4, -1, 0.2, true);
+            // Геометрические fixtures остаются в пределах допуска, чтобы не проверять отказ по высоте вместо Boolean.
+            auto left = mesh (ownerA, 0, 2, -0.5, 0.2, true);
+            auto right = mesh (ownerA, 2, 4, -0.5, 0.2, true);
             left.surface.snapshot.bodies[0].surfaces.Append (right.surface.snapshot.bodies[0].surfaces);
             check (MeshFloorFinishes_BuildProjected (room, 0, 0, {left}, {}, floors, domain) &&
                        floors.GetSize () == 1 && sameCoverage (domain, room),
                    "adjacent coplanar same owner patches merge to one plane");
             floors.Clear ();
-            left = mesh (ownerA, 0, 1, -1, 0, true);
-            right = mesh (ownerA, 3, 4, -1, 0, true);
+            left = mesh (ownerA, 0, 1, -0.5, 0, true);
+            right = mesh (ownerA, 3, 4, -0.5, 0, true);
             left.surface.snapshot.bodies[0].surfaces.Append (right.surface.snapshot.bodies[0].surfaces);
             check (MeshFloorFinishes_BuildProjected (room, 0, 0, {left}, {}, floors, domain) &&
                        floors.GetSize () == 2 && std::fabs (domain.CalcArea () - 4) < 1e-5,
                    "disjoint coplanar islands are retained not PopLargest");
 
             floors.Clear ();
-            auto holed = mesh (ownerA, 0, 4, -1, 0, true);
+            auto holed = mesh (ownerA, 0, 4, -0.5, 0, true);
             for (auto &face : holed.surface.snapshot.bodies[0].surfaces) {
                 RoomSurfaceContour hole;
                 hole.hole = true;
                 const GS::Array<API_Coord> coordinates = {{1, 0.5}, {3, 0.5}, {3, 1.5}, {1, 1.5}};
                 for (const auto &point : coordinates) {
                     RoomSurfaceVertex vertex;
-                    vertex.world = {point.x, point.y, face.normalWorld.z > 0 ? -1.0 : -3.0};
+                    vertex.world = {point.x, point.y, face.normalWorld.z > 0 ? -0.5 : -3.0};
                     hole.vertices.Push (vertex);
                 }
                 face.contours.Push (hole);
@@ -588,8 +624,8 @@ namespace TestFunc {
 
                 floors.Clear ();
                 provenance = MeshFloorProvenance{};
-                auto adjacent = mesh (ownerA, 0, 2, -1, 0, false);
-                auto neighbour = mesh (ownerA, 2, 4, -1, 0, false);
+                auto adjacent = mesh (ownerA, 0, 2, -0.5, 0, false);
+                auto neighbour = mesh (ownerA, 2, 4, -0.5, 0, false);
                 neighbour.surface.snapshot.bodies[0].surfaces[0].polygonIndex = 7;
                 adjacent.surface.snapshot.bodies[0].surfaces.Append (neighbour.surface.snapshot.bodies[0].surfaces);
                 check (MeshFloorFinishes_BuildProjectedWithProvenance (
@@ -1223,7 +1259,7 @@ namespace TestFunc {
             mesh.surface.snapshot.status = RoomSurfaceStatus::Extracted;
             RoomSurfaceBody meshBody;
             meshBody.index = 1;
-            meshBody.surfaces.Push (face (2, 0, 4, 2, -1, true));
+            meshBody.surfaces.Push (face (2, 0, 4, 2, -0.5, true));
             meshBody.surfaces.Push (face (2, 0, 4, 2, -3, false));
             mesh.surface.snapshot.bodies.Push (meshBody);
 
@@ -1296,7 +1332,7 @@ namespace TestFunc {
             upperSource.geometryGuid = upperOwner;
             upperSource.snapshot.guid = upperOwner;
             auto leftMesh = mesh;
-            leftMesh.surface.snapshot.bodies[0].surfaces[0] = face (0, 0, 1, 2, -1, true);
+            leftMesh.surface.snapshot.bodies[0].surfaces[0] = face (0, 0, 1, 2, -0.5, true);
             leftMesh.surface.snapshot.bodies[0].surfaces[1] = face (0, 0, 1, 2, -3, false);
             GS::Array<RoomSurfaceSource> suppressedSources = sources;
             suppressedSources.Push (upperSource);
@@ -1524,7 +1560,7 @@ namespace TestFunc {
             MixedFloorGeometry hiddenTrace, holesTrace, recoveredTrace, noMeshTrace;
             MixedFloorProvenance hiddenP, holesP, recoveredP, noMeshP;
             auto hiddenMesh = mesh;
-            hiddenMesh.surface.snapshot.bodies[0].surfaces[0] = face (2, 0, 4, 2, -1, true);
+            hiddenMesh.surface.snapshot.bodies[0].surfaces[0] = face (2, 0, 4, 2, -0.5, true);
             check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
                        zone, sources, roles, 0, nominal, true, prepared, 0, {hiddenMesh}, hiddenTrace, hiddenP) &&
                        refsValid (hiddenTrace, hiddenP) && hiddenP.mesh.contributions.IsEmpty () &&

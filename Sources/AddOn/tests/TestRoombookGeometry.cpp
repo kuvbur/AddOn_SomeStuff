@@ -12,13 +12,13 @@
     // регистрация тестов в TestFunc.cpp — под ServerMainVers_2500).
     #if defined(ServerMainVers_2500)
 
-    #include <cmath>
-    #include <limits>
-    #include <vector>
+        #include <cmath>
+        #include <limits>
+        #include <vector>
 
-    #include "CommonFunction.hpp"
-    #include "roombook/Roombook.hpp"
-    #include "tests/TestKit.hpp"
+        #include "CommonFunction.hpp"
+        #include "roombook/Roombook.hpp"
+        #include "tests/TestKit.hpp"
 
 namespace TestFunc {
 
@@ -342,7 +342,7 @@ namespace TestFunc {
                         candidate.slab.offsetFromTop = 0;
                         candidate.slab.thickness = type == Floor ? .5545 : .3;
                         RoomSurfaceSource source;
-                        const double top = type == Floor ? (i == 0 ? 0 : -.5545) : (i == 0 ? 3.6 : 7.2);
+                        const double top = type == Floor ? (i == 0 ? 0 : -.4) : (i == 0 ? 3.6 : 3.8);
                         check (OtdSlab_BuildPreparedSource (candidate, top, full[0], bases, source),
                                "ordering regression prepared candidate");
                         sources.Push (source);
@@ -350,6 +350,7 @@ namespace TestFunc {
                     }
                     auto footprint = floorSnapshot;
                     footprint.bodies[0].surfaces[0].normalWorld.z = type == Floor ? -1 : 1;
+                    const double originalBoundary = type == Floor ? 0 : 3;
                     for (bool reverse : {false, true}) {
                         const GS::Array<API_Guid> ordered = reverse ? GS::Array<API_Guid>{roles[1], roles[0]} : roles;
                         GS::Array<OtdSlab> finishes;
@@ -364,12 +365,13 @@ namespace TestFunc {
                                                                &nominal,
                                                                true,
                                                                nullptr,
-                                                               &bases) &&
+                                                               &bases,
+                                                               &originalBoundary) &&
                                    finishes.GetSize () == 1 && finishes[0].draw.base_guid == roles[0] &&
                                    std::abs (finishes[0].poly.CalcArea () - 30) < 1e-6 &&
                                    std::abs (finishes[0].zBottom - (type == Floor ? 0 : 3.3)) < 1e-6,
                                type == Floor ? "highest floor wins in both candidate orders"
-                                             : "nearest ceiling above floor wins independent of zone top and order");
+                                             : "lowest admitted ceiling wins in both candidate orders");
                     }
                 }
             }
@@ -1350,11 +1352,11 @@ namespace TestFunc {
             if (change == 3)
                 pair[1].sources[0].polygonIndex = 5;
             if (change == 4) {
-    #ifdef ServerMainVers_2700
+        #ifdef ServerMainVers_2700
                 pair[1].sources[0].modelMaterialIndex = ACAPI_CreateAttributeIndex (7);
-    #else
+        #else
                 pair[1].sources[0].modelMaterialIndex = 7;
-    #endif
+        #endif
             }
             if (change == 5)
                 pair[1].zoneBodyIndex = 2;
@@ -1516,7 +1518,123 @@ namespace TestFunc {
             check (clamp (wall, {wallPart (1, 3), invalid}).IsEmpty (),
                    "wallPart nonfinite bounds reject without partial output");
             check (clamp (wall, {wallPart (1, 1 + min_dim / 2)}).IsEmpty (), "wallPart subthreshold fragment rejects");
+            // Регрессия профильного смещения: начало.
+            for (bool reversed : {false, true}) {
+                for (bool rotated : {false, true}) {
+                    auto shifted = contactWall (reversed ? 3.8 : .2, reversed ? .2 : 3.8);
+                    shifted.geom.seg.begC.y = shifted.geom.seg.endC.y = .131;
+                    auto profileEdges = edges;
+                    API_Coord baseBeg = {0, 0}, baseEnd = {4, 0};
+                    if (rotated) {
+                        const auto rotate = [] (auto &point) {
+                            const double x = point.x;
+                            point.x = -point.y;
+                            point.y = x;
+                        };
+                        rotate (shifted.geom.seg.begC);
+                        rotate (shifted.geom.seg.endC);
+                        rotate (baseBeg);
+                        rotate (baseEnd);
+                        for (auto &edge : profileEdges) {
+                            rotate (edge.c1);
+                            rotate (edge.c2);
+                        }
+                    }
+                    const auto profileClamp = [&] (const GS::Array<API_WallPart> &parts, bool profile) {
+                        return SurfaceWall_ClampToParts (
+                            shifted, baseBeg, baseEnd, parts, profileEdges, 0, {}, profile);
+                    };
+                    auto offset = profileClamp ({wallPart (1, 3)}, true);
+                    check (offset.GetSize () == 1 && closeArea (offset[0].geom.length, 2) &&
+                               closeArea (rotated ? offset[0].geom.seg.begC.x : offset[0].geom.seg.begC.y,
+                                          rotated ? -.131 : .131),
+                           "profile wallPart keeps actual shifted contact plane and finite interval");
+                    check (profileClamp ({wallPart (1, 3)}, false).IsEmpty (),
+                           "non-profile wallPart retains transverse gate");
+                    for (bool reverseParts : {false, true}) {
+                        const GS::Array<API_WallPart> ambiguous =
+                            reverseParts ? GS::Array<API_WallPart>{wallPart (1, 3, 2), wallPart (1, 3)}
+                                         : GS::Array<API_WallPart>{wallPart (1, 3), wallPart (1, 3, 2)};
+                        check (profileClamp (ambiguous, true).IsEmpty (),
+                               "profile wallPart ambiguous shifted carriers fail closed independent of order");
+                    }
+                    auto disjoint = profileClamp ({wallPart (0, 1.5), wallPart (2.5, 4), wallPart (0, 1.5)}, true);
+                    check (disjoint.GetSize () == 2 && closeArea (disjoint[0].geom.length, 1.5) &&
+                               closeArea (disjoint[1].geom.length, 1.5),
+                           "profile wallPart one carrier preserves gaps and merges duplicates");
+                }
+            }
+            wall = contactWall (.2, 3.8);
+            wall.geom.seg.begC.y = wall.geom.seg.endC.y = .131;
+            const GS::Array<Sector> strictEdges = {{{0, .131}, {4, .131}}, edges[0], edges[1]};
+            for (bool reverseParts : {false, true}) {
+                const GS::Array<API_WallPart> parts =
+                    reverseParts
+                        ? GS::Array<API_WallPart>{wallPart (.5, 3.5, 3), wallPart (1, 3), wallPart (.5, 3.5, 2)}
+                        : GS::Array<API_WallPart>{wallPart (.5, 3.5, 2), wallPart (1, 3), wallPart (.5, 3.5, 3)};
+                const auto strict = SurfaceWall_ClampToParts (wall, {0, 0}, {4, 0}, parts, strictEdges, 0, {}, true);
+                check (strict.GetSize () == 1 && closeArea (strict[0].geom.length, 2),
+                       "profile wallPart strict carrier takes priority over shifted candidates");
+            }
+            auto shiftedLeft = wall, shiftedRight = wall;
+            shiftedLeft.geom.seg.endC.x = 1.5;
+            shiftedRight.geom.seg.begC.x = 2.5;
+            const auto shiftedGap = SurfaceWall_ClampToParts (
+                shiftedLeft, {0, 0}, {4, 0}, {wallPart (0, 4)}, edges, 0, {shiftedLeft, shiftedRight}, true);
+            check (shiftedGap.GetSize () == 1 && closeArea (shiftedGap[0].geom.seg.begC.x, 0) &&
+                       closeArea (shiftedGap[0].geom.seg.endC.x, 1.5),
+                   "profile wallPart extends outer end without closing peer gap");
+            opening.objLoc = .5;
+            opening.width = 1;
+            wall.openings.Push (opening);
+            const auto shiftedOpening =
+                SurfaceWall_ClampToParts (wall, {0, 0}, {4, 0}, {wallPart (0, 0)}, edges, 0, {}, true);
+            check (shiftedOpening.GetSize () == 1 && shiftedOpening[0].openings.GetSize () == 1 &&
+                       closeArea (shiftedOpening[0].openings[0].width, 1.2),
+                   "profile wallPart sentinel extension preserves edge notch");
+            // Регрессия профильного смещения: конец.
         }
+        // Регрессия раннего фильтра стеновых граней: начало.
+        {
+            const auto smallFace = [] (double height) {
+                RoomSurface face;
+                face.normalWorld = {0, 1, 0};
+                RoomSurfaceContour contour;
+                for (const API_Coord3D point : {API_Coord3D{0, 0, 0},
+                                                API_Coord3D{1, 0, 0},
+                                                API_Coord3D{1, 0, height},
+                                                API_Coord3D{0, 0, height}}) {
+                    RoomSurfaceVertex vertex;
+                    vertex.world = point;
+                    vertex.local = {point.x, point.y, 1};
+                    contour.vertices.Push (vertex);
+                }
+                face.contours.Push (contour);
+                return face;
+            };
+            check (RoomSurface_IsBelowMinimumWallHeight (API_WallID, smallFace (.004)),
+                   "raw wall face below five millimeters is filtered in world coordinates");
+            check (!RoomSurface_IsBelowMinimumWallHeight (API_WallID, smallFace (.005)) &&
+                       !RoomSurface_IsBelowMinimumWallHeight (API_WallID, smallFace (.006)),
+                   "raw wall face equal or above five millimeters survives");
+            auto small = smallFace (.004);
+            for (API_ElemTypeID type : {API_ZoneID, API_MeshID, API_ColumnID})
+                check (!RoomSurface_IsBelowMinimumWallHeight (type, small), "raw non-wall face is not filtered");
+            small.normalWorld = {0, 0, 1};
+            check (!RoomSurface_IsBelowMinimumWallHeight (API_WallID, small), "raw horizontal wall face survives");
+            small = smallFace (.004);
+            small.origin = RoomSurfaceOrigin::PreparedAnalytic;
+            check (!RoomSurface_IsBelowMinimumWallHeight (API_WallID, small),
+                   "analytic wall is not raw face filter input");
+            small = smallFace (.004);
+            small.contours[0].vertices[0].world.z = std::numeric_limits<double>::quiet_NaN ();
+            check (!RoomSurface_IsBelowMinimumWallHeight (API_WallID, small),
+                   "invalid raw wall face is not an intentional skip");
+            check (!RoomSurface_IsBelowMinimumWallHeight (API_WallID, RoomSurface ()) &&
+                       !RoomSurface_IsBelowMinimumWallHeight (API_WallID, smallFace (0)),
+                   "empty or zero-height raw wall face is not an intentional skip");
+        }
+        // Регрессия раннего фильтра стеновых граней: конец.
         const auto atLevel = [] (RoomSurface face, double z) {
             face.planeOffset = -face.normalWorld.z * z;
             for (auto &contour : face.contours)
@@ -1530,7 +1648,399 @@ namespace TestFunc {
                 sum += slab.poly.CalcArea ();
             return sum;
         };
-        auto floorZone = snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, -1), 0.4));
+        // Регрессия высотного отбора перекрытий: начало.
+        {
+            const auto nominalPolygon = [&] (double z, double width = 4) {
+                RoomSurfacePiece piece;
+                piece.status = RoomSurfacePieceStatus::Matched;
+                piece.baseGuid = zoneGuid;
+                piece.baseType = API_ZoneID;
+                piece.normal = {0, 0, -1};
+                piece.planeOffset = z;
+                piece.area = width * 3;
+                RoomSurfacePieceContour contour;
+                const auto face = atLevel (rectangle (0, width, 0, 3, -1), z);
+                for (const auto &vertex : face.contours[0].vertices)
+                    contour.vertices.Push (vertex.world);
+                piece.contours.Push (contour);
+                GS::Array<OtdSlab> result;
+                check (SurfaceSlabs_Build (piece, 0, result) && result.GetSize () == 1,
+                       "nominal zone candidate has its own finite polygon");
+                return result.IsEmpty () ? OtdSlab () : result[0];
+            };
+
+            // Регрессия 102: границы пола задаёт полигон зоны, а не проекция её 3D-тела.
+            for (bool analytic : {false, true}) {
+                for (bool onlyOnSlab : {false, true}) {
+                    for (int footprintCase = 0; footprintCase < 4; ++footprintCase) {
+                        auto own = nominalPolygon (0);
+                        auto zoneInput = snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, -1), 0));
+                        if (footprintCase == 0)
+                            zoneInput = snapshot (zoneGuid, atLevel (rectangle (0, 4.25, 0, 3, -1), 0));
+                        else if (footprintCase == 1)
+                            zoneInput = snapshot (zoneGuid, atLevel (rectangle (.25, 3.75, 0, 3, -1), 0));
+                        else if (footprintCase == 2) {
+                            zoneInput = snapshot (zoneGuid, atLevel (rectangle (0, 1.5, 0, 3, -1), 0));
+                            auto right = atLevel (rectangle (2.5, 4, 0, 3, -1), 0);
+                            right.polygonIndex = 2;
+                            zoneInput.bodies[0].surfaces.Push (right);
+                        } else {
+                            const GS::Array<Point2D> vertices = {{1, 1}, {2, 1}, {2, 2}, {1, 2}};
+                            const auto hole = Geometry::Polygon2D::Create (vertices, 0);
+                            own.poly = own.poly.Substract (hole[0])[0];
+                        }
+                        auto upper = source (baseA, atLevel (rectangle (0, 4, 0, 3, 1), 0), API_SlabID);
+                        auto lower = source (baseB, atLevel (rectangle (0, 4.5, 0, 3, 1), -.3), API_SlabID);
+                        GS::Array<OtdSlab> prepared;
+                        if (analytic) {
+                            upper.origin = lower.origin = RoomSurfaceOrigin::PreparedAnalytic;
+                            auto upperSlab = nominalPolygon (-.2);
+                            upperSlab.height = .2;
+                            upperSlab.draw.base_guid = baseA;
+                            upperSlab.draw.base_type = API_SlabID;
+                            auto lowerSlab = nominalPolygon (-.5, 4.5);
+                            lowerSlab.height = .2;
+                            lowerSlab.draw.base_guid = baseB;
+                            lowerSlab.draw.base_type = API_SlabID;
+                            prepared = {upperSlab, lowerSlab};
+                        }
+                        GS::Array<OtdSlab> output;
+                        double rejectedArea = 0;
+                        check (OtdSlab_BuildProjectedFinishes (zoneInput,
+                                                               {upper, lower},
+                                                               {baseA, baseB},
+                                                               Floor,
+                                                               0,
+                                                               output,
+                                                               rejectedArea,
+                                                               &own,
+                                                               onlyOnSlab,
+                                                               nullptr,
+                                                               analytic ? &prepared : nullptr,
+                                                               nullptr,
+                                                               &own.poly),
+                               "own zone contour admits native and prepared floor candidates");
+                        check (output.GetSize () == 1 && output[0].draw.base_guid == baseA &&
+                                   closeArea (output[0].zBottom, 0) && closeArea (rejectedArea, 0),
+                               "own zone contour yields one upper slab, no lower outside strip");
+                        Geometry::MultiPolygon2D expected, actual;
+                        expected.Push (own.poly);
+                        for (const auto &floor : output)
+                            actual.Push (floor.poly);
+                        actual.Unify ();
+                        check (Geometry::MultiPolygon2D::Substract (expected, actual).CalcArea () <= AreaTolerance &&
+                                   Geometry::MultiPolygon2D::Substract (actual, expected).CalcArea () <=
+                                       AreaTolerance &&
+                                   actual.GetSize () == 1 && actual[0].GetContourNum () == own.poly.GetContourNum (),
+                               "one floor preserves the complete own zone contour and its holes");
+                        const auto meshGuid = APIGuidFromString ("791EA763-F1E8-4D6D-A9CE-9DA450C0E666");
+                        MeshFloorSource mesh;
+                        mesh.surface = source (meshGuid, atLevel (rectangle (0, 4.25, 0, 3, 1), -.2), API_MeshID);
+                        mesh.hasBottom = false;
+                        for (bool withProvenance : {false, true}) {
+                            MixedFloorGeometry mixed;
+                            MixedFloorProvenance provenance;
+                            const bool built = withProvenance
+                                                   ? OtdSlab_BuildFiniteMixedGeometryWithProvenance (zoneInput,
+                                                                                                     {upper, lower},
+                                                                                                     {baseA, baseB},
+                                                                                                     0,
+                                                                                                     own,
+                                                                                                     onlyOnSlab,
+                                                                                                     prepared,
+                                                                                                     0,
+                                                                                                     {mesh},
+                                                                                                     mixed,
+                                                                                                     provenance,
+                                                                                                     &own.poly)
+                                                   : OtdSlab_BuildFiniteMixedGeometry (zoneInput,
+                                                                                       {upper, lower},
+                                                                                       {baseA, baseB},
+                                                                                       0,
+                                                                                       own,
+                                                                                       onlyOnSlab,
+                                                                                       prepared,
+                                                                                       0,
+                                                                                       {mesh},
+                                                                                       mixed,
+                                                                                       &own.poly);
+                            check (built && mixed.floors.GetSize () == 1 && mixed.floors[0].draw.base_guid == baseA &&
+                                       closeArea (mixed.floors[0].zBottom, 0) && closeArea (mixed.rejectedArea, 0) &&
+                                       mixed.floors[0].poly.GetContourNum () == own.poly.GetContourNum () &&
+                                       own.poly.Substract (mixed.floors[0].poly).CalcArea () <= AreaTolerance &&
+                                       mixed.floors[0].poly.Substract (own.poly).CalcArea () <= AreaTolerance,
+                                   "both mixed routes retain one complete floor in the explicit zone contour");
+                        }
+                    }
+                }
+            }
+            {
+                auto own = nominalPolygon (0);
+                auto zoneInput = snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, -1), 0));
+                auto upper = source (baseA, atLevel (rectangle (0, 2, 0, 3, 1), 0), API_SlabID);
+                auto right = atLevel (rectangle (2, 4, 0, 3, 1), 0);
+                right.polygonIndex = 2;
+                upper.snapshot.bodies[0].surfaces.Push (right);
+                GS::Array<OtdSlab> output;
+                double rejectedArea = 0;
+                check (OtdSlab_BuildProjectedFinishes (
+                           zoneInput, {upper}, {baseA}, Floor, 0, output, rejectedArea, &own, true) &&
+                           output.GetSize () == 1 && closeArea (slabArea (output), 12) &&
+                           output[0].draw.base_guid == baseA && closeArea (output[0].zBottom, 0),
+                       "adjacent coplanar faces of one slab create one floor");
+                auto meshInput = source (baseB, atLevel (rectangle (0, 2, 0, 3, 1), -.2), API_MeshID);
+                MeshFloorSource mesh;
+                mesh.surface = meshInput;
+                mesh.hasBottom = false;
+                for (bool withProvenance : {false, true}) {
+                    MixedFloorGeometry mixed;
+                    MixedFloorProvenance provenance;
+                    const bool ok =
+                        withProvenance
+                            ? OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                                  zoneInput, {upper}, {baseA}, 0, own, true, {}, 0, {mesh}, mixed, provenance)
+                            : OtdSlab_BuildFiniteMixedGeometry (
+                                  zoneInput, {upper}, {baseA}, 0, own, true, {}, 0, {mesh}, mixed);
+                    check (ok && mixed.floors.GetSize () == 1 && closeArea (slabArea (mixed.floors), 12) &&
+                               mixed.floors[0].draw.base_guid == baseA && closeArea (mixed.floors[0].zBottom, 0),
+                           "losing admissible mesh leaves no artificial seam in one slab floor");
+                }
+                // Слияние Slab-частей сдвигает индекс сохранившейся Mesh-грани.
+                auto below = upper;
+                for (auto &face : below.snapshot.bodies[0].surfaces)
+                    face = atLevel (face, -.1);
+                mesh.surface = source (baseB, atLevel (rectangle (0, 1, 0, 3, 1), -.2), API_MeshID);
+                auto middle = atLevel (rectangle (2, 3, 0, 3, 1), -.2);
+                middle.polygonIndex = 2;
+                auto raised = atLevel (rectangle (3, 4, 0, 3, 1), -.05);
+                raised.polygonIndex = 3;
+                mesh.surface.snapshot.bodies[0].surfaces.Push (middle);
+                mesh.surface.snapshot.bodies[0].surfaces.Push (raised);
+                MixedFloorGeometry mixed;
+                mixed.floors.Push (own);
+                MixedFloorProvenance provenance;
+                check (OtdSlab_BuildFiniteMixedGeometryWithProvenance (
+                           zoneInput, {below}, {baseA}, 0, own, true, {}, 0, {mesh}, mixed, provenance, &own.poly) &&
+                           mixed.floors.GetSize () == 3 && mixed.floors[0].draw.base_guid == zoneGuid &&
+                           closeArea (mixed.floors[0].poly.CalcArea (), 12) &&
+                           mixed.floors[1].draw.base_guid == baseA && closeArea (mixed.floors[1].poly.CalcArea (), 9) &&
+                           mixed.floors[2].draw.base_guid == baseB && closeArea (mixed.floors[2].poly.CalcArea (), 3),
+                       "slab rejoin preserves visible mesh face and existing result prefix");
+                bool mapped = provenance.mesh.contributions.GetSize () == 1;
+                for (const auto &contribution : provenance.mesh.contributions)
+                    mapped = mapped && contribution.floorIndex == 2 &&
+                             contribution.supportIndex < provenance.mesh.supports.GetSize () &&
+                             provenance.mesh.supports[contribution.supportIndex].ownerGuid == baseB &&
+                             closeArea (contribution.domain.CalcArea (), 3);
+                check (mapped, "mesh contribution indices follow slab rejoin and prefix offset");
+
+                auto separated = source (baseA, atLevel (rectangle (0, 1, 0, 3, 1), 0), API_SlabID);
+                right = atLevel (rectangle (3, 4, 0, 3, 1), 0);
+                right.polygonIndex = 2;
+                separated.snapshot.bodies[0].surfaces.Push (right);
+                output.Clear ();
+                check (OtdSlab_BuildProjectedFinishes (
+                           zoneInput, {separated}, {baseA}, Floor, 0, output, rejectedArea, &own, true) &&
+                           output.GetSize () == 2 && closeArea (slabArea (output), 6),
+                       "slab rejoin never fills a gap between disconnected components");
+            }
+
+            struct AdmissionCase {
+                double bottom, top;
+                bool floor, ceiling;
+            };
+
+            const AdmissionCase cases[] = {{-100, .1, true, false},
+                                           {-1, 0, true, false},
+                                           {0, .2, true, false},
+                                           {-.8, -.5, true, false},
+                                           {-.8, -.5001, false, false},
+                                           {.0001, .2, false, false},
+                                           {2.9, 100, false, true},
+                                           {2.8, 3, false, true},
+                                           {3, 3.2, false, true},
+                                           {3.5, 3.8, false, true},
+                                           {3.5001, 3.8, false, false},
+                                           {2.8, 2.9999, false, false},
+                                           {-100, 100, true, true}};
+            for (bool analytic : {false, true}) {
+                for (const auto &item : cases) {
+                    auto candidate = source (baseA, atLevel (rectangle (0, 4, 0, 3, 1), item.top), API_SlabID);
+                    auto bottomFace = atLevel (rectangle (0, 4, 0, 3, -1), item.bottom);
+                    bottomFace.polygonIndex = 2;
+                    candidate.snapshot.bodies[0].surfaces.Push (bottomFace);
+                    candidate.origin = analytic ? RoomSurfaceOrigin::PreparedAnalytic : RoomSurfaceOrigin::Native3D;
+                    GS::Array<OtdSlab> prepared;
+                    if (analytic) {
+                        RoomSurfacePiece piece;
+                        piece.status = RoomSurfacePieceStatus::Matched;
+                        piece.baseGuid = baseA;
+                        piece.baseType = API_SlabID;
+                        piece.normal = {0, 0, -1};
+                        piece.planeOffset = item.bottom;
+                        piece.area = 12;
+                        RoomSurfacePieceContour contour;
+                        for (const auto &vertex : bottomFace.contours[0].vertices)
+                            contour.vertices.Push (vertex.world);
+                        piece.contours.Push (contour);
+                        check (SurfaceSlabs_Build (piece, 0, prepared) && prepared.GetSize () == 1,
+                               "height admission prepared fixture has SDK polygon");
+                        if (prepared.IsEmpty ())
+                            continue;
+                        prepared[0].height = item.top - item.bottom;
+                    }
+                    for (TypeOtd type : {Floor, Ceil}) {
+                        auto zoneInput = snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, -1), 0));
+                        zoneInput.bodies[0].surfaces.Push (atLevel (rectangle (0, 4, 0, 3, 1), 3));
+                        const bool admitted = type == Floor ? item.floor : item.ceiling;
+                        for (bool onlyOnSlab : {false, true}) {
+                            GS::Array<OtdSlab> output;
+                            double rejectedArea = 0;
+                            OtdSlab nominalInput = nominalPolygon (type == Floor ? -.1 : 3.1);
+                            const bool ok = OtdSlab_BuildProjectedFinishes (zoneInput,
+                                                                            {candidate},
+                                                                            {baseA},
+                                                                            type,
+                                                                            0,
+                                                                            output,
+                                                                            rejectedArea,
+                                                                            &nominalInput,
+                                                                            onlyOnSlab,
+                                                                            nullptr,
+                                                                            analytic ? &prepared : nullptr);
+                            const USize expected = admitted || !onlyOnSlab ? 1 : 0;
+                            check (ok && output.GetSize () == expected && closeArea (rejectedArea, 0),
+                                   "supplied slab role cannot bypass original zone height admission");
+                            if (expected && output.GetSize () == expected) {
+                                // Номинальная граница конкурирует по отметке наравне с плитами.
+                                const bool nominalWins =
+                                    !onlyOnSlab && (type == Floor ? item.top < -.1 : item.bottom > 3.1);
+                                const API_Guid owner = admitted && !nominalWins ? baseA : zoneGuid;
+                                check (output[0].draw.base_guid == owner && closeArea (output[0].poly.CalcArea (), 12),
+                                       "height rejection preserves nominal residual and admitted ownership");
+                            }
+                        }
+                    }
+                }
+            }
+            for (TypeOtd type : {Floor, Ceil}) {
+                const double originalBoundary = type == Floor ? 0 : 3;
+                const double snapshotBoundary = type == Floor ? .2 : 2.8;
+                auto zoneInput =
+                    snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, type == Floor ? -1 : 1), snapshotBoundary));
+                auto candidate =
+                    source (baseA,
+                            atLevel (rectangle (0, 4, 0, 3, type == Floor ? 1 : -1), type == Floor ? -.4 : 3.4),
+                            API_SlabID);
+                GS::Array<OtdSlab> output;
+                double rejectedArea = 0;
+                check (OtdSlab_BuildProjectedFinishes (zoneInput,
+                                                       {candidate},
+                                                       {baseA},
+                                                       type,
+                                                       0,
+                                                       output,
+                                                       rejectedArea,
+                                                       nullptr,
+                                                       true,
+                                                       nullptr,
+                                                       nullptr,
+                                                       &originalBoundary) &&
+                           output.GetSize () == 1 && output[0].draw.base_guid == baseA,
+                       "original zone level overrides trimmed snapshot for slab admission");
+                auto nominalInput = nominalPolygon (type == Floor ? 0 : 2.5);
+                for (bool onlyOnSlab : {false, true}) {
+                    output.Clear ();
+                    check (OtdSlab_BuildProjectedFinishes (zoneInput,
+                                                           {candidate},
+                                                           {baseA},
+                                                           type,
+                                                           0,
+                                                           output,
+                                                           rejectedArea,
+                                                           &nominalInput,
+                                                           onlyOnSlab,
+                                                           nullptr,
+                                                           nullptr,
+                                                           &originalBoundary) &&
+                               output.GetSize () == 1 && output[0].draw.base_guid == (onlyOnSlab ? baseA : zoneGuid) &&
+                               closeArea (output[0].zBottom,
+                                          onlyOnSlab ? (type == Floor ? -.4 : 3.4) : nominalInput.zBottom),
+                           "own zone polygon wins sorted priority unless only on slabs is enabled");
+                }
+                nominalInput = nominalPolygon (type == Floor ? 0 : 2.5, 3);
+                output.Clear ();
+                rejectedArea = 0;
+                check (OtdSlab_BuildProjectedFinishes (zoneInput,
+                                                       {candidate},
+                                                       {baseA},
+                                                       type,
+                                                       0,
+                                                       output,
+                                                       rejectedArea,
+                                                       &nominalInput,
+                                                       false,
+                                                       nullptr,
+                                                       nullptr,
+                                                       &originalBoundary) &&
+                           output.GetSize () == 2 && output[0].draw.base_guid == zoneGuid &&
+                           output[1].draw.base_guid == baseA && closeArea (output[0].poly.CalcArea (), 9) &&
+                           closeArea (output[1].poly.CalcArea (), 3) && closeArea (rejectedArea, 0),
+                       "nominal wins only inside its own finite polygon and leaves uncovered support");
+                for (bool preparedRoute : {false, true}) {
+                    for (bool onlyOnSlab : {false, true}) {
+                        for (double slabWidth : {2., 4.}) {
+                            for (double nominalWidth : {2., 4.}) {
+                                nominalInput = nominalPolygon (originalBoundary, nominalWidth);
+                                candidate = source (
+                                    baseA,
+                                    atLevel (rectangle (0, slabWidth, 0, 3, type == Floor ? 1 : -1), originalBoundary),
+                                    API_SlabID);
+                                auto preparedSlab = nominalPolygon (originalBoundary, slabWidth);
+                                preparedSlab.draw.base_guid = baseA;
+                                preparedSlab.draw.base_type = API_SlabID;
+                                preparedSlab.height = .2;
+                                preparedSlab.zBottom = originalBoundary - (type == Floor ? .2 : 0);
+                                GS::Array<OtdSlab> preparedInputs = {preparedSlab};
+                                if (preparedRoute)
+                                    candidate.origin = RoomSurfaceOrigin::PreparedAnalytic;
+                                GS::Array<OtdWall> steps;
+                                output.Clear ();
+                                rejectedArea = 0;
+                                const bool built =
+                                    OtdSlab_BuildProjectedFinishes (zoneInput,
+                                                                    {candidate},
+                                                                    {baseA},
+                                                                    type,
+                                                                    0,
+                                                                    output,
+                                                                    rejectedArea,
+                                                                    &nominalInput,
+                                                                    onlyOnSlab,
+                                                                    &steps,
+                                                                    preparedRoute ? &preparedInputs : nullptr,
+                                                                    &originalBoundary);
+                                const double nominalArea = onlyOnSlab ? 0 : std::max (0., nominalWidth - slabWidth) * 3;
+                                check (built && output.GetSize () == (nominalArea > 0 ? 2 : 1) &&
+                                           output[0].draw.base_guid == baseA &&
+                                           output[0].draw.base_type == API_SlabID &&
+                                           closeArea (output[0].zBottom, originalBoundary) &&
+                                           closeArea (output[0].poly.CalcArea (), slabWidth * 3) &&
+                                           closeArea (rejectedArea, 0) && steps.IsEmpty (),
+                                       "equal elevation keeps real slab coverage and ownership before nominal");
+                                if (nominalArea > 0)
+                                    check (output.GetSize () == 2 && output[1].draw.base_guid == zoneGuid &&
+                                               closeArea (output[1].poly.CalcArea (), nominalArea),
+                                           "equal elevation leaves nominal only outside real slab coverage");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Регрессия высотного отбора перекрытий: конец.
+        // Кандидаты для проверки приоритета и покрытия находятся в полуметровом диапазоне допуска.
+        auto floorZone = snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, -1), 0));
         auto lower = source (baseA, atLevel (rectangle (0, 4, 0, 3, 1), -0.2), API_SlabID);
         auto slabBottomFace = atLevel (rectangle (0, 4, 0, 3, -1), -0.5);
         slabBottomFace.polygonIndex = 2;
@@ -1544,7 +2054,7 @@ namespace TestFunc {
                    closeArea (projected[0].zBottom, -0.2) && projected[0].draw.base_guid == baseA &&
                    projected[0].draw.type == Floor && projected[0].surface_geometry && rejected == 0,
                "discovered floor across gap uses actual upper slab face and original guid");
-        auto ceilingZone = snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, 1), 2.8));
+        auto ceilingZone = snapshot (zoneGuid, atLevel (rectangle (0, 4, 0, 3, 1), 3));
         slabSources = {source (baseB, atLevel (rectangle (0, 4, 0, 3, -1), 3.4), API_SlabID)};
         auto slabTopFace = atLevel (rectangle (0, 4, 0, 3, 1), 3.8);
         slabTopFace.polygonIndex = 2;
@@ -1600,7 +2110,7 @@ namespace TestFunc {
                    projected[0].draw.base_guid == baseA && closeArea (projected[0].poly.CalcArea (), 6),
                "unequal floor elevations use descending priority then remaining coverage");
         const auto fullUpper = source (baseA, atLevel (rectangle (0, 4, 0, 3, 1), -0.2), API_SlabID);
-        const auto fullLower = source (baseB, atLevel (rectangle (0, 4, 0, 3, 1), -0.6), API_SlabID);
+        const auto fullLower = source (baseB, atLevel (rectangle (0, 4, 0, 3, 1), -0.4), API_SlabID);
         for (bool reverseSourceOrder : {false, true}) {
             for (bool reverseRoleOrder : {false, true}) {
                 const GS::Array<RoomSurfaceSource> fullSources =
@@ -1650,6 +2160,7 @@ namespace TestFunc {
                "discovered slab outside room projection creates no finish and no fallback");
         OtdSlab nominal;
         nominal.zBottom = 0;
+        nominal.poly = nominalCeiling.poly;
         GS::Array<OtdWall> steps;
         slabSources.Clear ();
         roles.Clear ();
@@ -1726,7 +2237,7 @@ namespace TestFunc {
                    steps.IsEmpty (),
                "step below legacy five millimeter height threshold is rejected");
         slabSources = {source (baseA, holed, API_SlabID)};
-        nominal.zBottom = 0;
+        nominal.zBottom = -0.3;
         projected.Clear ();
         check (OtdSlab_BuildProjectedFinishes (
                    floorZone, slabSources, roles, Floor, 0, projected, rejected, &nominal, false, &steps) &&
@@ -2317,10 +2828,9 @@ namespace TestFunc {
             check (equalCoverage (exclusion, expected),
                    "profile disconnected intervals preserved without double offset");
             wall.flipped = false;
-            check (ProfileWall_BuildFloorExclusion (profile, wall, 7, 7.2, {}, exclusion), "profile mirrored section");
-            expected = one (rectangle (0, .1, 4, .3));
-            expected.Push (rectangle (0, -.2, 4, -.1));
-            check (equalCoverage (exclusion, expected), "profile unflipped signed placement");
+            check (ProfileWall_BuildFloorExclusion (profile, wall, 7, 7.2, {}, exclusion),
+                   "profile instance section without second reflection");
+            check (equalCoverage (exclusion, expected), "profile unflipped preserves signed instance coordinates");
             wall.flipped = true;
             wall.begC = {2, 3};
             wall.endC = {2, 7};
@@ -2329,6 +2839,81 @@ namespace TestFunc {
             expected = one (rectangle (2.1, 3, 2.3, 7));
             expected.Push (rectangle (1.8, 3, 1.9, 7));
             check (equalCoverage (exclusion, expected), "profile rotation uses finite wall axis");
+
+            // Интервалы memo на низе зоны и внешние грани независимых 3D-сечений четырёх стен102.
+            // Полное совпадение с 3D не требуется: внешние грани могут отстоять от профиля на20мм.
+            {
+                struct NativeProfileSection {
+                    API_Coord beg, end;
+                    bool flipped;
+                    double offset, left, right;
+                    double nativeX0, nativeY0, nativeX1, nativeY1;
+                };
+
+                const NativeProfileSection sections[] = {
+                    {{6.81, 12.15}, {6.81, 8.10002747}, true, 0, -.175, .075, 6.615, 8.10002747, 6.905, 12.15},
+                    {{6.81, 8.10002747},
+                     {12.15, 8.10002747},
+                     false,
+                     0,
+                     -.075,
+                     .175,
+                     6.81,
+                     8.00502747,
+                     12.15,
+                     8.29502747},
+                    {{9.7, 12.25004886},
+                     {9.7, 8.10002747},
+                     true,
+                     0,
+                     -.175,
+                     .075,
+                     9.505,
+                     8.10002747,
+                     9.795,
+                     12.25004886},
+                    {{12, 12}, {0, 12}, false, -.4, -.545, -.15, 0, 12.13, 12, 12.545}};
+                Geometry::MultiPolygon2D total;
+                for (const auto &section : sections) {
+                    API_WallType instance = {};
+                    instance.type = APIWtyp_Normal;
+                    instance.begC = section.beg;
+                    instance.endC = section.end;
+                    instance.flipped = section.flipped;
+                    instance.offset = section.offset;
+                    const auto instanceProfile = one (rectangle (section.left, -.5, section.right, .5));
+                    Geometry::MultiPolygon2D actual;
+                    check (ProfileWall_BuildFloorExclusion (instanceProfile, instance, -.05, 0, {}, actual),
+                           "native profile section builds");
+                    const auto nativeEnvelope =
+                        one (rectangle (section.nativeX0, section.nativeY0, section.nativeX1, section.nativeY1));
+                    check (!actual.IsEmpty () &&
+                               Geometry::MultiPolygon2D::Substract (actual, nativeEnvelope).CalcArea () < 1.e-6,
+                           "profile section stays inside independently observed native band");
+                    total.Append (actual);
+                    const auto beforeToggle = actual;
+                    instance.flipped = !instance.flipped;
+                    check (ProfileWall_BuildFloorExclusion (instanceProfile, instance, -.05, 0, {}, actual) &&
+                               equalCoverage (actual, beforeToggle),
+                           "unchanged instance profile is not reflected by wall metadata");
+                }
+                total.Unify ();
+                OtdRoom nativeRoom;
+                OtdSlab nativeFloor;
+                nativeFloor.isValid = true;
+                nativeFloor.draw.type = Floor;
+                nativeFloor.draw.base_type = API_SlabID;
+                nativeFloor.poly =
+                    rectangle (6.909999918201156, 8.300027473076815, 9.499999999657394, 12.114400000000007);
+                const auto original = one (nativeFloor.poly);
+                nativeRoom.otdslab.Push (nativeFloor);
+                check (FloorContours_SubtractProfileWalls (nativeRoom, total) && nativeRoom.otdslab.GetSize () == 1,
+                       "room102 native contour remains one floor after profile subtraction");
+                Geometry::MultiPolygon2D remaining;
+                for (const auto &part : nativeRoom.otdslab)
+                    remaining.Push (part.poly);
+                check (equalCoverage (remaining, original), "room102 profile subtraction preserves full coverage");
+            }
             wall.begC = {0, 0};
             wall.endC = {4, 0};
             profile = one (rectangle (-.3, -.5, .2, .5));
@@ -2405,5 +2990,5 @@ namespace TestFunc {
 
 } // namespace TestFunc
 
-#endif
+    #endif
 #endif

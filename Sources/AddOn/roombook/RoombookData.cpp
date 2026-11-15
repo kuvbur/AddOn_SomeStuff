@@ -347,6 +347,44 @@ namespace Roombook {
         }
     } // namespace
 
+    bool RoomSurface_IsBelowMinimumWallHeight (API_ElemTypeID type, const RoomSurface &surface) {
+        if (type != API_WallID || surface.origin != RoomSurfaceOrigin::Native3D || surface.contours.IsEmpty () ||
+            surface.contours[0].hole)
+            return false;
+        const double horizontal = std::hypot (surface.normalWorld.x, surface.normalWorld.y);
+        if (!std::isfinite (horizontal) || !std::isfinite (surface.normalWorld.z) || horizontal <= DistanceTolerance)
+            return false;
+        double bottom = std::numeric_limits<double>::infinity ();
+        double top = -std::numeric_limits<double>::infinity ();
+        for (const auto &contour : surface.contours) {
+            if (contour.vertices.GetSize () < 3)
+                return false;
+            for (const auto &vertex : contour.vertices) {
+                const auto &point = vertex.world;
+                if (!std::isfinite (point.x) || !std::isfinite (point.y) || !std::isfinite (point.z))
+                    return false;
+                bottom = std::min (bottom, point.z);
+                top = std::max (top, point.z);
+            }
+        }
+        // Нулевой/невалидный размер не маскируем под намеренный пропуск корректной малой грани.
+        const double height = top - bottom;
+        return height > 0 && height < min_wall_surface_height;
+    }
+
+    static SurfaceMaterialNameRead SurfaceMaterialName_Read (API_AttributeIndex index, RoomSurfaceCache &cache) {
+        if (const auto *found = cache.surfaceMaterialNames.GetPtr (index))
+            return *found;
+        SurfaceMaterialNameRead read;
+        API_Attribute attribute = {};
+        attribute.header.typeID = API_MaterialID;
+        attribute.header.index = index;
+        attribute.header.uniStringNamePtr = &read.name;
+        read.error = ACAPI_Attribute_Get (&attribute);
+        cache.surfaceMaterialNames.Add (index, read);
+        return read;
+    }
+
     RoomSurfaceSnapshot RoomSurfaces_Read (const API_Elem_Head &head, RoomSurfaceCache *cache) {
         if (cache != nullptr) {
             if (const auto *existing = cache->snapshots.GetPtr (head.guid)) {
@@ -360,6 +398,21 @@ namespace Roombook {
         if (err != NoError) {
             RoomSurfaceSnapshot_AddError (snapshot, "get3DInfo", err);
         } else {
+            // Без внешнего кэша повторные индексы разделяют одно чтение в пределах снимка.
+            RoomSurfaceCache localCache;
+            RoomSurfaceCache &readCache = cache != nullptr ? *cache : localCache;
+            bool profileWall = false;
+            GSErrCode wallError = NoError;
+            if (GetElemTypeID (head) == API_WallID) {
+                const auto wall = Element_Read (head.guid, &readCache);
+                wallError = wall.error;
+                if (wallError == NoError && GetElemTypeID (wall.element.header) != API_WallID)
+                    wallError = APIERR_BADPARS;
+                if (wallError != NoError)
+                    RoomSurfaceSnapshot_AddError (snapshot, "profileWall", wallError);
+                else
+                    profileWall = wall.element.wall.modelElemStructureType == API_ProfileStructure;
+            }
             for (Int32 bi = info.fbody; bi > 0 && bi <= info.lbody; ++bi) {
                 API_Component3D component = {};
                 component.header.typeID = API_BodyID;
@@ -378,8 +431,23 @@ namespace Roombook {
                 BodyComponentCache components;
                 for (Int32 pi = 1; pi <= body.nPgon; ++pi) {
                     RoomSurface surface;
-                    if (RoomSurface_ReadPolygon (components, body, bi, pi, surface, snapshot))
-                        bodyOut.surfaces.Push (std::move (surface));
+                    if (!RoomSurface_ReadPolygon (components, body, bi, pi, surface, snapshot))
+                        continue;
+                    // Политика зависит от типа элемента, а не caller: кэш по GUID остаётся однозначным.
+                    if (RoomSurface_IsBelowMinimumWallHeight (GetElemTypeID (head), surface))
+                        continue;
+                    if (wallError != NoError)
+                        continue;
+                    if (profileWall && surface.origin == RoomSurfaceOrigin::Native3D) {
+                        const auto material = SurfaceMaterialName_Read (surface.modelMaterialIndex, readCache);
+                        if (material.error != NoError) {
+                            RoomSurfaceSnapshot_AddError (snapshot, "surfaceMaterialName", material.error);
+                            continue;
+                        }
+                        if (material.name.Contains (PARTIGNOREMATERIAL))
+                            continue;
+                    }
+                    bodyOut.surfaces.Push (std::move (surface));
                 }
                 snapshot.bodies.Push (std::move (bodyOut));
             }
@@ -466,6 +534,10 @@ namespace Roombook {
 
     // Сбор оснований зоны и проверка полноты исходных данных.
     namespace {
+        bool RoomSource_IsVisible (const API_Guid &guid) {
+            return ACAPI_Element_Filter (guid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation);
+        }
+
         void RoomSurfaceCandidates_AddError (RoomSurfaceCandidates &result, const char *stage, GSErrCode code) {
             result.errors.Push ({GS::UniString (stage), code});
         }
@@ -553,6 +625,8 @@ namespace Roombook {
                     result, "candidateElement", read.error != NoError ? read.error : APIERR_BADID);
                 return;
             }
+            if (!RoomSource_IsVisible (guid))
+                return;
             bool valid = false;
             if (Element_IsFinish (guid, finishClassGuids, result, valid, cache) || !valid)
                 return;
@@ -2128,7 +2202,8 @@ namespace Roombook {
                                                  const GS::Array<API_WallPart> &parts,
                                                  const GS::Array<Sector> &roomEdges,
                                                  double roomBottom,
-                                                 const GS::Array<OtdWall> &contacts) {
+                                                 const GS::Array<OtdWall> &contacts,
+                                                 bool profileWall) {
         GS::Array<OtdWall> result;
         const double dx = wallEnd.x - wallBeg.x, dy = wallEnd.y - wallBeg.y;
         const double length = std::hypot (dx, dy);
@@ -2150,6 +2225,9 @@ namespace Roombook {
         };
 
         std::vector<std::pair<double, double>> intervals;
+        std::vector<std::pair<double, double>> shiftedIntervals;
+        double minShift = std::numeric_limits<double>::infinity ();
+        double maxShift = -std::numeric_limits<double>::infinity ();
         bool hasParts = false;
         for (const auto &part : parts) {
             if (part.guid != wall.draw.base_guid)
@@ -2163,8 +2241,17 @@ namespace Roombook {
             const double dz = OtdLinearSegment_GetZBottom (wall.geom) - roomBottom;
             const double ax = edge.c1.x + wall.rise_x * dz, ay = edge.c1.y + wall.rise_y * dz;
             const double bx = edge.c2.x + wall.rise_x * dz, by = edge.c2.y + wall.rise_y * dz;
-            if (!onLine (ax, ay) || !onLine (bx, by))
+            const bool onContactLine = onLine (ax, ay) && onLine (bx, by);
+            if (!onContactLine && !profileWall)
                 continue;
+            if (!onContactLine) {
+                const double edgeX = bx - ax, edgeY = by - ay;
+                const double edgeLength = std::hypot (edgeX, edgeY);
+                if (!std::isfinite (ax) || !std::isfinite (ay) || !std::isfinite (bx) || !std::isfinite (by) ||
+                    !std::isfinite (edgeLength) || edgeLength < min_dim ||
+                    std::fabs (edgeX * vy - edgeY * vx) > DistanceTolerance * edgeLength)
+                    continue;
+            }
             // Sentinel-границы обрабатываем так же, как OtdWall_Create_FromWall.
             const double tBeg =
                 std::fabs (part.tBeg) <= DistanceTolerance || std::fabs (part.tBeg - length) <= DistanceTolerance
@@ -2178,13 +2265,25 @@ namespace Roombook {
             const double b = along (wallBeg.x + ux * tEnd, wallBeg.y + uy * tEnd);
             const double begin = std::max (std::min (along (ax, ay), along (bx, by)), std::min (a, b));
             const double end = std::min (std::max (along (ax, ay), along (bx, by)), std::max (a, b));
-            if (end - begin > DistanceTolerance)
-                intervals.push_back ({begin, end});
+            if (end - begin > DistanceTolerance) {
+                if (onContactLine) {
+                    intervals.push_back ({begin, end});
+                } else if (std::min (span, end) - std::max (0.0, begin) > DistanceTolerance) {
+                    const double shiftA = (ax - wall.geom.seg.begC.x) * vy - (ay - wall.geom.seg.begC.y) * vx;
+                    const double shiftB = (bx - wall.geom.seg.begC.x) * vy - (by - wall.geom.seg.begC.y) * vx;
+                    minShift = std::min (minShift, std::min (shiftA, shiftB));
+                    maxShift = std::max (maxShift, std::max (shiftA, shiftB));
+                    shiftedIntervals.push_back ({begin, end});
+                }
+            }
         }
         if (!hasParts) {
             result.Push (wall);
             return result;
         }
+        // Строгое совпадение приоритетно. Несколько смещённых линий не разрешаем выбором ближайшей/первой.
+        if (intervals.empty () && profileWall && maxShift - minShift <= DistanceTolerance)
+            intervals = std::move (shiftedIntervals);
         std::sort (intervals.begin (), intervals.end ());
         std::vector<std::pair<double, double>> merged;
         for (const auto &interval : intervals) {
@@ -3081,6 +3180,13 @@ namespace Roombook {
                     Patch patch;
                     if (!FloorFace_Project (face, patch.plane, patch.domain))
                         return false;
+                    // Далёкая верхняя грань другого этажа не становится опорой по одному XY-пересечению.
+                    double top = -std::numeric_limits<double>::infinity ();
+                    for (const auto &contour : face.contours)
+                        for (const auto &vertex : contour.vertices)
+                            top = std::max (top, vertex.world.z);
+                    if (top < roomFloor - 0.5)
+                        continue;
                     // Сохраняем исходную и допустимую опору отдельно от room clipping.
                     if (provenance != nullptr) {
                         MeshFloorFiniteSupport support;
@@ -3281,6 +3387,7 @@ namespace Roombook {
         struct ProjectedSlabCandidate {
             OtdSlab slab;
             double bottom, top;
+            bool isNominal = false;
         };
 
         // Общие исходные контакты до выбора победителя и ограничения числа компонент.
@@ -3292,10 +3399,14 @@ namespace Roombook {
                                                  const GS::Array<OtdSlab> *prepared,
                                                  Geometry::MultiPolygon2D &footprint,
                                                  std::vector<ProjectedSlabCandidate> &candidates,
-                                                 SlabFloorProvenance *provenance) {
+                                                 SlabFloorProvenance *provenance,
+                                                 const double *zoneBoundary,
+                                                 const Geometry::Polygon2D *zoneFootprint) {
             if (!zone.IsComplete () || (type != Floor && type != Ceil))
                 return false;
             const double normal = type == Floor ? -1 : 1;
+            double boundary =
+                type == Floor ? std::numeric_limits<double>::infinity () : -std::numeric_limits<double>::infinity ();
             const auto horizontal = [] (const RoomSurface &face) {
                 if (face.contours.IsEmpty () || face.contours[0].vertices.IsEmpty () ||
                     std::hypot (face.normalWorld.x, face.normalWorld.y) > DistanceTolerance ||
@@ -3314,6 +3425,8 @@ namespace Roombook {
                 for (const auto &face : body.surfaces) {
                     if (!horizontal (face) || face.normalWorld.z * normal < 0)
                         continue;
+                    const double z = face.contours[0].vertices[0].world.z;
+                    boundary = type == Floor ? std::min (boundary, z) : std::max (boundary, z);
                     RoomSurfacePiece piece;
                     piece.status = RoomSurfacePieceStatus::Matched;
                     piece.baseGuid = zone.guid;
@@ -3344,6 +3457,19 @@ namespace Roombook {
             if (footprint.IsEmpty ())
                 return false;
             footprint.Unify ();
+            // Контур помещения не совпадает ни с подрезанным 3D-телом, ни с конечным nominal-кандидатом.
+            if (zoneFootprint != nullptr) {
+                if (zoneFootprint->IsEmpty ())
+                    return false;
+                footprint.Clear ();
+                footprint.Push (*zoneFootprint);
+            }
+            // Подрезанные грани задают XY-покрытие, но не заменяют исходную высоту зоны.
+            if (zoneBoundary != nullptr) {
+                if (!std::isfinite (*zoneBoundary))
+                    return false;
+                boundary = *zoneBoundary;
+            }
 
             const auto recordSupport = [&] (const RoomSurfaceSource &source,
                                             const OtdSlab &slab,
@@ -3401,6 +3527,8 @@ namespace Roombook {
                             slab.floorInd = floorInd;
                             slab.surface_geometry = true;
                             const double bottom = base.zBottom, top = bottom + base.height;
+                            if (!AnalyticGeometry::SlabMeetsBoundary (bottom, top, boundary, type == Floor))
+                                continue;
                             slab.zBottom = type == Floor ? top : bottom;
                             if (provenance != nullptr && !recordSupport (source, slab, nullptr, preparedIndex))
                                 return false;
@@ -3421,6 +3549,9 @@ namespace Roombook {
                                     bottom = std::min (bottom, vertex.world.z);
                                     top = std::max (top, vertex.world.z);
                                 }
+                        // Роль из partition не должна обходить высотный отбор основания.
+                        if (!AnalyticGeometry::SlabMeetsBoundary (bottom, top, boundary, type == Floor))
+                            continue;
                         for (const auto &face : body.surfaces) {
                             if (!horizontal (face) || face.normalWorld.z * normal > 0)
                                 continue;
@@ -3472,11 +3603,68 @@ namespace Roombook {
                                              short floorInd,
                                              const GS::Array<OtdSlab> *prepared,
                                              Geometry::MultiPolygon2D &footprint,
-                                             std::vector<ProjectedSlabCandidate> &candidates) {
-            return OtdSlab_CollectProjectedInputsImpl (
-                zone, sources, roles, type, floorInd, prepared, footprint, candidates, nullptr);
+                                             std::vector<ProjectedSlabCandidate> &candidates,
+                                             const double *zoneBoundary,
+                                             const Geometry::Polygon2D *zoneFootprint) {
+            return OtdSlab_CollectProjectedInputsImpl (zone,
+                                                       sources,
+                                                       roles,
+                                                       type,
+                                                       floorInd,
+                                                       prepared,
+                                                       footprint,
+                                                       candidates,
+                                                       nullptr,
+                                                       zoneBoundary,
+                                                       zoneFootprint);
         }
 
+        // До назначения избранного/GUID убираем искусственные швы одного горизонтального Slab.
+        // Mesh-грани, разные основания, отметки и материалы остаются самостоятельными.
+        void OtdSlab_UnifyProjectedFloorParts (GS::Array<OtdSlab> &floors, std::vector<UIndex> *meshIndices = nullptr) {
+            GS::Array<OtdSlab> results;
+            std::vector<bool> used (floors.GetSize (), false);
+            if (meshIndices != nullptr)
+                meshIndices->resize (floors.GetSize ());
+            for (UIndex i = 0; i < floors.GetSize (); ++i) {
+                if (used[i])
+                    continue;
+                used[i] = true;
+                const auto &floor = floors[i];
+                if (meshIndices != nullptr && floor.draw.base_type == API_MeshID)
+                    (*meshIndices)[i] = results.GetSize ();
+                Geometry::MultiPolygon2D polygons;
+                polygons.Push (floor.poly);
+                if (floor.draw.base_type == API_SlabID && floor.draw.type == Floor && floor.slope_x == 0 &&
+                    floor.slope_y == 0 && floor.draw.otd_guid == APINULLGuid) {
+                    for (UIndex j = i + 1; j < floors.GetSize (); ++j) {
+                        const auto &other = floors[j];
+                        const auto &a = floor.draw.material;
+                        const auto &b = other.draw.material;
+                        if (used[j] || other.draw.base_type != API_SlabID || other.draw.type != Floor ||
+                            other.draw.base_guid != floor.draw.base_guid || other.draw.otd_guid != APINULLGuid ||
+                            other.slope_x != 0 || other.slope_y != 0 || other.zBottom != floor.zBottom ||
+                            other.floorInd != floor.floorInd || other.height != floor.height ||
+                            other.reference_z != floor.reference_z || other.isValid != floor.isValid ||
+                            other.surface_geometry != floor.surface_geometry || other.tip != floor.tip ||
+                            a.material != b.material || a.bmaterial != b.bmaterial || a.structtype != b.structtype ||
+                            a.smaterial != b.smaterial || a.rawname != b.rawname ||
+                            a.rawname_bytype != b.rawname_bytype)
+                            continue;
+                        polygons.Push (other.poly);
+                        used[j] = true;
+                    }
+                }
+                if (polygons.GetSize () > 1)
+                    polygons.Unify ();
+                for (const auto &polygon : polygons) {
+                    auto joined = floor;
+                    joined.poly = polygon;
+                    results.Push (joined);
+                }
+            }
+            floors = std::move (results);
+        }
     } // namespace
 
     bool OtdSlab_BuildProjectedFinishes (const RoomSurfaceSnapshot &zone,
@@ -3489,31 +3677,37 @@ namespace Roombook {
                                          const OtdSlab *nominal,
                                          bool onlyOnSlab,
                                          GS::Array<OtdWall> *walls,
-                                         const GS::Array<OtdSlab> *prepared) {
+                                         const GS::Array<OtdSlab> *prepared,
+                                         const double *zoneBoundary,
+                                         const Geometry::Polygon2D *zoneFootprint) {
         using Candidate = ProjectedSlabCandidate;
         Geometry::MultiPolygon2D footprint;
         std::vector<Candidate> candidates;
-        if (!OtdSlab_CollectProjectedInputs (zone, sources, roles, type, floorInd, prepared, footprint, candidates))
+        if (!OtdSlab_CollectProjectedInputs (
+                zone, sources, roles, type, floorInd, prepared, footprint, candidates, zoneBoundary, zoneFootprint))
             return false;
-        // Потолок зоны — такой же кандидат: ближние перекрытия обрабатываются раньше,
-        // а остаток покрывается отметкой height_ceil прежним алгоритмом остатка.
-        const bool zoneCeilingCandidate = type == Ceil && nominal != nullptr && !onlyOnSlab;
-        if (zoneCeilingCandidate) {
-            Candidate zoneCeiling;
-            zoneCeiling.slab = *nominal;
-            zoneCeiling.slab.draw.type = type;
-            zoneCeiling.slab.floorInd = floorInd;
-            zoneCeiling.slab.surface_geometry = true;
-            zoneCeiling.slab.zBottom = nominal->zBottom;
+
+        // Собственный полигон зоны участвует в той же сортировке, что и перекрытия.
+        // Заниженный потолок перекрывает более высокие основания, пол — более низкие.
+        if (nominal != nullptr && !onlyOnSlab) {
+            Candidate zoneCandidate;
+            zoneCandidate.isNominal = true;
+            zoneCandidate.slab = *nominal;
+            zoneCandidate.slab.draw.type = type;
+            zoneCandidate.slab.floorInd = floorInd;
+            zoneCandidate.slab.surface_geometry = true;
+            zoneCandidate.slab.zBottom = nominal->zBottom;
             // Перепад до номинальной отметки не строим: собственных границ у кандидата
             // нет.
-            zoneCeiling.bottom = std::numeric_limits<double>::infinity ();
-            zoneCeiling.top = -zoneCeiling.bottom;
-            candidates.push_back (zoneCeiling);
+            zoneCandidate.bottom = std::numeric_limits<double>::infinity ();
+            zoneCandidate.top = -zoneCandidate.bottom;
+            candidates.push_back (zoneCandidate);
         }
         // Изнутри зоны: верхние грани пола по убыванию, нижние грани потолка по
         // возрастанию.
         std::sort (candidates.begin (), candidates.end (), [type] (const Candidate &a, const Candidate &b) {
+            if (a.slab.zBottom == b.slab.zBottom)
+                return !a.isNominal && b.isNominal;
             return type == Floor ? a.slab.zBottom > b.slab.zBottom : a.slab.zBottom < b.slab.zBottom;
         });
         Geometry::MultiPolygon2D remainder = footprint;
@@ -3535,10 +3729,11 @@ namespace Roombook {
                 continue;
             Geometry::MultiPolygon2D accepted;
             accepted.Push (processed);
-            // std::sort не задавал владельца при равных отметках; не выбираем его по
-            // GUID/порядку.
+            // Равные отметки разных плит остаются неоднозначными, но номинальная
+            // поверхность зоны не оспаривает покрытие реальной плиты.
             for (UIndex j = 0; j < candidates.size (); ++j) {
-                if (j == i || candidates[j].slab.draw.base_guid == candidate.slab.draw.base_guid ||
+                if (j == i || candidate.isNominal || candidates[j].isNominal ||
+                    candidates[j].slab.draw.base_guid == candidate.slab.draw.base_guid ||
                     std::fabs (candidates[j].slab.zBottom - candidate.slab.zBottom) > DistanceTolerance)
                     continue;
                 Geometry::MultiPolygon2D next;
@@ -3622,16 +3817,9 @@ namespace Roombook {
             if (!next.IsEmpty ())
                 remainder.Push (next.PopLargest ());
         }
-        // Номинальный потолок уже был кандидатом: второй остаток на той же отметке не
-        // нужен.
-        if (!onlyOnSlab && nominal != nullptr && !zoneCeilingCandidate && remainder.CalcArea () > 0.0001) {
-            OtdSlab residual = *nominal;
-            residual.poly = remainder.PopLargest ();
-            residual.floorInd = floorInd;
-            residual.draw.type = type;
-            residual.surface_geometry = true;
-            results.Push (residual);
-        }
+        // Номинальный полигон уже обработан как кандидат; повторный остаток не нужен.
+        if (type == Floor)
+            OtdSlab_UnifyProjectedFloorParts (results);
         if (walls != nullptr)
             walls->Append (steps);
         slabs.Append (results);
@@ -3683,7 +3871,8 @@ namespace Roombook {
         bool OtdSlab_MergeMixedDomains (const GS::Array<OtdSlab> &legacy,
                                         const GS::Array<OtdSlab> &inside,
                                         const Geometry::MultiPolygon2D &domain,
-                                        GS::Array<OtdSlab> &output) {
+                                        GS::Array<OtdSlab> &output,
+                                        std::vector<UIndex> *meshIndices = nullptr) {
             GS::Array<OtdSlab> staged = inside;
             for (const auto &floor : legacy) {
                 Geometry::MultiPolygon2D original;
@@ -3706,6 +3895,7 @@ namespace Roombook {
                     if (Geometry::MultiPolygon2D::Intersect (a, b).CalcArea () > AreaTolerance)
                         return false;
                 }
+            OtdSlab_UnifyProjectedFloorParts (staged, meshIndices);
             output = staged;
             return true;
         }
@@ -3721,7 +3911,8 @@ namespace Roombook {
                                                       double roomFloor,
                                                       const GS::Array<MeshFloorSource> &meshes,
                                                       MixedFloorGeometry &result,
-                                                      MixedFloorProvenance *provenance) {
+                                                      MixedFloorProvenance *provenance,
+                                                      const Geometry::Polygon2D *zoneFootprint) {
         MixedFloorGeometry staged;
         // Та же функция, аргументы и error-policy; никаких новых проверок для
         // Slab-only.
@@ -3735,7 +3926,9 @@ namespace Roombook {
                                              &nominal,
                                              onlyOnSlab,
                                              &staged.steps,
-                                             &prepared))
+                                             &prepared,
+                                             &roomFloor,
+                                             zoneFootprint))
             return false;
         Geometry::MultiPolygon2D provenanceFootprint;
         std::vector<ProjectedSlabCandidate> provenanceRaw;
@@ -3747,7 +3940,9 @@ namespace Roombook {
                                                                           &prepared,
                                                                           provenanceFootprint,
                                                                           provenanceRaw,
-                                                                          &provenance->slab))
+                                                                          &provenance->slab,
+                                                                          &roomFloor,
+                                                                          zoneFootprint))
             return false;
         const auto recordSlabWinners = [&] () {
             if (provenance == nullptr)
@@ -3793,8 +3988,10 @@ namespace Roombook {
         if (provenance != nullptr) {
             footprint = provenanceFootprint;
             raw = provenanceRaw;
-        } else if (!OtdSlab_CollectProjectedInputs (zone, sources, roles, Floor, floorInd, &prepared, footprint, raw))
+        } else if (!OtdSlab_CollectProjectedInputs (
+                       zone, sources, roles, Floor, floorInd, &prepared, footprint, raw, &roomFloor, zoneFootprint))
             return false;
+
         GS::Array<OtdSlab> supports;
         for (const auto &candidate : raw) {
             auto support = candidate.slab;
@@ -3831,8 +4028,16 @@ namespace Roombook {
         for (auto &floor : inside)
             floor.draw.material = nominal.draw.material;
         GS::Array<OtdSlab> merged;
-        if (!OtdSlab_MergeMixedDomains (staged.floors, inside, domain, merged))
+        std::vector<UIndex> meshIndices;
+        if (!OtdSlab_MergeMixedDomains (staged.floors, inside, domain, merged, &meshIndices))
             return false;
+        // Slab-вклады пересчитываются ниже; Mesh-вклады сохраняют свои грани с новым индексом пола.
+        if (provenance != nullptr)
+            for (auto &contribution : provenance->mesh.contributions) {
+                if (contribution.floorIndex >= meshIndices.size ())
+                    return false;
+                contribution.floorIndex = meshIndices[contribution.floorIndex];
+            }
         staged.changedDomain = OtdSlab_BuildChangedCoverage (staged.floors, merged);
 
         staged.floors = merged;
@@ -3852,9 +4057,20 @@ namespace Roombook {
                                            const GS::Array<OtdSlab> &prepared,
                                            double roomFloor,
                                            const GS::Array<MeshFloorSource> &meshes,
-                                           MixedFloorGeometry &result) {
-        return OtdSlab_BuildFiniteMixedGeometryImpl (
-            zone, sources, roles, floorInd, nominal, onlyOnSlab, prepared, roomFloor, meshes, result, nullptr);
+                                           MixedFloorGeometry &result,
+                                           const Geometry::Polygon2D *zoneFootprint) {
+        return OtdSlab_BuildFiniteMixedGeometryImpl (zone,
+                                                     sources,
+                                                     roles,
+                                                     floorInd,
+                                                     nominal,
+                                                     onlyOnSlab,
+                                                     prepared,
+                                                     roomFloor,
+                                                     meshes,
+                                                     result,
+                                                     nullptr,
+                                                     zoneFootprint);
     }
 
     bool OtdSlab_BuildFiniteMixedGeometryWithProvenance (const RoomSurfaceSnapshot &zone,
@@ -3867,7 +4083,8 @@ namespace Roombook {
                                                          double roomFloor,
                                                          const GS::Array<MeshFloorSource> &meshes,
                                                          MixedFloorGeometry &result,
-                                                         MixedFloorProvenance &provenance) {
+                                                         MixedFloorProvenance &provenance,
+                                                         const Geometry::Polygon2D *zoneFootprint) {
         MixedFloorGeometry local;
         MixedFloorProvenance localProvenance;
         if (!OtdSlab_BuildFiniteMixedGeometryImpl (zone,
@@ -3880,7 +4097,8 @@ namespace Roombook {
                                                    roomFloor,
                                                    meshes,
                                                    local,
-                                                   &localProvenance))
+                                                   &localProvenance,
+                                                   zoneFootprint))
             return false;
         MixedFloorGeometry staged = result;
         MixedFloorProvenance stagedProvenance = provenance;
@@ -4055,9 +4273,9 @@ namespace Roombook {
             }
             runs = std::move (next);
         }
-        // Неразвёрнутый профиль смотрит вправо от beg→end; flipped отражает его относительно оси.
-        const double sign = wall.flipped ? 1.0 : -1.0;
-        const Vector2D normal = {-dy / length * sign, dx / length * sign};
+        // Знаковые координаты stretchedProfile уже относятся к экземпляру стены.
+        // Повторное отражение по flipped переносит сечение на другую сторону оси.
+        const Vector2D normal = {-dy / length, dx / length};
         Geometry::MultiPolygon2D result;
         for (const auto &polygon : profile) {
             GS::Array<Sector> sections;
@@ -4952,6 +5170,8 @@ namespace Roombook {
                     API_Guid guid = *cIt->key;
                     const GS::Array<API_Guid> &zoneGuids = *cIt->value;
     #endif
+                    if (typeelem != API_ZoneID && !RoomSource_IsVisible (guid))
+                        continue;
                     // Проверяем классификацию, исключаем отделочные элементы
                     API_Guid classguid;
                     if (Class_IsElementFinClass (guid, context.finclassguids, classguid, &context.surfaceCache))
@@ -5457,6 +5677,7 @@ namespace Roombook {
         OtdSlab nominalCeiling = room.poly;
         nominalCeiling.zBottom = room.zBottom + room.height_ceil;
         nominalCeiling.draw.material = room.om_ceil;
+        const double zoneTop = room.zBottom + room.height;
         double rejectedSlabArea = 0;
         if (room.has_floor && !room.meshFloorSources.IsEmpty ()) {
             MixedFloorGeometry mixed;
@@ -5470,7 +5691,8 @@ namespace Roombook {
                                                                  room.zBottom,
                                                                  room.meshFloorSources,
                                                                  mixed,
-                                                                 floorProvenance))
+                                                                 floorProvenance,
+                                                                 &room.poly.poly))
                 return false;
             slabFinishes.Append (mixed.floors);
             room.otdwall.Append (mixed.steps);
@@ -5485,7 +5707,9 @@ namespace Roombook {
                                                                       &nominalFloor,
                                                                       room.floor_by_slab,
                                                                       &room.otdwall,
-                                                                      &room.preparedSlabs)) {
+                                                                      &room.preparedSlabs,
+                                                                      &room.zBottom,
+                                                                      &room.poly.poly)) {
             msg_rep ("Surface finish", "Invalid original slab projection", APIERR_BADPARS, room.zone_guid);
             return false;
         }
@@ -5499,7 +5723,8 @@ namespace Roombook {
                                                               &nominalCeiling,
                                                               room.ceil_by_slab,
                                                               &room.otdwall,
-                                                              &room.preparedSlabs)) {
+                                                              &room.preparedSlabs,
+                                                              &zoneTop)) {
             msg_rep ("Surface finish", "Invalid original slab projection", APIERR_BADPARS, room.zone_guid);
             return false;
         }
@@ -5563,13 +5788,15 @@ namespace Roombook {
                 correctedWalls.Push (wall);
                 continue;
             }
-            const auto corrected = SurfaceWall_ClampToParts (wall,
-                                                             base.element.wall.begC,
-                                                             base.element.wall.endC,
-                                                             room.wallPart,
-                                                             room.edges,
-                                                             room.zBottom,
-                                                             room.otdwall);
+            const auto corrected =
+                SurfaceWall_ClampToParts (wall,
+                                          base.element.wall.begC,
+                                          base.element.wall.endC,
+                                          room.wallPart,
+                                          room.edges,
+                                          room.zBottom,
+                                          room.otdwall,
+                                          base.element.wall.modelElemStructureType == API_ProfileStructure);
             if (corrected.IsEmpty ()) {
                 hasSkippedPieces = true;
                 msg_rep ("Surface finish", "WallPart contact rejected", APIERR_BADPARS, wall.draw.base_guid);
@@ -5596,8 +5823,7 @@ namespace Roombook {
         }
         GS::HashTable<API_Guid, bool> wholeZoneBeams;
         for (const auto &part : room.surfaceCandidates.beamParts) {
-            if (!ACAPI_Element_Filter (
-                    part.guid, APIFilt_IsInStructureDisplay | APIFilt_IsVisibleByRenovation | APIFilt_OnVisLayer))
+            if (!RoomSource_IsVisible (part.guid) || !ACAPI_Element_Filter (part.guid, APIFilt_IsInStructureDisplay))
                 continue;
             API_Guid classguid = APINULLGuid;
             if (Class_IsElementFinClass (part.guid, finclassguids, classguid, cache))
@@ -6610,6 +6836,8 @@ namespace Roombook {
             return false;
         }
         for (const auto &guid : meshes) {
+            if (!RoomSource_IsVisible (guid))
+                continue;
             API_Guid classGuid = APINULLGuid;
             if (Class_IsElementFinClass (guid, finclassguids, classGuid, cache))
                 continue;
@@ -6686,6 +6914,8 @@ namespace Roombook {
         if (allslabs_.IsEmpty ())
             return;
         for (const auto &guid : allslabs_) {
+            if (!RoomSource_IsVisible (guid))
+                continue;
             API_Guid classguid = APINULLGuid;
             if (!Class_IsElementFinClass (guid, finclassguids, classguid, cache))
                 allslabs.Push (std::move (guid));
@@ -6759,13 +6989,18 @@ namespace Roombook {
             OtdRoom *roominfoPtr = roomsinfo.GetPtr (zoneGuid);
             if (roominfoPtr == nullptr || !roominfoPtr->isValid)
                 continue;
-            const auto role = AnalyticGeometry::SlabRole (zBottom, zUp, roominfoPtr->zBottom);
+            const auto role = AnalyticGeometry::SlabRole (
+                zBottom, zUp, roominfoPtr->zBottom, roominfoPtr->zBottom + roominfoPtr->height);
             if (role == AnalyticGeometry::SlabCandidateRole::None)
                 continue;
-            auto &roles =
-                role == AnalyticGeometry::SlabCandidateRole::Floor ? roominfoPtr->floorslab : roominfoPtr->ceilslab;
-            if (!roles.Contains (elGuid))
-                roles.Push (elGuid);
+            if ((role == AnalyticGeometry::SlabCandidateRole::Floor ||
+                 role == AnalyticGeometry::SlabCandidateRole::FloorAndCeiling) &&
+                !roominfoPtr->floorslab.Contains (elGuid))
+                roominfoPtr->floorslab.Push (elGuid);
+            if ((role == AnalyticGeometry::SlabCandidateRole::Ceiling ||
+                 role == AnalyticGeometry::SlabCandidateRole::FloorAndCeiling) &&
+                !roominfoPtr->ceilslab.Contains (elGuid))
+                roominfoPtr->ceilslab.Push (elGuid);
             bool prepared = false;
             for (const auto &source : roominfoPtr->slabSources) {
                 if (source.baseGuid == elGuid) {

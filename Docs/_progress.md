@@ -4,6 +4,13 @@
 `Docs/` и в архиве задач владельца (`IDEA.md`/`IDEA_ARCHIVE.md`); здесь — только текущее
 состояние и процедура.
 
+## Профильные контакты / малые исходные грани (#252 / #327, 2026-11-13)
+
+- Roombook: адресный контракт profile-only shifted-carrier fallback с приоритетом строгой линии и fail-closed неоднозначностью; ранний Native3D Wall-фильтр мировой высоты строго 0–5 мм, после transform до contacts/partition. Ordinary walls, разрывы/проёмы, SDK IDs/cache, analytic/Zone/Mesh/Column сохранены. Материалы и PartitionInvalidSourcePlane вне scope. [по коду]
+- MCP documentSymbols Data отклонён как stale: namespace end9804 вместо9875, нового helper нет; test MCP свежий, его все ranges совпадают с final-tus. Приняты hashmatched fresh isolated full documentSymbol из profile-contact-offline-20261113/final-tus; 278 selection/range checks. Generated: 223→224 scoped records, 209 координат обновлены, один helper добавлен; 865 внешних записей и их порядок неизменны. Неоднозначные/не вошедшие в AST исторические записи внутри среза сохранены и перечислены в acceptance; весь корпус/callgraph не регенерировался. [AST/source/hash audit]
+- Parent повторил exact permanent blocks54/0 (совместный scratch88/0) и full Data/header/test SDK25 MSVC C++14 /WX /c exit0; fresh LSP diagnostics8/2/0 без новых. Независимое ревью deleg_2e6e7160: No issues found in inspected scope; все четыре live-хеша совпадают с ревью/GREEN/TU. Это offline/TU, не canonical APX build/load/native PF.N. Адресные Docs/generated и 278 ranges приняты родителем 2026-11-14; #327 OPEN, #252 CLOSED. Состояния issues не изменялись. [parent-final-rerun-20261114/result.json; parent-final-tus-20261114/result.json; parent-final-audit-20261114.json]
+- Evidence: Hermes scratch/profile-contact-docs-20261113/{baseline-manifest.json,source-hashes.json,raw-*.json,mcp-*.json,range-checks.json,update_docs.py,finish_docs.py,acceptance.json,scope-proof.json}. Изменены только Roombook.md/symbols.json и этот новый progress-блок; IDEA/исходники/тесты/host/ветки/commit/push не менялись данным docs-проходом.
+
 ## Сечение существующих плинтусов (#326, 2026-11-13)
 
 - Карточка Roombook дополнена selective section-sync в Beam_Draw: активные атрибуты, связанные размеры/флаги, приоритет подготовленной геометрии, сохранение GUID/неуправляемого memo/output-only данных. Изменён только этот writer; source SHA256 56140f81241fd2931b2ea9531cd91526b34c20f1898ed1dedabcd9e9e6ace390.
@@ -20,7 +27,6 @@
 - Shared MCP Sync/Helpers stale (нет ParseStoryIndex, прежний конец ReadStory): отвергнут. Использованы свежие hash-matched isolated documentSymbol из offline/current; TestSync MCP принят после live joins. Parent подтвердил 180 опубликованных координат/0 несовпадений, symbols1086→1088; 908 внешних записей и порядок сохранены. Заголовочные объявления проверены отдельно, cpp-only artifact их не содержит. Соседний #326 и весь progress вне заменённого блока #315 сохранены побайтово.
 - #315 OPEN/WAITING_FOR_TEST: native-чтение/запись и повтор после изменения свойства, PLN/restart и другие SDK/macOS not verified. Без commit/push/закрытия issue. Evidence: Hermes scratch/story315-implementation/{regression,persistent-tests,extra-reader,review,offline,docs}/, build-ac25.log, scope-proof.json и parent-final-acceptance.json. Английская wiki и SomeStuff-AI-Context-ru вне этого узкого прохода.
 
-
 ## Защита model-read BrowserPalette (#323, 2026-11-12)
 
 - PDB/dump/APX GUID/age и source MD5 подтвердили GetPropertiesList → ACAPI_Element_GetPropertyValues (прежняя строка460). Assertion stack и CLR exception различены; worker-thread race, обязательный TW→selection trigger и универсальная idle-безопасность не установлены.
@@ -35,8 +41,6 @@
 - Controlled exact menu/close/callback/SetUserVisible, clang++ C++14: RED22/9 → GREEN22/0. DG/UI/settings — подменённые границы, не native-приёмка. Полная TU baseline/current SDK25 MSVC C++14 /W3 /WX /c успешно скомпилирована в scratch OBJ, source/header hashes сверены. Fresh isolated LSP имеет одинаковые три сообщения: старые Wswitch/unused-but-set-variable и unused Sync.hpp, новых нет. APX/link/restart/commit/push и GitHub-операции исключены по scope/«без issue».
 - Evidence: Hermes scratch/palette-visibility/ (red/green, offline-baseline/current, offline-comparison.json). Native-переключение видов и другие SDK/macOS not verified.
 - Финальное ревью нашло stale-перезапись в MenuCommandHandler; локальная копия перечитывается только в ветке палитры, exact outer handler RED7/2 → GREEN7/0. Повторное независимое ревью: No issues found in inspected scope. Main baseline/current TU SDK25 C++14 /WX exit0; fresh LSP — одинаковые два unused-includes. Parent повторил полную BrowserPalette TU после параллельной #323: fe442fdd/header d42375c4, MSVC exit0/OBJ создан, LSP три сообщения; controlled palette22/0 и outer menu7/0 повторены на live. Адресно обновлены 12 Main и прежние 36 palette-записей по isolated documentSymbol; новые символы #323 остаются её задачей. APX/native не выполнялись.
-
-- Приёмка владельца: «коммить и закрывай issue - я проверил». Закрытие по этой проверке; отдельный final runner агента не выполнялся. Коммит включает только видимость, без параллельной #323.
 
 ## Неблокирующий partition (#322, 2026-11-11)
 

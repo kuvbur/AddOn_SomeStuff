@@ -83,10 +83,18 @@ namespace Roombook {
 
     // Преобразует собственные контуры и ориентированную нормаль; вырожденную матрицу не принимает.
     bool RoomSurface_Transform (const API_Tranmat &matrix, RoomSurface &surface);
+    // Порог исходных негоризонтальных стеновых граней; не применяется к зоне, Mesh и analytic-геометрии.
+    bool RoomSurface_IsBelowMinimumWallHeight (API_ElemTypeID type, const RoomSurface &surface);
 
     // Оригинальный элемент: кэшируются и успешное чтение, и ошибка SDK.
     struct ElementRead {
         API_Element element = {};
+        GSErrCode error = NoError;
+    };
+
+    // Собственное Unicode-имя покрытия; ошибка также кэшируется до конца read-only этапа.
+    struct SurfaceMaterialNameRead {
+        GS::UniString name;
         GSErrCode error = NoError;
     };
 
@@ -121,6 +129,7 @@ namespace Roombook {
         GS::HashTable<API_Guid, RoomSurfaceSnapshot> snapshots;
         // Кэши read-only стадии: действительны до первой записи модели.
         GS::HashTable<API_Guid, ElementRead> elements;
+        GS::HashTable<API_AttributeIndex, SurfaceMaterialNameRead> surfaceMaterialNames;
         GS::HashTable<API_Guid, ClassificationRead> classifications;
         GS::HashTable<API_Guid, RoomRelationValues> relations;
         GS::HashTable<API_Guid, GS::Array<ConnectedElementsRead>> connectedElements;
@@ -584,13 +593,15 @@ namespace Roombook {
     // Учитывает roomEdge, объединяет интервалы и доводит только крайние внешние концы.
     // contacts — неизменённый набор контактов комнаты, необходимый для сохранения разрывов.
     // Без частей основания сохраняет стену; невалидная/непредставимая часть даёт пустой результат.
+    // profileWall разрешает смещение лишь одной линии roomEdge при отсутствии строгого совпадения.
     GS::Array<OtdWall> SurfaceWall_ClampToParts (const OtdWall &wall,
                                                  const API_Coord &wallBeg,
                                                  const API_Coord &wallEnd,
                                                  const GS::Array<API_WallPart> &parts,
                                                  const GS::Array<Sector> &roomEdges,
                                                  double roomBottom,
-                                                 const GS::Array<OtdWall> &contacts);
+                                                 const GS::Array<OtdWall> &contacts,
+                                                 bool profileWall = false);
     // Сопоставляет вырезы с окнами/дверями того же основания, не меняя покрытие стены.
     // Native-неоднозначность отвергается; analyticOverlap сохраняет множественные IDs без ложного owner.
     bool SurfaceOpenings_Link (OtdWall &wall, const GS::Array<OtdWall> &openingWalls, bool analyticOverlap = false);
@@ -712,7 +723,8 @@ namespace Roombook {
                                            const GS::Array<OtdSlab> &prepared,
                                            double roomFloor,
                                            const GS::Array<MeshFloorSource> &meshes,
-                                           MixedFloorGeometry &result);
+                                           MixedFloorGeometry &result,
+                                           const Geometry::Polygon2D *zoneFootprint = nullptr);
 
     // Append API: сохраняет result/provenance prefix; индексы относятся ко всему result.floors.
     // False не публикует ни геометрию, ни supports/contributions. Production Mesh не включает.
@@ -726,12 +738,15 @@ namespace Roombook {
                                                          double roomFloor,
                                                          const GS::Array<MeshFloorSource> &meshes,
                                                          MixedFloorGeometry &result,
-                                                         MixedFloorProvenance &provenance);
+                                                         MixedFloorProvenance &provenance,
+                                                         const Geometry::Polygon2D *zoneFootprint = nullptr);
 
     // XY-покрытие комнаты пересекается с реальными гранями оснований; Z остаётся исходным.
-    // Прежние приоритет по убыванию, наибольшие части, исключение отверстий и опциональные остаток/перепады.
-    // Для потолка номинальная отметка зоны участвует в выборе наравне с перекрытиями.
-    // Владелец при равных отметках неоднозначен; фактическая Z грани не округляется.
+    // Пол выбирается по убыванию отметок, потолок — по возрастанию; сохраняются наибольшие части и исключение
+    // отверстий. Без onlyOnSlab собственный номинальный полигон зоны конкурирует с перекрытиями; перепады строятся
+    // только от плит. Владелец при равных отметках неоднозначен; фактическая Z грани не округляется. zoneBoundary —
+    // исходная отметка границы зоны, не отметка отделки; без неё берётся граница снимка.
+    // zoneFootprint задаёт собственный XY-контур зоны независимо от nominal; без него сохраняется проекция снимка.
     bool OtdSlab_BuildProjectedFinishes (const RoomSurfaceSnapshot &zone,
                                          const GS::Array<RoomSurfaceSource> &sources,
                                          const GS::Array<API_Guid> &roles,
@@ -742,7 +757,9 @@ namespace Roombook {
                                          const OtdSlab *nominal = nullptr,
                                          bool onlyOnSlab = true,
                                          GS::Array<OtdWall> *walls = nullptr,
-                                         const GS::Array<OtdSlab> *prepared = nullptr);
+                                         const GS::Array<OtdSlab> *prepared = nullptr,
+                                         const double *zoneBoundary = nullptr,
+                                         const Geometry::Polygon2D *zoneFootprint = nullptr);
 
     // Дополняет сводку одной комнаты; не выбирает зоны на создание и не записывает модель.
     void OtdData_AddRoomToMaterialSummary (const OtdRoom &otd, ParamDictElement &paramToRead, MaterialSummary &summary);

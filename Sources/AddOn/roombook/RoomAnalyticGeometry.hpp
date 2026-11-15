@@ -114,13 +114,24 @@ namespace Roombook {
             return true;
         }
 
-        enum class SlabCandidateRole { None, Floor, Ceiling };
+        enum class SlabCandidateRole { None, Floor, Ceiling, FloorAndCeiling };
 
-        // Пол включает опоры ниже и пересекающие отметку; потолок — любой низ строго выше пола.
-        inline SlabCandidateRole SlabRole (double bottom, double top, double floor) {
-            if (!std::isfinite (bottom) || !std::isfinite (top) || !std::isfinite (floor) || bottom >= top)
+        // Принимаем пересечение границы либо зазор до 500 мм наружу от зоны.
+        // Равные отметки допустимы для снимка, содержащего только опорную грань.
+        inline bool SlabMeetsBoundary (double bottom, double top, double boundary, bool floor) {
+            if (!std::isfinite (bottom) || !std::isfinite (top) || !std::isfinite (boundary) || bottom > top)
+                return false;
+            return floor ? bottom <= boundary && top >= boundary - 0.5 : top >= boundary && bottom <= boundary + 0.5;
+        }
+
+        inline SlabCandidateRole SlabRole (double bottom, double top, double floor, double ceiling) {
+            if (!std::isfinite (floor) || !std::isfinite (ceiling) || floor >= ceiling || bottom >= top)
                 return SlabCandidateRole::None;
-            return bottom <= floor ? SlabCandidateRole::Floor : SlabCandidateRole::Ceiling;
+            const bool hasFloor = SlabMeetsBoundary (bottom, top, floor, true);
+            const bool hasCeiling = SlabMeetsBoundary (bottom, top, ceiling, false);
+            if (hasFloor)
+                return hasCeiling ? SlabCandidateRole::FloorAndCeiling : SlabCandidateRole::Floor;
+            return hasCeiling ? SlabCandidateRole::Ceiling : SlabCandidateRole::None;
         }
 
         inline bool SlabLevels (double reference, double offsetFromTop, double thickness, double &bottom, double &top) {

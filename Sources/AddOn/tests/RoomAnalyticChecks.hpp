@@ -76,15 +76,50 @@ namespace Roombook {
                 bottomSegments.empty (),
             "skirting nonfinite opening rejected");
         check (bottomMatches ({}, {{0, 10}}), "skirting repeat replaces previous bottom segments");
-        check (SlabRole (-.5545, 0, 0) == SlabCandidateRole::Floor,
-               "floor slab crossing nominal floor survives wall bottom minus .1");
-        check (SlabRole (-.9, -.5545, 0) == SlabCandidateRole::Floor, "below floor support retained");
-        check (SlabRole (3.3, 3.6, 0) == SlabCandidateRole::Ceiling, "nearest ceiling below nominal zone top retained");
-        check (SlabRole (6.9, 7.2, 0) == SlabCandidateRole::Ceiling, "ceiling above nominal zone top retained");
-        check (SlabRole (0, .3, 0) == SlabCandidateRole::Floor, "floor wins boundary equality");
-        check (SlabRole (1, 0, 0) == SlabCandidateRole::None, "invalid slab interval rejected");
-        check (SlabRole (0, 1, std::numeric_limits<double>::infinity ()) == SlabCandidateRole::None,
-               "nonfinite floor rejected");
+        // Допуск проверяется от исходных границ зоны, а не от отметок отделки или противоположной грани плиты.
+        const double inf = std::numeric_limits<double>::infinity ();
+        const double nan = std::numeric_limits<double>::quiet_NaN ();
+        for (double shift : {0., -12., 24.}) {
+            const auto floor = [shift] (double bottom, double top) {
+                return SlabMeetsBoundary (bottom + shift, top + shift, shift, true);
+            };
+            const auto ceiling = [shift] (double bottom, double top) {
+                return SlabMeetsBoundary (bottom + shift, top + shift, 3 + shift, false);
+            };
+            check (floor (-100, .1), "thick floor crossing retained regardless opposite face");
+            check (floor (-.3, 0) && floor (0, .3), "floor boundary intersection retained");
+            check (floor (-.8, -.5), "floor exact half meter gap retained");
+            check (!floor (-.8, -.5001), "floor over half meter gap rejected");
+            check (!floor (.0001, .2), "floor wholly above bottom rejected even near plane");
+            check (floor (0, 0) && floor (-.5, -.5), "floor single face snapshot admitted");
+            check (ceiling (2.9, 100), "thick ceiling crossing retained regardless opposite face");
+            check (ceiling (2.7, 3) && ceiling (3, 3.3), "ceiling boundary intersection retained");
+            check (ceiling (3.5, 3.8), "ceiling exact half meter gap retained");
+            check (!ceiling (3.5001, 3.8), "ceiling over half meter gap rejected");
+            check (!ceiling (2.8, 2.9999), "ceiling wholly below top rejected even near plane");
+            check (ceiling (3, 3) && ceiling (3.5, 3.5), "ceiling single face snapshot admitted");
+            check (SlabRole (-1 + shift, 4 + shift, shift, 3 + shift) == SlabCandidateRole::FloorAndCeiling,
+                   "slab spanning both planes supplies both independent roles");
+            check (SlabRole (3.2 + shift, 3.4 + shift, shift, 3 + shift) == SlabCandidateRole::Ceiling,
+                   "slab role uses actual original zone top");
+            check (SlabRole (-.8 + shift, -.5001 + shift, shift, 3 + shift) == SlabCandidateRole::None,
+                   "remote floor is not reclassified as ceiling");
+        }
+        check (!SlabMeetsBoundary (1, 0, 0, true) && !SlabMeetsBoundary (4, 3, 3, false),
+               "inverted slab support intervals rejected");
+        for (double invalid : {inf, -inf, nan}) {
+            check (!SlabMeetsBoundary (invalid, 0, 0, true) && !SlabMeetsBoundary (-1, invalid, 0, true) &&
+                       !SlabMeetsBoundary (-1, 0, invalid, true),
+                   "nonfinite floor support rejected");
+            check (!SlabMeetsBoundary (invalid, 4, 3, false) && !SlabMeetsBoundary (3, invalid, 3, false) &&
+                       !SlabMeetsBoundary (3, 4, invalid, false),
+                   "nonfinite ceiling support rejected");
+            check (SlabRole (-1, 0, invalid, 3) == SlabCandidateRole::None &&
+                       SlabRole (-1, 0, 0, invalid) == SlabCandidateRole::None,
+                   "nonfinite original zone plane rejected");
+        }
+        check (SlabRole (0, 0, 0, 3) == SlabCandidateRole::None && SlabRole (1, 0, 0, 3) == SlabCandidateRole::None,
+               "role classification requires positive slab thickness");
         double bottom, top;
         check (SlabLevels (10, 0.2, 0.3, bottom, top) && almostEqual (bottom, 9.9) && almostEqual (top, 10.2),
                "slab core reference levels");
