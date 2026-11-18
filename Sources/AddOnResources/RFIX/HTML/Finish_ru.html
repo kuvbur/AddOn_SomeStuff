@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================================
+  Archicad — Палитра «Отделка зон»
+  =====================================================================================
+  Правила те же, что в Interface_ru.html:
+    - Один файл, Vanilla HTML/JS. Только inline-стили, без отдельного CSS-блока.
+    - Цвета только через var(--ac-*); тема меняется на <html> (applyTheme).
+    - Строки интерфейса только через I18N_CATALOG и t(ключ).
+    - Весь обмен с Archicad идёт через ACBridge. Каждая функция моста: сначала
+      пробует window.ACAPI.<Метод>, при его отсутствии отдаёт мок (предпросмотр вне Archicad).
+    - Мост принимает НЕ БОЛЬШЕ ОДНОГО аргумента: строку (JSON.stringify) или без аргументов.
+      Ответ — JSON-строка или объект, синхронно или Promise.
+  Что делает интерфейс: список типов отделки. Тип — сворачиваемая карточка. Кнопка ⟳ в
+  заголовке карточки записывает тип во все зоны с этим типом; «Обновить все» — во все зоны.
+  =====================================================================================
+-->
+<html lang="ru" style="box-sizing:border-box;font-size:16px;--ac-transition:160ms ease;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Archicad — Отделка зон</title>
+</head>
+<body style="margin:0;padding:0;height:100vh;width:100%;overflow:hidden;min-width:150px;
+  font-family:'Segoe UI', -apple-system, Arial, sans-serif;-webkit-font-smoothing:antialiased;">
+<div id="app" style="display:flex;flex-direction:column;height:100%;width:100%;overflow:hidden;
+  background:var(--ac-bg-workspace);color:var(--ac-text-primary);font-size:0.85rem;"></div>
+
+<script>
+"use strict";
+<!-- i18n-catalog-begin -->
+// НОВЫЙ ТЕКСТ ДОБАВЛЯТЬ ТОЛЬКО СЮДА, ключом, а не строкой в коде.
+const I18N_CATALOG = [
+  { "key": "app.title", "text": "Archicad — Отделка зон" },
+  { "key": "finish.tab.types", "text": "Типы отделки" },
+  { "key": "finish.tab.favorites", "text": "Избранное" },
+  { "key": "finish.tab.properties", "text": "Свойства" },
+  { "key": "finish.check.favorites", "text": "Проверить избранное" },
+  { "key": "finish.check.properties", "text": "Проверить свойства" },
+  { "key": "finish.check.pending", "text": "Проверка пока не подключена к Archicad" },
+  { "key": "finish.properties.load", "text": "Загрузить свойства" },
+  { "key": "finish.properties.apply", "text": "Применить описания" },
+  { "key": "finish.properties.overwrite", "text": "Перезаписывать существующие описания" },
+  { "key": "finish.properties.hint", "text": "Выберите свойство для каждого маркера. После подключения настройка должна сохранять маркер и блок форматирования." },
+  { "key": "finish.properties.pending", "text": "Настройка описаний пока не подключена к Archicad" },
+  { "key": "finish.properties.select", "text": "Сначала загрузите свойства" },
+  { "key": "finish.properties.purpose", "text": "Назначение свойства" },
+  { "key": "finish.properties.description", "text": "Описание для записи" },
+  { "key": "finish.properties.property", "text": "Выбор свойства" },
+  { "key": "finish.property.has_ceil", "text": "Наличие потолка" },
+  { "key": "finish.property.has_floor", "text": "Наличие пола" },
+  { "key": "finish.property.floor_by_slab", "text": "Считать и строить пол (и плинтус пола) только по перекрытиям" },
+  { "key": "finish.property.ceil_by_slab", "text": "Считать и строить потолок (и карниз потолка) только по перекрытиям" },
+  { "key": "finish.property.type", "text": "Тип отделки стен для объединения зон" },
+  { "key": "finish.property.type_ceil", "text": "Тип отделки потолка для объединения зон" },
+  { "key": "finish.property.type_floor", "text": "Тип отделки пола для объединения зон" },
+  { "key": "finish.property.main_material", "text": "Имя покрытия основной части стены (чистовая отделка)" },
+  { "key": "finish.property.main_height", "text": "Высота зоны до потолка (если не задан, либо равен нулю - принимается высота зоны)" },
+  { "key": "finish.property.up_material", "text": "Имя покрытия верхней части (разность высоты зоны и высоты основной отделки, чистовая отделка)" },
+  { "key": "finish.property.down_material", "text": "Имя покрытие панелей (низа стен и колонн, чистовая отделка)" },
+  { "key": "finish.property.down_height", "text": "Высота панелей" },
+  { "key": "finish.property.column_material", "text": "Имя покрытия колонн (чистовая отделка)" },
+  { "key": "finish.property.ceil_material", "text": "Имя покрытия потолка (чистовая отделка)" },
+  { "key": "finish.property.ceil_result", "text": "Отделка потолка (запись результата)" },
+  { "key": "finish.property.main_result", "text": "Отделка стен (запись результата)" },
+  { "key": "finish.property.up_result", "text": "Отделка верха стен, от подвесного потолка до верха стены (запись результата)" },
+  { "key": "finish.property.down_result", "text": "Отделка низа стен/колонн (запись результата)" },
+  { "key": "finish.property.reveal_result", "text": "Отделка откосов (запись результата)" },
+  { "key": "finish.property.ceil_result_bytype", "text": "Отделка потолка (запись результата с группировкой по типам отделки)" },
+  { "key": "finish.property.main_result_bytype", "text": "Отделка стен (запись результата с группировкой по типам отделки)" },
+  { "key": "finish.property.up_result_bytype", "text": "Отделка верха стен (запись результата с группировкой по типам отделки)" },
+  { "key": "finish.property.down_result_bytype", "text": "Отделка низа стен/колонн (запись результата с группировкой по типам отделки)" },
+  { "key": "finish.property.reveal_result_bytype", "text": "Отделка откосов (запись результата с группировкой по типам отделки)" },
+  { "key": "common.theme.toggle", "text": "Переключить тему", "context": "Переключатель темы, title и aria-label" },
+  { "key": "finish.preview", "text": "Предпросмотр: связи с Archicad нет, данные тестовые", "context": "Строка сверху вне Archicad" },
+  { "key": "finish.error.bridge", "text": "Ошибка связи с Archicad", "context": "Ошибка моста" },
+  { "key": "finish.error.height", "text": "Укажите высоту в мм: целое число больше 0", "context": "Ошибка поля высоты низа стен" },
+  { "key": "finish.empty", "text": "Добавьте первый тип отделки", "context": "Пустой список" },
+  { "key": "finish.add", "text": "Добавить тип", "context": "Кнопка внизу" },
+  { "key": "finish.updateAll", "text": "Обновить все", "context": "Кнопка внизу" },
+  { "key": "finish.updateAll.done", "text": "Обновлено зон: {count}", "context": "Итог «Обновить все»" },
+  { "key": "finish.updateAll.invalid", "text": "Исправьте ошибки в типах", "context": "«Обновить все» не запущено из-за ошибок в карточках" },
+  { "key": "finish.running", "text": "Обновление…", "context": "Состояние выполнения" },
+  { "key": "finish.refresh", "text": "Обновить зоны этого типа", "context": "Кнопка ⟳ в карточке, title и aria-label" },
+  { "key": "finish.expand", "text": "Развернуть тип", "context": "Кнопка-шеврон, title и aria-label" },
+  { "key": "finish.collapse", "text": "Свернуть тип", "context": "Кнопка-шеврон, title и aria-label" },
+  { "key": "finish.updated", "text": "Обновлено: {count}", "context": "Счётчик зон после обновления" },
+  { "key": "finish.noZones", "text": "Зон с этим типом нет", "context": "Счётчик зон после обновления" },
+  { "key": "finish.locked", "text": "Заблокировано зон: {count} (слой закрыт или зона не зарезервирована)", "context": "Под заголовком карточки; единственная возможная ошибка обновления" },
+  { "key": "finish.updateAll.doneLocked", "text": "Обновлено зон: {count}, заблокировано: {locked}", "context": "Итог «Обновить все», если часть зон заблокирована" },
+  { "key": "finish.zones.one", "text": "{count} зона", "context": "Счётчик зон, форма для 1, 21, 31…" },
+  { "key": "finish.zones.few", "text": "{count} зоны", "context": "Счётчик зон, форма для 2–4, 22–24…" },
+  { "key": "finish.zones.many", "text": "{count} зон", "context": "Счётчик зон, форма для 0, 5–20…" },
+  { "key": "finish.noName", "text": "Без названия", "context": "Тип без имени" },
+  { "key": "finish.newName", "text": "Новый тип", "context": "Имя нового типа (мок)" },
+  { "key": "finish.name", "text": "Название", "context": "Поле имени типа" },
+  { "key": "finish.notSet", "text": "— не задано —", "context": "Пустая опция списка" },
+  { "key": "finish.off", "text": "Отключено", "context": "Пустая опция списка «Выше потолка»" },
+  { "key": "finish.group.ceiling", "text": "Потолок", "context": "Заголовок группы полей" },
+  { "key": "finish.group.floor", "text": "Пол", "context": "Заголовок группы полей" },
+  { "key": "finish.group.walls", "text": "Стены и колонны", "context": "Заголовок группы полей" },
+  { "key": "finish.group.bottom", "text": "Низ стен", "context": "Заголовок группы полей" },
+  { "key": "finish.field.ceilingType", "text": "Тип потолка", "context": "Подпись поля" },
+  { "key": "finish.field.ceilingPlinth", "text": "Плинтус потолка", "context": "Подпись поля" },
+  { "key": "finish.field.aboveCeiling", "text": "Выше потолка", "context": "Подпись поля" },
+  { "key": "finish.field.floorType", "text": "Тип пола", "context": "Подпись поля" },
+  { "key": "finish.field.floorPlinth", "text": "Плинтус пола", "context": "Подпись поля" },
+  { "key": "finish.field.walls", "text": "Основная отделка стен", "context": "Подпись поля" },
+  { "key": "finish.field.columns", "text": "Отделка колонн", "context": "Подпись поля" },
+  { "key": "finish.field.sameAsWalls", "text": "Как у стен", "context": "Флажок под отделкой колонн" },
+  { "key": "finish.field.bottom", "text": "Отделка низа", "context": "Подпись поля" },
+  { "key": "finish.field.height", "text": "Высота, мм", "context": "Подпись поля высоты отделки низа стен" },
+  { "key": "finish.field.ceilingHeight", "text": "Высота потолка, мм", "context": "Подпись поля" },
+  { "key": "finish.field.byZoneHeight", "text": "По высоте зоны", "context": "Флажок под высотой потолка; включён — высота потолка равна высоте зоны" },
+  { "key": "finish.error.ceilingHeight", "text": "Укажите высоту потолка в мм: целое число больше 0", "context": "Ошибка поля высоты потолка" },
+  { "key": "finish.chip.ceiling", "text": "Потолок: {v}", "context": "Чип-сводка свёрнутой карточки" },
+  { "key": "finish.chip.floor", "text": "Пол: {v}", "context": "Чип-сводка свёрнутой карточки" },
+  { "key": "finish.chip.walls", "text": "Стены: {v}", "context": "Чип-сводка свёрнутой карточки" },
+  { "key": "finish.chip.bottom", "text": "Низ: {v}", "context": "Чип-сводка свёрнутой карточки" },
+  { "key": "finish.delete", "text": "Удалить тип", "context": "Кнопка в раскрытой карточке" },
+  { "key": "finish.delete.confirm", "text": "Нажмите ещё раз для удаления", "context": "Второй клик подтверждает удаление" }
+];
+<!-- i18n-catalog-end -->
+
+const I18N_INDEX = Object.create(null);
+I18N_CATALOG.forEach(function (e) { I18N_INDEX[e.key] = e.text; });
+function t(key, params) {
+  var text = I18N_INDEX[key];
+  if (text === undefined) { if (typeof console !== 'undefined' && console.error) console.error('i18n: нет ключа ' + key); return key; }
+  if (!params) return text;
+  return text.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, function (whole, name) {
+    var v = params[name]; return v === undefined || v === null ? whole : String(v);
+  });
+}
+// Форма слова «зона» по числу (русские правила).
+function zonesText(n) {
+  var m10 = n % 10, m100 = n % 100;
+  var key = (m10 === 1 && m100 !== 11) ? "finish.zones.one" :
+            (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? "finish.zones.few" : "finish.zones.many";
+  return t(key, { count: n });
+}
+
+/* ===================================== 1. ТЕМА ===================================== */
+const THEMES = {
+  light: { "--ac-bg-workspace": "#FFFFFF", "--ac-bg-elevated": "#F8F9FB", "--ac-bg-hover": "#EEF1F6", "--ac-bg-input": "#FFFFFF",
+    "--ac-text-primary": "#1A1D23", "--ac-text-secondary": "#5B6472", "--ac-text-tertiary": "#646D7B",
+    "--ac-border": "#E1E4EA", "--ac-divider": "#ECEEF2", "--ac-accent": "#2F6FED", "--ac-accent-soft": "#E7EFFD",
+    "--ac-accent-contrast": "#FFFFFF", "--ac-danger": "#D0333F", "--ac-shadow-color": "rgba(20,22,26,0.10)" },
+  dark: { "--ac-bg-workspace": "#14161A", "--ac-bg-elevated": "#1F222A", "--ac-bg-hover": "#262A33", "--ac-bg-input": "#1A1D23",
+    "--ac-text-primary": "#EDEFF3", "--ac-text-secondary": "#A7AFBD", "--ac-text-tertiary": "#8A93A2",
+    "--ac-border": "#2C3038", "--ac-divider": "#262A33", "--ac-accent": "#5B8DEF", "--ac-accent-soft": "#23324D",
+    "--ac-accent-contrast": "#0B0D10", "--ac-danger": "#F1666B", "--ac-shadow-color": "rgba(0,0,0,0.45)" }
+};
+const STATE = {
+  theme: "light",   // по умолчанию светлая тема
+  options: {},      // списки значений из ACBridge.getOptions()
+  types: [],        // типы отделки из ACBridge.getState()
+  open: {},         // id типа -> раскрыта ли карточка
+  busy: false,      // идёт обновление зон: все кнопки обновления заблокированы
+  preview: false    // true вне Archicad (работает мок)
+};
+function applyTheme(name) {
+  STATE.theme = name;
+  const root = document.documentElement;
+  for (const key in THEMES[name]) root.style.setProperty(key, THEMES[name][key]);
+  root.style.setProperty("--ac-color-scheme", name);
+  const icon = document.getElementById("theme-toggle-icon");
+  if (icon) icon.textContent = name === "light" ? "\u263D" : "\u2600";
+}
+
+/* ============================ 2. МОСТ С ARCHICAD (МОК) ============================
+   Структура FinishType (id-значения берутся из списков getOptions; null = не задано):
+   { id, name, zoneCount,
+     ceiling:{type,plinth,heightMm:number|null,byZoneHeight:boolean}, // byZoneHeight true — высота потолка = высоте зоны: heightMm и aboveCeiling
+                                                                       // игнорируются (в интерфейсе заблокированы, значения не стираются)
+     aboveCeiling:{type},                              // null = «Отключено»
+     floor:{type,plinth}, walls:{finish},
+     columns:{sameAsWalls:boolean, finish},
+     wallBottom:{finish, heightMm:number|null} }
+   ================================================================================== */
+const ACBridge = (function () {
+  function delay(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+  function copy(o) { return JSON.parse(JSON.stringify(o)); }
+
+  // Вызов нативного метода. Нет моста — null (вызывающий отдаёт мок).
+  // Аргумент один: строка. Без аргумента — вызов без параметров (иначе падает CEF-мост).
+  function callNative(method, arg) {
+    try {
+      if (typeof window.ACAPI === "undefined" || !window.ACAPI[method]) return null;
+      var call = (arg === undefined) ? window.ACAPI[method]() : window.ACAPI[method](arg);
+      var unwrap = function (d) { return typeof d === "string" ? JSON.parse(d) : d; };
+      if (call && typeof call.then === "function") return call.then(unwrap);
+      return Promise.resolve(unwrap(call));
+    } catch (e) { return Promise.reject(e); }
+  }
+  function list() { return Array.prototype.slice.call(arguments).map(function (n, i) { return { id: String(n), name: n }; }); }
+
+  const MOCK_OPTIONS = {
+    ceilingTypes: list("Окраска", "Подвесной Армстронг", "Натяжной"),
+    ceilingPlinths: list("Галтель 50", "Галтель 80"),
+    aboveCeiling: list("Штукатурка", "Затирка"),
+    floorTypes: list("Ламинат", "Керамогранит", "Линолеум"),
+    floorPlinths: list("МДФ 80", "ПВХ 60"),
+    wallFinishes: list("Обои", "Покраска", "Плитка"),
+    columnFinishes: list("Обои", "Покраска", "Плитка"),
+    wallBottomFinishes: list("Панель МДФ", "Плитка", "Окраска масляная")
+  };
+  function mockType(id, name, zones, c, cp, f, fp, w, bf, bh) {
+    return { id: id, name: name, zoneCount: zones, ceiling: { type: c, plinth: cp, heightMm: null, byZoneHeight: true }, aboveCeiling: { type: null },
+      floor: { type: f, plinth: fp }, walls: { finish: w }, columns: { sameAsWalls: true, finish: w },
+      wallBottom: { finish: bf, heightMm: bh } };
+  }
+  const MOCK_TYPES = [
+    mockType("mock-1", "Жилая комната", 14, "Окраска", "Галтель 50", "Ламинат", "МДФ 80", "Обои", null, null),
+    mockType("mock-2", "Санузел", 6, "Окраска", null, "Керамогранит", null, "Плитка", "Плитка", 2100),
+    mockType("mock-3", "Коридор", 9, "Подвесной Армстронг", null, "Линолеум", "ПВХ 60", "Покраска", "Панель МДФ", 1200)
+  ];
+  MOCK_TYPES[2].ceiling.byZoneHeight = false;  // подвесной потолок ниже высоты зоны
+  MOCK_TYPES[2].ceiling.heightMm = 2700;
+
+  /** AGENT TODO: window.ACAPI.GetFinishOptions() (без аргументов) -> JSON {ceilingTypes:[{id,name}], ceilingPlinths, aboveCeiling,
+   *  floorTypes, floorPlinths, wallFinishes, columnFinishes, wallBottomFinishes}. */
+  function getOptions() {
+    return callNative("GetFinishOptions") || delay(250).then(function () { return copy(MOCK_OPTIONS); });
+  }
+  /** AGENT TODO: window.ACAPI.GetFinishState() -> JSON {types:[FinishType]}; zoneCount считает C++ по параметру зон. */
+  function getState() {
+    return callNative("GetFinishState") || delay(150).then(function () { return { types: copy(MOCK_TYPES) }; });
+  }
+  /** AGENT TODO: window.ACAPI.SaveFinishType(JSON.stringify(FinishType)) -> {success:boolean}. Вызывается с debounce 400 мс. */
+  function saveType(type) {
+    return callNative("SaveFinishType", JSON.stringify(type)) || delay(120).then(function () { return { success: true }; });
+  }
+  /** AGENT TODO: window.ACAPI.AddFinishType() (без аргументов) -> JSON FinishType с новым id, пустыми значениями, zoneCount 0. */
+  function addType() {
+    return callNative("AddFinishType") || delay(120).then(function () {
+      return mockType("mock-" + Date.now(), t("finish.newName"), 0, null, null, null, null, null, null, null);
+    });
+  }
+  /** AGENT TODO: window.ACAPI.DeleteFinishType(id) (строка) -> {success:boolean}. Зоны не меняются. */
+  function deleteType(id) {
+    return callNative("DeleteFinishType", String(id)) || delay(100).then(function () { return { success: true }; });
+  }
+  /** AGENT TODO: window.ACAPI.UpdateFinishZones(JSON.stringify(FinishType)) -> JSON {updated:number, locked:number}.
+   *  C++ находит все зоны с этим типом отделки и записывает в их параметры значения из переданного объекта.
+   *  Единственная ошибка — зона заблокирована (слой закрыт или зона не зарезервирована): такие зоны
+   *  пропускаются и считаются в locked. updated — число реально записанных зон. */
+  function updateZones(type) {
+    return callNative("UpdateFinishZones", JSON.stringify(type)) || delay(600).then(function () {
+      // Мок: у «Коридора» две зоны заблокированы, чтобы был виден вид ошибки в интерфейсе.
+      var locked = type.id === "mock-3" ? 2 : 0;
+      return { updated: Math.max(0, type.zoneCount - locked), locked: locked };
+    });
+  }
+  /** AGENT TODO: window.ACAPI.UpdateAllFinishZones() (без аргументов; типы уже сохранены через SaveFinishType)
+   *  -> JSON {results:[{id, updated:number, locked:number}]} (locked — как в UpdateFinishZones). */
+  function updateAllZones() {
+    return callNative("UpdateAllFinishZones") || delay(900).then(function () {
+      return { results: MOCK_TYPES.map(function (x) {
+        var locked = x.id === "mock-3" ? 2 : 0;
+        return { id: x.id, updated: Math.max(0, x.zoneCount - locked), locked: locked };
+      }) };
+    });
+  }
+  return { getOptions: getOptions, getState: getState, saveType: saveType, addType: addType,
+           deleteType: deleteType, updateZones: updateZones, updateAllZones: updateAllZones };
+})();
+
+/* ===================================== 3. УТИЛИТЫ ===================================== */
+function h(tag, opts, children) {
+  opts = opts || {};
+  const e = document.createElement(tag);
+  e.style.boxSizing = "border-box";
+  if (opts.style) e.style.cssText += opts.style;
+  if (opts.text !== undefined) e.textContent = opts.text;
+  if (opts.html !== undefined) e.innerHTML = opts.html;
+  if (opts.attrs) for (const k in opts.attrs) e.setAttribute(k, opts.attrs[k]);
+  if (opts.on) for (const k in opts.on) e.addEventListener(k, opts.on[k]);
+  if (opts.hoverStyle) {
+    const saved = {};
+    e.addEventListener("mouseenter", function () {
+      opts.hoverStyle.split(";").forEach(function (d) {
+        const i = d.indexOf(":"); if (i <= 0) return;
+        const p = d.slice(0, i).trim(); if (!(p in saved)) saved[p] = e.style.getPropertyValue(p);
+        e.style.setProperty(p, d.slice(i + 1).trim());
+      });
+    });
+    e.addEventListener("mouseleave", function () {
+      for (const p in saved) { e.style.setProperty(p, saved[p]); delete saved[p]; }
+    });
+  }
+  (children || []).forEach(function (c) { if (c) e.appendChild(c); });
+  return e;
+}
+function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+function copyOf(o) { return JSON.parse(JSON.stringify(o)); }
+const SVG_OPEN = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">';
+const ICON_REFRESH = SVG_OPEN + '<path d="M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2"/></svg>';
+const ICON_CHECK = SVG_OPEN + '<path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>';
+function chevronSvg(open) {
+  return SVG_OPEN.replace('width="16" height="16"', 'width="12" height="12"').replace('<svg ', '<svg style="transform:rotate(' + (open ? "0" : "-90") +
+    'deg);transition:transform var(--ac-transition);" ') + '<path d="M5 8l5 5 5-5"/></svg>';
+}
+const INPUT_STYLE = "width:100%;padding:0.2rem 0.35rem;font-size:0.76rem;background:var(--ac-bg-input);" +
+  "color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;";
+const ICON_BTN_STYLE = "flex:0 0 auto;width:1.6rem;height:1.6rem;display:flex;align-items:center;justify-content:center;padding:0;" +
+  "border:1px solid var(--ac-border);border-radius:0.3rem;background:var(--ac-bg-input);color:var(--ac-text-secondary);cursor:pointer;";
+const TEXT_BTN_STYLE = "padding:0.2rem 0.5rem;font-size:0.75rem;border:1px solid var(--ac-border);border-radius:0.25rem;cursor:pointer;" +
+  "background:var(--ac-bg-input);color:var(--ac-text-primary);";
+
+function field(label, control) {
+  return h("label", { style: "display:flex;flex-direction:column;gap:0.1rem;min-width:0;" },
+    [h("span", { text: label, style: "font-size:0.7rem;color:var(--ac-text-secondary);" }), control]);
+}
+function group(title, kids) {
+  return h("div", { style: "display:flex;flex-direction:column;gap:0.3rem;min-width:0;" },
+    [h("div", { text: title, style: "font-size:0.72rem;font-weight:700;color:var(--ac-text-secondary);" })].concat(kids));
+}
+// Выпадающий список из STATE.options[listKey]; пустая опция имеет value="".
+function optionSelect(listKey, value, emptyLabel, onChange) {
+  const sel = h("select", { style: INPUT_STYLE, on: { change: function () { onChange(sel.value || null); } } });
+  sel.appendChild(h("option", { text: emptyLabel, attrs: { value: "" } }));
+  (STATE.options[listKey] || []).forEach(function (o) { sel.appendChild(h("option", { text: o.name, attrs: { value: o.id } })); });
+  sel.value = value || "";
+  return sel;
+}
+function optionName(listKey, id) {
+  const f = (STATE.options[listKey] || []).filter(function (o) { return o.id === id; })[0];
+  return f ? f.name : "";
+}
+
+/* ===================================== 4. КАРТОЧКА ТИПА ===================================== */
+const CARDS = {}; // id типа -> интерфейс карточки
+
+function renderCard(type) {
+  const wrap = h("div", { attrs: { "data-type-id": type.id },
+    style: "border:1px solid var(--ac-border);border-radius:0.35rem;background:var(--ac-bg-elevated);overflow:hidden;flex:0 0 auto;" });
+  let saveTimer = null, flashTimer = null, flashText = "", deleteTimer = null, deleteArmed = false, spinner = null;
+
+  // ---- заголовок: ⟳, название и чипы, счётчик зон, шеврон ----
+  const refreshBtn = h("button", { attrs: { title: t("finish.refresh"), "aria-label": t("finish.refresh") }, html: ICON_REFRESH,
+    style: ICON_BTN_STYLE, hoverStyle: "background:var(--ac-bg-hover);color:var(--ac-accent);",
+    on: { click: function (e) { e.stopPropagation(); runUpdate(); } } });
+  const nameEl = h("div", { style: "font-weight:700;font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" });
+  const chipsEl = h("div", { style: "display:flex;flex-wrap:wrap;gap:0.25rem;margin-top:0.15rem;" });
+  const countEl = h("span", { style: "flex:0 0 auto;font-size:0.7rem;color:var(--ac-text-tertiary);white-space:nowrap;" });
+  const chevBtn = h("button", { style: "flex:0 0 auto;border:none;background:transparent;cursor:pointer;padding:0.3rem;display:flex;color:var(--ac-text-tertiary);",
+    on: { click: function (e) { e.stopPropagation(); setOpen(!STATE.open[type.id]); } } });
+  const header = h("div", { style: "display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0.45rem;cursor:pointer;",
+    on: { click: function (e) { if (!e.target.closest("button")) setOpen(!STATE.open[type.id]); } } },
+    [refreshBtn, h("div", { style: "flex:1 1 auto;min-width:0;" }, [nameEl, chipsEl]), countEl, chevBtn]);
+  const statusEl = h("div", { attrs: { role: "status" }, style: "display:none;padding:0 0.45rem 0.35rem;font-size:0.7rem;color:var(--ac-danger);word-break:break-word;" });
+
+  // ---- тело: поля, сгруппированные по смыслу ----
+  const nameInput = h("input", { attrs: { type: "text", value: type.name }, style: INPUT_STYLE,
+    on: { input: function () { type.name = nameInput.value; changed(); } } });
+  const columnSel = optionSelect("columnFinishes", type.columns.finish, t("finish.notSet"), function (v) { type.columns.finish = v; changed(); });
+  const sameChk = h("input", { attrs: { type: "checkbox" }, style: "margin:0;accent-color:var(--ac-accent);",
+    on: { change: function () { type.columns.sameAsWalls = sameChk.checked; syncColumns(); changed(); } } });
+  sameChk.checked = !!type.columns.sameAsWalls;
+  const heightInput = h("input", { attrs: { type: "text", inputmode: "numeric", value: type.wallBottom.heightMm == null ? "" : type.wallBottom.heightMm },
+    style: INPUT_STYLE, on: { input: function () {
+      const v = heightInput.value.trim();
+      type.wallBottom.heightMm = /^\d+$/.test(v) ? parseInt(v, 10) : null; changed(); } } });
+  const heightErr = h("div", { text: t("finish.error.height"), style: "display:none;font-size:0.68rem;color:var(--ac-danger);" });
+  const ceilingHeightInput = h("input", { attrs: { type: "text", inputmode: "numeric", value: type.ceiling.heightMm == null ? "" : type.ceiling.heightMm },
+    style: INPUT_STYLE, on: { input: function () {
+      const v = ceilingHeightInput.value.trim();
+      type.ceiling.heightMm = /^\d+$/.test(v) ? parseInt(v, 10) : null; changed(); } } });
+  const ceilingHeightErr = h("div", { text: t("finish.error.ceilingHeight"), style: "display:none;font-size:0.68rem;color:var(--ac-danger);" });
+  const byZoneChk = h("input", { attrs: { type: "checkbox" }, style: "margin:0;accent-color:var(--ac-accent);",
+    on: { change: function () { type.ceiling.byZoneHeight = byZoneChk.checked; syncCeilingHeight(); changed(); } } });
+  byZoneChk.checked = !!type.ceiling.byZoneHeight;
+  const aboveSel = optionSelect("aboveCeiling", type.aboveCeiling.type, t("finish.off"), function (v) { type.aboveCeiling.type = v; changed(); });
+  const bottomSel = optionSelect("wallBottomFinishes", type.wallBottom.finish, t("finish.notSet"), function (v) {
+    type.wallBottom.finish = v; syncBottom(); changed(); });
+  const wallSel = optionSelect("wallFinishes", type.walls.finish, t("finish.notSet"), function (v) {
+    type.walls.finish = v; syncColumns(); changed(); });
+  const deleteBtn = h("button", { text: t("finish.delete"), style: TEXT_BTN_STYLE + "color:var(--ac-danger);",
+    on: { click: function () {
+      if (!deleteArmed) {
+        deleteArmed = true; deleteBtn.textContent = t("finish.delete.confirm");
+        deleteTimer = setTimeout(function () { deleteArmed = false; deleteBtn.textContent = t("finish.delete"); }, 3000);
+        return;
+      }
+      clearTimeout(deleteTimer);
+      ACBridge.deleteType(type.id).then(function () { removeCard(type.id); }).catch(function () { setNote(t("finish.error.bridge"), true); });
+    } } });
+  const body = h("div", { style: "display:none;border-top:1px solid var(--ac-divider);padding:0.45rem;flex-direction:column;gap:0.5rem;" }, [
+    field(t("finish.name"), nameInput),
+    h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:0.4rem 0.6rem;" }, [
+      group(t("finish.group.ceiling"), [
+        field(t("finish.field.ceilingType"), optionSelect("ceilingTypes", type.ceiling.type, t("finish.notSet"), function (v) { type.ceiling.type = v; changed(); })),
+        field(t("finish.field.ceilingPlinth"), optionSelect("ceilingPlinths", type.ceiling.plinth, t("finish.notSet"), function (v) { type.ceiling.plinth = v; changed(); })),
+        field(t("finish.field.ceilingHeight"), ceilingHeightInput),
+        h("label", { style: "display:flex;align-items:center;gap:0.35rem;font-size:0.72rem;color:var(--ac-text-secondary);cursor:pointer;" },
+          [byZoneChk, h("span", { text: t("finish.field.byZoneHeight") })]),
+        ceilingHeightErr
+      ]),
+      group(t("finish.group.floor"), [
+        field(t("finish.field.floorType"), optionSelect("floorTypes", type.floor.type, t("finish.notSet"), function (v) { type.floor.type = v; changed(); })),
+        field(t("finish.field.floorPlinth"), optionSelect("floorPlinths", type.floor.plinth, t("finish.notSet"), function (v) { type.floor.plinth = v; changed(); }))
+      ]),
+      group(t("finish.group.walls"), [
+        field(t("finish.field.walls"), wallSel),
+        field(t("finish.field.columns"), columnSel),
+        h("label", { style: "display:flex;align-items:center;gap:0.35rem;font-size:0.72rem;color:var(--ac-text-secondary);cursor:pointer;" },
+          [sameChk, h("span", { text: t("finish.field.sameAsWalls") })]),
+        field(t("finish.field.aboveCeiling"), aboveSel)
+      ]),
+      group(t("finish.group.bottom"), [
+        field(t("finish.field.bottom"), bottomSel),
+        field(t("finish.field.height"), heightInput), heightErr
+      ])
+    ]),
+    h("div", { style: "display:flex;justify-content:flex-end;" }, [deleteBtn])
+  ]);
+  wrap.appendChild(header); wrap.appendChild(statusEl); wrap.appendChild(body);
+
+  // ---- состояние и поведение ----
+  function setOpen(open) {
+    STATE.open[type.id] = open;
+    body.style.display = open ? "flex" : "none";
+    chevBtn.innerHTML = chevronSvg(open);
+    const title = open ? t("finish.collapse") : t("finish.expand");
+    chevBtn.setAttribute("title", title); chevBtn.setAttribute("aria-label", title); chevBtn.setAttribute("aria-expanded", String(open));
+  }
+  function syncColumns() {
+    if (type.columns.sameAsWalls) { type.columns.finish = type.walls.finish; columnSel.value = type.walls.finish || ""; }
+    columnSel.disabled = !!type.columns.sameAsWalls;
+    columnSel.style.opacity = type.columns.sameAsWalls ? "0.55" : "1";
+  }
+  function syncBottom() {
+    heightInput.disabled = !type.wallBottom.finish;
+    heightInput.style.opacity = type.wallBottom.finish ? "1" : "0.55";
+  }
+  function syncCeilingHeight() {  // «По высоте зоны» включено — высота потолка и отделка выше потолка заблокированы
+    const byZone = !!type.ceiling.byZoneHeight;
+    ceilingHeightInput.disabled = byZone; ceilingHeightInput.style.opacity = byZone ? "0.55" : "1";
+    aboveSel.disabled = byZone; aboveSel.style.opacity = byZone ? "0.55" : "1";
+  }
+  function renderChips() {
+    nameEl.textContent = type.name.trim() || t("finish.noName");
+    clear(chipsEl);
+    const items = [];
+    if (type.ceiling.type) items.push(t("finish.chip.ceiling", { v: optionName("ceilingTypes", type.ceiling.type) }));
+    if (type.floor.type) items.push(t("finish.chip.floor", { v: optionName("floorTypes", type.floor.type) }));
+    if (type.walls.finish) items.push(t("finish.chip.walls", { v: optionName("wallFinishes", type.walls.finish) }));
+    if (type.wallBottom.finish) items.push(t("finish.chip.bottom", { v: optionName("wallBottomFinishes", type.wallBottom.finish) }));
+    items.forEach(function (s) {
+      chipsEl.appendChild(h("span", { text: s, style: "font-size:0.68rem;color:var(--ac-text-secondary);background:var(--ac-bg-hover);" +
+        "padding:0.05rem 0.4rem;border-radius:0.25rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" }));
+    });
+  }
+  function renderCount() { countEl.textContent = flashText || zonesText(type.zoneCount || 0); }
+  let showErr = false;
+  function validate(show) {  // show=true — попытка обновить: показать ошибки; при обычных правках ошибки только снимаются
+    if (show) showErr = true;
+    const w = type.wallBottom, c = type.ceiling;
+    const bad = !!w.finish && !(w.heightMm > 0);
+    const badCeiling = !!c.type && !c.byZoneHeight && !(c.heightMm > 0);  // высота нужна, только если задан потолок и не стоит «По высоте зоны»
+    heightInput.style.borderColor = showErr && bad ? "var(--ac-danger)" : "var(--ac-border)";
+    heightErr.style.display = showErr && bad ? "block" : "none";
+    ceilingHeightInput.style.borderColor = showErr && badCeiling ? "var(--ac-danger)" : "var(--ac-border)";
+    ceilingHeightErr.style.display = showErr && badCeiling ? "block" : "none";
+    if (show && (bad || badCeiling)) setOpen(true);
+    return !bad && !badCeiling;
+  }
+  function flush() {
+    if (saveTimer === null) return Promise.resolve();
+    clearTimeout(saveTimer); saveTimer = null;
+    return ACBridge.saveType(copyOf(type));
+  }
+  function changed() {  // любое изменение формы: сводка, проверка, отложенное сохранение (без перерисовки формы)
+    renderChips(); validate(); statusEl.style.display = "none";
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      saveTimer = null;
+      ACBridge.saveType(copyOf(type)).catch(function () { setNote(t("finish.error.bridge"), true); });
+    }, 400);
+  }
+  function spin(on) {  // вращение ⟳ через Web Animations API
+    if (on && refreshBtn.animate) spinner = refreshBtn.firstChild.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }], { duration: 800, iterations: Infinity });
+    else if (spinner) { spinner.cancel(); spinner = null; }
+  }
+  function setBusy(b) {
+    refreshBtn.disabled = b; refreshBtn.style.opacity = b ? "0.55" : "1"; refreshBtn.style.cursor = b ? "default" : "pointer";
+  }
+  function showResult(res) {  // {updated, locked, error?}: счётчик на 1.5 с, заблокированные зоны остаются под заголовком
+    const locked = res.locked || 0;
+    const msg = res.error || (locked > 0 ? t("finish.locked", { count: locked }) : "");
+    flashText = res.error ? "" : (res.updated > 0 || locked > 0) ? t("finish.updated", { count: res.updated || 0 }) : t("finish.noZones");
+    renderCount();
+    refreshBtn.innerHTML = msg ? ICON_REFRESH : ICON_CHECK;
+    refreshBtn.style.color = msg ? "var(--ac-danger)" : "var(--ac-accent)";
+    statusEl.textContent = msg; statusEl.style.display = msg ? "block" : "none";
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(function () {
+      flashText = ""; renderCount(); refreshBtn.innerHTML = ICON_REFRESH; refreshBtn.style.color = "var(--ac-text-secondary)";
+    }, 1500);
+  }
+  function runUpdate() {
+    if (STATE.busy || !validate(true)) return Promise.resolve();
+    setBusyAll(true); spin(true);
+    return flush().then(function () { return ACBridge.updateZones(copyOf(type)); })
+      .then(function (res) { spin(false); showResult(res); })
+      .catch(function () { spin(false); showResult({ updated: 0, locked: 0, error: t("finish.error.bridge") }); })
+      .then(function () { setBusyAll(false); reloadCounts(); });
+  }
+
+  syncColumns(); syncBottom(); syncCeilingHeight(); renderChips(); renderCount(); setOpen(!!STATE.open[type.id]);
+  return { el: wrap, type: type, setOpen: setOpen, setBusy: setBusy, validate: validate, flush: flush, showResult: showResult,
+           renderCount: renderCount, focusName: function () { nameInput.focus(); } };
+}
+
+/* ===================================== 5. КАРКАС ===================================== */
+let listEl, emptyEl, noteEl, allStatusEl, addBtn, allBtn;
+
+function setNote(text, isError) { noteEl.textContent = text; noteEl.style.color = isError ? "var(--ac-danger)" : "var(--ac-text-tertiary)"; }
+function setBusyAll(b) {
+  STATE.busy = b;
+  Object.keys(CARDS).forEach(function (id) { CARDS[id].setBusy(b); });
+  syncAllBtn();
+}
+function syncAllBtn() {  // «Обновить все» недоступна во время обновления и при пустом списке
+  const off = STATE.busy || !Object.keys(CARDS).length;
+  allBtn.disabled = off; allBtn.style.opacity = off ? "0.55" : "1"; allBtn.style.cursor = off ? "default" : "pointer";
+}
+function syncEmpty() { emptyEl.style.display = Object.keys(CARDS).length ? "none" : "block"; syncAllBtn(); }
+function addCard(type) {
+  const card = renderCard(type);
+  CARDS[type.id] = card; listEl.appendChild(card.el); syncEmpty();
+  return card;
+}
+function removeCard(id) {
+  const c = CARDS[id]; if (!c) return;
+  listEl.removeChild(c.el); delete CARDS[id]; delete STATE.open[id];
+  STATE.types = STATE.types.filter(function (x) { return x.id !== id; }); syncEmpty();
+}
+// После обновления перечитываем счётчики зон; формы не перерисовываются, состояние полей не теряется.
+function reloadCounts() {
+  return ACBridge.getState().then(function (s) {
+    (s.types || []).forEach(function (x) { const c = CARDS[x.id]; if (c) { c.type.zoneCount = x.zoneCount; c.renderCount(); } });
+  }).catch(function () {});
+}
+function runUpdateAll() {
+  if (STATE.busy) return;
+  const ids = Object.keys(CARDS);
+  const bad = ids.filter(function (id) { return !CARDS[id].validate(true); });  // validate() раскрывает карточку с ошибкой
+  if (bad.length) { allStatusEl.textContent = t("finish.updateAll.invalid"); return; }
+  setBusyAll(true); allStatusEl.textContent = t("finish.running");
+  Promise.all(ids.map(function (id) { return CARDS[id].flush(); }))  // C++ берёт сохранённые типы, поэтому сначала дожидаемся сохранения
+    .then(function () { return ACBridge.updateAllZones(); })
+    .then(function (res) {
+      let total = 0, locked = 0;
+      (res.results || []).forEach(function (r) { total += r.updated || 0; locked += r.locked || 0; if (CARDS[r.id]) CARDS[r.id].showResult(r); });
+      allStatusEl.textContent = locked > 0 ? t("finish.updateAll.doneLocked", { count: total, locked: locked }) : t("finish.updateAll.done", { count: total });
+    })
+    .catch(function () { allStatusEl.textContent = t("finish.error.bridge"); })
+    .then(function () { setBusyAll(false); reloadCounts(); });
+}
+function addType() {
+  ACBridge.addType().then(function (nt) {
+    STATE.types.push(nt); STATE.open[nt.id] = true;
+    const c = addCard(nt); c.el.scrollIntoView(); c.focusName();
+  }).catch(function () { setNote(t("finish.error.bridge"), true); });
+}
+
+function buildApp() {
+  const app = document.getElementById("app"); clear(app);
+  STATE.preview = typeof window.ACAPI === "undefined" || !window.ACAPI.GetFinishState;
+
+  noteEl = h("span", { style: "flex:1 1 auto;min-width:0;font-size:0.7rem;color:var(--ac-text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" });
+  const themeBtn = h("button", { attrs: { id: "theme-toggle", title: t("common.theme.toggle"), "aria-label": t("common.theme.toggle") },
+    style: "flex:0 0 auto;width:1.4rem;height:1.4rem;border:none;border-radius:0.25rem;background:transparent;cursor:pointer;color:var(--ac-text-secondary);" +
+           "display:flex;align-items:center;justify-content:center;font-size:1rem;padding:0;",
+    hoverStyle: "background:var(--ac-bg-hover);",
+    on: { click: function () { applyTheme(STATE.theme === "light" ? "dark" : "light"); } } },
+    [h("span", { attrs: { id: "theme-toggle-icon" }, text: "\u263D" })]);
+  const topBar = h("div", { style: "flex:0 0 auto;display:flex;align-items:center;gap:0.5rem;padding:0.1rem 0.35rem 0.1rem 0.5rem;border-bottom:1px solid var(--ac-divider);" },
+    [noteEl, themeBtn]);
+
+  listEl = h("div", { attrs: { id: "finish-list" }, style: "flex:1 1 auto;min-height:0;overflow:auto;padding:0.4rem 0.5rem;display:flex;flex-direction:column;gap:0.35rem;" });
+  emptyEl = h("div", { text: t("finish.empty"), style: "display:none;text-align:center;padding:1.5rem 0;font-size:0.78rem;color:var(--ac-text-tertiary);" });
+  listEl.appendChild(emptyEl);
+
+  addBtn = h("button", { text: t("finish.add"), style: TEXT_BTN_STYLE, hoverStyle: "background:var(--ac-bg-hover);", on: { click: addType } });
+  allStatusEl = h("span", { attrs: { role: "status" }, style: "flex:1 1 auto;min-width:0;font-size:0.7rem;color:var(--ac-text-tertiary);text-align:right;" });
+  allBtn = h("button", { text: t("finish.updateAll"), style: "padding:0.2rem 0.5rem;font-size:0.75rem;border:none;border-radius:0.25rem;cursor:pointer;" +
+    "background:var(--ac-accent);color:var(--ac-accent-contrast);font-weight:600;transition:opacity var(--ac-transition);", on: { click: runUpdateAll } });
+  const bottomBar = h("div", { style: "flex:0 0 auto;display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.5rem;border-top:1px solid var(--ac-border);background:var(--ac-bg-elevated);" },
+    [addBtn, allStatusEl, allBtn]);
+
+  const typesPanel = h("div", { attrs: { id: "panel-types", role: "tabpanel", "aria-labelledby": "tab-types" },
+    style: "flex:1 1 auto;min-height:0;display:flex;flex-direction:column;" }, [listEl, bottomBar]);
+  function checkPanel(id, label) {
+    const status = h("div", { attrs: { role: "status" },
+      style: "font-size:0.75rem;color:var(--ac-text-secondary);" });
+    const button = h("button", { text: t(label), style: TEXT_BTN_STYLE,
+      on: { click: function () { status.textContent = t("finish.check.pending"); } } });
+    return h("div", { attrs: { id: "panel-" + id, role: "tabpanel", "aria-labelledby": "tab-" + id },
+      style: "flex:1 1 auto;min-height:0;overflow:auto;padding:0.5rem;display:none;flex-direction:column;align-items:flex-start;gap:0.5rem;" },
+      [button, status]);
+  }
+  function propertiesPanel() {
+    const panel = checkPanel("properties", "finish.check.properties");
+    const status = h("div", { attrs: { role: "status" }, text: t("finish.properties.pending"),
+      style: "font-size:0.75rem;color:var(--ac-text-secondary);" });
+    const pending = function () { status.textContent = t("finish.properties.pending"); };
+    const load = h("button", { text: t("finish.properties.load"), style: TEXT_BTN_STYLE, on: { click: pending } });
+    const apply = h("button", { text: t("finish.properties.apply"), style: TEXT_BTN_STYLE, on: { click: pending } });
+    const overwrite = h("input", { attrs: { type: "checkbox", disabled: "disabled" } });
+    panel.appendChild(h("div", { text: t("finish.properties.hint"), style: "font-size:0.75rem;color:var(--ac-text-secondary);" }));
+    panel.appendChild(h("label", { style: "font-size:0.75rem;display:flex;align-items:center;gap:0.3rem;" },
+      [overwrite, document.createTextNode(t("finish.properties.overwrite"))]));
+    panel.appendChild(load); panel.appendChild(status);
+    const markers = ["has_ceil", "has_floor", "floor_by_slab", "ceil_by_slab", "type", "type_ceil", "type_floor",
+      "main_material", "main_height", "up_material", "down_material", "down_height", "column_material", "ceil_material",
+      "ceil_result", "main_result", "up_result", "down_result", "reveal_result", "ceil_result_bytype", "main_result_bytype",
+      "up_result_bytype", "down_result_bytype", "reveal_result_bytype"];
+    const rowStyle = "align-self:stretch;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr);gap:0.4rem;align-items:start;";
+    panel.appendChild(h("div", { style: rowStyle + "font-size:0.7rem;font-weight:600;" },
+      [h("div", { text: t("finish.properties.purpose") }), h("div", { text: t("finish.properties.description") }),
+        h("div", { text: t("finish.properties.property") })]));
+    markers.forEach(function (suffix) {
+      const marker = "some_stuff_fin_" + suffix;
+      const purpose = t("finish.property." + suffix);
+      const select = h("select", { attrs: { disabled: "disabled", "aria-label": t("finish.property." + suffix) },
+        style: "width:100%;min-width:0;color:var(--ac-text-secondary);background:var(--ac-bg-input);border:1px solid var(--ac-border);" },
+        [h("option", { text: t("finish.properties.select") })]);
+      panel.appendChild(h("div", { style: rowStyle + "border-bottom:1px solid var(--ac-divider);padding:0.3rem 0;" },
+        [h("div", { text: purpose, style: "min-width:0;font-size:0.75rem;overflow-wrap:anywhere;" }),
+          h("div", { text: purpose + " (" + marker + ")", style: "min-width:0;font-size:0.68rem;color:var(--ac-text-secondary);overflow-wrap:anywhere;" }), select]));
+    });
+    panel.appendChild(apply);
+    return panel;
+  }
+  const tabs = [
+    { id: "types", label: "finish.tab.types", panel: typesPanel },
+    { id: "favorites", label: "finish.tab.favorites", panel: checkPanel("favorites", "finish.check.favorites") },
+    { id: "properties", label: "finish.tab.properties", panel: propertiesPanel() }
+  ];
+  const tabBar = h("div", { attrs: { role: "tablist" },
+    style: "flex:0 0 auto;display:flex;flex-wrap:wrap;gap:0.2rem;padding:0.3rem 0.5rem;border-bottom:1px solid var(--ac-border);" });
+  function selectTab(id) {
+    tabs.forEach(function (tab) {
+      const selected = tab.id === id;
+      tab.panel.style.display = selected ? "flex" : "none";
+      tab.button.setAttribute("aria-selected", String(selected));
+      tab.button.style.background = selected ? "var(--ac-accent-soft)" : "var(--ac-bg-input)";
+      tab.button.style.color = selected ? "var(--ac-accent)" : "var(--ac-text-primary)";
+    });
+  }
+  tabs.forEach(function (tab) {
+    tab.button = h("button", { text: t(tab.label), attrs: { id: "tab-" + tab.id, role: "tab", "aria-controls": "panel-" + tab.id },
+      style: TEXT_BTN_STYLE, on: { click: function () { selectTab(tab.id); } } });
+    tabBar.appendChild(tab.button);
+  });
+  app.appendChild(topBar); app.appendChild(tabBar);
+  tabs.forEach(function (tab) { app.appendChild(tab.panel); });
+  selectTab("types");
+  if (STATE.preview) setNote(t("finish.preview"), false);
+  syncAllBtn();
+
+  ACBridge.getOptions().then(function (o) { STATE.options = o; return ACBridge.getState(); })
+    .then(function (s) {
+      STATE.types = s.types || [];
+      STATE.types.forEach(function (x, i) { if (i === 0) STATE.open[x.id] = true; addCard(x); });  // первый тип раскрыт
+      syncEmpty();
+    })
+    .catch(function () { setNote(t("finish.error.bridge"), true); syncEmpty(); });
+}
+
+/* ===================================== 6. ЗАПУСК ===================================== */
+document.addEventListener("DOMContentLoaded", function () {
+  applyTheme(STATE.theme);
+  buildApp();
+  window.addEventListener("pagehide", function () { Object.keys(CARDS).forEach(function (id) { CARDS[id].flush(); }); });
+});
+</script>
+</body>
+</html>

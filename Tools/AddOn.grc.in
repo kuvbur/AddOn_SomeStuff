@@ -8,6 +8,10 @@
 	"Interface_en.html"
 }
 
+'DATA' ID_ADDON_HTML_FINISH "Roombook Finish Html" {
+	"Finish_ru.html"
+}
+
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
 /* [  2] */		"Синхронизация свойств и параметров GDL элементов @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://kuvbur.org"
@@ -356,6 +360,16 @@
 
 'DLGH'  32580  DLG_32580_Browser_Palette {
 1	"Browser Control"		Browser_0
+}
+
+/* --- Roombook finish types palette (skeleton) ------------------------------*/
+
+'GDLG'  ID_ADDON_FINISH_DLG    Palette | topCaption | close | grow   0   0  380  420  "Типы отделки"  {
+/* [  1] */ Browser			0   0  380  420
+}
+
+'DLGH'  ID_ADDON_FINISH_DLG  DLG_32581_RoomBook_Finish_Palette {
+1	"Finish Control"		Browser_0
 }
 
 'GICN' 32500 "Sync" {

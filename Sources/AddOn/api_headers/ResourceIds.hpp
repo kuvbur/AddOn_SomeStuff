@@ -14,10 +14,12 @@
 
 #define ID_ADDON_HTML 1100
 #define ID_ADDON_HTML_ENG 2100
+#define ID_ADDON_HTML_FINISH 1200
 
 // Идентификаторы ресурсов add-on: строки, меню, диалоги и сообщения интерфейса.
 #define ID_ADDON_RULE_DLG 32590
 #define ID_ADDON_TABLE_NEW_DLG 32591
 #define ID_ADDON_TABLE_EDIT_DLG 32592
 #define ID_ADDON_OTHER_DB_DLG 32593
+#define ID_ADDON_FINISH_DLG 32581
 #endif
