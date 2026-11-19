@@ -1,42 +1,29 @@
-# Порядок действий для обновления документации
+# Documentation update procedure (`Docs/`)
 
-> Файл: `Docs/tools/UPDATE_PROCEDURE.md` (2026-09-22). Регламент актуализации `Docs/` после изменения кода и для регенерации данных.
+> Trigger: the owner's explicit commit command. Outside that command `Docs/` is read-only.
 
-## Когда это нужно
+## 1. Trigger and scope
 
-- Изменён любой файл в `Sources/AddOn/` (функции, сигнатуры, комментарии)
-- Добавлен/удалён модуль или файл
-- Изменилась конфигурация сборки (AC-версии, каталоги)
-- Расхождение комментария и кода найдено (вносится в `Docs/DISCREPANCIES.md`)
+- Run this procedure only when the owner commands a commit/checkpoint.
+- Until then `IDEA.md` keeps an open `[ ] Docs/ обновить перед checkpoint` item and `Docs/` is only read.
+- In scope: `Docs/modules/<module>.md`, `Docs/_generated/symbols.json`, `Docs/_generated/callgraph.json`, `Docs/DISCREPANCIES.md`, `Docs/ARCHITECTURE.md`, `Docs/REPOMAP.md`, `Docs/_progress.md`.
+- Exception: a comment/code mismatch found mid-task may be recorded at once in `DISCREPANCIES.md` (or as one line in `IDEA.md`).
+- Card description markers stay Russian literals: `[из комментария]` / `[по коду]` / `[не проверено]` / `[назначение не установлено]`.
 
-## Порядок действий
+## 2. `symbols.json` — clangd MCP only
 
-### 1. Регенерация symbols.json — только через clangd MCP
+No script produces `symbols.json`: the generator script (`generate_symbols.py`) was deleted and removed from the repo (its clangd client never handshook, so it always fell back to a regex scan that records `if`/`for`/`return` as function names and confuses call sites with definitions). Collect through clangd MCP only.
 
-**Не запускать `Docs/tools/generate_symbols.py` для symbols.json.** Его regex-фолбэк
-непригоден: он принимает `if`/`for`/`while` за имена функций и путает вызовы с
-определениями (проверено: 60.3% записей в старом файле — псевдосимволы), а
-многострочные сигнатуры (`bool DimParse (const double &v,` … `) {`) он не ловит
-вовсе. Скрипт теперь пригоден только как источник списка файлов из
-`compile_commands.json`; `callgraph.json` он не трогает.
+Collection:
 
-Сбор — по одному вызову `textDocument/documentSymbol` (clangd MCP) на каждый
-`.cpp` из `compile_commands.json`:
+1. Take the `.cpp` list from `compile_commands.json` (31 files).
+2. Call `get_document_symbols` once per file with an absolute path.
+3. Walk the tree; do not record `Namespace`/`Class`/`Struct`, but recurse into their `children`; prefix child names (`ParamHelpers::WriteProperty`); class fields as `Class.field`.
+4. clangd lines are 0-based → store `line + 1` (1-based, as in cards).
+5. `module` = file name without extension; for `Sources/AddOn/<subdir>/<file>.cpp` use the subdirectory (`pk`, `spec`, `table`, `dialogs`, `json_commands`, `third_party`).
+6. Merge batches, dedupe on `(name, file, line)`, write `Docs/_generated/symbols.json`: UTF-8, `indent=2`, `ensure_ascii=False`, LF, no BOM, no trailing newline.
 
-1. Взять список `.cpp` из `compile_commands.json` (31 файл).
-2. Для каждого вызвать `get_document_symbols` с абсолютным путём.
-3. Обойти дерево рекурсивно; `Namespace`/`Class`/`Struct` не записывать, но
-   обходить их `children`; имя из `children` писать с префиксом
-   (`ParamHelpers::WriteProperty`). Поля класса — как `Class.field`.
-4. Строки clangd 0-based → записать `line + 1` (1-based, как в карточках).
-5. `module` = имя файла без расширения, либо имя подпапки для
-   `Sources/AddOn/<подпапка>/<файл>.cpp` (`pk`, `spec`, `table`, `dialogs`,
-   `json_commands`, `third_party`).
-6. Слить батчи, дедуп по `(name, file, line)`, записать в
-   `Docs/_generated/symbols.json` — UTF-8, `indent=2`, `ensure_ascii=False`,
-   LF, без BOM, **без завершающего перевода строки** (стиль HEAD).
-
-Проверка результата (обязательно перед коммитом):
+Verify before commit:
 
 ```bash
 python - <<'EOF'
@@ -44,46 +31,40 @@ import json
 d = json.load(open('Docs/_generated/symbols.json', encoding='utf-8'))
 print(len(d), 'symbols,', len({s['file'] for s in d}), 'files')
 bad = [s for s in d if s['name'].split('::')[-1] in {'if','for','while','switch','return'}]
-print('keyword names:', len(bad))          # должно быть 0
+print('keyword names:', len(bad))          # must be 0
 EOF
 ```
 
-Ожидаемое число — около **840** (собрано 2026-09-28, все 31 `.cpp`). Резкое
-отклонение означает, что часть файлов не обработана или попал мусор.
+Expected order of magnitude: ~840 symbols over 31 `.cpp` files. A large deviation means skipped files or merged garbage.
 
-### 2. Callgraph — только через clangd MCP (не через subprocess)
+## 3. `callgraph.json` — clangd MCP only
 
-**Политика объёма: точечный сбор под горячий модуль, а не все 23 сразу.**
-Callgraph полностью собран только для pk/ (29 рёбер). У остальных модулей поля «Вызывает»/«Вызывается из» в карточках помечены `[не проверено]`. Это осознанный приоритет (решение 2026-09-22): связка «профиль → горячая функция → кто её вызывает» нужна только для того модуля, где реально всплыла горячая функция. При появлении профиля:
-1. Определить горячий модуль/файл.
-2. Собрать callHierarchy (или grep-fallback) для функций этого модуля по позициям определений из `symbols.json`.
-3. Дописать рёбра в `callgraph.json` (`meta.source` + `stats`), поля «Вызывает»/«Вызывается из» в карточках модуля обновить, пометку `[не проверено]` снять.
-Полный проход по всем модулям — только по явному решению.
+Scope policy: per hot module, never all modules at once. Only `pk/` is complete (29 edges); elsewhere the card fields «Вызывает»/«Вызывается из» stay `[не проверено]`.
 
+No scripted transport exists; collect edges through MCP:
 
-`generate_symbols.py` не может говорить с clangd через `subprocess.PIPE` на Windows (clangd 22.1.8: нет `--port`, pipe даёт пустой greeting / Errno 22). Сбор рёбер:
+1. `mcp__clangd__get_call_hierarchy` at the function NAME position in its `.cpp` definition. MCP coordinates are 0-based; grep is 1-based (offset −1).
+2. Keep only edges whose paths are under `Sources/AddOn/`; SDK calls (Build/DevKit, MSVC, Windows Kits) go into `sdk_edges_summary` as `outgoing_count`.
+3. Write `Docs/_generated/callgraph.json` in the existing shape: `meta`, `edges`, `not_resolved`, `stats`.
+4. Remove `[не проверено]` from the card fields you actually filled.
 
-1. В Hermes: `mcp__clangd__get_call_hierarchy` на позиции **имени функции в определении** (.cpp). Внимание: MCP координаты — 0-based; grep даёт 1-based (offset −1).
-2. Рёбра фильтровать: только пути `Sources/AddOn/`; SDK-вызовы (Build/DevKit, MSVC, Windows Kits) — счётчиком `outgoing_count` в `sdk_edges_summary`.
-3. Записывать в `Docs/_generated/callgraph.json` (формат — см. текущий файл: `meta`, `edges`, `not_resolved`, `stats`).
+Fallback when clangd does not resolve the position ("No call hierarchy", or `find_references` returns a foreign symbol; seen at `pk/ResetProperty.cpp:14`, `pk/Revision.cpp:14`):
 
-**Если clangd не резолвит позицию** (callHierarchy «No call hierarchy» или `find_references` отдаёт чужой символ — бывает на определениях, пример: `pk/ResetProperty.cpp:14`, `pk/Revision.cpp:14`):
+- `grep -rn "FuncName\s*(" --include=*.cpp --include=*.hpp Sources/AddOn`, then drop the definition itself.
+- Confirm each call site by reading context (`sed -n '<line>±5p'`) before writing it into a card.
+- After two failed clangd attempts, stop and write `не проверено` with the reason.
 
-- Fallback: `grep -rn "FuncName\s*(" --include=*.cpp --include=*.hpp Sources/AddOn` и отфильтровать собственное определение
-- Вызовы подтверждать чтением контекста (`sed -n '<строка>±5p'`) перед внесением в карточку
-- После 2 неудачных попыток clangd — не повторять, писать «не проверено» с причиной
+## 4. Module cards
 
-### 3. Актуализация module-документов
+For each changed module `Docs/modules/<module>.md`:
 
-Для каждого изменённого модуля `Docs/modules/<module>.md`:
+1. Check the public API table against real definitions (`get_document_symbols` or grep).
+2. Update/add records for non-trivial functions; trivial ones stay one table row.
+3. Mark every description with its source — no marker, no description.
+4. **No line numbers in cards.** Name the symbol; the single source of coordinates is `Docs/_generated/symbols.json`. A card that needs a location points at the name, and `check_docs.py` flags any remaining `File.cpp:123`.
+5. Update the header state line — `Состояние кода: <hash>` — and the date.
 
-1. Сверить таблицу «Публичный API» с реальными определениями (grep `^`-строк или `get_document_symbols`)
-2. Обновить/добавить карточки нетривиальных функций (шаблон ниже), тривиальные — одной строкой в таблице
-3. Каждое описание пометить источником: `[из комментария]` / `[по коду]` / `[не проверено]` / `[назначение не установлено]` — без пометки описание не вносить
-4. Строки указывать как определения в `.cpp` (1-based); если строка не проверена — так и писать, не брать строку из `.hpp`
-5. В шапке файла обновить хеш коммита и дату
-
-Шаблон карточки:
+Record template:
 
 ```markdown
 ### `Namespace::Func(params) -> ret`
@@ -95,46 +76,59 @@ Callgraph полностью собран только для pk/ (29 рёбер
 - Вызывается из: (из callgraph.json или grep)
 ```
 
-### 4. Расхождения комментария и кода
+## 5. `DISCREPANCIES.md`
 
-Найденное несоответствие — в `Docs/DISCREPANCIES.md` (файл:строка, что в комментарии, что в коде, статус). Код **не исправлять** — только фиксация.
+One row per mismatch: `file:line`, what the comment claims, what the code does, status. Do not change code here.
 
-### 5. Обзорные файлы
+## 6. Overview files
 
-- `Docs/ARCHITECTURE.md` — обновить граф зависимостей, если изменились `#include` между модулями; Mermaid-стрелка должна подтверждаться include или callgraph
-- `Docs/REPOMAP.md` — при изменении структуры каталогов/статистики
-- `Docs/_progress.md` — короткая запись: что обновлено, дата, коммит (единственный источник для возобновления)
+- `Docs/ARCHITECTURE.md` — dependency graph when cross-module `#include`s changed; every Mermaid arrow must be backed by an include or a callgraph edge.
+- `Docs/REPOMAP.md` — when directories or statistics changed.
+- `Docs/_progress.md` — one short dated entry per pass: what was updated and at which commit (sole resume source).
 
-### 6. Коммит
+## 7. Commit
 
-**Два разных сценария — не путать.**
+Both scenarios start from the owner's commit command, with the code already built and validated (`AGENTS.md` §9).
 
-**A. Карточка обновлена вместе с конкретной правкой кода.**
-По `AGENTS.md` §3/§15 обновлённый `Docs/modules/<module>.md` идёт в **тот же
-чекпоинт**, что и код — отдельного `[docs]`-коммита здесь нет:
+Order: build/validation → `symbols.json`/`callgraph.json` → affected cards → `DISCREPANCIES.md`/`_progress.md` → `python Tools/check_docs.py --update` and a clean report → `git diff` (own files and hunks only) → commit.
+
+**A. Docs catch up with accumulated code changes and ride the same checkpoint** (typical «коммить» case; no separate `[docs]` commit):
 
 ```bash
-git add Sources/AddOn/<изменённые файлы> Docs/modules/<module>.md Docs/_generated/ Docs/_progress.md
+git add Sources/AddOn/<changed files> Docs/modules/<module>.md Docs/_generated/ Docs/_progress.md
 git commit -m "[step-ref] short description
 Refs: IDEA.md step <n>"
 ```
 
-**B. Самостоятельный проход по документации** (регенерация, догоняющее
-обновление нескольких модулей, не привязанное к одной правке кода) — этот
-сценарий:
+**B. Standalone documentation pass** (regeneration or catching up several modules, not tied to one code change):
 
 ```bash
-git add Docs/   # только Docs/ + при необходимости AGENTS.md (раздел 17)
+git add Docs/   # Docs/ only, plus AGENTS.md §17 if it changed
 git commit -m "[docs] Актуализация: <кратко>
 Refs: Docs/_progress.md"
 ```
 
-Запрещено (AGENTS.md / задача документирования): `commit --amend`, `rebase -i`, `push --force`, удаление файлов вне `Docs/`, коммиты `Build/`, `compile_commands.json` (корневой, от LSP), `.cache/`.
+Forbidden: `commit --amend`, `rebase -i`, `push --force`, deleting files outside `Docs/`, committing `Build/`, the root `compile_commands.json`, `.cache/`.
 
-## Известные ловушки
+## 8. Validation gate
 
-- clangd MCP: `-Wunused-*` показывает как errors — это расхождение с MSVC, не блокер; арбитр — `BuildAddOn.py`
-- clangd на определениях может резолвить не тот символ — проверять, что в ответе тот файл/имя
-- `Docs/` в git регистрируется с заглавной буквы (`Docs/`, не `docs/`) — Windows FS case-insensitive, но git различает
-- `Docs/ARCHITECTURE.md` был в `.gitignore` (строка 383) — при пересоздании нужен `git add -f`
-- `generate_symbols.py` с модулем-именем: 3 сегмента пути → имя файла без расширения, 4+ сегмента → имя подкаталога (`pk`, `dialogs`, `spec`, `table`, `third_party`)
+Run before the commit, after the docs pass:
+
+```bash
+python Tools/check_docs.py --update   # refresh Docs/_generated/source_hashes.json
+python Tools/check_docs.py            # report
+```
+
+- `ERROR` (exit 1) — a path referenced by a card does not exist, or `source_hashes.json` is missing. Fix before committing.
+- `COORD` — the card still carries `File.cpp:123`. It does not block the commit; migrate that card to symbol names when you next touch it.
+- `STALE` — a source mentioned by the card changed after the recorded hash, or the card's `Состояние кода` commit is behind the last commit touching the module.
+- `--strict` turns `STALE` and `COORD` into a failure.
+
+## 9. Pitfalls
+
+- clangd MCP reports `-Wunused-*` as errors — a mismatch with MSVC, not a blocker; the arbiter is `BuildAddOn.py`.
+- clangd may resolve a foreign symbol at a definition — check that the returned file/name matches.
+- The directory is `Docs/` with a capital D (Windows is case-insensitive, git is not).
+- `Docs/ARCHITECTURE.md` was once gitignored — when re-creating it, use `git add -f`.
+- `module` field for new records: 3 path segments → file name without extension; 4+ → subdirectory name (`roombook`, `tests`, `dialogs`, `spec`, `pk`, `json_commands`, `table`, `third_party`).
+- Generated JSON must keep `symbols.json` collection order; never re-sort the file.

@@ -62,7 +62,6 @@ D:/SomeStuff_addon/
 │   │                            #   dialogs/ 3, third_party/ 1;
 │   │                            #   dialogs/OtherDbDialog — описан в карточке Sync.md, #210)
 │   ├── tools/
-│   │   ├── generate_symbols.py  # НЕ запускать для данных: символы — regex-fallback, негоден
 │   │   └── UPDATE_PROCEDURE.md  # Doc update procedure
 │   └── _generated/
 │       ├── symbols.json         # Символы (1061 запись, 45 файлов, строки 1-based;

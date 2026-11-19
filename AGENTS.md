@@ -21,9 +21,15 @@ Current structure: `Docs/REPOMAP.md` (generated, authoritative — §13/§17).
 IDEA.md → repo knowledge/landmines → Docs/modules/<area>.md (if it exists) →
 Sources/AddOn/ only → determine AC version(s) → verify SDK/API →
 root cause → minimal change → clang-format → LSP → Build →
-Runtime (as needed) → update durable knowledge (incl. Docs/modules/<area>.md
-if it drifted) → git diff → checkpoint → answer
+Runtime (as needed) → git diff → checkpoint → answer
 ```
+
+`Docs/` (module cards, `_generated/`, `_progress.md`, `ARCHITECTURE.md`,
+`REPOMAP.md`) **не обновляется в промежуточных шагах**. В ходе работы
+карточка — только читается. Актуализация — отдельный этап **перед
+коммитом, по явной команде владельца** (§17). Пока команды нет, в
+`IDEA.md` держится пункт плана «Docs/ обновить перед checkpoint» —
+отметка `[ ]`.
 
 ## 4. Codex Environment / Project Knowledge
 
@@ -116,8 +122,9 @@ VS MCP `build_solution`, not `BuildAddOn.py` — a VS MCP build alone does
 **not** satisfy this section's `compiled` claim, only a real
 `BuildAddOn.py` build or `restart_archicad_for_test.ps1` does. If the
 observed runtime behavior confirms or contradicts something already in
-`Docs/modules/<module>.md`, note it there (or in `DISCREPANCIES.md`) —
-optional, not a blocker for the debug task itself.
+`Docs/modules/<module>.md`, зафиксировать это в `IDEA.md` (одна строка в
+текущем статусе/наблюдениях); сама карточка правится позже, по команде
+перед коммитом (§17) — не в ходе отладки.
 
 **HTML interface** — after every `Interface_ru.html` edit, run
 `powershell -File Tools/test_html.ps1` before claiming `tested`.
@@ -209,6 +216,11 @@ state, updating the Plan first if stale.
 Plan markers: `[ ]` not started · `[/]` in progress · `[x]` completed
 **and validated**.
 
+Plan обязан содержать пункт `Docs/ обновить перед checkpoint` (`[ ]`,
+пока владелец не дал команду на коммит) — он заменяет промежуточные
+обновления карточек и `_generated/` (§17). Отмечать `[x]` только после
+фактического обновления документов перед чекпоинтом.
+
 Before ending a session: update current state, last completed step,
 next action, last checkpoint. Completed tasks move to `## Archive` (or
 `IDEA_ARCHIVE.md`) — keep the active section short.
@@ -291,11 +303,12 @@ ran; issue-closing changes: `restart_archicad_for_test.ps1` ran, not
 just a debug session — §11.1) · verified/compiled/tested reported
 accurately · no generated files staged · no unrelated refactor · memory
 updated · IDEA.md re-read before final write · code changes: GitHub
-issue exists and commit references it (`Refs: #N`, §11.1) · if the
-change altered a contract/side effect/signature already documented in
-`Docs/modules/<module>.md`, that card updated in the same checkpoint
-(§17); if out of scope for this task, said so explicitly rather than
-leaving it silently stale.
+issue exists and commit references it (`Refs: #N`, §11.1) · `Docs/`
+обновлён **только если владелец дал команду на коммит** (§17): тогда
+карточка затронутого модуля, `_generated/` и `_progress.md` входят в тот
+же чекпоинт; если команды не было, в `IDEA.md` остаётся `[ ]`-пункт
+«Docs/ обновить перед checkpoint», а карточка явно называется
+устаревшей в ответе, а не молча оставляется как актуальная.
 
 ## 15.1 Номера строк ресурса (`AddOn.grc.in`)
 
@@ -353,16 +366,42 @@ Maintained in `master`. `_generated/` is collected via clangd MCP
 - `Docs/_generated/symbols.json` / `callgraph.json` — deterministic
   clangd output.
 - `Docs/_progress.md` — documentation work state (sole resume source).
-- `Docs/tools/generate_symbols.py` — symbols.json generator (callHierarchy
-  is collected via clangd MCP — `subprocess.PIPE` doesn't work on
-  Windows).
+- `Docs/_generated/source_hashes.json` — sha256 исходников для проверки актуальности.
+- `Tools/check_docs.py` — проверка: существование путей, отсутствие номеров строк
+  в карточках, свежесть исходников по хешам, отставание `Состояние кода: <hash>`;
+  `--update` перезаписывает хеши, `--strict` считает STALE ошибкой.
 - `Docs/tools/UPDATE_PROCEDURE.md` — step-by-step doc-update procedure
   (regenerate symbols/callgraph, update module cards, DISCREPANCIES.md,
   overview files, commit). Read it before any doc-update task; it also
   settles the commit-scenario split noted below.
 
-Rule: when code changes, update the matching `Docs/modules/<module>.md`
-and `_generated/`.
+**Правило обновления — только перед коммитом, по команде.**
+`Docs/` не трогается в промежуточных шагах (ни после правки кода, ни после
+успешного прогона, ни после ревью): это отдельный этап, который
+запускается **явной командой владельца на коммит**. Экономия времени и
+токенов — причина правила; побочный эффект — docs отстают, и это
+допустимо, пока в `IDEA.md` висит незакрытый пункт «Docs/ обновить перед
+checkpoint».
+
+Порядок перед коммитом: код уже собран и проверен → по команде собрать
+`symbols.json`/`callgraph.json`, обновить затронутые `Docs/modules/*.md`,
+`DISCREPANCIES.md`, `ARCHITECTURE.md`/`REPOMAP.md` при изменении
+структуры, записать `_progress.md` → `python Tools/check_docs.py --update`,
+затем чистый отчёт `python Tools/check_docs.py` → `git diff` → один чекпоинт
+с кодом и документацией.
+
+**Номера строк в карточках не держим.** Карточка ссылается на имя символа;
+единственный источник координат — `Docs/_generated/symbols.json`. Правило
+проверяется `Tools/check_docs.py` (категория `COORD`), новые координаты в
+`Docs/modules/` и `Docs/lifecycle/` не вносить.
+
+Исключения, когда документировать всё же нужно по ходу работы:
+- `DISCREPANCIES.md` — найденное расхождение комментария и кода, если
+  без записи оно потеряется; допустима строка в `IDEA.md` вместо файла.
+- Изменение, которое уже сейчас вводит в заблуждение следующего читателя
+  карточки настолько, что он сделает неверный вывод по контракту:
+  тогда правка карточки — часть шага, а не отдельный этап (сказать об
+  этом в ответе).
 
 Landmine — docs live in `master` only, there is no separate doc
 branch, and don't name one when looking for missing docs: if a
